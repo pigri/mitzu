@@ -8,7 +8,7 @@ from copy import copy
 import pandas as pd
 import services.common.helper as helper
 import services.adapters.adapter_factory as factory
-
+import services.notebook.visualization as vis
 
 def default_field(obj):
     return field(default_factory=lambda: copy(obj))
@@ -206,6 +206,7 @@ class Metric:
         self._time_group: TimeGroup = DEF_TIME_GROUP
         self._max_group_count: int = DEF_MAX_GROUP_COUNT
         self._group_by: Optional[EventFieldDef] = None
+        self._custom_title: Optional[str] = None
 
 
 class ConversionMetric(Metric):
@@ -217,7 +218,7 @@ class ConversionMetric(Metric):
         self._conversion = conversion
         self._conv_window: TimeWindow = DEF_CONV_WINDOW
 
-    def to_pandas(self) -> pd.DataFrame:
+    def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
         adapter = factory.create_adapter(source=source)
         return adapter.get_conversion_df(self)
@@ -240,6 +241,11 @@ class SegmentationMetric(Metric):
         source = helper.get_segment_event_datasource(self._segment)
         adapter = factory.create_adapter(source=source)
         print(adapter.get_segmentation_sql(self))
+
+    def __repr__(self) -> str:
+        fig = vis.plot_segmentation(self)
+        fig.show()
+        return ""
 
 
 class RetentionMetric(Metric):
@@ -270,6 +276,7 @@ class Conversion(ConversionMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        custom_title : str = None,
     ) -> ConversionMetric:
         res = ConversionMetric(conversion=self._conversion)
         res._conv_window = TimeWindow.parse_input(conv_window)
@@ -280,6 +287,7 @@ class Conversion(ConversionMetric):
         res._time_group = TimeGroup.parse(time_group)
         res._group_by = group_by
         res._max_group_count = max_group_by_count
+        res._custom_title = custom_title
         return res
 
     def retention(
@@ -290,6 +298,7 @@ class Conversion(ConversionMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        custom_title: str = None
     ) -> RetentionMetric:
         res = RetentionMetric(conversion=self._conversion)
         res._ret_window = TimeWindow.parse_input(ret_window)
@@ -300,6 +309,7 @@ class Conversion(ConversionMetric):
         res._time_group = TimeGroup.parse(time_group)
         res._group_by = group_by
         res._max_group_count = max_group_by_count
+        res._custom_title = custom_title
         return res
 
 
@@ -323,6 +333,7 @@ class Segment(SegmentationMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        custom_title: str = None
     ) -> SegmentationMetric:
         res = SegmentationMetric(segment=self)
         res._start_dt = helper.parse_datetime_input(
@@ -332,6 +343,7 @@ class Segment(SegmentationMetric):
         res._time_group = TimeGroup.parse(time_group)
         res._group_by = group_by
         res._max_group_count = max_group_by_count
+        res._custom_title = custom_title
         return res
 
 

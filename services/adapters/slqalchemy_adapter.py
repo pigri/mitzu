@@ -15,7 +15,7 @@ def get_enums_agg_dict(
 ) -> Dict[str, Any]:
     return {
         f.name: lambda val: set(val)
-        if len(set(val)) < source.connection.max_enum_cardinality
+        if len(set(val)) < source.max_enum_cardinality
         else set()
         for f in fields
     }
@@ -39,7 +39,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             return M.DataType.STRING
         if isinstance(sa_type, SA.DateTime):
             return M.DataType.DATETIME
-        raise NotSupportedError(f"{sa_type} is not supported.")
+        raise ValueError(f"{sa_type} is not supported.")
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
@@ -47,7 +47,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         return pd.DataFrame(result)
 
     def get_engine(self) -> Any:
-        raise NotSupportedError("Generic SQL Alchemy connections are not yet supported")
+        raise ValueError("Generic SQL Alchemy connections are not yet supported")
 
     def get_table(self) -> SA.Table:
         if self._table is None:
@@ -90,7 +90,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def _get_colum_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
-        raise NotSupportedError("Generic SQL Alchemy connections are not yet supported")
+        raise ValueError("Generic SQL Alchemy connections are not yet supported")
 
     def get_field_enums(
         self, fields: List[M.Field], event_specific: bool
@@ -132,7 +132,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             else SA.literal(None)
         )
         group_by = (
-            table.columns.get(metric._group_by._event_field.field.name)
+            table.columns.get(metric._group_by.field.name)
             if metric._group_by is not None
             else SA.literal(None)
         )
