@@ -1,1 +1,5 @@
-# mitzu
+# pystork
+
+# Init project
+
+`poetry init`

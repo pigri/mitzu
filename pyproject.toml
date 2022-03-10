@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "pystork"
+version = "0.1.0"
+description = "Product analytics over the warehouse"
+authors = ["istvan.meszaros.88@gmail.com"]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+pydantic = "^1.8.2"
+pandas = "^1.3.5"
+pandasql = "^0.7.3"
+plotly = "^5.5.0"
+SQLAlchemy = "^1.4.31"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.920"
+jupyter = "^1.0.0"
+pytest = "^6.2.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
