@@ -223,6 +223,10 @@ class ConversionMetric(Metric):
         adapter = factory.create_adapter(source=source)
         return adapter.get_conversion_df(self)
 
+    def __repr__(self) -> str:
+        fig = vis.plot_conversion(self)
+        fig.show()
+        return ""
 
 class SegmentationMetric(Metric):
     def __init__(
@@ -312,6 +316,9 @@ class Conversion(ConversionMetric):
         res._custom_title = custom_title
         return res
 
+    def __repr__(self) -> str:
+        return super().__repr__()
+
 
 class Segment(SegmentationMetric):
     def __init__(self):
@@ -346,6 +353,10 @@ class Segment(SegmentationMetric):
         res._custom_title = custom_title
         return res
 
+    def __repr__(self) -> str:
+        return super().__repr__()
+
+
 
 @dataclass
 class ComplexSegment(Segment):
@@ -353,9 +364,15 @@ class ComplexSegment(Segment):
     _operator: BinaryOperator
     _right: Segment
 
+    def __repr__(self) -> str:
+        return super().__repr__()
+
 
 @dataclass
 class SimpleSegment(Segment):
     _left: EventFieldDef | EventDef  # str is an event_name without any filters
     _operator: Optional[Operator] = None
     _right: Optional[Any] = None
+
+    def __repr__(self) -> str:
+        return super().__repr__()
