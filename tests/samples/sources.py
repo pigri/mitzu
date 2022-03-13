@@ -17,3 +17,19 @@ SIMPLE_CSV = EventDataSource(
         url=WD + "/simple.csv",
     ),
 )
+
+
+COMPLEX_PARQUET = EventDataSource(
+    table_name="user_test_data",
+    event_name_field="event_name",
+    user_id_field="unified_user_id",
+    event_time_field="event_time",
+    event_specific_fields=["event_properties"],
+    max_enum_cardinality=300,
+    max_map_key_cardinality=300,
+    connection=Connection(
+        connection_type=ConnectionType.FILE,
+        connection_params={"file_type": "parquet"},
+        url=WD + "/user_test_data.snappy.parquet",
+    ),
+)
