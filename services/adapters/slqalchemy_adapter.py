@@ -1,12 +1,10 @@
 from __future__ import annotations
-from time import time
 from typing import Any, Dict, List
-from numpy import dtype
 
 from services.adapters.generic_adapter import GenericDatasetAdapter
 import services.common.model as M
-import pandas as pd
-import sqlalchemy as SA
+import pandas as pd  # type: ignore
+import sqlalchemy as SA  # type: ignore
 
 
 def get_enums_agg_dict(
@@ -123,7 +121,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         table = self.get_table()
         source = self.source
-        
+
         evt_time_group = (
             self._get_date_trunc(
                 metric._time_group, table.columns.get(source.event_time_field)
@@ -137,8 +135,6 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             else SA.literal(None)
         )
 
-        
-
         return SA.select(
             group_by=[evt_time_group, group_by],
             columns=[
@@ -151,7 +147,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
                     "event_count"
                 ),
             ],
-            whereclause=(table.columns.get(source.event_name_field) == "view")
+            whereclause=(table.columns.get(source.event_name_field) == "view"),
         )
 
     def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:

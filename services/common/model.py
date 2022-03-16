@@ -5,10 +5,11 @@ from datetime import datetime, timedelta
 from enum import Enum
 from copy import copy
 
-import pandas as pd
+import pandas as pd  # type: ignore
 import services.common.helper as helper
 import services.adapters.adapter_factory as factory
 import services.notebook.visualization as vis
+
 
 def default_field(obj):
     return field(default_factory=lambda: copy(obj))
@@ -228,6 +229,7 @@ class ConversionMetric(Metric):
         fig.show()
         return ""
 
+
 class SegmentationMetric(Metric):
     def __init__(
         self,
@@ -240,6 +242,11 @@ class SegmentationMetric(Metric):
         source = helper.get_segment_event_datasource(self._segment)
         adapter = factory.create_adapter(source=source)
         return adapter.get_segmentation_df(self)
+
+    def get_sql(self) -> str:
+        source = helper.get_segment_event_datasource(self._segment)
+        adapter = factory.create_adapter(source=source)
+        return adapter.get_segmentation_sql(self)
 
     def print_sql(self):
         source = helper.get_segment_event_datasource(self._segment)
@@ -280,7 +287,7 @@ class Conversion(ConversionMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title : str = None,
+        custom_title: str = None,
     ) -> ConversionMetric:
         res = ConversionMetric(conversion=self._conversion)
         res._conv_window = TimeWindow.parse_input(conv_window)
@@ -302,7 +309,7 @@ class Conversion(ConversionMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title: str = None
+        custom_title: str = None,
     ) -> RetentionMetric:
         res = RetentionMetric(conversion=self._conversion)
         res._ret_window = TimeWindow.parse_input(ret_window)
@@ -340,7 +347,7 @@ class Segment(SegmentationMetric):
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title: str = None
+        custom_title: str = None,
     ) -> SegmentationMetric:
         res = SegmentationMetric(segment=self)
         res._start_dt = helper.parse_datetime_input(
@@ -355,7 +362,6 @@ class Segment(SegmentationMetric):
 
     def __repr__(self) -> str:
         return super().__repr__()
-
 
 
 @dataclass

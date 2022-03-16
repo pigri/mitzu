@@ -1,7 +1,7 @@
 from __future__ import annotations
 import services.common.model as M
 from typing import Dict, List
-import pandas as pd
+import pandas as pd  # type: ignore
 
 
 class GenericDatasetAdapter:

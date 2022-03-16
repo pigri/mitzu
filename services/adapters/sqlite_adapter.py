@@ -3,8 +3,8 @@ from typing import Any, List
 
 from services.adapters.slqalchemy_adapter import SQLAlchemyAdapter
 import services.common.model as M
-import pandas as pd
-import sqlalchemy as SA
+import pandas as pd  # type: ignore
+import sqlalchemy as SA  # type: ignore
 import json
 
 VALUE_SEPARATOR = "###"
@@ -29,25 +29,26 @@ class SQLiteAdapter(SQLAlchemyAdapter):
             df[source.event_time_field] = pd.to_datetime(df[source.event_time_field])
             df = df.set_index(
                 [source.event_time_field, source.event_name_field, source.user_id_field]
-            ) 
+            )
             df = self._fix_complex_types(df)
             eng = SA.create_engine("sqlite://")
             df.to_sql(name=self.source.table_name, con=eng)
             self._engine = eng
         return self._engine
 
-    def _fix_complex_types(self, df:pd.DataFrame) -> pd.DataFrame:
+    def _fix_complex_types(self, df: pd.DataFrame) -> pd.DataFrame:
         for col in df.columns:
-            obj = df[col][0]    
-            if pd.api.types.is_dict_like(obj):    
+            obj = df[col][0]
+            if pd.api.types.is_dict_like(obj):
                 df[col] = df[col].apply(lambda val: json.dumps(val, default=str))
             elif pd.api.types.is_list_like(obj):
                 if type(obj) == tuple:
-                    df[col] = df[col].apply(lambda val: json.dumps(dict(val), default=str))
+                    df[col] = df[col].apply(
+                        lambda val: json.dumps(dict(val), default=str)
+                    )
                 else:
                     df[col] = df[col].apply(lambda val: json.dumps(val, default=str))
         return df
-
 
     def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
         if time_group == M.TimeGroup.WEEK:

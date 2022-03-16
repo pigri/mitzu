@@ -1,7 +1,6 @@
-
 from __future__ import annotations
-import pandas as pd
-import plotly.express as px
+import pandas as pd  # type: ignore
+import plotly.express as px  # type: ignore
 from typing import List
 import services.common.model as M
 
@@ -32,6 +31,7 @@ def fix_title_text(title_text: str, max_length=MAX_TITLE_LENGTH) -> str:
         return title_text[:max_length] + "..."
     else:
         return title_text
+
 
 def get_segment_title_text(segment: M.Segment) -> str:
     return "TBD"
@@ -81,17 +81,12 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
     return f"{tg} {agg}<br />who did {events}<br />{within_str} {segment_by}"
 
 
-
 def fix_group_columns(pdf: pd.DataFrame, metric: M.Metric) -> pd.DataFrame:
     if metric._group_by is None:
         pdf["group"] = ""
     else:
-        pdf["group"] = (
-            pdf[[f"group_1"]]
-            .astype(str)
-            .agg(", ".join, axis=1)
-        )
-        pdf = pdf.drop([f"group_1" ], axis=1)
+        pdf["group"] = pdf[["group_1"]].astype(str).agg(", ".join, axis=1)
+        pdf = pdf.drop(["group_1"], axis=1)
     return pdf
 
 
@@ -117,7 +112,9 @@ def get_melted_conv_column(
     res = pd.melt(
         pdf,
         id_vars=["group", "cvr"],
-        value_vars=[f"{column_prefix}{i}" for i, _ in enumerate(metric._conversion._segments)],
+        value_vars=[
+            f"{column_prefix}{i}" for i, _ in enumerate(metric._conversion._segments)
+        ],
         var_name="Step",
         value_name=display_name,
     )
@@ -143,7 +140,6 @@ def get_melted_conv_pdf(pdf: pd.DataFrame, metric: M.ConversionMetric) -> pd.Dat
         res, pdf3, left_on=["group", "cvr", "Step"], right_on=["group", "cvr", "Step"]
     )
     return res
-
 
 
 def plot_conversion(metric: M.ConversionMetric):
@@ -284,7 +280,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
             labels={"segmentation": get_segmentation_title(metric)},
         )
         fig.update_traces(textposition="auto")
-    else:        
+    else:
         pdf.sort_values(by=["datetime"])
         if metric._group_by is None:
             fig = px.line(
