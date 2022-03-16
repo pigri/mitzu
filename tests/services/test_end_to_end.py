@@ -35,3 +35,5 @@ def test_simple_big_data_discovery():
         GROUP BY :param_1, :param_2""",
         seg.get_sql(),
     )
+
+    assert 30 == seg.get_df().size

@@ -19,3 +19,6 @@ test:
 
 check: format autoflake mypy lint test
 	ECHO 'done'
+
+notebook:
+	$(POETRY) run jupyter-notebook

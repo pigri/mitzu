@@ -261,7 +261,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-
+    print(pdf.head())
     pdf["User Count"] = pdf["unique_user_count"]
     pdf = fix_group_columns(pdf, metric)
     pdf = filter_top_groups(pdf, metric)
