@@ -37,103 +37,101 @@ def fix_def(val: str):
     return fixed[:32]
 
 
-@dataclass
-class FieldCondition:
-    _event_field: EventFieldDef
-    _source: EventDataSource
-    _event_def: EventDef
+# @dataclass
+# class FieldCondition:
+#     _event_field: EventFieldDef
+#     _source: EventDataSource
+#     _event_def: EventDef
 
 
-def _any_of(self: FieldCondition, *vals: Any) -> SimpleSegment:
+def _any_of(self: EventFieldDef, *vals: Any) -> SimpleSegment:
+    return SimpleSegment(_left=self, _operator=Operator.ANY_OF, _right=vals)
+
+
+def _not_any_of(self: EventFieldDef, *vals: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field, _operator=Operator.ANY_OF, _right=vals
-    )
-
-
-def _not_any_of(self: FieldCondition, *vals: Any) -> SimpleSegment:
-    return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.NONE_OF,
         _right=vals,
     )
 
 
-def _like(self: FieldCondition, val: str) -> SimpleSegment:
+def _like(self: EventFieldDef, val: str) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.LIKE,
         _right=val,
     )
 
 
-def _not_like(self: FieldCondition, val: str) -> SimpleSegment:
+def _not_like(self: EventFieldDef, val: str) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.NOT_LIKE,
         _right=val,
     )
 
 
-def _eq(self: FieldCondition, val: str) -> SimpleSegment:
+def _eq(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.EQ,
         _right=val,
     )
 
 
-def _not_eq(self: FieldCondition, val: Any) -> SimpleSegment:
+def _not_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.NEQ,
         _right=val,
     )
 
 
-def _gt(self: FieldCondition, val: Any) -> SimpleSegment:
+def _gt(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.GT,
         _right=val,
     )
 
 
-def _lt(self: FieldCondition, val: Any) -> SimpleSegment:
+def _lt(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.LT,
         _right=val,
     )
 
 
-def _gt_eq(self: FieldCondition, val: Any) -> SimpleSegment:
+def _gt_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.GT_EQ,
         _right=val,
     )
 
 
-def _lt_eq(self: FieldCondition, val: Any) -> SimpleSegment:
+def _lt_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
     return SimpleSegment(
-        _left=self._event_field,
+        _left=self,
         _operator=Operator.LT_EQ,
         _right=val,
     )
 
 
-def _field_constructor(
-    self,
-    field_def: EventFieldDef,
-    source: EventDataSource,
-    event_def: EventDef,
-):
-    return FieldCondition.__init__(
-        self,
-        _event_field=field_def,
-        _source=source,
-        _event_def=event_def,
-    )
+# def _field_constructor(
+#     self,
+#     field_def: EventFieldDef,
+#     source: EventDataSource,
+#     event_def: EventDef,
+# ):
+#     return FieldCondition.__init__(
+#         self,
+#         _event_field=field_def,
+#         _source=source,
+#         _event_def=event_def,
+#     )
 
 
 def _event_condition_constructor(self: SimpleSegment, event_def: EventDef):
@@ -160,7 +158,6 @@ class DatasetModel:
         for k, v in cls.__dict__.items():
             if k != "_to_globals":
                 glbs[k] = v
-        return cls
 
 
 class ModelLoader:

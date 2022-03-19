@@ -5,6 +5,7 @@ from services.adapters.generic_adapter import GenericDatasetAdapter
 import services.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
+from sql_formatter.core import format_sql  # type: ignore
 
 
 def get_enums_agg_dict(
@@ -115,10 +116,42 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
+    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column) -> Any:
         return SA.func.date_trunc(time_group.name, table_column)
 
-    def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment):
+    def _get_simple_segment_condition(
+        self, table: SA.Table, segment: M.SimpleSegment
+    ) -> Any:
+        left = cast(M.EventFieldDef, segment._left)
+        field = table.columns.get(left._field._name)
+        op = segment._operator
+        if op == M.Operator.EQ:
+            return field == segment._right
+        if op == M.Operator.NEQ:
+            return field != segment._right
+        if op == M.Operator.GT:
+            return field > segment._right
+        if op == M.Operator.LT:
+            return field < segment._right
+        if op == M.Operator.GT_EQ:
+            return field >= segment._right
+        if op == M.Operator.LT_EQ:
+            return field <= segment._right
+        if op == M.Operator.LIKE:
+            return field.like(segment._right)
+        if op == M.Operator.NOT_LIKE:
+            return SA.not_(field.like(segment._right))
+        if op == M.Operator.ANY_OF:
+            return field.in_(segment._right)
+        if op == M.Operator.NONE_OF:
+            return SA.not_(field.in_(segment._right))
+        if op == M.Operator.IS_NULL:
+            return field == None
+        if op == M.Operator.IS_NOT_NULL:
+            return field != None
+        raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
+
+    def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment) -> Any:
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             if s._operator is None:
@@ -127,10 +160,10 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
                     == s._left._event_name
                 )
             else:
-                left = cast(M.EventFieldDef, s._left)
                 return (
-                    table.columns.get(left._source.event_name_field) == left._event_name
-                ) & (table.columns.get(left._field._name) == s._right)
+                    table.columns.get(s._left._source.event_name_field)
+                    == s._left._event_name
+                ) & self._get_simple_segment_condition(table, s)
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
             if c._operator == M.BinaryOperator.AND:
@@ -178,7 +211,13 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         )
 
     def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:
-        return str(self._get_segmentation_select(metric))
+        return format_sql(
+            str(
+                self._get_segmentation_select(metric).compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+        )
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         return self.execute_query(self._get_segmentation_select(metric))

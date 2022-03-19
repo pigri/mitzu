@@ -13,6 +13,7 @@ plotly = "^5.5.0"
 SQLAlchemy = "^1.4.31"
 pyarrow = "^7.0.0"
 fastparquet = "^0.8.0"
+sql-formatter = "^0.6.2"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.920"

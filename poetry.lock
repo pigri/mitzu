@@ -1054,6 +1054,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "sql-formatter"
+version = "0.6.2"
+description = "A SQL formatter"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "sqlalchemy"
 version = "1.4.32"
 description = "Database Abstraction Library"
@@ -1224,7 +1232,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "ce52fa5306d3b952f4b24f22987df62807ffd14f8ca7349c3086947f87254d4f"
+content-hash = "3f1ce1f8423cd70e7720111826114b1ae808fb2033bc9f043f3a85c949f18b97"
 
 [metadata.files]
 appnope = [
@@ -2071,6 +2079,10 @@ six = [
 soupsieve = [
     {file = "soupsieve-2.3.1-py3-none-any.whl", hash = "sha256:1a3cca2617c6b38c0343ed661b1fa5de5637f257d4fe22bd9f1338010a1efefb"},
     {file = "soupsieve-2.3.1.tar.gz", hash = "sha256:b8d49b1cd4f037c7082a9683dfa1801aa2597fb11c3a1155b7a5b94829b4f1f9"},
+]
+sql-formatter = [
+    {file = "sql_formatter-0.6.2-py3-none-any.whl", hash = "sha256:5c38651a93031b2ea96c977309d38bba94ad77e8f2dcae7b1b6b71e116423c33"},
+    {file = "sql_formatter-0.6.2.tar.gz", hash = "sha256:98b83810e42ba989073c9ea5d53ddda45c36e91004904ca2916fc5fc13373c10"},
 ]
 sqlalchemy = [
     {file = "SQLAlchemy-1.4.32-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:4b2bcab3a914715d332ca783e9bda13bc570d8b9ef087563210ba63082c18c16"},

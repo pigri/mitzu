@@ -40,9 +40,11 @@ def get_segment_title_text(segment: M.Segment) -> str:
             return s._left._event_name
         else:
             left = cast(M.EventFieldDef, s._left)
-            return (
-                f"{left._event_name} with {left._field._name} {s._operator} {s._right}"
-            )
+            right = s._right
+            if right is None:
+                right = "null"
+
+            return f"{left._event_name} with {left._field._name} {s._operator} {right}"
     elif isinstance(segment, M.ComplexSegment):
         c = cast(M.ComplexSegment, segment)
         return f"{get_segment_title_text(c._left)} {c._operator} {get_segment_title_text(c._right)}"
