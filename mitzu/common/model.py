@@ -233,7 +233,7 @@ class EventDef:
 # =========================================== Metric definitions ===========================================
 
 DEF_MAX_GROUP_COUNT = 10
-DEF_LOOK_BACK_DAYS = 30
+DEF_LOOK_BACK_DAYS = 365
 DEF_CONV_WINDOW = TimeWindow(1, TimeGroup.DAY)
 DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
 DEF_TIME_GROUP = TimeGroup.DAY
