@@ -8,6 +8,7 @@ DATETIME_COL = "datetime"
 GROUP_COL = "group"
 USER_COUNT_COL = "unique_user_count"
 EVENT_COUNT_COL = "event_count"
+CVR_COL = "conversion_rate"
 PERCENTILE_50_COL = "p50_conv_time"
 PERCENTILE_95_COL = "p95_conv_time"
 

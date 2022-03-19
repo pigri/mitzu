@@ -6,9 +6,7 @@ import services.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 from sqlalchemy.orm import aliased  # type:ignore
-from sqlalchemy.types import Interval  # type:ignore
 from sql_formatter.core import format_sql  # type: ignore
-from dateutil import relativedelta  # type: ignore
 
 
 def get_enums_agg_dict(
@@ -151,9 +149,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if op == M.Operator.NONE_OF:
             return SA.not_(field.in_(segment._right))
         if op == M.Operator.IS_NULL:
-            return field == None
+            return field is None
         if op == M.Operator.IS_NOT_NULL:
-            return field != None
+            return field is not None
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
     def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment) -> Any:
@@ -287,9 +285,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ),
                 isouter=True,
             )
+
         columns = [
             evt_time_group.label(GA.DATETIME_COL),
             group_by.label(GA.GROUP_COL),
+            (
+                SA.func.count(
+                    steps[len(steps) - 1].columns.get(source.user_id_field).distinct()
+                )
+                * 1.0
+                / SA.func.count(user_id_col.distinct())
+            ).label(GA.CVR_COL),
             SA.func.count(user_id_col.distinct()).label(
                 self._fix_col_index(1, GA.USER_COUNT_COL)
             ),

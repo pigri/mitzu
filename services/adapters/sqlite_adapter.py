@@ -6,7 +6,6 @@ import services.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 import json
-from dateutil import relativedelta  # type: ignore
 
 VALUE_SEPARATOR = "###"
 

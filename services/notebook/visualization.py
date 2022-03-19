@@ -11,10 +11,22 @@ def fix_na_cols(pdf: pd.DataFrame) -> pd.DataFrame:
     return pdf.apply(lambda x: x.fillna(0) if x.dtype.kind in "biufc" else x.fillna(""))
 
 
-def filter_top_groups(pdf: pd.DataFrame, metric: M.Metric) -> List[str]:
+def filter_top_segmentation_groups(
+    pdf: pd.DataFrame, metric: M.SegmentationMetric
+) -> List[str]:
     max = metric._max_group_count
     g_users = pdf[["group", "unique_user_count"]].groupby("group").sum().reset_index()
     g_users = g_users.sort_values("unique_user_count", ascending=False).head(max)
+    top_groups = list(g_users["group"].values)
+    return pdf[pdf["group"].isin(top_groups)]
+
+
+def filter_top_conversion_groups(
+    pdf: pd.DataFrame, metric: M.ConversionMetric
+) -> List[str]:
+    max = metric._max_group_count
+    g_users = pdf[["group", "unique_user_count_1"]].groupby("group").sum().reset_index()
+    g_users = g_users.sort_values("unique_user_count_1", ascending=False).head(max)
     top_groups = list(g_users["group"].values)
     return pdf[pdf["group"].isin(top_groups)]
 
@@ -96,37 +108,21 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
     return f"{tg} {agg}<br />who did {events}<br />{within_str} {segment_by}"
 
 
-def fix_conv_times(df: pd.DataFrame) -> pd.DataFrame:
-    conv_keys = ["conv_time_sec_p95", "conv_time_sec_p50", "conv_time_sec_avg"]
-
-    for key in conv_keys:
-        mean_val = df[key].mean(axis=0)
-        if 0 <= mean_val <= 600:
-            df[key] = df[key].round(2).apply(str) + " secs"
-        elif 600 < mean_val <= 2 * 3600:
-            df[key] = df[key].div(60).round(2).apply(str) + " mins"
-        elif 7200 < mean_val <= 48 * 3600:
-            df[key] = df[key].div(3600).round(2).apply(str) + " hours"
-        else:
-            df[key] = df[key].div(24 * 3600).round(2).apply(str) + " days"
-    return df
-
-
 def get_melted_conv_column(
     column_prefix: str, display_name: str, pdf: pd.DataFrame, metric: M.ConversionMetric
 ) -> pd.DataFrame:
     res = pd.melt(
         pdf,
-        id_vars=["group", "cvr"],
+        id_vars=["group", "conversion_rate"],
         value_vars=[
-            f"{column_prefix}{i}" for i, _ in enumerate(metric._conversion._segments)
+            f"{column_prefix}{i+1}" for i, _ in enumerate(metric._conversion._segments)
         ],
-        var_name="Step",
+        var_name="step",
         value_name=display_name,
     )
-    res["Step"] = res["Step"].replace(
+    res["step"] = res["step"].replace(
         {
-            f"{column_prefix}{i}": f"{i+1}. {fix_title_text(get_segment_title_text(val))}"
+            f"{column_prefix}{i+1}": f"{i+1}. {fix_title_text(get_segment_title_text(val))}"
             for i, val in enumerate(metric._conversion._segments)
         }
     )
@@ -134,16 +130,17 @@ def get_melted_conv_column(
 
 
 def get_melted_conv_pdf(pdf: pd.DataFrame, metric: M.ConversionMetric) -> pd.DataFrame:
-    pdf1 = get_melted_conv_column("users_", "User Count", pdf, metric)
-    pdf2 = get_melted_conv_column("cvr_", "Step CVR", pdf, metric)
-    pdf3 = get_melted_conv_column("count_", "Event Count", pdf, metric)
+    pdf1 = get_melted_conv_column(
+        "unique_user_count_", "unique_user_count", pdf, metric
+    )
+    pdf3 = get_melted_conv_column("event_count_", "event_count", pdf, metric)
 
     res = pdf1
     res = pd.merge(
-        res, pdf2, left_on=["group", "cvr", "Step"], right_on=["group", "cvr", "Step"]
-    )
-    res = pd.merge(
-        res, pdf3, left_on=["group", "cvr", "Step"], right_on=["group", "cvr", "Step"]
+        res,
+        pdf3,
+        left_on=["group", "conversion_rate", "step"],
+        right_on=["group", "conversion_rate", "step"],
     )
     return res
 
@@ -153,78 +150,67 @@ def plot_conversion(metric: M.ConversionMetric):
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-    pdf = filter_top_groups(pdf, metric)
+    pdf = filter_top_conversion_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
-        conv_times = pdf[
-            ["group", "conv_time_sec_avg", "conv_time_sec_p50", "conv_time_sec_p95"]
-        ]
-        conv_times = fix_conv_times(conv_times)
         pdf = get_melted_conv_pdf(pdf, metric)
-        pdf = pd.merge(pdf, conv_times, left_on="group", right_on="group")
-
-        pdf = pdf.sort_values(["Step CVR"], ascending=[False])
+        pdf = pdf.sort_values(["step"], ascending=[True])
+        pdf["conversion_rate"] = round(pdf["conversion_rate"] * 100, 2)
         fig = px.bar(
             pdf,
-            x="Step",
-            y="Step CVR",
-            text="User Count",
+            x="step",
+            y="unique_user_count",
+            text="unique_user_count",
             color="group",
             barmode="group",
             custom_data=[
-                "Step CVR",
-                "User Count",
-                "Event Count",
-                "conv_time_sec_avg",
-                "conv_time_sec_p50",
-                "conv_time_sec_p95",
+                "conversion_rate",
+                "unique_user_count",
+                "event_count",
                 "group",
             ],
             labels={
-                "Step": get_conversion_title(metric),
-                "Step CVR": "Conversion",
+                "step": get_conversion_title(metric),
+                "conversion_rate": "Conversion",
+                "unique_user_count": "User Count",
             },
         )
         fig.update_traces(
             textposition="auto",
             hovertemplate="""<b>%{x}</b>
-                    <br /><b>%{customdata[6]}</b>
+                    <br /><b>%{customdata[3]}</b>
                     <br />
-                    <br />Conversion: <b>%{customdata[0]}%</b>
+                    <br />Total Conversion: <b>%{customdata[0]}%</b>
                     <br />User count: <b>%{customdata[1]}</b>
-                    <br />Event count: <b>%{customdata[2]}</b>                   
-                    <br />Total Avg. conv. time: <b>%{customdata[3]}</b>
-                    <br />Total P50 conv. time: <b>%{customdata[4]}</b>
-                    <br />Total P95 conv. time: <b>%{customdata[5]}</b>
+                    <br />Event count: <b>%{customdata[2]}</b>                                       
                      <extra></extra>
             """,
         )
     else:
-        pdf["dt"] = pd.to_datetime(pdf["dt"])  # Serverless bug workaround
-        pdf.sort_values(by=["dt"])
-        pdf["converted"] = pdf[f"users_{len(metric._conversion._segments)-1}"]
-        pdf["converted_count"] = pdf[f"count_{len(metric._conversion._segments)-1}"]
-        pdf = fix_conv_times(pdf)
+        funnel_length = len(metric._conversion._segments)
+        pdf["datetime"] = pd.to_datetime(pdf["datetime"])  # Serverless bug workaround
+        pdf = pdf.sort_values(by=["datetime"])
+        pdf["conversion_rate"] = round(pdf["conversion_rate"] * 100, 2)
         if metric._group_by is None:
             pdf["group"] = ""
 
         fig = px.line(
             pdf,
-            x="dt",
-            y="cvr",
-            text="cvr",
+            x="datetime",
+            y="conversion_rate",
+            text="conversion_rate",
             color="group",
             custom_data=[
-                "users_0",
-                "converted",
-                "count_0",
-                "converted_count",
-                "conv_time_sec_avg",
-                "conv_time_sec_p50",
-                "conv_time_sec_p95",
+                "unique_user_count_1",
+                f"unique_user_count_{funnel_length}",
+                "event_count_1",
+                f"event_count_{funnel_length}",
                 "group",
             ],
-            labels={"dt": get_conversion_title(metric), "cvr": "Conversion"},
+            labels={
+                "datetime": get_conversion_title(metric),
+                "conversion_rate": "Conversion",
+            },
         )
         fig.update_traces(
             textposition="top center",
@@ -232,18 +218,14 @@ def plot_conversion(metric: M.ConversionMetric):
             line=dict(width=3.5),
             mode="markers+lines+text",
             hovertemplate="""<b>%{x}</b>
-                    <br /><b>%{customdata[7]}</b>
+                    <br /><b>%{customdata[4]}</b>
                     <br />
                     <br />Conversion: <b>%{y}%</b>             
                     <br />Activated users:<b>%{customdata[0]}</b>                    
                     <br />Converted users: <b>%{customdata[1]}</b>
                     <br />
                     <br />Activated event count:<b>%{customdata[2]}</b>                    
-                    <br />Converted event count:<b>%{customdata[3]}</b>          
-                    <br />
-                    <br />Avg. conv. time: <b>%{customdata[4]}</b>
-                    <br />P50 conv. time: <b>%{customdata[5]}</b>
-                    <br />P95 conv. time: <b>%{customdata[6]}</b>
+                    <br />Converted event count:<b>%{customdata[3]}</b>                            
                     <extra></extra>
             """,
         )
@@ -267,7 +249,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
     pdf["User Count"] = pdf["unique_user_count"]
-    pdf = filter_top_groups(pdf, metric)
+    pdf = filter_top_segmentation_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
         pdf["segmentation"] = ""

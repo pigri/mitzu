@@ -47,6 +47,9 @@ class TimeGroup(Enum):
         else:
             raise ValueError(f"Invalid argument type for TimeGroup parse: {type(val)}")
 
+    def __str__(self) -> str:
+        return self.name.lower()
+
 
 class Operator(Enum):
     EQ = 1
@@ -149,6 +152,9 @@ class TimeWindow:
             return val
         else:
             raise ValueError(f"Invalid argument type for TimeWindow parse: {type(val)}")
+
+    def __str__(self) -> str:
+        return f"{self.value} {self.period}"
 
 
 @dataclass
