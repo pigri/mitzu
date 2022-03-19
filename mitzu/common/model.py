@@ -7,10 +7,10 @@ from enum import Enum
 from copy import copy
 
 import pandas as pd  # type: ignore
-import services.common.helper as helper
-import services.adapters.adapter_factory as factory
-import services.notebook.visualization as vis
-import services.adapters.generic_adapter as GA
+import mitzu.common.helper as helper
+import mitzu.adapters.adapter_factory as factory
+import mitzu.notebook.visualization as vis
+import mitzu.adapters.generic_adapter as GA
 
 
 def default_field(obj):

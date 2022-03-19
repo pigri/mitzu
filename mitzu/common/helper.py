@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from typing import Any
-import services.common.model as ml
+import mitzu.common.model as ml
 
 
 def parse_datetime_input(val: Any, def_val: datetime) -> datetime:

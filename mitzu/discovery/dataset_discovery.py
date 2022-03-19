@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict
-from services.common.model import (
+from mitzu.common.model import (
     ANY_EVENT_NAME,
     Field,
     DataType,
@@ -8,7 +8,7 @@ from services.common.model import (
     EventDef,
     DiscoveredDataset,
 )
-from services.adapters.generic_adapter import GenericDatasetAdapter
+from mitzu.adapters.generic_adapter import GenericDatasetAdapter
 
 
 class EventDatasetDiscovery:

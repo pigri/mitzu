@@ -2,7 +2,7 @@ from __future__ import annotations
 import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
 from typing import List, cast
-import services.common.model as M
+import mitzu.common.model as M
 
 MAX_TITLE_LENGTH = 80
 

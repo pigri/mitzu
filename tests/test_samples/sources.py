@@ -1,4 +1,4 @@
-from services.common.model import Connection, ConnectionType, EventDataSource
+from mitzu.common.model import Connection, ConnectionType, EventDataSource
 import os
 
 WD = os.path.dirname(os.path.abspath(__file__))

@@ -1,6 +1,6 @@
-import services.adapters.sqlite_adapter as fa
-from services.common.model import DataType, Field
-from tests.samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
+import mitzu.adapters.sqlite_adapter as fa
+from mitzu.common.model import DataType, Field
+from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
 
 
 def test_simple_list_columns():

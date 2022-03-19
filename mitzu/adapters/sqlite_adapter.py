@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, List
 
-from services.adapters.slqalchemy_adapter import SQLAlchemyAdapter
-import services.common.model as M
+from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
+import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 import json
@@ -18,21 +18,30 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         if self._engine is None:
             source = self.source
             extension = source.connection.connection_params["file_type"]
-            if extension == "csv":
-                df = pd.read_csv(source.connection.url, header=0)
-            elif extension == "json":
-                df = pd.read_json(source.connection.url)
-            elif extension == "parquet":
-                df = pd.read_parquet(source.connection.url)
+            if extension == "sqlite":
+                eng = SA.create_engine(f"sqlite://{self.source.connection.url}")
             else:
-                raise Exception("Extension not supported: " + extension)
-            df[source.event_time_field] = pd.to_datetime(df[source.event_time_field])
-            df = df.set_index(
-                [source.event_time_field, source.event_name_field, source.user_id_field]
-            )
-            df = self._fix_complex_types(df)
-            eng = SA.create_engine("sqlite://")
-            df.to_sql(name=self.source.table_name, con=eng)
+                if extension == "csv":
+                    df = pd.read_csv(source.connection.url, header=0)
+                elif extension == "json":
+                    df = pd.read_json(source.connection.url)
+                elif extension == "parquet":
+                    df = pd.read_parquet(source.connection.url)
+                else:
+                    raise Exception("Extension not supported: " + extension)
+                df[source.event_time_field] = pd.to_datetime(
+                    df[source.event_time_field]
+                )
+                df = df.set_index(
+                    [
+                        source.event_time_field,
+                        source.event_name_field,
+                        source.user_id_field,
+                    ]
+                )
+                df = self._fix_complex_types(df)
+                eng = SA.create_engine("sqlite://")
+                df.to_sql(name=self.source.table_name, con=eng)
             self._engine = eng
         return self._engine
 

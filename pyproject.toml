@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "pystork"
+name = "mitzu"
 version = "0.1.0"
-description = "Product analytics over the warehouse"
-authors = ["istvan.meszaros.88@gmail.com"]
+description = "Product analytics for your notebook"
+authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = ">=3.8"

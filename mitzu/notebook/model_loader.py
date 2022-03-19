@@ -4,7 +4,7 @@ import re
 from copy import copy
 
 
-from services.common.model import (
+from mitzu.common.model import (
     DataType,
     DiscoveredDataset,
     EventFieldDef,

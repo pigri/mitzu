@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict, List, cast
 
-import services.adapters.generic_adapter as GA
-import services.common.model as M
+import mitzu.adapters.generic_adapter as GA
+import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 from sqlalchemy.orm import aliased  # type:ignore

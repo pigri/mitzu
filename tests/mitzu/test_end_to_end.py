@@ -1,9 +1,9 @@
-from services.adapters.sqlite_adapter import SQLiteAdapter
-from services.discovery.dataset_discovery import EventDatasetDiscovery
-from tests.samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
+from mitzu.adapters.sqlite_adapter import SQLiteAdapter
+from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
+from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
 from datetime import datetime
-from services.notebook.model_loader import ModelLoader
-from services.common.model import ConversionMetric, Segment
+from mitzu.notebook.model_loader import ModelLoader
+from mitzu.common.model import ConversionMetric, Segment
 from tests.helper import assert_row, assert_sql
 
 
