@@ -154,15 +154,13 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment) -> Any:
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
+            left = s._left
+            evt_name_col = table.columns.get(left._source.event_name_field)
             if s._operator is None:
-                return (
-                    table.columns.get(s._left._source.event_name_field)
-                    == s._left._event_name
-                )
+                return evt_name_col == left._event_name
             else:
                 return (
-                    table.columns.get(s._left._source.event_name_field)
-                    == s._left._event_name
+                    evt_name_col == left._event_name
                 ) & self._get_simple_segment_condition(table, s)
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
@@ -177,20 +175,30 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         else:
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
+    def _get_timewindow_where_clause(
+        self, table: SA.Table, metric: M.SegmentationMetric
+    ) -> Any:
+        start_date = metric._start_dt
+        end_date = metric._end_dt
+
+        evt_time_col = table.columns.get(self.source.event_time_field)
+        return (evt_time_col >= start_date) & (evt_time_col <= end_date)
+
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         table = self.get_table()
+        columns = table.columns
         source = self.source
 
         evt_time_group = (
             self._get_date_trunc(
-                metric._time_group, table.columns.get(source.event_time_field)
+                metric._time_group, columns.get(source.event_time_field)
             )
             if metric._time_group != M.TimeGroup.TOTAL
             else SA.literal(None)
         )
 
         group_by = (
-            table.columns.get(metric._group_by._field._name)
+            columns.get(metric._group_by._field._name)
             if metric._group_by is not None
             else SA.literal(None)
         )
@@ -199,14 +207,15 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             columns=[
                 evt_time_group.label("datetime"),
                 group_by.label("group"),
-                SA.func.count(table.columns.get(source.user_id_field).distinct()).label(
+                SA.func.count(columns.get(source.user_id_field).distinct()).label(
                     "unique_user_count"
                 ),
-                SA.func.count(table.columns.get(source.user_id_field)).label(
-                    "event_count"
-                ),
+                SA.func.count(columns.get(source.user_id_field)).label("event_count"),
             ],
-            whereclause=self._get_segment_where_clause(table, metric._segment),
+            whereclause=(
+                self._get_segment_where_clause(table, metric._segment)
+                & self._get_timewindow_where_clause(table, metric)
+            ),
             group_by=[evt_time_group, group_by],
         )
 
