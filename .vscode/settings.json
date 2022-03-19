@@ -1,5 +1,7 @@
 {
   "python.linting.mypyEnabled": true,
   "python.linting.enabled": true,
-  "cSpell.words": ["conv"]
+  "python.formatting.provider": "black",
+  "cSpell.words": ["conv"],
+  "editor.defaultFormatter": null
 }
