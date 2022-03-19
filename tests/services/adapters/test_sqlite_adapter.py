@@ -24,7 +24,6 @@ def test_complex_list_columns():
     adapter = fa.SQLiteAdapter(SIMPLE_BIG_DATA)
 
     fields = adapter.list_fields()
-    print([f"{f.name}: {f.type}" for f in fields])
     assert 3 == len(
         set(fields)
         & set(

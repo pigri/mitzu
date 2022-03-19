@@ -36,14 +36,14 @@ class EventDatasetDiscovery:
         for mf, evt_keys in map_fields.items():
             map_key_field = evt_keys[event_name]
             for mkf in map_key_field:
-                mkf.parent = mf
+                mkf._parent = mf
                 res_fields.append(mkf)
         return res_fields
 
     def _get_generic_field_values(self, generic_fields: List[Field]):
         adapter = self.dataset_adapter
         map_field_keys = {}
-        map_fields = [gf for gf in generic_fields if gf.type == DataType.MAP]
+        map_fields = [gf for gf in generic_fields if gf._type == DataType.MAP]
         for mf in map_fields:
             map_field_keys[mf] = adapter.get_map_field_keys(mf, False)
 
@@ -56,7 +56,7 @@ class EventDatasetDiscovery:
         self, specific_fields: List[Field]
     ) -> Dict[str, EventDef]:
         adapter = self.dataset_adapter
-        map_fields = [sf for sf in specific_fields if sf.type == DataType.MAP]
+        map_fields = [sf for sf in specific_fields if sf._type == DataType.MAP]
         event_names = adapter.get_distinct_event_names()
         event_names.sort()
 
@@ -74,12 +74,12 @@ class EventDatasetDiscovery:
     def _get_specific_fields(self, columns: List[Field]):
         res = []
         for spec_col_name in self.source.event_specific_fields:
-            res.extend([col for col in columns if col.name.startswith(spec_col_name)])
+            res.extend([col for col in columns if col._name.startswith(spec_col_name)])
         return res
 
     def discover_dataset(self) -> DiscoveredDataset:
         fields = self.dataset_adapter.list_fields()
-        fields = [f for f in fields if f.name not in self.source.ignored_fields]
+        fields = [f for f in fields if f._name not in self.source.ignored_fields]
 
         specific_fields = self._get_specific_fields(fields)
         generic_fields = [c for c in fields if c not in specific_fields]

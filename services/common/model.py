@@ -61,10 +61,41 @@ class Operator(Enum):
     IS_NULL = 10
     IS_NOT_NULL = 11
 
+    def __str__(self) -> str:
+        if self == Operator.EQ:
+            return "=="
+        if self == Operator.NEQ:
+            return "!="
+        if self == Operator.GT:
+            return ">"
+        if self == Operator.LT:
+            return "<"
+        if self == Operator.GT_EQ:
+            return ">="
+        if self == Operator.LT_EQ:
+            return "<="
+        if self == Operator.ANY_OF:
+            return "any of"
+        if self == Operator.NONE_OF:
+            return "none of"
+        if self == Operator.LIKE:
+            return "not like"
+        if self == Operator.NOT_LIKE:
+            return "not like"
+        if self == Operator.IS_NULL:
+            return "is null"
+        if self == Operator.IS_NOT_NULL:
+            return "is not null"
+
+        raise ValueError(f"Not supported operator for title: {self}")
+
 
 class BinaryOperator(Enum):
     AND = 1
     OR = 2
+
+    def __str__(self) -> str:
+        return self.name.lower()
 
 
 class DataType(Enum):
@@ -93,22 +124,6 @@ class ConnectionType(Enum):
     BIG_QUERY = 7
     CLICKHOUSE = 8
     PANDAS_DF = 9
-
-
-@dataclass(unsafe_hash=True)
-class Field:
-    name: str
-    type: DataType
-    parent: Optional[Field] = None
-
-    def __str__(self) -> str:
-        if self.parent:
-            return f"{self.parent}.{self.name}"
-        else:
-            return self.name
-
-    def __repr__(self) -> str:
-        return str(self)
 
 
 @dataclass
@@ -166,27 +181,43 @@ class DiscoveredDataset:
         return "\n".join([str(v) for v in self.definitions.values()])
 
 
+@dataclass(unsafe_hash=True)
+class Field:
+    _name: str
+    _type: DataType
+    _parent: Optional[Field] = None
+
+    def __str__(self) -> str:
+        if self._parent:
+            return f"{self._parent}.{self._name}"
+        else:
+            return self._name
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
 @dataclass
 class EventFieldDef:
-    event_name: str
-    field: Field
-    source: EventDataSource
-    description: Optional[str] = ""
-    enums: Optional[List[Any]] = None
+    _event_name: str
+    _field: Field
+    _source: EventDataSource
+    _description: Optional[str] = ""
+    _enums: Optional[List[Any]] = None
 
 
 @dataclass
 class EventDef:
-    event_name: str
-    fields: Dict[Field, EventFieldDef]
-    source: EventDataSource
-    description: Optional[str] = ""
+    _event_name: str
+    _fields: Dict[Field, EventFieldDef]
+    _source: EventDataSource
+    _description: Optional[str] = ""
 
     def __str__(self) -> str:
         fields_str = ",".join(
-            [f"{fi.name}: {evd.enums}" for fi, evd in self.fields.items()]
+            [f"{fi._name}: {evd._enums}" for fi, evd in self._fields.items()]
         )
-        return f"{self.event_name}: {fields_str}"
+        return f"{self._event_name}: {fields_str}"
 
     def __repr__(self) -> str:
         return str(self)
@@ -372,6 +403,12 @@ class ComplexSegment(Segment):
     _operator: BinaryOperator
     _right: Segment
 
+    def __init__(self, _left: Segment, _operator: BinaryOperator, _right: Segment):
+        super().__init__()
+        self._left = _left
+        self._right = _right
+        self._operator = _operator
+
     def __repr__(self) -> str:
         return super().__repr__()
 
@@ -381,6 +418,17 @@ class SimpleSegment(Segment):
     _left: EventFieldDef | EventDef  # str is an event_name without any filters
     _operator: Optional[Operator] = None
     _right: Optional[Any] = None
+
+    def __init__(
+        self,
+        _left: EventFieldDef | EventDef,
+        _operator: Optional[Operator] = None,
+        _right: Optional[Any] = None,
+    ):
+        super().__init__()
+        self._left = _left
+        self._right = _right
+        self._operator = _operator
 
     def __repr__(self) -> str:
         return super().__repr__()

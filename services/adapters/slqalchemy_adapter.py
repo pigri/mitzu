@@ -12,7 +12,7 @@ def get_enums_agg_dict(
     source: M.EventDataSource,
 ) -> Dict[str, Any]:
     return {
-        f.name: lambda val: set(val)
+        f._name: lambda val: set(val)
         if len(set(val)) < source.max_enum_cardinality
         else set()
         for f in fields
@@ -71,7 +71,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def list_fields(self) -> List[M.Field]:
         table = self.get_table()
         field_types = table.columns.items()
-        return [M.Field(name=k, type=self.map_type(v.type)) for k, v in field_types]
+        return [M.Field(_name=k, _type=self.map_type(v.type)) for k, v in field_types]
 
     def get_map_field_keys(
         self, map_field: M.Field, event_specific: bool
@@ -97,18 +97,18 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         res = {}
         for evt, values in enums.items():
             res[evt] = M.EventDef(
-                evt,
-                {
+                _event_name=evt,
+                _fields={
                     f: M.EventFieldDef(
-                        event_name=evt,
-                        field=f,
-                        source=self.source,
-                        enums=values[f.name],
+                        _event_name=evt,
+                        _field=f,
+                        _source=self.source,
+                        _enums=values[f._name],
                     )
                     for f in fields
-                    if f.name != self.source.event_name_field
+                    if f._name != self.source.event_name_field
                 },
-                source=self.source,
+                _source=self.source,
             )
         return res
 
@@ -118,10 +118,35 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
         return SA.func.date_trunc(time_group.name, table_column)
 
+    def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment):
+        if isinstance(segment, M.SimpleSegment):
+            s = cast(M.SimpleSegment, segment)
+            if s._operator is None:
+                return (
+                    table.columns.get(s._left._source.event_name_field)
+                    == s._left._event_name
+                )
+            else:
+                left = cast(M.EventFieldDef, s._left)
+                return (
+                    table.columns.get(left._source.event_name_field) == left._event_name
+                ) & (table.columns.get(left._field._name) == s._right)
+        elif isinstance(segment, M.ComplexSegment):
+            c = cast(M.ComplexSegment, segment)
+            if c._operator == M.BinaryOperator.AND:
+                return self._get_segment_where_clause(
+                    table, c._left
+                ) & self._get_segment_where_clause(table, c._right)
+            else:
+                return self._get_segment_where_clause(
+                    table, c._left
+                ) | self._get_segment_where_clause(table, c._right)
+        else:
+            raise ValueError(f"Segment of type {type(segment)} is not supported.")
+
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         table = self.get_table()
         source = self.source
-        seg: M.SimpleSegment = cast(M.SimpleSegment, metric._segment)
 
         evt_time_group = (
             self._get_date_trunc(
@@ -130,8 +155,9 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             if metric._time_group != M.TimeGroup.TOTAL
             else SA.literal(None)
         )
+
         group_by = (
-            table.columns.get(metric._group_by.field.name)
+            table.columns.get(metric._group_by._field._name)
             if metric._group_by is not None
             else SA.literal(None)
         )
@@ -147,9 +173,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
                     "event_count"
                 ),
             ],
-            whereclause=(
-                table.columns.get(source.event_name_field) == seg._left.event_name
-            ),
+            whereclause=self._get_segment_where_clause(table, metric._segment),
             group_by=[evt_time_group, group_by],
         )
 

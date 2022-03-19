@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
-from typing import List
+from typing import List, cast
 import services.common.model as M
 
 MAX_TITLE_LENGTH = 80
@@ -21,7 +21,7 @@ def filter_top_groups(pdf: pd.DataFrame, metric: M.Metric) -> List[str]:
 
 def get_segmented_by_str(metric: M.Metric) -> str:
     if metric._group_by:
-        grp = metric._group_by.field.name
+        grp = metric._group_by._field._name
         return f"segmented by <b>{grp}</b> (top {metric._max_group_count})"
     return ""
 
@@ -34,7 +34,20 @@ def fix_title_text(title_text: str, max_length=MAX_TITLE_LENGTH) -> str:
 
 
 def get_segment_title_text(segment: M.Segment) -> str:
-    return "TBD"
+    if isinstance(segment, M.SimpleSegment):
+        s = cast(M.SimpleSegment, segment)
+        if s._operator is None:
+            return s._left._event_name
+        else:
+            left = cast(M.EventFieldDef, s._left)
+            return (
+                f"{left._event_name} with {left._field._name} {s._operator} {s._right}"
+            )
+    elif isinstance(segment, M.ComplexSegment):
+        c = cast(M.ComplexSegment, segment)
+        return f"{get_segment_title_text(c._left)} {c._operator} {get_segment_title_text(c._right)}"
+    else:
+        raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
 
 def get_time_group_text(time_group: M.TimeGroup) -> str:
@@ -79,15 +92,6 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
     within_str = f"within {metric._conv_window}"
     segment_by = get_segmented_by_str(metric)
     return f"{tg} {agg}<br />who did {events}<br />{within_str} {segment_by}"
-
-
-def fix_group_columns(pdf: pd.DataFrame, metric: M.Metric) -> pd.DataFrame:
-    if metric._group_by is None:
-        pdf["group"] = ""
-    else:
-        pdf["group"] = pdf[["group_1"]].astype(str).agg(", ".join, axis=1)
-        pdf = pdf.drop(["group_1"], axis=1)
-    return pdf
 
 
 def fix_conv_times(df: pd.DataFrame) -> pd.DataFrame:
@@ -147,7 +151,6 @@ def plot_conversion(metric: M.ConversionMetric):
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-    pdf = fix_group_columns(pdf, metric)
     pdf = filter_top_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
@@ -261,9 +264,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-    print(pdf.head())
     pdf["User Count"] = pdf["unique_user_count"]
-    pdf = fix_group_columns(pdf, metric)
     pdf = filter_top_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
@@ -281,7 +282,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
         )
         fig.update_traces(textposition="auto")
     else:
-        pdf.sort_values(by=["datetime"])
+        pdf = pdf.sort_values(by=["datetime"])
         if metric._group_by is None:
             fig = px.line(
                 pdf,
@@ -294,12 +295,12 @@ def plot_segmentation(metric: M.SegmentationMetric):
         else:
             fig = px.line(
                 pdf,
-                x="dt",
+                x="datetime",
                 y="User Count",
                 color="group",
                 text="User Count",
                 custom_data=["event_count", "group"],
-                labels={"dt": get_segmentation_title(metric)},
+                labels={"datetime": get_segmentation_title(metric)},
             )
         fig.update_traces(
             line=dict(width=3.5),

@@ -19,9 +19,9 @@ def get_segment_event_datasource(segment: ml.Segment) -> ml.EventDataSource:
     if isinstance(segment, ml.SimpleSegment):
         left = segment._left
         if isinstance(left, ml.EventDef):
-            return left.source
+            return left._source
         elif isinstance(left, ml.EventFieldDef):
-            return left.source
+            return left._source
         else:
             raise ValueError(f"Segment's left value is of invalid type: {type(left)}")
     elif isinstance(segment, ml.ComplexSegment):

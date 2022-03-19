@@ -90,18 +90,18 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                 columns=[
                     SA.case(
                         (
-                            SA.func.count(table.columns.get(f.name).distinct())
+                            SA.func.count(table.columns.get(f._name).distinct())
                             < source.max_enum_cardinality,
                             SA.func.group_concat(
-                                table.columns.get(f.name)
+                                table.columns.get(f._name)
                                 .concat(VALUE_SEPARATOR)
                                 .distinct()
                             ),
                         ),
                         else_=SA.literal(None),
-                    ).label(f.name)
+                    ).label(f._name)
                     for f in fields
-                    if f.name != source.event_name_field
+                    if f._name != source.event_name_field
                 ]
                 + [event_name_field if event_specific else any_event_field],
             )

@@ -145,8 +145,8 @@ def add_enum_defs(
     event_field: EventFieldDef,
     class_def: Dict,
 ):
-    if event_field.enums is not None:
-        for enm in event_field.enums:
+    if event_field._enums is not None:
+        for enm in event_field._enums:
             class_def[f"{fix_def('is_'+str(enm))}"] = SimpleSegment(
                 _left=event_field,
                 _operator=Operator.EQ,
@@ -170,9 +170,8 @@ class ModelLoader:
         event_field: EventFieldDef,
     ):
         class_def: Dict[str, Any] = {}
-        field_type = event_field.field.type
+        field_type = event_field._field._type
 
-        class_def["__init__"] = _field_constructor
         if field_type == DataType.STRING:
             class_def["like"] = _like
             class_def["not_like"] = _not_like
@@ -218,23 +217,25 @@ class ModelLoader:
         )
 
         return type(
-            f"_{event_name}_{fix_def(event_field.field.name)}",
-            (FieldCondition,),
+            f"_{event_name}_{fix_def(event_field._field._name)}",
+            (EventFieldDef,),
             class_def,
         )
 
     def _create_event_instance(self, event: EventDef, source: EventDataSource):
-        fields = event.fields
+        fields = event._fields
 
         class_def: Dict[str, Any] = {}
         for event_field in fields.values():
-            field_class = self._create_event_field_class(event.event_name, event_field)
+            field_class = self._create_event_field_class(event._event_name, event_field)
             class_instance = field_class(
-                field_def=event_field, event_def=event, source=source
+                _event_name=event._event_name,
+                _field=event_field._field,
+                _source=source,
             )
 
-            if "." in event_field.field.name:
-                split = event_field.field.name.split(".")
+            if "." in event_field._field._name:
+                split = event_field._field._name.split(".")
                 if len(split) > 2:
                     raise Exception(
                         "Recursively nested types are not supported (e.g. map<string, map<string,string>>)"
@@ -243,22 +244,22 @@ class ModelLoader:
                 class_field_name = fix_def(split[1])
                 if inter_field_name not in class_def:
                     class_def[inter_field_name] = type(
-                        f"_{event.event_name}_{inter_field_name}", (object,), {}
+                        f"_{event._event_name}_{inter_field_name}", (object,), {}
                     )
                 setattr(class_def[inter_field_name], class_field_name, class_instance)
             else:
-                class_field_name = fix_def(event_field.field.name)
+                class_field_name = fix_def(event_field._field._name)
                 class_def[class_field_name] = class_instance
         class_def["__init__"] = _event_condition_constructor
 
-        return type(f"_{event.event_name}", (SimpleSegment,), class_def)(event)
+        return type(f"_{event._event_name}", (SimpleSegment,), class_def)(event)
 
     def _copy_any_event(self, any_event: EventDef):
         # Any events needs to be copied so the event name can be changed to every specific event
         res = copy(any_event)
-        res.fields = {}
-        for f, ef in any_event.fields.items():
-            res.fields[f] = copy(ef)
+        res._fields = {}
+        for f, ef in any_event._fields.items():
+            res._fields[f] = copy(ef)
         return res
 
     def _process_schema(self, defs: DiscoveredDataset):
@@ -267,15 +268,15 @@ class ModelLoader:
         class_def = {}
         any_evt = schema.get(
             ANY_EVENT_NAME,
-            EventDef(event_name=ANY_EVENT_NAME, fields={}, source=defs.source),
+            EventDef(_event_name=ANY_EVENT_NAME, _fields={}, _source=defs.source),
         )
 
         for event_name, event_def in schema.items():
             any_evt_copy = self._copy_any_event(any_evt)
-            event_def.fields = {**any_evt_copy.fields, **event_def.fields}
-            event_def.event_name = event_name
-            for _, event_field in event_def.fields.items():
-                event_field.event_name = event_name
+            event_def._fields = {**any_evt_copy._fields, **event_def._fields}
+            event_def._event_name = event_name
+            for _, event_field in event_def._fields.items():
+                event_field._event_name = event_name
             class_def[event_name] = self._create_event_instance(event_def, source)
         return class_def
 
