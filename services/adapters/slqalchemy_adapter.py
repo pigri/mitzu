@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from services.adapters.generic_adapter import GenericDatasetAdapter
 import services.common.model as M
@@ -121,6 +121,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         table = self.get_table()
         source = self.source
+        seg: M.SimpleSegment = cast(M.SimpleSegment, metric._segment)
 
         evt_time_group = (
             self._get_date_trunc(
@@ -136,7 +137,6 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         )
 
         return SA.select(
-            group_by=[evt_time_group, group_by],
             columns=[
                 evt_time_group.label("datetime"),
                 group_by.label("group"),
@@ -147,7 +147,10 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
                     "event_count"
                 ),
             ],
-            whereclause=(table.columns.get(source.event_name_field) == "view"),
+            whereclause=(
+                table.columns.get(source.event_name_field) == seg._left.event_name
+            ),
+            group_by=[evt_time_group, group_by],
         )
 
     def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:

@@ -9,6 +9,7 @@ import pandas as pd  # type: ignore
 import services.common.helper as helper
 import services.adapters.adapter_factory as factory
 import services.notebook.visualization as vis
+import services.adapters.generic_adapter as GA
 
 
 def default_field(obj):
@@ -152,6 +153,7 @@ class EventDataSource:
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
     description: Optional[str] = None
+    adapter: Optional[GA.GenericDatasetAdapter] = None
 
 
 @dataclass
@@ -221,7 +223,7 @@ class ConversionMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        adapter = factory.create_adapter(source=source)
+        adapter = factory.get_or_create_adapter(source=source)
         return adapter.get_conversion_df(self)
 
     def __repr__(self) -> str:
@@ -240,17 +242,17 @@ class SegmentationMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.create_adapter(source=source)
+        adapter = factory.get_or_create_adapter(source=source)
         return adapter.get_segmentation_df(self)
 
     def get_sql(self) -> str:
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.create_adapter(source=source)
+        adapter = factory.get_or_create_adapter(source=source)
         return adapter.get_segmentation_sql(self)
 
     def print_sql(self):
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.create_adapter(source=source)
+        adapter = factory.get_or_create_adapter(source=source)
         print(adapter.get_segmentation_sql(self))
 
     def __repr__(self) -> str:
