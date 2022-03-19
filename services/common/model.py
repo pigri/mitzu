@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+
 from enum import Enum
 from copy import copy
 
@@ -229,7 +230,7 @@ DEF_MAX_GROUP_COUNT = 10
 DEF_LOOK_BACK_DAYS = 30
 DEF_CONV_WINDOW = TimeWindow(1, TimeGroup.DAY)
 DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
-DEF_TIME_GROUP = TimeGroup.TOTAL
+DEF_TIME_GROUP = TimeGroup.DAY
 
 
 class Metric:
@@ -256,6 +257,16 @@ class ConversionMetric(Metric):
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
         adapter = factory.get_or_create_adapter(source=source)
         return adapter.get_conversion_df(self)
+
+    def get_sql(self) -> pd.DataFrame:
+        source = helper.get_segment_event_datasource(self._conversion._segments[0])
+        adapter = factory.get_or_create_adapter(source=source)
+        return adapter.get_conversion_sql(self)
+
+    def print_sql(self):
+        source = helper.get_segment_event_datasource(self._conversion._segments[0])
+        adapter = factory.get_or_create_adapter(source=source)
+        print(adapter.get_conversion_sql(self))
 
     def __repr__(self) -> str:
         fig = vis.plot_conversion(self)
@@ -312,49 +323,45 @@ class Conversion(ConversionMetric):
         segments.append(right)
         return Conversion(segments)
 
-    def conversion(
+    def config(
         self,
-        conv_window: str | TimeWindow = DEF_CONV_WINDOW,
+        conv_window: Optional[str | TimeWindow] = DEF_CONV_WINDOW,
+        ret_window: Optional[str | TimeWindow] = None,
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
         time_group: str | TimeGroup = DEF_TIME_GROUP,
         group_by: EventFieldDef = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
         custom_title: str = None,
-    ) -> ConversionMetric:
-        res = ConversionMetric(conversion=self._conversion)
-        res._conv_window = TimeWindow.parse_input(conv_window)
-        res._start_dt = helper.parse_datetime_input(
-            start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
-        )
-        res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
-        res._time_group = TimeGroup.parse(time_group)
-        res._group_by = group_by
-        res._max_group_count = max_group_by_count
-        res._custom_title = custom_title
-        return res
-
-    def retention(
-        self,
-        ret_window: str | TimeWindow = DEF_RET_WINDOW,
-        start_dt: Optional[str | datetime] = None,
-        end_dt: Optional[str | datetime] = None,
-        time_group: str | TimeGroup = DEF_TIME_GROUP,
-        group_by: EventFieldDef = None,
-        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title: str = None,
-    ) -> RetentionMetric:
-        res = RetentionMetric(conversion=self._conversion)
-        res._ret_window = TimeWindow.parse_input(ret_window)
-        res._start_dt = helper.parse_datetime_input(
-            start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
-        )
-        res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
-        res._time_group = TimeGroup.parse(time_group)
-        res._group_by = group_by
-        res._max_group_count = max_group_by_count
-        res._custom_title = custom_title
-        return res
+    ) -> ConversionMetric | RetentionMetric:
+        if ret_window is not None:
+            ret_res = RetentionMetric(conversion=self._conversion)
+            ret_res._ret_window = TimeWindow.parse_input(ret_window)
+            ret_res._start_dt = helper.parse_datetime_input(
+                start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
+            )
+            ret_res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
+            ret_res._time_group = TimeGroup.parse(time_group)
+            ret_res._group_by = group_by
+            ret_res._max_group_count = max_group_by_count
+            ret_res._custom_title = custom_title
+            return ret_res
+        else:
+            if conv_window is None:
+                raise ValueError(
+                    "Conversion window must be defined.\n e.g. \".config(conv_window='1 day')\""
+                )
+            conv_res = ConversionMetric(conversion=self._conversion)
+            conv_res._conv_window = TimeWindow.parse_input(conv_window)
+            conv_res._start_dt = helper.parse_datetime_input(
+                start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
+            )
+            conv_res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
+            conv_res._time_group = TimeGroup.parse(time_group)
+            conv_res._group_by = group_by
+            conv_res._max_group_count = max_group_by_count
+            conv_res._custom_title = custom_title
+            return conv_res
 
     def __repr__(self) -> str:
         return super().__repr__()
@@ -373,7 +380,7 @@ class Segment(SegmentationMetric):
     def __rshift__(self, right: Segment) -> Conversion:
         return Conversion([self, right])
 
-    def segmentation(
+    def config(
         self,
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,

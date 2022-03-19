@@ -1,11 +1,14 @@
 from __future__ import annotations
 from typing import Any, Dict, List, cast
 
-from services.adapters.generic_adapter import GenericDatasetAdapter
+import services.adapters.generic_adapter as GA
 import services.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
+from sqlalchemy.orm import aliased  # type:ignore
+from sqlalchemy.types import Interval  # type:ignore
 from sql_formatter.core import format_sql  # type: ignore
+from dateutil import relativedelta  # type: ignore
 
 
 def get_enums_agg_dict(
@@ -20,7 +23,7 @@ def get_enums_agg_dict(
     }
 
 
-class SQLAlchemyAdapter(GenericDatasetAdapter):
+class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     _table: SA.Table
     _engine: Any
 
@@ -86,6 +89,11 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         )
         return pd.DataFrame(result)[self.source.event_name_field].tolist()
 
+    def _get_datetime_interval(
+        self, table_column: SA.Column, timewindow: M.TimeWindow
+    ) -> Any:
+        raise ValueError("Generic SQL Alchemy datetime intervals are not yet supported")
+
     def _get_colum_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
@@ -112,9 +120,6 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
                 _source=self.source,
             )
         return res
-
-    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
-        raise NotImplementedError()
 
     def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column) -> Any:
         return SA.func.date_trunc(time_group.name, table_column)
@@ -175,9 +180,7 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         else:
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
-    def _get_timewindow_where_clause(
-        self, table: SA.Table, metric: M.SegmentationMetric
-    ) -> Any:
+    def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
         start_date = metric._start_dt
         end_date = metric._end_dt
 
@@ -185,13 +188,14 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
         return (evt_time_col >= start_date) & (evt_time_col <= end_date)
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
-        table = self.get_table()
+        table = aliased(self.get_table())
         columns = table.columns
         source = self.source
 
         evt_time_group = (
             self._get_date_trunc(
-                metric._time_group, columns.get(source.event_time_field)
+                table_column=columns.get(source.event_time_field),
+                time_group=metric._time_group,
             )
             if metric._time_group != M.TimeGroup.TOTAL
             else SA.literal(None)
@@ -218,6 +222,103 @@ class SQLAlchemyAdapter(GenericDatasetAdapter):
             ),
             group_by=[evt_time_group, group_by],
         )
+
+    def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
+        table = aliased(self.get_table())
+        columns = table.columns
+        source = self.source
+        first_segment = metric._conversion._segments[0]
+        other_segments = metric._conversion._segments[1:]
+        user_id_col = columns.get(source.user_id_field)
+        event_time_col = columns.get(source.event_time_field)
+        time_group = metric._time_group
+
+        if time_group != M.TimeGroup.TOTAL:
+            evt_time_group = self._get_date_trunc(
+                table_column=event_time_col,
+                time_group=time_group,
+            )
+        else:
+            evt_time_group = SA.literal(None)
+
+        group_by = (
+            columns.get(metric._group_by._field._name)
+            if metric._group_by is not None
+            else SA.literal(None)
+        )
+
+        steps = [table]
+        other_selects = []
+        joined_source = table
+        for i, seg in enumerate(other_segments):
+            prev_table = steps[i]
+            prev_cols = prev_table.columns
+            curr_table = aliased(self.get_table())
+            curr_cols = curr_table.columns
+            curr_used_id_col = curr_cols.get(source.user_id_field)
+
+            steps.append(curr_table)
+
+            other_selects.extend(
+                [
+                    SA.func.count(curr_used_id_col.distinct()).label(
+                        self._fix_col_index(i + 2, GA.USER_COUNT_COL)
+                    ),
+                    SA.func.count(curr_used_id_col).label(
+                        self._fix_col_index(i + 2, GA.EVENT_COUNT_COL)
+                    ),
+                ]
+            )
+            joined_source = joined_source.join(
+                curr_table,
+                (
+                    (prev_cols.get(source.user_id_field) == curr_used_id_col)
+                    & (
+                        curr_cols.get(source.event_time_field)
+                        > prev_cols.get(source.event_time_field)
+                    )
+                    & (
+                        curr_cols.get(source.event_time_field)
+                        <= self._get_datetime_interval(
+                            columns.get(source.event_time_field), metric._conv_window
+                        )
+                    )
+                    & self._get_segment_where_clause(curr_table, seg)
+                ),
+                isouter=True,
+            )
+        columns = [
+            evt_time_group.label(GA.DATETIME_COL),
+            group_by.label(GA.GROUP_COL),
+            SA.func.count(user_id_col.distinct()).label(
+                self._fix_col_index(1, GA.USER_COUNT_COL)
+            ),
+            SA.func.count(user_id_col).label(
+                self._fix_col_index(1, GA.EVENT_COUNT_COL)
+            ),
+        ]
+
+        columns.extend(other_selects)
+        return SA.select(
+            columns=columns,
+            whereclause=(
+                self._get_segment_where_clause(table, first_segment)
+                & self._get_timewindow_where_clause(table, metric)
+            ),
+            group_by=[evt_time_group, group_by],
+        ).select_from(joined_source)
+
+    def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
+        return format_sql(
+            str(
+                self._get_conversion_select(metric).compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+        )
+
+    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
+        return self.execute_query(self._get_conversion_select(metric))
 
     def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:
         return format_sql(

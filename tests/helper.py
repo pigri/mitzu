@@ -4,8 +4,9 @@ from typing import List, Dict
 
 
 def assert_sql(expected: str, actual: str):
-    expected = re.sub(r"\s+", " ", expected)
-    actual = re.sub(r"\s+", " ", actual)
+
+    expected = re.sub(r"\s+", " ", expected).lower()
+    actual = re.sub(r"\s+", " ", actual).lower()
 
     assert expected.strip() == actual.strip()
 

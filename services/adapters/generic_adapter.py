@@ -4,21 +4,25 @@ from typing import Dict, List
 import pandas as pd  # type: ignore
 
 
+DATETIME_COL = "datetime"
+GROUP_COL = "group"
+USER_COUNT_COL = "unique_user_count"
+EVENT_COUNT_COL = "event_count"
+PERCENTILE_50_COL = "p50_conv_time"
+PERCENTILE_95_COL = "p95_conv_time"
+
+
 class GenericDatasetAdapter:
     def __init__(self, source: M.EventDataSource):
         self.source = source
+
+    def _fix_col_index(self, index: int, col_name: str):
+        return col_name + f"_{index}"
 
     def validate_source(self):
         raise NotImplementedError()
 
     def list_fields(self) -> List[M.Field]:
-        """Should return all fields that data set has.
-            Every sub field is listed for the struct types.
-            Map types are listed MAP. Keys in the MAP types have to exploded to be supported.
-
-        Returns:
-            List[Field]: list of fields including struct subfields. Map types are listed as DataType.MAP.
-        """
         raise NotImplementedError()
 
     def get_map_field_keys(
@@ -32,6 +36,9 @@ class GenericDatasetAdapter:
     def get_field_enums(
         self, fields: List[M.Field], event_specific: bool
     ) -> Dict[str, M.EventDef]:
+        raise NotImplementedError()
+
+    def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
         raise NotImplementedError()
 
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:

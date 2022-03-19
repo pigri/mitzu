@@ -6,6 +6,7 @@ import services.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 import json
+from dateutil import relativedelta  # type: ignore
 
 VALUE_SEPARATOR = "###"
 
@@ -53,14 +54,12 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.datetime(SA.func.date(table_column, "weekday 0", "-6 days"))
-
         if time_group == M.TimeGroup.SECOND:
             fmt = "%Y-%m-%dT%H:%M:%S"
         elif time_group == M.TimeGroup.MINUTE:
             fmt = "%Y-%m-%dT%H:%M:00"
         elif time_group == M.TimeGroup.HOUR:
             fmt = "%Y-%m-%dT%H:00:00"
-
         elif time_group == M.TimeGroup.DAY:
             fmt = "%Y-%m-%dT00:00:00"
         elif time_group == M.TimeGroup.WEEK:
@@ -115,3 +114,10 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                 )
 
         return df.set_index(source.event_name_field).to_dict("index")
+
+    def _get_datetime_interval(
+        self, table_column: SA.Column, timewindow: M.TimeWindow
+    ) -> Any:
+        return SA.func.datetime(
+            table_column, f"+{timewindow.value} {timewindow.period.name.lower()}"
+        )
