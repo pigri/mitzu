@@ -11,7 +11,7 @@ __all__ = ["init_project", "Connection", "ConnectionType"]
 def find_notebook_globals() -> Optional[Dict]:
     for stk in inspect.stack():
         parent_globals = stk[0].f_globals
-        if "init_project" in parent_globals:
+        if "init_notebook_project" in parent_globals:
             return parent_globals
     return None
 
