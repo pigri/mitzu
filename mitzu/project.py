@@ -3,13 +3,14 @@ import mitzu.common.model as M
 from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
 from datetime import datetime, timedelta
 import mitzu.adapters.adapter_factory as AF
+from typing import Dict
 
 
 def init_project(
     source: M.EventDataSource,
     start_dt: datetime = None,
     end_dt: datetime = None,
-    globals=None,
+    glbs: Dict = None,
 ) -> DatasetModel:
     if start_dt is None:
         start_dt = datetime.now() - timedelta(days=365 * 5)
@@ -21,5 +22,5 @@ def init_project(
     dd = discovery.discover_dataset()
     m = ModelLoader().create_dataset_model(dd)
     if globals is not None:
-        m._to_globals(globals())
+        m._to_globals(glbs)
     return m

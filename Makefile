@@ -23,8 +23,8 @@ check: format autoflake mypy lint test
 notebook:
 	$(POETRY) run jupyter-notebook
 
-build:
+build: check
 	$(POETRY) build
 
-publish:
-	$(POETRY) build
+publish: build
+	$(POETRY) publish
