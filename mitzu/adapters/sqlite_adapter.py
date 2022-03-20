@@ -32,16 +32,18 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                 df[source.event_time_field] = pd.to_datetime(
                     df[source.event_time_field]
                 )
-                df = df.set_index(
-                    [
-                        source.event_time_field,
-                        source.event_name_field,
-                        source.user_id_field,
-                    ]
-                )
                 df = self._fix_complex_types(df)
                 eng = SA.create_engine("sqlite://")
-                df.to_sql(name=self.source.table_name, con=eng)
+                df.to_sql(name=self.source.table_name, con=eng, index=False)
+                eng.execute(
+                    SA.text(
+                        f"""CREATE INDEX {source.table_name}_index 
+                            ON {source.table_name} (
+                            {source.user_id_field}, 
+                            {source.event_name_field}, 
+                            {source.event_time_field})"""
+                    )
+                )
             self._engine = eng
         return self._engine
 

@@ -64,7 +64,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 autoload_with=engine,
                 autoload=True,
             )
-        return self._table
+        return aliased(self._table)
 
     def validate_source(self):
         table = self.get_table()
@@ -164,12 +164,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             s = cast(M.SimpleSegment, segment)
             left = s._left
             evt_name_col = table.columns.get(left._source.event_name_field)
+            event_name_filter = (
+                (evt_name_col == left._event_name)
+                if left._event_name != M.ANY_EVENT_NAME
+                else SA.literal(True)
+            )
             if s._operator is None:
-                return evt_name_col == left._event_name
+                return event_name_filter
             else:
-                return (
-                    evt_name_col == left._event_name
-                ) & self._get_simple_segment_condition(table, s)
+                return (event_name_filter) & self._get_simple_segment_condition(
+                    table, s
+                )
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
             if c._operator == M.BinaryOperator.AND:
@@ -227,7 +232,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
-        table = aliased(self.get_table())
+        table = self.get_table()
         columns = table.columns
         source = self.source
         first_segment = metric._conversion._segments[0]
@@ -256,7 +261,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         for i, seg in enumerate(other_segments):
             prev_table = steps[i]
             prev_cols = prev_table.columns
-            curr_table = aliased(self.get_table())
+            curr_table = self.get_table()
             curr_cols = curr_table.columns
             curr_used_id_col = curr_cols.get(source.user_id_field)
 

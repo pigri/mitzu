@@ -39,18 +39,18 @@ def test_simple_csv_segmentation():
     seg: Segment = m.cart.config(
         start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
     )
+    print(seg.get_sql())
     assert_sql(
         """
-        SELECT 
-            null as datetime,
+        SELECT null as datetime,
             null as "group",
-            count(distinct simple_dataset_1.user_id) as unique_user_count,
-            count(simple_dataset_1.user_id) as event_count
-        FROM   simple_dataset as simple_dataset_1
-        WHERE  simple_dataset_1.event_type = 'cart'
-            and simple_dataset_1.event_time >= '2020-01-01 00:00:00'
-            and simple_dataset_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY null, null  
+            count(distinct anon_1.user_id) as unique_user_count,
+            count(anon_1.user_id) as event_count
+        FROM   simple_dataset as anon_1
+        WHERE  anon_1.event_type = 'cart'
+            and anon_1.event_time >= '2020-01-01 00:00:00'
+            and anon_1.event_time <= '2021-01-01 00:00:00'
+        GROUP BY null, null 
     """,
         seg.get_sql(),
     )
@@ -96,7 +96,8 @@ def test_simple_csv_funnel():
         WHERE  simple_dataset_1.event_type = 'view'
         and simple_dataset_1.event_time >= '2020-01-01 00:00:00'
         and simple_dataset_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)), simple_dataset_1.category_id""",
+        GROUP BY datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)),
+             simple_dataset_1.category_id""",
         conv.get_sql(),
     )
 
