@@ -28,3 +28,6 @@ build: check
 
 publish: build
 	$(POETRY) publish
+
+publish_no_build:
+	$(POETRY) publish

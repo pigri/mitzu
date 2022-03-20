@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, cast
 
+
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd  # type: ignore
@@ -43,8 +44,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
-        result = engine.execute(query).fetchall()
-        return pd.DataFrame(result)
+        result = engine.execute(query)
+        columns = result.keys()
+        fetched = result.fetchall()
+        pdf = pd.DataFrame(fetched)
+        pdf.columns = columns
+        return pdf
 
     def get_engine(self) -> Any:
         raise ValueError("Generic SQL Alchemy connections are not yet supported")
