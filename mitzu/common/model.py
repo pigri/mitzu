@@ -165,7 +165,7 @@ class CombinedTimeWindow:
 @dataclass
 class EventDataSource:
     connection: Connection
-    table_name: str
+    table_name: str = "dataset"
     event_time_field: str = "event_time"
     user_id_field: str = "user_id"
     event_name_field: str = "event_name"
