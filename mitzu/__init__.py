@@ -1,13 +1,27 @@
 import mitzu.project as P
-import mitzu.common.model as M
+from mitzu.common.model import EventDataSource, Connection, ConnectionType  # type: ignore
 from datetime import datetime
 from mitzu.notebook.model_loader import DatasetModel
+import inspect
+from typing import Dict, Optional
+
+__all__ = ["init_project", "Connection", "ConnectionType"]
 
 
-def init_project(
-    source: M.EventDataSource,
+def find_notebook_globals() -> Optional[Dict]:
+    for stk in inspect.stack():
+        parent_globals = stk[0].f_globals
+        if "init_project" in parent_globals:
+            return parent_globals
+    return None
+
+
+def init_notebook_project(
+    source: EventDataSource,
     start_dt: datetime = None,
     end_dt: datetime = None,
     glbs=None,
 ) -> DatasetModel:
-    return P.init_project(source=source, start_dt=start_dt, end_dt=end_dt, glbs=glbs)
+    return P.init_project(
+        source=source, start_dt=start_dt, end_dt=end_dt, glbs=find_notebook_globals()
+    )
