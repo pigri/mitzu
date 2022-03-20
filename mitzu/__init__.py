@@ -22,6 +22,6 @@ def init_notebook_project(
     end_dt: datetime = None,
     glbs=None,
 ) -> DatasetModel:
-    return P.init_project(
-        source=source, start_dt=start_dt, end_dt=end_dt, glbs=find_notebook_globals()
-    )
+    if glbs is None:
+        glbs = find_notebook_globals()
+    return P.init_project(source=source, start_dt=start_dt, end_dt=end_dt, glbs=glbs)
