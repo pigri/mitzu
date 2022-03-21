@@ -26,8 +26,11 @@ notebook:
 build: check
 	$(POETRY) build
 
-publish: build
+bump_version:
+	$(POETRY) version patch
+
+publish: bump_version build
 	$(POETRY) publish
 
-publish_no_build:
+publish_no_build: bump_version
 	$(POETRY) publish
