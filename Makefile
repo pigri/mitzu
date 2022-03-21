@@ -32,5 +32,5 @@ bump_version:
 publish: bump_version build
 	$(POETRY) publish
 
-publish_no_build: bump_version
+publish_no_build:
 	$(POETRY) publish
