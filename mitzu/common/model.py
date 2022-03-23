@@ -124,7 +124,7 @@ class ConnectionType(Enum):
     DATABRICKS_SQL = 3
     SNOWFLAKE = 4
     REDSHIFT = 5
-    POSTGRES = 6
+    POSTGRESQL = 6
     BIG_QUERY = 7
     CLICKHOUSE = 8
     PANDAS_DF = 9
@@ -134,7 +134,6 @@ class ConnectionType(Enum):
 class Connection:
 
     connection_type: ConnectionType
-    url: str
     connection_params: Dict = default_field({})
 
 

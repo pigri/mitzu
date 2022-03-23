@@ -81,7 +81,8 @@ def test_simple_csv_funnel():
         """
         SELECT datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)) as _datetime,
             simple_dataset_1.category_id as _group,
-            (count(distinct simple_dataset_2.user_id) * 1.0) / count(distinct simple_dataset_1.user_id) as _conversion_rate,
+            (count(distinct simple_dataset_2.user_id) * 1.0) /
+                 count(distinct simple_dataset_1.user_id) as _conversion_rate,
             count(distinct simple_dataset_1.user_id) as _unique_user_count_1,
             count(simple_dataset_1.user_id) as _event_count_1,
             count(distinct simple_dataset_2.user_id) as _unique_user_count_2,

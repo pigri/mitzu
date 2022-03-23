@@ -76,7 +76,26 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return pdf
 
     def get_engine(self) -> Any:
-        raise ValueError("Generic SQL Alchemy connections are not yet supported")
+        conn = self.source.connection
+        params = conn.connection_params
+        if self._engine is not None and not params.get("cache_engine", True):
+            self._engine.dispose()
+            self._engine = None
+
+        if self._engine is None:
+            user_name = params.get("user_name")
+            password = params.get("password")
+            credentials = "" if user_name is None else f"{user_name}:{password}@"
+            host = params["host"]
+            port = params.get("port", "")
+            if port:
+                port = ":" + port
+            schema = params.get("schema", "")
+            if schema:
+                schema = "/" + schema
+            url = f"{conn.connection_type.name.lower()}://{credentials}{host}{port}{schema}"
+            self._engine = SA.create_engine(url)
+        return self._engine
 
     def get_table(self) -> SA.Table:
         if self._table is None:

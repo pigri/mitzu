@@ -10,6 +10,10 @@ def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter
             from mitzu.adapters.sqlite_adapter import SQLiteAdapter
 
             source.adapter = SQLiteAdapter(source)
+        elif con_type == M.ConnectionType.POSTGRESQL:
+            from mitzu.adapters.sqlite_adapter import SQLAlchemyAdapter
+
+            source.adapter = SQLAlchemyAdapter(source)
         else:
             raise NotImplementedError(con_type)
 

@@ -18,15 +18,16 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         if self._engine is None:
             source = self.source
             extension = source.connection.connection_params["file_type"]
+            path = source.connection.connection_params["path"]
             if extension == "sqlite":
-                eng = SA.create_engine(f"sqlite://{self.source.connection.url}")
+                eng = SA.create_engine(f"sqlite://{path}")
             else:
                 if extension == "csv":
-                    df = pd.read_csv(source.connection.url, header=0)
+                    df = pd.read_csv(path, header=0)
                 elif extension == "json":
-                    df = pd.read_json(source.connection.url)
+                    df = pd.read_json(path)
                 elif extension == "parquet":
-                    df = pd.read_parquet(source.connection.url)
+                    df = pd.read_parquet(path)
                 else:
                     raise Exception("Extension not supported: " + extension)
                 df[source.event_time_field] = pd.to_datetime(
@@ -34,7 +35,7 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                 )
                 df = self._fix_complex_types(df)
                 eng = SA.create_engine("sqlite://")
-                df.to_sql(name=self.source.table_name, con=eng, index=False)
+                df.to_sql(name=source.table_name, con=eng, index=False)
                 eng.execute(
                     SA.text(
                         f"""CREATE INDEX {source.table_name}_index 

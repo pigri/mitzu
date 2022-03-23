@@ -3,8 +3,10 @@ import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
 from typing import List, cast
 import mitzu.common.model as M
+import mitzu.adapters.generic_adapter as GA
 
 MAX_TITLE_LENGTH = 80
+STEP_COL = "step"
 
 
 def fix_na_cols(pdf: pd.DataFrame) -> pd.DataFrame:
@@ -15,20 +17,27 @@ def filter_top_segmentation_groups(
     pdf: pd.DataFrame, metric: M.SegmentationMetric
 ) -> List[str]:
     max = metric._max_group_count
-    g_users = pdf[["group", "unique_user_count"]].groupby("group").sum().reset_index()
-    g_users = g_users.sort_values("unique_user_count", ascending=False).head(max)
-    top_groups = list(g_users["group"].values)
-    return pdf[pdf["group"].isin(top_groups)]
+    g_users = (
+        pdf[[GA.GROUP_COL, GA.USER_COUNT_COL]].groupby(GA.GROUP_COL).sum().reset_index()
+    )
+    g_users = g_users.sort_values(GA.USER_COUNT_COL, ascending=False).head(max)
+    top_groups = list(g_users[GA.GROUP_COL].values)
+    return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
 
 
 def filter_top_conversion_groups(
     pdf: pd.DataFrame, metric: M.ConversionMetric
 ) -> List[str]:
     max = metric._max_group_count
-    g_users = pdf[["group", "unique_user_count_1"]].groupby("group").sum().reset_index()
-    g_users = g_users.sort_values("unique_user_count_1", ascending=False).head(max)
-    top_groups = list(g_users["group"].values)
-    return pdf[pdf["group"].isin(top_groups)]
+    g_users = (
+        pdf[[GA.GROUP_COL, f"{GA.USER_COUNT_COL}_1"]]
+        .groupby(GA.GROUP_COL)
+        .sum()
+        .reset_index()
+    )
+    g_users = g_users.sort_values(f"{GA.USER_COUNT_COL}_1", ascending=False).head(max)
+    top_groups = list(g_users[GA.GROUP_COL].values)
+    return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
 
 
 def get_segmented_by_str(metric: M.Metric) -> str:
@@ -113,14 +122,14 @@ def get_melted_conv_column(
 ) -> pd.DataFrame:
     res = pd.melt(
         pdf,
-        id_vars=["group", "conversion_rate"],
+        id_vars=[GA.GROUP_COL, GA.CVR_COL],
         value_vars=[
             f"{column_prefix}{i+1}" for i, _ in enumerate(metric._conversion._segments)
         ],
-        var_name="step",
+        var_name=STEP_COL,
         value_name=display_name,
     )
-    res["step"] = res["step"].replace(
+    res[STEP_COL] = res[STEP_COL].replace(
         {
             f"{column_prefix}{i+1}": f"{i+1}. {fix_title_text(get_segment_title_text(val))}"
             for i, val in enumerate(metric._conversion._segments)
@@ -131,16 +140,18 @@ def get_melted_conv_column(
 
 def get_melted_conv_pdf(pdf: pd.DataFrame, metric: M.ConversionMetric) -> pd.DataFrame:
     pdf1 = get_melted_conv_column(
-        "unique_user_count_", "unique_user_count", pdf, metric
+        f"{GA.USER_COUNT_COL}_", GA.USER_COUNT_COL, pdf, metric
     )
-    pdf3 = get_melted_conv_column("event_count_", "event_count", pdf, metric)
+    pdf3 = get_melted_conv_column(
+        f"{GA.EVENT_COUNT_COL}_", GA.EVENT_COUNT_COL, pdf, metric
+    )
 
     res = pdf1
     res = pd.merge(
         res,
         pdf3,
-        left_on=["group", "conversion_rate", "step"],
-        right_on=["group", "conversion_rate", "step"],
+        left_on=[GA.GROUP_COL, GA.CVR_COL, STEP_COL],
+        right_on=[GA.GROUP_COL, GA.CVR_COL, STEP_COL],
     )
     return res
 
@@ -154,25 +165,26 @@ def plot_conversion(metric: M.ConversionMetric):
 
     if metric._time_group == M.TimeGroup.TOTAL:
         pdf = get_melted_conv_pdf(pdf, metric)
-        pdf = pdf.sort_values(["step"], ascending=[True])
-        pdf["conversion_rate"] = round(pdf["conversion_rate"] * 100, 2)
+        pdf = pdf.sort_values([STEP_COL], ascending=[True])
+        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL] * 100, 2)
         fig = px.bar(
             pdf,
-            x="step",
-            y="unique_user_count",
-            text="unique_user_count",
-            color="group",
+            x=STEP_COL,
+            y=GA.USER_COUNT_COL,
+            text=GA.USER_COUNT_COL,
+            color=GA.GROUP_COL,
             barmode="group",
             custom_data=[
-                "conversion_rate",
-                "unique_user_count",
-                "event_count",
-                "group",
+                GA.CVR_COL,
+                GA.USER_COUNT_COL,
+                GA.EVENT_COUNT_COL,
+                GA.GROUP_COL,
             ],
             labels={
-                "step": get_conversion_title(metric),
-                "conversion_rate": "Conversion",
-                "unique_user_count": "User Count",
+                STEP_COL: get_conversion_title(metric),
+                GA.CVR_COL: "Conversion",
+                GA.USER_COUNT_COL: "Unique user count",
+                GA.GROUP_COL: "Group",
             },
         )
         fig.update_traces(
@@ -188,28 +200,30 @@ def plot_conversion(metric: M.ConversionMetric):
         )
     else:
         funnel_length = len(metric._conversion._segments)
-        pdf["datetime"] = pd.to_datetime(pdf["datetime"])  # Serverless bug workaround
-        pdf = pdf.sort_values(by=["datetime"])
-        pdf["conversion_rate"] = round(pdf["conversion_rate"] * 100, 2)
+        pdf[GA.DATETIME_COL] = pd.to_datetime(
+            pdf[GA.DATETIME_COL]
+        )  # Serverless bug workaround
+        pdf = pdf.sort_values(by=[GA.DATETIME_COL])
+        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL] * 100, 2)
         if metric._group_by is None:
-            pdf["group"] = ""
+            pdf[GA.GROUP_COL] = ""
 
         fig = px.line(
             pdf,
-            x="datetime",
-            y="conversion_rate",
-            text="conversion_rate",
-            color="group",
+            x=GA.DATETIME_COL,
+            y=GA.CVR_COL,
+            text=GA.CVR_COL,
+            color=GA.GROUP_COL,
             custom_data=[
-                "unique_user_count_1",
-                f"unique_user_count_{funnel_length}",
-                "event_count_1",
-                f"event_count_{funnel_length}",
-                "group",
+                f"{GA.USER_COUNT_COL}_1",
+                f"{GA.USER_COUNT_COL}_{funnel_length}",
+                f"{GA.EVENT_COUNT_COL}_1",
+                f"{GA.EVENT_COUNT_COL}_{funnel_length}",
+                GA.GROUP_COL,
             ],
             labels={
-                "datetime": get_conversion_title(metric),
-                "conversion_rate": "Conversion",
+                GA.DATETIME_COL: get_conversion_title(metric),
+                GA.CVR_COL: "Conversion",
             },
         )
         fig.update_traces(
@@ -248,43 +262,54 @@ def plot_segmentation(metric: M.SegmentationMetric):
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-    pdf["User Count"] = pdf["unique_user_count"]
+
     pdf = filter_top_segmentation_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
         pdf["segmentation"] = ""
-        pdf = pdf.sort_values(["User Count"], ascending=[False])
+        pdf = pdf.sort_values([GA.USER_COUNT_COL], ascending=[False])
         fig = px.bar(
             pdf,
             x="segmentation",
-            y="User Count",
-            color="group",
+            y=GA.USER_COUNT_COL,
+            color=GA.GROUP_COL,
             barmode="group",
-            text="User Count",
-            custom_data=["event_count", "group"],
-            labels={"segmentation": get_segmentation_title(metric)},
+            text=GA.USER_COUNT_COL,
+            custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
+            labels={
+                "segmentation": get_segmentation_title(metric),
+                GA.GROUP_COL: "Groups",
+                GA.USER_COUNT_COL: "Unique user count",
+            },
         )
         fig.update_traces(textposition="auto")
     else:
-        pdf = pdf.sort_values(by=["datetime"])
+        pdf = pdf.sort_values(by=[GA.DATETIME_COL])
         if metric._group_by is None:
             fig = px.line(
                 pdf,
-                x="datetime",
-                y="User Count",
-                text="User Count",
-                custom_data=["event_count", "group"],
-                labels={"datetime": get_segmentation_title(metric)},
+                x=GA.DATETIME_COL,
+                y=GA.USER_COUNT_COL,
+                text=GA.USER_COUNT_COL,
+                custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
+                labels={
+                    GA.DATETIME_COL: get_segmentation_title(metric),
+                    GA.USER_COUNT_COL: "Unique user count",
+                },
             )
         else:
             fig = px.line(
                 pdf,
-                x="datetime",
-                y="User Count",
-                color="group",
-                text="User Count",
-                custom_data=["event_count", "group"],
-                labels={"datetime": get_segmentation_title(metric)},
+                x=GA.DATETIME_COL,
+                y=GA.USER_COUNT_COL,
+                color=GA.GROUP_COL,
+                text=GA.USER_COUNT_COL,
+                custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
+                labels={
+                    GA.DATETIME_COL: get_segmentation_title(metric),
+                    GA.GROUP_COL: "Groups",
+                    GA.USER_COUNT_COL: "Unique user count",
+                },
             )
         fig.update_traces(
             line=dict(width=3.5),
