@@ -85,36 +85,12 @@ class SQLiteAdapter(SQLAlchemyAdapter):
 
         return SA.func.datetime(SA.func.strftime(fmt, table_column))
 
-    def _get_colum_values_df(
+    def _get_column_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
         source = self.source
-        table = self._table
-        event_name_field = table.columns.get(self.source.event_name_field)
-        any_event_field = SA.literal(M.ANY_EVENT_NAME).label(source.event_name_field)
+        df = super()._get_column_values_df(fields, event_specific)
 
-        df = self.execute_query(
-            SA.select(
-                group_by=event_name_field if event_specific else any_event_field,
-                columns=[
-                    SA.case(
-                        (
-                            SA.func.count(table.columns.get(f._name).distinct())
-                            < source.max_enum_cardinality,
-                            SA.func.group_concat(
-                                table.columns.get(f._name)
-                                .concat(VALUE_SEPARATOR)
-                                .distinct()
-                            ),
-                        ),
-                        else_=SA.literal(None),
-                    ).label(f._name)
-                    for f in fields
-                    if f._name != source.event_name_field
-                ]
-                + [event_name_field if event_specific else any_event_field],
-            )
-        )
         for field in df.columns:
             if field != source.event_name_field:
                 df[field] = (
@@ -122,8 +98,10 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                     .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)
                     .str.split(f"{VALUE_SEPARATOR},")
                 )
+        return df
 
-        return df.set_index(source.event_name_field).to_dict("index")
+    def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
+        return SA.func.group_concat(column.concat(VALUE_SEPARATOR).distinct())
 
     def _get_datetime_interval(
         self, table_column: SA.Column, timewindow: M.TimeWindow

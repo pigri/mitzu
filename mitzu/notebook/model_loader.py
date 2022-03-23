@@ -36,13 +36,6 @@ def fix_def(val: str):
     return fixed[:32]
 
 
-# @dataclass
-# class FieldCondition:
-#     _event_field: EventFieldDef
-#     _source: EventDataSource
-#     _event_def: EventDef
-
-
 def _any_of(self: EventFieldDef, *vals: Any) -> SimpleSegment:
     return SimpleSegment(_left=self, _operator=Operator.ANY_OF, _right=vals)
 
@@ -117,20 +110,6 @@ def _lt_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
         _operator=Operator.LT_EQ,
         _right=val,
     )
-
-
-# def _field_constructor(
-#     self,
-#     field_def: EventFieldDef,
-#     source: EventDataSource,
-#     event_def: EventDef,
-# ):
-#     return FieldCondition.__init__(
-#         self,
-#         _event_field=field_def,
-#         _source=source,
-#         _event_def=event_def,
-#     )
 
 
 def _event_condition_constructor(self: SimpleSegment, event_def: EventDef):
@@ -273,7 +252,9 @@ class ModelLoader:
             event_def._event_name = event_name
             for _, event_field in event_def._fields.items():
                 event_field._event_name = event_name
-            class_def[event_name] = self._create_event_instance(event_def, source)
+            class_def[fix_def(event_name)] = self._create_event_instance(
+                event_def, source
+            )
         return class_def
 
     def create_dataset_model(self, defs: DiscoveredDataset):

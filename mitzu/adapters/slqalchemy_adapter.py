@@ -31,18 +31,42 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self._table = None
         self._engine = None
 
+    def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
+        return format_sql(
+            str(
+                self._get_conversion_select(metric).compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+        )
+
+    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
+        return self.execute_query(self._get_conversion_select(metric))
+
+    def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:
+        return format_sql(
+            str(
+                self._get_segmentation_select(metric).compile(
+                    compile_kwargs={"literal_binds": True}
+                )
+            )
+        )
+
+    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
+        return self.execute_query(self._get_segmentation_select(metric))
+
     def map_type(self, sa_type: Any) -> M.DataType:
-        if isinstance(sa_type, SA.Integer):
+        if isinstance(sa_type, SA.Integer) or isinstance(sa_type, SA.Float):
             return M.DataType.NUMBER
-        if isinstance(sa_type, SA.Float):
-            return M.DataType.NUMBER
-        if isinstance(sa_type, SA.Text):
+        if isinstance(sa_type, SA.Text) or isinstance(sa_type, SA.VARCHAR):
             return M.DataType.STRING
         if isinstance(sa_type, SA.DateTime):
             return M.DataType.DATETIME
         raise ValueError(f"{sa_type} is not supported.")
 
     def execute_query(self, query: Any) -> pd.DataFrame:
+        # print(format_sql(str(query.compile(compile_kwargs={"literal_binds": True}))))
+
         engine = self.get_engine()
         result = engine.execute(query)
         columns = result.keys()
@@ -83,7 +107,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def get_map_field_keys(
         self, map_field: M.Field, event_specific: bool
     ) -> Dict[str, List[M.Field]]:
-        raise NotImplementedError("Map fields are not supported for file types")
+        raise NotImplementedError("Map fields are not yet supported")
 
     def get_distinct_event_names(self) -> List[str]:
         table = self.get_table()
@@ -95,17 +119,47 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_datetime_interval(
         self, table_column: SA.Column, timewindow: M.TimeWindow
     ) -> Any:
-        raise ValueError("Generic SQL Alchemy datetime intervals are not yet supported")
+        return table_column + SA.text(
+            f"interval '{timewindow.value}' {timewindow.period}"
+        )
 
-    def _get_colum_values_df(
+    def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
+        return SA.func.array_agg(column.distinct())
+
+    def _get_column_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
-        raise ValueError("Generic SQL Alchemy connections are not yet supported")
+        source = self.source
+        columns = self.get_table().columns
+        event_name_field = source.event_name_field
+        event_name_select_field = (
+            columns.get(event_name_field).label(GA.EVENT_NAME_ALIAS_COL)
+            if event_specific
+            else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
+        )
+        query = SA.select(
+            group_by=SA.text(GA.EVENT_NAME_ALIAS_COL),
+            columns=[event_name_select_field]
+            + [
+                SA.case(
+                    (
+                        SA.func.count(columns.get(f._name).distinct())
+                        < source.max_enum_cardinality,
+                        self._get_distinct_array_agg_func(columns.get(f._name)),
+                    ),
+                    else_=SA.literal(None),
+                ).label(f._name)
+                for f in fields
+                if f._name != event_name_field
+            ],
+        )
+        df = self.execute_query(query)
+        return df.set_index(GA.EVENT_NAME_ALIAS_COL)
 
     def get_field_enums(
         self, fields: List[M.Field], event_specific: bool
     ) -> Dict[str, M.EventDef]:
-        enums = self._get_colum_values_df(fields, event_specific)
+        enums = self._get_column_values_df(fields, event_specific).to_dict("index")
         res = {}
         for evt, values in enums.items():
             res[evt] = M.EventDef(
@@ -217,18 +271,20 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.select(
             columns=[
-                evt_time_group.label("datetime"),
-                group_by.label("group"),
+                evt_time_group.label(GA.DATETIME_COL),
+                group_by.label(GA.GROUP_COL),
                 SA.func.count(columns.get(source.user_id_field).distinct()).label(
-                    "unique_user_count"
+                    GA.USER_COUNT_COL
                 ),
-                SA.func.count(columns.get(source.user_id_field)).label("event_count"),
+                SA.func.count(columns.get(source.user_id_field)).label(
+                    GA.EVENT_COUNT_COL
+                ),
             ],
             whereclause=(
                 self._get_segment_where_clause(table, metric._segment)
                 & self._get_timewindow_where_clause(table, metric)
             ),
-            group_by=[evt_time_group, group_by],
+            group_by=[SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)],
         )
 
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
@@ -321,29 +377,5 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 self._get_segment_where_clause(table, first_segment)
                 & self._get_timewindow_where_clause(table, metric)
             ),
-            group_by=[evt_time_group, group_by],
+            group_by=[SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)],
         ).select_from(joined_source)
-
-    def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
-        return format_sql(
-            str(
-                self._get_conversion_select(metric).compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-        )
-
-    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
-        return self.execute_query(self._get_conversion_select(metric))
-
-    def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:
-        return format_sql(
-            str(
-                self._get_segmentation_select(metric).compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-        )
-
-    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
-        return self.execute_query(self._get_segmentation_select(metric))

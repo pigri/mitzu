@@ -24,7 +24,7 @@ def test_simple_big_data_discovery():
     )
 
     assert 1 == seg.get_df().shape[0]
-    assert_row(seg.get_df(), unique_user_count=2254, datetime=None, event_count=4706)
+    assert_row(seg.get_df(), _unique_user_count=2254, _datetime=None, _event_count=4706)
 
 
 def test_simple_csv_segmentation():
@@ -42,22 +42,22 @@ def test_simple_csv_segmentation():
     print(seg.get_sql())
     assert_sql(
         """
-        SELECT null as datetime,
-            null as "group",
-            count(distinct anon_1.user_id) as unique_user_count,
-            count(anon_1.user_id) as event_count
+        SELECT null as _datetime,
+            null as _group,
+            count(distinct anon_1.user_id) as _unique_user_count,
+            count(anon_1.user_id) as _event_count
         FROM   simple_dataset as anon_1
         WHERE  anon_1.event_type = 'cart'
             and anon_1.event_time >= '2020-01-01 00:00:00'
             and anon_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY null, null 
+        GROUP BY _datetime, _group
     """,
         seg.get_sql(),
     )
 
     assert 1 == seg.get_df().shape[0]
 
-    assert_row(seg.get_df(), unique_user_count=108, datetime=None, event_count=787)
+    assert_row(seg.get_df(), _unique_user_count=108, _datetime=None, _event_count=787)
 
 
 def test_simple_csv_funnel():
@@ -79,14 +79,13 @@ def test_simple_csv_funnel():
     print(conv.get_sql())
     assert_sql(
         """
-        SELECT datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)) as datetime,
-            simple_dataset_1.category_id as "group",
-            (count(distinct simple_dataset_2.user_id) * 1.0) / 
-                count(distinct simple_dataset_1.user_id) as conversion_rate,
-            count(distinct simple_dataset_1.user_id) as unique_user_count_1,
-            count(simple_dataset_1.user_id) as event_count_1,
-            count(distinct simple_dataset_2.user_id) as unique_user_count_2,
-            count(simple_dataset_2.user_id) as event_count_2
+        SELECT datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)) as _datetime,
+            simple_dataset_1.category_id as _group,
+            (count(distinct simple_dataset_2.user_id) * 1.0) / count(distinct simple_dataset_1.user_id) as _conversion_rate,
+            count(distinct simple_dataset_1.user_id) as _unique_user_count_1,
+            count(simple_dataset_1.user_id) as _event_count_1,
+            count(distinct simple_dataset_2.user_id) as _unique_user_count_2,
+            count(simple_dataset_2.user_id) as _event_count_2
         FROM   simple_dataset as simple_dataset_1 left
             OUTER JOIN simple_dataset as simple_dataset_2
                 ON simple_dataset_1.user_id = simple_dataset_2.user_id and
@@ -96,8 +95,7 @@ def test_simple_csv_funnel():
         WHERE  simple_dataset_1.event_type = 'view'
         and simple_dataset_1.event_time >= '2020-01-01 00:00:00'
         and simple_dataset_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)),
-             simple_dataset_1.category_id""",
+        GROUP BY _datetime, _group""",
         conv.get_sql(),
     )
 
@@ -105,11 +103,11 @@ def test_simple_csv_funnel():
 
     assert_row(
         conv.get_df(),
-        datetime="2020-01-01 00:00:00",
-        group=1487580004857414477,
-        conversion_rate=0,
-        unique_user_count_1=2,
-        event_count_1=2,
-        unique_user_count_2=0,
-        event_count_2=0,
+        _datetime="2020-01-01 00:00:00",
+        _group=1487580004857414477,
+        _conversion_rate=0,
+        _unique_user_count_1=2,
+        _event_count_1=2,
+        _unique_user_count_2=0,
+        _event_count_2=0,
     )

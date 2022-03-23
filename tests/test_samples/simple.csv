@@ -1,4 +1,4 @@
-event_time,event_type,product_id,category_id,category_code,brand,price,user_id,user_session
+event_time,event_type,product-id,category_id,category_code,brand,price,user_id,user_session
 2020-01-01 00:00:00,view,5809910,1602943681873052386,,grattol,5.24,595414620,4adb70bb-edbd-4981-b60f-a05bfd32683a
 2020-01-01 00:00:09,view,5812943,1487580012121948301,,kinetics,3.97,595414640,c8c5205d-be43-4f1d-aa56-4828b8151c8a
 2020-01-01 00:00:19,view,5798924,1783999068867920626,,zinger,3.97,595412617,46a5010f-bd69-4fbe-a00d-bb17aa7b46f3
