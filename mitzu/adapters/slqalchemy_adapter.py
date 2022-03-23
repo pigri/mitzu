@@ -10,18 +10,6 @@ from sqlalchemy.orm import aliased  # type:ignore
 from sql_formatter.core import format_sql  # type: ignore
 
 
-def get_enums_agg_dict(
-    fields: List[M.Field],
-    source: M.EventDataSource,
-) -> Dict[str, Any]:
-    return {
-        f._name: lambda val: set(val)
-        if len(set(val)) < source.max_enum_cardinality
-        else set()
-        for f in fields
-    }
-
-
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     _table: SA.Table
     _engine: Any
@@ -56,17 +44,19 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return self.execute_query(self._get_segmentation_select(metric))
 
     def map_type(self, sa_type: Any) -> M.DataType:
-        if isinstance(sa_type, SA.Integer) or isinstance(sa_type, SA.Float):
+        if isinstance(sa_type, SA.Integer):
             return M.DataType.NUMBER
-        if isinstance(sa_type, SA.Text) or isinstance(sa_type, SA.VARCHAR):
+        if isinstance(sa_type, SA.Float):
+            return M.DataType.NUMBER
+        if isinstance(sa_type, SA.Text):
+            return M.DataType.STRING
+        if isinstance(sa_type, SA.String):
             return M.DataType.STRING
         if isinstance(sa_type, SA.DateTime):
             return M.DataType.DATETIME
-        raise ValueError(f"{sa_type} is not supported.")
+        raise ValueError(f"{sa_type}[{type(sa_type)}]: is not supported.")
 
     def execute_query(self, query: Any) -> pd.DataFrame:
-        # print(format_sql(str(query.compile(compile_kwargs={"literal_binds": True}))))
-
         engine = self.get_engine()
         result = engine.execute(query)
         columns = result.keys()
@@ -89,10 +79,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             host = params["host"]
             port = params.get("port", "")
             if port:
-                port = ":" + port
+                port = ":" + str(port)
             schema = params.get("schema", "")
             if schema:
-                schema = "/" + schema
+                schema = "/" + str(schema)
             url = f"{conn.connection_type.name.lower()}://{credentials}{host}{port}{schema}"
             self._engine = SA.create_engine(url)
         return self._engine
@@ -145,6 +135,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
         return SA.func.array_agg(column.distinct())
 
+    def _column_index_support(self):
+        return True
+
     def _get_column_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
@@ -157,7 +150,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
         )
         query = SA.select(
-            group_by=SA.text(GA.EVENT_NAME_ALIAS_COL),
+            group_by=(
+                SA.literal(1)
+                if self._column_index_support()
+                else SA.text(GA.EVENT_NAME_ALIAS_COL)
+            ),
             columns=[event_name_select_field]
             + [
                 SA.case(
@@ -303,7 +300,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 self._get_segment_where_clause(table, metric._segment)
                 & self._get_timewindow_where_clause(table, metric)
             ),
-            group_by=[SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)],
+            group_by=(
+                [SA.literal(1), SA.literal(2)]
+                if self._column_index_support()
+                else [SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)]
+            ),
         )
 
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
@@ -396,5 +397,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 self._get_segment_where_clause(table, first_segment)
                 & self._get_timewindow_where_clause(table, metric)
             ),
-            group_by=[SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)],
+            group_by=(
+                [SA.literal(1), SA.literal(2)]
+                if self._column_index_support()
+                else [SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)]
+            ),
         ).select_from(joined_source)

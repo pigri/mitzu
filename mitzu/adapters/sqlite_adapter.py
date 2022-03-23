@@ -62,6 +62,9 @@ class SQLiteAdapter(SQLAlchemyAdapter):
                     df[col] = df[col].apply(lambda val: json.dumps(val, default=str))
         return df
 
+    def _column_index_support(self):
+        return False
+
     def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.datetime(SA.func.date(table_column, "weekday 0", "-6 days"))
