@@ -63,8 +63,8 @@ class AthenaAdapter(SQLAlchemyAdapter):
         return self._pdf_string_to_array(df)
 
     def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
-        start_date = metric._start_dt
-        end_date = metric._end_dt
+        start_date = metric._start_dt.replace(microsecond=0)
+        end_date = metric._end_dt.replace(microsecond=0)
 
         evt_time_col = table.columns.get(self.source.event_time_field)
         return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (

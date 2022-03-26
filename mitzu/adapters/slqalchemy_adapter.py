@@ -67,7 +67,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
-            print(query.compile(compile_kwargs={"literal_binds": True}))
+            if type(query) == str:
+                print(query)
+            else:
+                print(query.compile(compile_kwargs={"literal_binds": True}))
             raise exc
 
     def get_engine(self) -> Any:
