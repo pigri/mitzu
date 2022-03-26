@@ -14,13 +14,17 @@ def fix_na_cols(pdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def filter_top_segmentation_groups(
-    pdf: pd.DataFrame, metric: M.SegmentationMetric
+    pdf: pd.DataFrame,
+    metric: M.Metric,
+    order_by_col: str = GA.USER_COUNT_COL,
 ) -> List[str]:
     max = metric._max_group_count
     g_users = (
-        pdf[[GA.GROUP_COL, GA.USER_COUNT_COL]].groupby(GA.GROUP_COL).sum().reset_index()
+        pdf[[GA.GROUP_COL, order_by_col]].groupby(GA.GROUP_COL).sum().reset_index()
     )
-    g_users = g_users.sort_values(GA.USER_COUNT_COL, ascending=False).head(max)
+    if g_users.shape[0] > 0:
+        g_users = g_users.sort_values(order_by_col, ascending=False)
+    g_users = g_users.head(max)
     top_groups = list(g_users[GA.GROUP_COL].values)
     return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
 
@@ -28,16 +32,9 @@ def filter_top_segmentation_groups(
 def filter_top_conversion_groups(
     pdf: pd.DataFrame, metric: M.ConversionMetric
 ) -> List[str]:
-    max = metric._max_group_count
-    g_users = (
-        pdf[[GA.GROUP_COL, f"{GA.USER_COUNT_COL}_1"]]
-        .groupby(GA.GROUP_COL)
-        .sum()
-        .reset_index()
+    return filter_top_segmentation_groups(
+        pdf=pdf, metric=metric, order_by_col=f"{GA.USER_COUNT_COL}_1"
     )
-    g_users = g_users.sort_values(f"{GA.USER_COUNT_COL}_1", ascending=False).head(max)
-    top_groups = list(g_users[GA.GROUP_COL].values)
-    return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
 
 
 def get_segmented_by_str(metric: M.Metric) -> str:

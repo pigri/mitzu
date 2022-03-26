@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, List
 
+import mitzu.adapters.generic_adapter as GA
 from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
 from urllib.parse import quote_plus
@@ -38,21 +39,28 @@ class AthenaAdapter(SQLAlchemyAdapter):
         return self._engine
 
     def execute_query(self, query: Any) -> pd.DataFrame:
-        engine = self.get_engine()
         if type(query) != str:
+            # PyAthena has a bug that the query needs to be compiled and casted to string before execution
             query = format_sql(
                 str(query.compile(compile_kwargs={"literal_binds": True}))
             )
-        try:
-            result = engine.execute(query)
-            columns = result.keys()
-            fetched = result.fetchall()
-            pdf = pd.DataFrame(fetched)
-            pdf.columns = columns
-            return pdf
-        except Exception as exc:
-            print(query)
-            raise exc
+        return super().execute_query(query=query)
+
+    def _pdf_string_to_array(self, pdf: pd.DataFrame):
+        # Athena returns any complex type as String
+        # TBD handle this in a typesafe way.
+        for col in pdf.columns:
+            if col != GA.EVENT_NAME_ALIAS_COL:
+                pdf[col] = pdf[col].apply(
+                    lambda val: val[1:-1].split(", ") if type(val) == str else val
+                )
+        return pdf
+
+    def _get_column_values_df(
+        self, fields: List[M.Field], event_specific: bool
+    ) -> pd.DataFrame:
+        df = super()._get_column_values_df(fields=fields, event_specific=event_specific)
+        return self._pdf_string_to_array(df)
 
     def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
         start_date = metric._start_dt

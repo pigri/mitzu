@@ -60,8 +60,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             result = engine.execute(query)
             columns = result.keys()
             fetched = result.fetchall()
-            pdf = pd.DataFrame(fetched)
-            pdf.columns = columns
+            if len(fetched) > 0:
+                pdf = pd.DataFrame(fetched)
+                pdf.columns = columns
+            else:
+                pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
             print(query.compile(compile_kwargs={"literal_binds": True}))
