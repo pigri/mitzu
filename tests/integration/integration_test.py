@@ -1,18 +1,18 @@
 from copy import copy
 from typing import cast
 
-from numpy import source
-from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
-from sqlalchemy import inspect
+from tests.test_samples.sources import SIMPLE_CSV
+from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import Connection, ConnectionType, EventDataSource
 from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
 from mitzu.adapters.adapter_factory import get_or_create_adapter
 from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
 from mitzu.notebook.model_loader import ModelLoader
-import pandas as pd
+import pandas as pd  # type: ignore
 import pytest
 from retry import retry  # type: ignore
 from datetime import datetime
+from tests.helper import assert_row
 
 CONNECTIONS = [ConnectionType.POSTGRESQL, ConnectionType.MYSQL]
 
@@ -40,7 +40,6 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
             )
         except Exception as exc:
             print(exc)
-            pass
         pdf.to_sql(con=engine, name=source.table_name, index=False)
     return adapter
 
@@ -55,7 +54,47 @@ def validate_integration(adapter: SQLAlchemyAdapter, source: EventDataSource):
     ml = ModelLoader()
     m = ml.create_dataset_model(dd)
 
-    print(m.view.config(start_dt="2020-01-01", end_dt="2021-01-01").get_df())
+    df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
+    assert_row(
+        df,
+        _datetime=datetime(2020, 1, 1),
+        _unique_user_count=1,
+        _event_count=1,
+        _group=None,
+    )
+
+    df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
+    assert_row(
+        df,
+        _datetime=datetime(2020, 1, 1),
+        _unique_user_count=1,
+        _event_count=1,
+        _group=None,
+    )
+
+    df = (
+        (m.view >> m.cart)
+        .config(
+            start_dt="2020-01-01",
+            time_group="hour",
+            conv_window="12 day",
+            group_by=m.view.brand,
+            max_group_by_count=3,
+        )
+        .get_df()
+    )
+
+    assert 254 == df.shape[0]
+    assert_row(
+        df,
+        _datetime=pd.Timestamp("2020-01-01 00:00:00"),
+        _unique_user_count_1=3,
+        _event_count_1=7,
+        _unique_user_count_2=2,
+        _event_count_2=6,
+        _group="cosmoprofi",
+        _conversion_rate=0.66667,
+    )
 
 
 @pytest.mark.parametrize("con_type", CONNECTIONS)

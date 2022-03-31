@@ -11,6 +11,13 @@ def assert_sql(expected: str, actual: str):
     assert expected.strip() == actual.strip()
 
 
+def is_similar(a, b) -> bool:
+    if type(a) == float:
+        return abs(a - b) < 0.01
+        # Todo add more rules
+    return a == b
+
+
 def assert_row(df: pd.DataFrame, **kwargs):
     records: List[Dict] = df.to_dict("records")
     if len(records) == 0:
@@ -21,7 +28,7 @@ def assert_row(df: pd.DataFrame, **kwargs):
     for record in records:
         match = 0
         for key, val in kwargs.items():
-            if record[key] == val:
+            if is_similar(record[key], val):
                 match += 1
         if closest_match == len(kwargs) and match == closest_match:
             assert False, f"Multiple records match for {kwargs}"

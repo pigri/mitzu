@@ -1,14 +1,12 @@
 from __future__ import annotations
 from typing import Any, List
 
-import mitzu.adapters.generic_adapter as GA
 from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
-from urllib.parse import quote_plus
-from sqlalchemy.engine import create_engine  # type: ignore
 import pandas as pd  # type: ignore
-from sql_formatter.core import format_sql  # type: ignore
 import sqlalchemy as SA  # type: ignore
+import sqlalchemy.sql.expression as EXP  # type: ignore
+from mitzu.adapters.helper import pdf_string_array_to_array
 
 NULL_VALUE_KEY = "##NULL##"
 
@@ -26,4 +24,31 @@ class MySQLAdapter(SQLAlchemyAdapter):
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(fields=fields, event_specific=event_specific)
+        df = pdf_string_array_to_array(df, split_text='", "', omit_chars=2)
         return df
+
+    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
+        if time_group == M.TimeGroup.WEEK:
+            return SA.func.date_add(
+                SA.func.date(table_column),
+                EXP.text(f"interval -weekday({table_column}) day"),
+            )
+
+        elif time_group == M.TimeGroup.SECOND:
+            fmt = "%Y-%m-%dT%H:%i:%S"
+        elif time_group == M.TimeGroup.MINUTE:
+            fmt = "%Y-%m-%dT%H:%i:00"
+        elif time_group == M.TimeGroup.HOUR:
+            fmt = "%Y-%m-%dT%H:00:00"
+        elif time_group == M.TimeGroup.DAY:
+            fmt = "%Y-%m-%d"
+        elif time_group == M.TimeGroup.MONTH:
+            fmt = "%Y-%m-01"
+        elif time_group == M.TimeGroup.QUARTER:
+            raise NotImplementedError(
+                "Timegroup Quarter is not supported for MySQL Adapter"
+            )
+        elif time_group == M.TimeGroup.YEAR:
+            fmt = "%Y-01-01"
+
+        return SA.func.timestamp(SA.func.date_format(table_column, fmt))

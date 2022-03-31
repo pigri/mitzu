@@ -9,6 +9,7 @@ from sqlalchemy.engine import create_engine  # type: ignore
 import pandas as pd  # type: ignore
 from sql_formatter.core import format_sql  # type: ignore
 import sqlalchemy as SA  # type: ignore
+from mitzu.adapters.helper import pdf_string_array_to_array
 
 
 class AthenaAdapter(SQLAlchemyAdapter):
@@ -46,21 +47,11 @@ class AthenaAdapter(SQLAlchemyAdapter):
             )
         return super().execute_query(query=query)
 
-    def _pdf_string_to_array(self, pdf: pd.DataFrame):
-        # Athena returns any complex type as String
-        # TBD handle this in a typesafe way.
-        for col in pdf.columns:
-            if col != GA.EVENT_NAME_ALIAS_COL:
-                pdf[col] = pdf[col].apply(
-                    lambda val: val[1:-1].split(", ") if type(val) == str else val
-                )
-        return pdf
-
     def _get_column_values_df(
         self, fields: List[M.Field], event_specific: bool
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(fields=fields, event_specific=event_specific)
-        return self._pdf_string_to_array(df)
+        return pdf_string_array_to_array(df)
 
     def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)

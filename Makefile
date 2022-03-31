@@ -25,8 +25,7 @@ docker_down:
 	rm -rf tests/.dbs/
 	docker-compose -f tests/docker-compose.yml down
 
-
-tests: unit_tests integration_tests
+test: unit_tests integration_tests
 	@ECHO "done"
 
 check: format autoflake mypy lint test

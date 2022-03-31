@@ -76,8 +76,6 @@ class SQLiteAdapter(SQLAlchemyAdapter):
             fmt = "%Y-%m-%dT%H:00:00"
         elif time_group == M.TimeGroup.DAY:
             fmt = "%Y-%m-%dT00:00:00"
-        elif time_group == M.TimeGroup.WEEK:
-            fmt = "%Y-%m-%dT00:00:00"
         elif time_group == M.TimeGroup.MONTH:
             fmt = "%Y-%m-01T00:00:00"
         elif time_group == M.TimeGroup.QUARTER:
