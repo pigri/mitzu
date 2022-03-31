@@ -67,10 +67,15 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
+            print("Failed Query:")
             if type(query) == str:
-                print(query)
+                print(format_sql(str(query)))
             else:
-                print(query.compile(compile_kwargs={"literal_binds": True}))
+                print(
+                    format_sql(
+                        str(query.compile(compile_kwargs={"literal_binds": True}))
+                    )
+                )
             raise exc
 
     def get_engine(self) -> Any:
@@ -83,6 +88,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if self._engine is None:
             user_name = params.get("user_name")
             password = params.get("password")
+            extra_params = params.get("extra_params", "")
             credentials = "" if user_name is None else f"{user_name}:{password}@"
             host = params["host"]
             port = params.get("port", "")
@@ -91,7 +97,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             schema = params.get("schema", "")
             if schema:
                 schema = "/" + str(schema)
-            url = f"{conn.connection_type.name.lower()}://{credentials}{host}{port}{schema}"
+            url = f"{conn.connection_type.value.lower()}://{credentials}{host}{port}{schema}{extra_params}"
             self._engine = SA.create_engine(url)
         return self._engine
 

@@ -9,19 +9,22 @@ services:
     ports:
       - '5432:5432'
     expose:
-      - '5432'
-
+      - '5432'   
     
   mysql_db:
     image: mysql
     restart: always
+    command: '--max_allowed_packet=536870912'        
     environment:
-      MYSQL_DATABASE: 'test'
-      MYSQL_USER: 'test'
-      MYSQL_PASSWORD: 'test'      
-      MYSQL_ROOT_PASSWORD: 'test'
+      - MYSQL_HOST=localhost
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=test
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=test
     ports:
       - '3306:3306'
     expose:
       - '3306'
-  
+    volumes:
+      - ./.dbs/mysql:/var/lib/mysql

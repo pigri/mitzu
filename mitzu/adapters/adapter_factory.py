@@ -14,6 +14,10 @@ def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter
             from mitzu.adapters.athena_adapter import AthenaAdapter
 
             source.adapter = AthenaAdapter(source)
+        elif con_type == M.ConnectionType.MYSQL:
+            from mitzu.adapters.mysql_adapter import MySQLAdapter
+
+            source.adapter = MySQLAdapter(source)
         else:
             from mitzu.adapters.sqlite_adapter import SQLAlchemyAdapter
 

@@ -14,16 +14,23 @@ autoflake: ## fixes imports, unused variables
 mypy:
 	$(POETRY) run mypy mitzu tests
 
-test:
+unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
 
-integration_test:
-	docker-compose -f tests/docker-compose.yml up
+integration_tests:
+	docker-compose -f tests/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
+
+docker_down:
+	rm -rf tests/.dbs/
 	docker-compose -f tests/docker-compose.yml down
 
+
+tests: unit_tests integration_tests
+	@ECHO "done"
+
 check: format autoflake mypy lint test
-	ECHO 'done'
+	@ECHO 'done'
 
 notebook:
 	$(POETRY) run jupyter-notebook

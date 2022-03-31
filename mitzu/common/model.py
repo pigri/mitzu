@@ -119,15 +119,10 @@ class AttributionMode(Enum):
 
 
 class ConnectionType(Enum):
-    FILE = 1
-    ATHENA = 2
-    DATABRICKS_SQL = 3
-    SNOWFLAKE = 4
-    REDSHIFT = 5
-    POSTGRESQL = 6
-    BIG_QUERY = 7
-    CLICKHOUSE = 8
-    PANDAS_DF = 9
+    FILE = "sqlite"
+    ATHENA = "awsathena+rest"
+    POSTGRESQL = "postgresql+psycopg2"
+    MYSQL = "mysql+mysqlconnector"
 
 
 @dataclass

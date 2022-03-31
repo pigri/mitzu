@@ -5,8 +5,10 @@ from datetime import datetime
 from mitzu.notebook.model_loader import ModelLoader
 from mitzu.common.model import ConversionMetric, Segment
 from tests.helper import assert_row, assert_sql
+import pytest
 
 
+@pytest.mark.skip
 def test_simple_big_data_discovery():
     adapter = SQLiteAdapter(SIMPLE_BIG_DATA)
 
