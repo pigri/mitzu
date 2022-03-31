@@ -15,7 +15,12 @@ mypy:
 	$(POETRY) run mypy mitzu tests
 
 test:
-	$(POETRY) run pytest -sv tests/
+	$(POETRY) run pytest -sv tests/unit/
+
+integration_test:
+	docker-compose -f tests/docker-compose.yml up
+	$(POETRY) run pytest -sv tests/integration/
+	docker-compose -f tests/docker-compose.yml down
 
 check: format autoflake mypy lint test
 	ECHO 'done'
