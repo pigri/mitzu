@@ -34,6 +34,13 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
     print(f"Table {source.table_name} exists: {ret}")
     if not ret:
         pdf = pd.read_csv(raw_path)
+        try:
+            pdf[source.event_time_field] = pdf[source.event_time_field].apply(
+                lambda v: datetime.fromisoformat(v)
+            )
+        except Exception as exc:
+            print(exc)
+            pass
         pdf.to_sql(con=engine, name=source.table_name, index=False)
     return adapter
 
