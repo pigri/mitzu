@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any, List
 
-import mitzu.adapters.generic_adapter as GA
 from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
 from urllib.parse import quote_plus
