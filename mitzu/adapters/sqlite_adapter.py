@@ -2,9 +2,11 @@ from __future__ import annotations
 from typing import Any, List
 
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
+from mitzu.adapters.helper import dataframe_str_to_datetime
 
 VALUE_SEPARATOR = "###"
 
@@ -12,6 +14,14 @@ VALUE_SEPARATOR = "###"
 class SQLiteAdapter(SQLAlchemyAdapter):
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
+
+    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
+        df = super().get_conversion_df(metric)
+        return dataframe_str_to_datetime(df, GA.DATETIME_COL)
+
+    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
+        df = super().get_segmentation_df(metric)
+        return dataframe_str_to_datetime(df, GA.DATETIME_COL)
 
     def _column_index_support(self):
         return False

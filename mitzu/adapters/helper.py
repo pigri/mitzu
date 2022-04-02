@@ -1,5 +1,18 @@
+from datetime import date, datetime
 import pandas as pd  # type: ignore
 import mitzu.adapters.generic_adapter as GA
+from typing import Optional
+
+
+def str_to_datetime(val: str) -> Optional[datetime]:
+    if val is None:
+        return None
+    return datetime.fromisoformat(val)
+
+
+def dataframe_str_to_datetime(pdf: pd.DataFrame, column: str) -> pd.DataFrame:
+    pdf[column] = pdf[column].apply(str_to_datetime)
+    return pdf
 
 
 def pdf_string_array_to_array(

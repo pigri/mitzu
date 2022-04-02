@@ -106,7 +106,7 @@ def test_simple_csv_funnel():
 
     assert_row(
         conv.get_df(),
-        _datetime="2020-01-01 00:00:00",
+        _datetime=datetime(2020, 1, 1, 0, 0, 0),
         _group=1487580004857414477,
         _conversion_rate=0,
         _unique_user_count_1=2,

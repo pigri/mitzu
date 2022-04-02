@@ -1,7 +1,7 @@
 from copy import copy
 from typing import cast
 
-from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
+from tests.test_samples.sources import SIMPLE_CSV
 from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import Connection, ConnectionType, EventDataSource
 from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
@@ -136,18 +136,3 @@ def test_db_integrations(config: TestCase):
 
     adapter = ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(adapter=adapter, source=test_source)
-
-
-def test_big_data_integrations():
-    real_source = SIMPLE_BIG_DATA
-    raw_path = real_source.connection.extra_configs["path"]
-    test_source = copy(real_source)
-    test_source.connection = Connection(
-        connection_type=ConnectionType.POSTGRESQL,
-        user_name="test",
-        password="test",
-        schema="test",
-        host="localhost",
-    )
-    adapter = ingest_test_data(source=test_source, raw_path=raw_path)
-    assert adapter is not None
