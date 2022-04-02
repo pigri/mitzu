@@ -7,7 +7,11 @@ def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter
     if source.adapter is None:
         con_type = source.connection.connection_type
         if con_type == M.ConnectionType.FILE:
-            from mitzu.adapters.sqlite_adapter import SQLiteAdapter
+            from mitzu.adapters.file_adapter import FileAdapter
+
+            source.adapter = FileAdapter(source)
+        elif con_type == M.ConnectionType.SQLITE:
+            from mitzu.adapters.file_adapter import SQLiteAdapter
 
             source.adapter = SQLiteAdapter(source)
         elif con_type == M.ConnectionType.ATHENA:
@@ -19,7 +23,7 @@ def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter
 
             source.adapter = MySQLAdapter(source)
         else:
-            from mitzu.adapters.sqlite_adapter import SQLAlchemyAdapter
+            from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
             source.adapter = SQLAlchemyAdapter(source)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, List
 
-from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore

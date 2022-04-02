@@ -1,4 +1,4 @@
-from mitzu.adapters.sqlite_adapter import SQLiteAdapter
+from mitzu.adapters.file_adapter import FileAdapter, SQLiteAdapter
 from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
 from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
 from datetime import datetime
@@ -30,7 +30,7 @@ def test_simple_big_data_discovery():
 
 
 def test_simple_csv_segmentation():
-    adapter = SQLiteAdapter(SIMPLE_CSV)
+    adapter = FileAdapter(SIMPLE_CSV)
     discovery = EventDatasetDiscovery(
         SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
@@ -63,7 +63,7 @@ def test_simple_csv_segmentation():
 
 
 def test_simple_csv_funnel():
-    adapter = SQLiteAdapter(SIMPLE_CSV)
+    adapter = FileAdapter(SIMPLE_CSV)
     discovery = EventDatasetDiscovery(
         SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )

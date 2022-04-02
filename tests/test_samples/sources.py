@@ -13,7 +13,10 @@ SIMPLE_CSV = EventDataSource(
     max_map_key_cardinality=300,
     connection=Connection(
         connection_type=ConnectionType.FILE,
-        connection_params={"file_type": "csv", "path": WD + "/simple.csv"},
+        extra_configs={
+            "file_type": "csv",
+            "path": WD + "/simple.csv",
+        },
     ),
 )
 
@@ -26,7 +29,7 @@ SIMPLE_BIG_DATA = EventDataSource(
     max_map_key_cardinality=300,
     connection=Connection(
         connection_type=ConnectionType.FILE,
-        connection_params={
+        extra_configs={
             "file_type": "parquet",
             "path": WD + "/simple_big_data.snappy.parquet",
         },

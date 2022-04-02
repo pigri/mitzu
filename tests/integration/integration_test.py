@@ -1,20 +1,38 @@
 from copy import copy
 from typing import cast
 
-from tests.test_samples.sources import SIMPLE_CSV
+from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
 from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import Connection, ConnectionType, EventDataSource
 from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
 from mitzu.adapters.adapter_factory import get_or_create_adapter
-from mitzu.adapters.slqalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 from mitzu.notebook.model_loader import ModelLoader
 import pandas as pd  # type: ignore
 import pytest
 from retry import retry  # type: ignore
 from datetime import datetime
 from tests.helper import assert_row
+from typing import Optional
 
-CONNECTIONS = [ConnectionType.POSTGRESQL, ConnectionType.MYSQL]
+from dataclasses import dataclass
+
+
+@dataclass
+class TestCase:
+    type: ConnectionType
+    url: Optional[str] = None
+
+    def __repr__(self) -> str:
+        url = "" if self.url is None else f"({self.url})"
+        return f"{type}{url}"
+
+
+CONFIGS = [
+    TestCase(type=ConnectionType.POSTGRESQL),
+    TestCase(type=ConnectionType.MYSQL),
+    TestCase(type=ConnectionType.SQLITE, url="sqlite://"),
+]
 
 
 @retry(Exception, delay=5, tries=6)
@@ -33,7 +51,12 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
 
     print(f"Table {source.table_name} exists: {ret}")
     if not ret:
-        pdf = pd.read_csv(raw_path)
+        if raw_path.endswith(".csv"):
+            pdf = pd.read_csv(raw_path)
+        elif raw_path.endswith(".parquet"):
+            pdf = pd.read_parquet(raw_path)
+        else:
+            raise Exception("Unsupported integration test data at\n" + raw_path)
         try:
             pdf[source.event_time_field] = pdf[source.event_time_field].apply(
                 lambda v: datetime.fromisoformat(v)
@@ -97,20 +120,34 @@ def validate_integration(adapter: SQLAlchemyAdapter, source: EventDataSource):
     )
 
 
-@pytest.mark.parametrize("con_type", CONNECTIONS)
-def test_db_integrations(con_type):
+@pytest.mark.parametrize("config", CONFIGS)
+def test_db_integrations(config: TestCase):
     real_source = SIMPLE_CSV
-    raw_path = real_source.connection.connection_params["path"]
+    raw_path = real_source.connection.extra_configs["path"]
     test_source = copy(real_source)
     test_source.connection = Connection(
-        connection_type=con_type,
-        connection_params={
-            "user_name": "test",
-            "password": "test",
-            "schema": "test",
-            "host": "localhost",
-        },
+        connection_type=config.type,
+        url=config.url,
+        user_name="test",
+        password="test",
+        schema="test",
+        host="localhost",
     )
 
     adapter = ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(adapter=adapter, source=test_source)
+
+
+def test_big_data_integrations():
+    real_source = SIMPLE_BIG_DATA
+    raw_path = real_source.connection.extra_configs["path"]
+    test_source = copy(real_source)
+    test_source.connection = Connection(
+        connection_type=ConnectionType.POSTGRESQL,
+        user_name="test",
+        password="test",
+        schema="test",
+        host="localhost",
+    )
+    adapter = ingest_test_data(source=test_source, raw_path=raw_path)
+    assert adapter is not None

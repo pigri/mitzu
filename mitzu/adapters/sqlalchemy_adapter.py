@@ -79,25 +79,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise exc
 
     def get_engine(self) -> Any:
-        conn = self.source.connection
-        params = conn.connection_params
-        if self._engine is not None and not params.get("cache_engine", True):
-            self._engine.dispose()
-            self._engine = None
-
+        con = self.source.connection
         if self._engine is None:
-            user_name = params.get("user_name")
-            password = params.get("password")
-            extra_params = params.get("extra_params", "")
-            credentials = "" if user_name is None else f"{user_name}:{password}@"
-            host = params["host"]
-            port = params.get("port", "")
-            if port:
-                port = ":" + str(port)
-            schema = params.get("schema", "")
-            if schema:
-                schema = "/" + str(schema)
-            url = f"{conn.connection_type.value.lower()}://{credentials}{host}{port}{schema}{extra_params}"
+            if con.url is None:
+                url = self._get_connection_url(con)
+            else:
+                url = con.url
             self._engine = SA.create_engine(url)
         return self._engine
 
@@ -145,6 +132,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return table_column + SA.text(
             f"interval '{timewindow.value}' {timewindow.period}"
         )
+
+    def _get_connection_url(self, con: M.Connection):
+        credentials = (
+            "" if con.user_name is None else f"{con.user_name}:{con.password}@"
+        )
+        host_str = "" if con.host is None else str(con.host)
+        port_str = "" if con.port is None else ":" + str(con.port)
+        schema_str = "" if con.schema is None else f"/{con.schema}"
+        url_params_str = "" if con.url_params is None else con.url_params
+        protocol = con.connection_type.value.lower()
+        return f"{protocol}://{credentials}{host_str}{port_str}{schema_str}{url_params_str}"
 
     def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
         return SA.func.array_agg(column.distinct())

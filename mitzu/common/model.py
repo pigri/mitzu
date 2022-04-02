@@ -119,17 +119,27 @@ class AttributionMode(Enum):
 
 
 class ConnectionType(Enum):
-    FILE = "sqlite"
+    FILE = "file"
     ATHENA = "awsathena+rest"
     POSTGRESQL = "postgresql+psycopg2"
     MYSQL = "mysql+mysqlconnector"
+    SQLITE = "sqlite"
 
 
 @dataclass
 class Connection:
 
     connection_type: ConnectionType
-    connection_params: Dict = default_field({})
+    user_name: Optional[str] = None
+    password: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    url: Optional[str] = None
+    schema: Optional[str] = None
+    # Used for connection url parametrization
+    url_params: Optional[str] = None
+    # Used for adapter configuration
+    extra_configs: Dict[str, Any] = default_field({})
 
 
 @dataclass

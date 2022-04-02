@@ -221,6 +221,7 @@ def plot_conversion(metric: M.ConversionMetric):
             labels={
                 GA.DATETIME_COL: get_conversion_title(metric),
                 GA.CVR_COL: "Conversion",
+                GA.GROUP_COL: "Group",
             },
         )
         fig.update_traces(
