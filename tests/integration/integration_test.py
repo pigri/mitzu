@@ -1,13 +1,11 @@
 from copy import copy
-from typing import cast
-
+from typing import Any, cast
+from mitzu import init_notebook_project
 from tests.test_samples.sources import SIMPLE_CSV
 from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import Connection, ConnectionType, EventDataSource
-from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
 from mitzu.adapters.adapter_factory import get_or_create_adapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from mitzu.notebook.model_loader import ModelLoader
 import pandas as pd  # type: ignore
 import pytest
 from retry import retry  # type: ignore
@@ -67,15 +65,13 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
     return adapter
 
 
-def validate_integration(adapter: SQLAlchemyAdapter, source: EventDataSource):
-    discovery = EventDatasetDiscovery(
-        source, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
+def validate_integration(source: EventDataSource):
+    m = cast(
+        Any,
+        init_notebook_project(
+            source=source, start_dt=datetime(2021, 1, 1), end_dt=datetime(2022, 1, 1)
+        ),
     )
-
-    dd = discovery.discover_dataset()
-
-    ml = ModelLoader()
-    m = ml.create_dataset_model(dd)
 
     df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
     assert_row(
@@ -134,5 +130,5 @@ def test_db_integrations(config: TestCase):
         host="localhost",
     )
 
-    adapter = ingest_test_data(source=test_source, raw_path=raw_path)
-    validate_integration(adapter=adapter, source=test_source)
+    ingest_test_data(source=test_source, raw_path=raw_path)
+    validate_integration(source=test_source)

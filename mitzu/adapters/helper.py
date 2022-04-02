@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 import pandas as pd  # type: ignore
 import mitzu.adapters.generic_adapter as GA
 from typing import Optional

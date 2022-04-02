@@ -141,6 +141,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         port_str = "" if con.port is None else ":" + str(con.port)
         schema_str = "" if con.schema is None else f"/{con.schema}"
         url_params_str = "" if con.url_params is None else con.url_params
+        if url_params_str != "" and url_params_str[0] != "?":
+            url_params_str = "?" + url_params_str
+
         protocol = con.connection_type.value.lower()
         return f"{protocol}://{credentials}{host_str}{port_str}{schema_str}{url_params_str}"
 
