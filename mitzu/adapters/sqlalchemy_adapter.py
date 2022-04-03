@@ -81,6 +81,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def get_engine(self) -> Any:
         con = self.source.connection
         if self._engine is None:
+            if self.source.connection.ssh_tunnel_forwarder is not None:
+                self._create_ssh_tunnel()
+
             if con.url is None:
                 url = self._get_connection_url(con)
             else:

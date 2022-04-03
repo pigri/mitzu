@@ -1,9 +1,14 @@
 from copy import copy
-from typing import Any, cast
+from typing import Any, Dict, cast
 from mitzu import init_notebook_project
 from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
 from sqlalchemy import inspect  # type: ignore
-from mitzu.common.model import Connection, ConnectionType, EventDataSource
+from mitzu.common.model import (
+    Connection,
+    ConnectionType,
+    EventDataSource,
+    default_field,
+)
 from mitzu.adapters.adapter_factory import get_or_create_adapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import pandas as pd  # type: ignore
@@ -11,25 +16,31 @@ import pytest
 from retry import retry  # type: ignore
 from datetime import datetime
 from tests.helper import assert_row
-from typing import Optional
-import os
 from dataclasses import dataclass
+from sshtunnel import SSHTunnelForwarder
 
 
 @dataclass
 class TestCase:
     type: ConnectionType
-    url: Optional[str] = None
+    configs: Dict = default_field(
+        {
+            "user_name": "test",
+            "password": "test",
+            "schema": "test",
+            "host": "localhost",
+        }
+    )
 
     def __repr__(self) -> str:
-        url = "" if self.url is None else f"({self.url})"
-        return f"{type}{url}"
+        confs = "" if self.configs is None else f"({self.configs})"
+        return f"{type}{confs}"
 
 
 CONFIGS = [
     TestCase(type=ConnectionType.POSTGRESQL),
     TestCase(type=ConnectionType.MYSQL),
-    TestCase(type=ConnectionType.SQLITE, url="sqlite://"),
+    TestCase(type=ConnectionType.SQLITE, configs={"url": "sqlite://"}),
 ]
 
 
@@ -37,8 +48,7 @@ CONFIGS = [
 def check_table(engine, source: EventDataSource) -> bool:
     print(f"Trying to connect to {source.table_name}")
     ins = inspect(engine)
-    ret = ins.dialect.has_table(engine.connect(), source.table_name)
-    return ret
+    return ins.dialect.has_table(engine.connect(), source.table_name)
 
 
 def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapter:
@@ -118,23 +128,41 @@ def validate_integration(source: EventDataSource):
 
 @pytest.mark.parametrize("config", CONFIGS)
 def test_db_integrations(config: TestCase):
-    real_source = SIMPLE_CSV
-    raw_path = real_source.connection.extra_configs["path"]
-    test_source = copy(real_source)
-    test_source.connection = Connection(
-        connection_type=config.type,
-        url=config.url,
-        user_name="test",
-        password="test",
-        schema="test",
-        host="localhost",
-    )
+    test_source = copy(SIMPLE_CSV)
+    raw_path = test_source.connection.extra_configs["path"]
+    test_source.connection = Connection(connection_type=config.type, **config.configs)
 
     ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(source=test_source)
 
 
-# @pytest.mark.skip
+def test_ssh_tunnel():
+    server = SSHTunnelForwarder(
+        ssh_address_or_host=("localhost", 2222),
+        ssh_username="test",
+        ssh_password="test",
+        remote_bind_address=("postgres_tunnel", 5432),
+        local_bind_address=("0.0.0.0", 5433),
+    )
+
+    test_source = copy(SIMPLE_CSV)
+    raw_path = test_source.connection.extra_configs["path"]
+    test_source.connection = Connection(
+        connection_type=ConnectionType.POSTGRESQL,
+        user_name="test",
+        password="test",
+        schema="test",
+        port=5433,
+        host="localhost",
+        ssh_tunnel_forwarder=server,
+    )
+    server.close()
+
+    ingest_test_data(source=test_source, raw_path=raw_path)
+    validate_integration(source=test_source)
+
+
+@pytest.mark.skip
 def test_big_data_integarion():
     real_source = SIMPLE_BIG_DATA
     raw_path = real_source.connection.extra_configs["path"]

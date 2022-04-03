@@ -1,8 +1,7 @@
 from __future__ import annotations
 import mitzu.common.model as M
-from typing import Dict, List
+from typing import Dict, List, Any
 import pandas as pd  # type: ignore
-
 
 EVENT_NAME_ALIAS_COL = "_event_type"
 DATETIME_COL = "_datetime"
@@ -18,8 +17,18 @@ class GenericDatasetAdapter:
     def __init__(self, source: M.EventDataSource):
         self.source = source
 
-    def _fix_col_index(self, index: int, col_name: str):
-        return col_name + f"_{index}"
+    def __del__(self):
+        forwarder = self.source.connection.ssh_tunnel_forwarder
+        if forwarder is not None and forwarder.is_alive:
+            forwarder.close()
+
+    def _create_ssh_tunnel(self):
+        forwarder = self.source.connection.ssh_tunnel_forwarder
+        if forwarder is not None and not forwarder.is_alive:
+            forwarder.start()
+
+    def execute_query(self, query: Any) -> pd.DataFrame:
+        raise NotImplementedError()
 
     def validate_source(self):
         raise NotImplementedError()
@@ -51,3 +60,6 @@ class GenericDatasetAdapter:
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         raise NotImplementedError()
+
+    def _fix_col_index(self, index: int, col_name: str):
+        return col_name + f"_{index}"
