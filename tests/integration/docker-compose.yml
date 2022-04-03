@@ -1,0 +1,52 @@
+services:
+
+  postgres:
+    image: postgres
+    restart: always
+    hostname:  postgres
+    environment:
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
+    
+  mysql:
+    image: mysql
+    restart: always
+    command: '--max_allowed_packet=536870912'        
+    environment:
+      - MYSQL_HOST=localhost
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=test
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=test
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    volumes:
+      - ./.dbs/mysql:/var/lib/mysql
+  
+  ssh-server:
+    image: lscr.io/linuxserver/openssh-server
+    container_name: openssh-server
+    hostname:  shh-server
+    environment:
+      - PUID=501
+      - PGID=20
+      - USER_PASSWORD=test
+      - USER_NAME=test
+      - PASSWORD_ACCESS=true
+    volumes:
+      - ./ssh:/remote-ssh/
+      - ./ssh/config/:/config/
+    ports:
+      - 2222:2222      
+    restart: always
+    depends_on: 
+      - postgres
+    links:
+      - postgres:postgres_tunnel

@@ -1,7 +1,7 @@
 from copy import copy
 from typing import Any, cast
 from mitzu import init_notebook_project
-from tests.test_samples.sources import SIMPLE_CSV
+from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
 from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import Connection, ConnectionType, EventDataSource
 from mitzu.adapters.adapter_factory import get_or_create_adapter
@@ -12,7 +12,7 @@ from retry import retry  # type: ignore
 from datetime import datetime
 from tests.helper import assert_row
 from typing import Optional
-
+import os
 from dataclasses import dataclass
 
 
@@ -132,3 +132,19 @@ def test_db_integrations(config: TestCase):
 
     ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(source=test_source)
+
+
+# @pytest.mark.skip
+def test_big_data_integarion():
+    real_source = SIMPLE_BIG_DATA
+    raw_path = real_source.connection.extra_configs["path"]
+    test_source = copy(real_source)
+    test_source.connection = Connection(
+        connection_type=ConnectionType.POSTGRESQL,
+        user_name="test",
+        password="test",
+        schema="test",
+        host="localhost",
+    )
+
+    ingest_test_data(source=test_source, raw_path=raw_path)

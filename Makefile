@@ -18,12 +18,15 @@ unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
 
 integration_tests:
-	docker-compose -f tests/docker-compose.yml up -d --no-recreate
+	docker-compose -f tests/integration/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
 
-docker_down:
+docker_test_down:
 	rm -rf tests/.dbs/
-	docker-compose -f tests/docker-compose.yml down
+	docker-compose -f tests/integration/docker-compose.yml down
+
+docker_test_up:	
+	docker-compose -f tests/integration/docker-compose.yml up
 
 test: unit_tests integration_tests
 	@ECHO "done"
