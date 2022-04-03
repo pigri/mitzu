@@ -17,7 +17,7 @@ from retry import retry  # type: ignore
 from datetime import datetime
 from tests.helper import assert_row
 from dataclasses import dataclass
-from sshtunnel import SSHTunnelForwarder
+from sshtunnel import SSHTunnelForwarder  # type: ignore
 
 
 @dataclass

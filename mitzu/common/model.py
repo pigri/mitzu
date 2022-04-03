@@ -11,7 +11,7 @@ import mitzu.common.helper as helper
 import mitzu.adapters.adapter_factory as factory
 import mitzu.notebook.visualization as vis
 import mitzu.adapters.generic_adapter as GA
-from sshtunnel import SSHTunnelForwarder
+from sshtunnel import SSHTunnelForwarder  # type: ignore
 
 
 def default_field(obj):
