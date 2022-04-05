@@ -125,6 +125,30 @@ def validate_integration(source: EventDataSource):
         _conversion_rate=0.66667,
     )
 
+    df = (
+        (m.view >> m.cart)
+        .config(
+            start_dt="2020-01-01",
+            time_group="week",
+            conv_window="12 day",
+            group_by=m.view.brand,
+            max_group_by_count=3,
+        )
+        .get_df()
+    )
+
+    assert 99 == df.shape[0]
+    assert_row(
+        df,
+        _datetime=pd.Timestamp("2019-12-30 00:00:00"),
+        _unique_user_count_1=6,
+        _event_count_1=12,
+        _unique_user_count_2=2,
+        _event_count_2=6,
+        _group="cosmoprofi",
+        _conversion_rate=0.33333,
+    )
+
 
 @pytest.mark.parametrize("config", CONFIGS)
 def test_db_integrations(config: TestCase):

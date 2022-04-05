@@ -35,3 +35,20 @@ SIMPLE_BIG_DATA = EventDataSource(
         },
     ),
 )
+
+ECOMMERCE_EVENTS = EventDataSource(
+    table_name="ecommerce_events",
+    event_name_field="event_name",
+    user_id_field="user_id",
+    event_time_field="event_time",
+    max_enum_cardinality=300,
+    max_map_key_cardinality=300,
+    event_specific_fields=["element_id"],
+    connection=Connection(
+        connection_type=ConnectionType.FILE,
+        extra_configs={
+            "file_type": "parquet",
+            "path": WD + "/ecommerce_events.parquet",
+        },
+    ),
+)

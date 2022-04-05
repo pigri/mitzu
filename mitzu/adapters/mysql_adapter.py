@@ -31,7 +31,7 @@ class MySQLAdapter(SQLAlchemyAdapter):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.date_add(
                 SA.func.date(table_column),
-                EXP.text(f"interval -weekday({table_column}) day"),
+                EXP.text(f"interval -{SA.func.weekday(table_column)} day"),
             )
 
         elif time_group == M.TimeGroup.SECOND:
