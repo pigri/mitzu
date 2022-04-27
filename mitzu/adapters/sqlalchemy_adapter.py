@@ -96,7 +96,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
             self._table = SA.Table(
-                self.source.table_name,
+                self.source.single_event_data_table.table_name,
                 metadata_obj,
                 autoload_with=engine,
                 autoload=True,
@@ -125,9 +125,19 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def get_distinct_event_names(self) -> List[str]:
         table = self.get_table()
         result = self.execute_query(
-            SA.select([SA.distinct(table.columns.get(self.source.event_name_field))])
+            SA.select(
+                [
+                    SA.distinct(
+                        table.columns.get(
+                            self.source.single_event_data_table.event_name_field
+                        )
+                    )
+                ]
+            )
         )
-        return pd.DataFrame(result)[self.source.event_name_field].tolist()
+        return pd.DataFrame(result)[
+            self.source.single_event_data_table.event_name_field
+        ].tolist()
 
     def _get_datetime_interval(
         self, table_column: SA.Column, timewindow: M.TimeWindow
@@ -161,7 +171,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     ) -> pd.DataFrame:
         source = self.source
         columns = self.get_table().columns
-        event_name_field = source.event_name_field
+        event_name_field = source.single_event_data_table.event_name_field
         event_name_select_field = (
             columns.get(event_name_field).label(GA.EVENT_NAME_ALIAS_COL)
             if event_specific
@@ -206,7 +216,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         _enums=values[f._name],
                     )
                     for f in fields
-                    if f._name != self.source.event_name_field
+                    if f._name != self.source.single_event_data_table.event_name_field
                 },
                 _source=self.source,
             )
@@ -251,7 +261,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
-            evt_name_col = table.columns.get(left._source.event_name_field)
+            evt_name_col = table.columns.get(
+                left._source.single_event_data_table.event_name_field
+            )
             event_name_filter = (
                 (evt_name_col == left._event_name)
                 if left._event_name != M.ANY_EVENT_NAME
@@ -280,7 +292,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         start_date = metric._start_dt
         end_date = metric._end_dt
 
-        evt_time_col = table.columns.get(self.source.event_time_field)
+        evt_time_col = table.columns.get(
+            self.source.single_event_data_table.event_time_field
+        )
         return (evt_time_col >= start_date) & (evt_time_col <= end_date)
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
@@ -290,7 +304,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         evt_time_group = (
             self._get_date_trunc(
-                table_column=columns.get(source.event_time_field),
+                table_column=columns.get(
+                    source.single_event_data_table.event_time_field
+                ),
                 time_group=metric._time_group,
             )
             if metric._time_group != M.TimeGroup.TOTAL
@@ -307,12 +323,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             columns=[
                 evt_time_group.label(GA.DATETIME_COL),
                 group_by.label(GA.GROUP_COL),
-                SA.func.count(columns.get(source.user_id_field).distinct()).label(
-                    GA.USER_COUNT_COL
-                ),
-                SA.func.count(columns.get(source.user_id_field)).label(
-                    GA.EVENT_COUNT_COL
-                ),
+                SA.func.count(
+                    columns.get(source.single_event_data_table.user_id_field).distinct()
+                ).label(GA.USER_COUNT_COL),
+                SA.func.count(
+                    columns.get(source.single_event_data_table.user_id_field)
+                ).label(GA.EVENT_COUNT_COL),
             ],
             whereclause=(
                 self._get_segment_where_clause(table, metric._segment)
@@ -331,8 +347,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         source = self.source
         first_segment = metric._conversion._segments[0]
         other_segments = metric._conversion._segments[1:]
-        user_id_col = columns.get(source.user_id_field)
-        event_time_col = columns.get(source.event_time_field)
+        user_id_col = columns.get(source.single_event_data_table.user_id_field)
+        event_time_col = columns.get(source.single_event_data_table.event_time_field)
         time_group = metric._time_group
 
         if time_group != M.TimeGroup.TOTAL:
@@ -357,7 +373,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             prev_cols = prev_table.columns
             curr_table = self.get_table()
             curr_cols = curr_table.columns
-            curr_used_id_col = curr_cols.get(source.user_id_field)
+            curr_used_id_col = curr_cols.get(
+                source.single_event_data_table.user_id_field
+            )
 
             steps.append(curr_table)
 
@@ -374,15 +392,21 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             joined_source = joined_source.join(
                 curr_table,
                 (
-                    (prev_cols.get(source.user_id_field) == curr_used_id_col)
-                    & (
-                        curr_cols.get(source.event_time_field)
-                        > prev_cols.get(source.event_time_field)
+                    (
+                        prev_cols.get(source.single_event_data_table.user_id_field)
+                        == curr_used_id_col
                     )
                     & (
-                        curr_cols.get(source.event_time_field)
+                        curr_cols.get(source.single_event_data_table.event_time_field)
+                        > prev_cols.get(source.single_event_data_table.event_time_field)
+                    )
+                    & (
+                        curr_cols.get(source.single_event_data_table.event_time_field)
                         <= self._get_datetime_interval(
-                            columns.get(source.event_time_field), metric._conv_window
+                            columns.get(
+                                source.single_event_data_table.event_time_field
+                            ),
+                            metric._conv_window,
                         )
                     )
                     & self._get_segment_where_clause(curr_table, seg)
@@ -395,7 +419,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             group_by.label(GA.GROUP_COL),
             (
                 SA.func.count(
-                    steps[len(steps) - 1].columns.get(source.user_id_field).distinct()
+                    steps[len(steps) - 1]
+                    .columns.get(source.single_event_data_table.user_id_field)
+                    .distinct()
                 )
                 * 1.0
                 / SA.func.count(user_id_col.distinct())

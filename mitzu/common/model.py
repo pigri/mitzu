@@ -169,15 +169,21 @@ class CombinedTimeWindow:
 
 
 @dataclass
-class EventDataSource:
-    connection: Connection
+class EventDataTable:
     table_name: str = "dataset"
     event_time_field: str = "event_time"
     user_id_field: str = "user_id"
-    event_name_field: str = "event_name"
+    event_name_field: Optional[str] = "event_name"
+    event_name_alias: Optional[str] = None
     ignored_fields: List[str] = default_field([])
     event_specific_fields: List[str] = default_field([])
     event_id_field: Optional[str] = None
+
+
+@dataclass
+class EventDataSource:
+    connection: Connection
+    single_event_data_table: Optional[EventDataTable]
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
     description: Optional[str] = None

@@ -73,13 +73,17 @@ class EventDatasetDiscovery:
 
     def _get_specific_fields(self, columns: List[Field]):
         res = []
-        for spec_col_name in self.source.event_specific_fields:
+        for spec_col_name in self.source.single_event_data_table.event_specific_fields:
             res.extend([col for col in columns if col._name.startswith(spec_col_name)])
         return res
 
     def discover_dataset(self) -> DiscoveredDataset:
         fields = self.dataset_adapter.list_fields()
-        fields = [f for f in fields if f._name not in self.source.ignored_fields]
+        fields = [
+            f
+            for f in fields
+            if f._name not in self.source.single_event_data_table.ignored_fields
+        ]
 
         specific_fields = self._get_specific_fields(fields)
         generic_fields = [c for c in fields if c not in specific_fields]

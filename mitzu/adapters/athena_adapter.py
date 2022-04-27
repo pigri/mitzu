@@ -31,7 +31,9 @@ class AthenaAdapter(SQLAlchemyAdapter):
         start_date = metric._start_dt.replace(microsecond=0)
         end_date = metric._end_dt.replace(microsecond=0)
 
-        evt_time_col = table.columns.get(self.source.event_time_field)
+        evt_time_col = table.columns.get(
+            self.source.single_event_data_table.event_time_field
+        )
         return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
             evt_time_col <= SA.text(f"timestamp '{end_date}'")
         )
