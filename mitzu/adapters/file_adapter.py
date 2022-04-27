@@ -22,7 +22,7 @@ class FileAdapter(SQLiteAdapter):
             df = self._read_file()
             self._engine = super().get_engine()
             df.to_sql(
-                name=source.single_event_data_table.table_name,
+                name=source.event_data_table.table_name,
                 con=self._engine,
                 index=False,
             )
@@ -40,8 +40,8 @@ class FileAdapter(SQLiteAdapter):
             df = pd.read_parquet(path)
         else:
             raise Exception("Extension not supported: " + extension)
-        df[source.single_event_data_table.event_time_field] = pd.to_datetime(
-            df[source.single_event_data_table.event_time_field]
+        df[source.event_data_table.event_time_field] = pd.to_datetime(
+            df[source.event_data_table.event_time_field]
         )
         return self._fix_complex_types(df)
 

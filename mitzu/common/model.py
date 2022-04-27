@@ -183,7 +183,7 @@ class EventDataTable:
 @dataclass
 class EventDataSource:
     connection: Connection
-    single_event_data_table: Optional[EventDataTable]
+    event_data_table: EventDataTable
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
     description: Optional[str] = None

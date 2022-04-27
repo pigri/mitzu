@@ -46,11 +46,9 @@ CONFIGS = [
 
 @retry(Exception, delay=5, tries=6)
 def check_table(engine, source: EventDataSource) -> bool:
-    print(f"Trying to connect to {source.single_event_data_table.table_name}")
+    print(f"Trying to connect to {source.event_data_table.table_name}")
     ins = inspect(engine)
-    return ins.dialect.has_table(
-        engine.connect(), source.single_event_data_table.table_name
-    )
+    return ins.dialect.has_table(engine.connect(), source.event_data_table.table_name)
 
 
 def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapter:
@@ -59,7 +57,7 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
     engine = adapter.get_engine()
     ret = check_table(engine, source)
 
-    print(f"Table {source.single_event_data_table.table_name} exists: {ret}")
+    print(f"Table {source.event_data_table.table_name} exists: {ret}")
     if not ret:
         if raw_path.endswith(".csv"):
             pdf = pd.read_csv(raw_path)
@@ -68,14 +66,12 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
         else:
             raise Exception("Unsupported integration test data at\n" + raw_path)
         try:
-            pdf[source.single_event_data_table.event_time_field] = pdf[
-                source.single_event_data_table.event_time_field
+            pdf[source.event_data_table.event_time_field] = pdf[
+                source.event_data_table.event_time_field
             ].apply(lambda v: datetime.fromisoformat(v))
         except Exception as exc:
             print(exc)
-        pdf.to_sql(
-            con=engine, name=source.single_event_data_table.table_name, index=False
-        )
+        pdf.to_sql(con=engine, name=source.event_data_table.table_name, index=False)
     return adapter
 
 

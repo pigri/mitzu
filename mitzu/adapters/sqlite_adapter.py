@@ -55,7 +55,7 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         df = super()._get_column_values_df(fields, event_specific)
 
         for field in df.columns:
-            if field != source.single_event_data_table.event_name_field:
+            if field != source.event_data_table.event_name_field:
                 df[field] = (
                     df[field]
                     .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)

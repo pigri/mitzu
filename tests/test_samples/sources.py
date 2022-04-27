@@ -9,7 +9,7 @@ import os
 WD = os.path.dirname(os.path.abspath(__file__))
 
 SIMPLE_CSV = EventDataSource(
-    single_event_data_table=EventDataTable(
+    event_data_table=EventDataTable(
         table_name="simple_dataset",
         event_name_field="event_type",
         user_id_field="user_id",
@@ -28,7 +28,7 @@ SIMPLE_CSV = EventDataSource(
 )
 
 SIMPLE_BIG_DATA = EventDataSource(
-    single_event_data_table=EventDataTable(
+    event_data_table=EventDataTable(
         table_name="simple_big_data",
         event_name_field="event_name",
         user_id_field="user_id",
@@ -46,7 +46,7 @@ SIMPLE_BIG_DATA = EventDataSource(
 )
 
 ECOMMERCE_EVENTS = EventDataSource(
-    single_event_data_table=EventDataTable(
+    event_data_table=EventDataTable(
         table_name="ecommerce_events",
         event_name_field="event_name",
         user_id_field="user_id",
