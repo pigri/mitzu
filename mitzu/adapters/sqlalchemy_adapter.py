@@ -9,7 +9,7 @@ from sql_formatter.core import format_sql  # type: ignore
 
 
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
-    _table: SA.Table
+    _table_cache: Dict[M.EventDataTable, SA.Table] = {}
     _engine: Any
 
     def __init__(self, source: M.EventDataSource):
@@ -91,17 +91,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._engine = SA.create_engine(url)
         return self._engine
 
-    def get_table(self) -> SA.Table:
-        if self._table is None:
+    def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
+        if event_data_table not in self._table_cache:
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
-            self._table = SA.Table(
-                self.source.event_data_table.table_name,
+            self._table_cache[event_data_table] = SA.Table(
+                event_data_table.table_name,
                 metadata_obj,
                 autoload_with=engine,
                 autoload=True,
             )
-        return aliased(self._table)
+        return aliased(self._table_cache[event_data_table])
 
     def validate_source(self):
         table = self.get_table()
@@ -112,30 +112,19 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         ):
             raise Exception("Table doesn't contain all essential columns.")
 
-    def list_fields(self) -> List[M.Field]:
-        table = self.get_table()
+    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
+        table = self.get_table(event_data_table)
         field_types = table.columns.items()
         return [M.Field(_name=k, _type=self.map_type(v.type)) for k, v in field_types]
 
-    def get_map_field_keys(
-        self, map_field: M.Field, event_specific: bool
-    ) -> Dict[str, List[M.Field]]:
-        raise NotImplementedError("Map fields are not yet supported")
-
-    def get_distinct_event_names(self) -> List[str]:
-        table = self.get_table()
+    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
+        table = self.get_table(event_data_table)
         result = self.execute_query(
             SA.select(
-                [
-                    SA.distinct(
-                        table.columns.get(self.source.event_data_table.event_name_field)
-                    )
-                ]
+                [SA.distinct(table.columns.get(event_data_table.event_name_field))]
             )
         )
-        return pd.DataFrame(result)[
-            self.source.event_data_table.event_name_field
-        ].tolist()
+        return pd.DataFrame(result)[event_data_table.event_name_field].tolist()
 
     def _get_datetime_interval(
         self, table_column: SA.Column, timewindow: M.TimeWindow
@@ -165,11 +154,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return True
 
     def _get_column_values_df(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> pd.DataFrame:
         source = self.source
-        columns = self.get_table().columns
-        event_name_field = source.event_data_table.event_name_field
+        columns = self.get_table(event_data_table).columns
+        event_name_field = event_data_table.event_name_field
         event_name_select_field = (
             columns.get(event_name_field).label(GA.EVENT_NAME_ALIAS_COL)
             if event_specific
@@ -199,9 +191,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return df.set_index(GA.EVENT_NAME_ALIAS_COL)
 
     def get_field_enums(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        enums = self._get_column_values_df(fields, event_specific).to_dict("index")
+        enums = self._get_column_values_df(
+            event_data_table, fields, event_specific
+        ).to_dict("index")
         res = {}
         for evt, values in enums.items():
             res[evt] = M.EventDef(
@@ -211,12 +208,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         _event_name=evt,
                         _field=f,
                         _source=self.source,
+                        _event_data_table=event_data_table,
                         _enums=values[f._name],
                     )
                     for f in fields
-                    if f._name != self.source.event_data_table.event_name_field
+                    if f._name != event_data_table.event_name_field
                 },
                 _source=self.source,
+                _event_data_table=event_data_table,
             )
         return res
 
@@ -259,9 +258,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
-            evt_name_col = table.columns.get(
-                left._source.event_data_table.event_name_field
-            )
+            evt_name_col = table.columns.get(left._event_data_table.event_name_field)
             event_name_filter = (
                 (evt_name_col == left._event_name)
                 if left._event_name != M.ANY_EVENT_NAME
@@ -286,11 +283,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         else:
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
-    def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
+    def _get_timewindow_where_clause(
+        self, event_data_table: M.EventDataTable, table: SA.Table, metric: M.Metric
+    ) -> Any:
         start_date = metric._start_dt
         end_date = metric._end_dt
 
-        evt_time_col = table.columns.get(self.source.event_data_table.event_time_field)
+        evt_time_col = table.columns.get(event_data_table.event_time_field)
         return (evt_time_col >= start_date) & (evt_time_col <= end_date)
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:

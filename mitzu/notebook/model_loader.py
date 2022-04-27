@@ -1,20 +1,8 @@
 from __future__ import annotations
-from typing import Dict, Any
+from typing import Dict, Any, cast
 import re
-from copy import copy
+import mitzu.common.model as M
 
-
-from mitzu.common.model import (
-    DataType,
-    DiscoveredDataset,
-    EventFieldDef,
-    EventDataSource,
-    EventDef,
-    SimpleSegment,
-    Operator,
-    ANY_EVENT_NAME,
-    Segment,
-)
 
 NUM_2_WORDS = {
     1: "one",
@@ -36,96 +24,96 @@ def fix_def(val: str):
     return fixed[:32]
 
 
-def _any_of(self: EventFieldDef, *vals: Any) -> SimpleSegment:
-    return SimpleSegment(_left=self, _operator=Operator.ANY_OF, _right=vals)
+def _any_of(self: M.EventFieldDef, *vals: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(_left=self, _operator=M.Operator.ANY_OF, _right=vals)
 
 
-def _not_any_of(self: EventFieldDef, *vals: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _not_any_of(self: M.EventFieldDef, *vals: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.NONE_OF,
+        _operator=M.Operator.NONE_OF,
         _right=vals,
     )
 
 
-def _like(self: EventFieldDef, val: str) -> SimpleSegment:
-    return SimpleSegment(
+def _like(self: M.EventFieldDef, val: str) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.LIKE,
+        _operator=M.Operator.LIKE,
         _right=val,
     )
 
 
-def _not_like(self: EventFieldDef, val: str) -> SimpleSegment:
-    return SimpleSegment(
+def _not_like(self: M.EventFieldDef, val: str) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.NOT_LIKE,
+        _operator=M.Operator.NOT_LIKE,
         _right=val,
     )
 
 
-def _eq(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _eq(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.EQ,
+        _operator=M.Operator.EQ,
         _right=val,
     )
 
 
-def _not_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _not_eq(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.NEQ,
+        _operator=M.Operator.NEQ,
         _right=val,
     )
 
 
-def _gt(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _gt(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.GT,
+        _operator=M.Operator.GT,
         _right=val,
     )
 
 
-def _lt(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _lt(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.LT,
+        _operator=M.Operator.LT,
         _right=val,
     )
 
 
-def _gt_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _gt_eq(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.GT_EQ,
+        _operator=M.Operator.GT_EQ,
         _right=val,
     )
 
 
-def _lt_eq(self: EventFieldDef, val: Any) -> SimpleSegment:
-    return SimpleSegment(
+def _lt_eq(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
+    return M.SimpleSegment(
         _left=self,
-        _operator=Operator.LT_EQ,
+        _operator=M.Operator.LT_EQ,
         _right=val,
     )
 
 
-def _event_condition_constructor(self: SimpleSegment, event_def: EventDef):
-    Segment.__init__(self)
+def _event_condition_constructor(self: M.SimpleSegment, event_def: M.EventDef):
+    M.Segment.__init__(self)
     self._left = event_def
 
 
 def add_enum_defs(
-    event_field: EventFieldDef,
+    event_field: M.EventFieldDef,
     class_def: Dict,
 ):
     if event_field._enums is not None:
         for enm in event_field._enums:
-            class_def[f"{fix_def('is_'+str(enm))}"] = SimpleSegment(
+            class_def[f"{fix_def('is_'+str(enm))}"] = M.SimpleSegment(
                 _left=event_field,
-                _operator=Operator.EQ,
+                _operator=M.Operator.EQ,
                 _right=enm,
             )
 
@@ -142,25 +130,25 @@ class ModelLoader:
     def _create_event_field_class(
         self,
         event_name: str,
-        event_field: EventFieldDef,
+        event_field: M.EventFieldDef,
     ):
         class_def: Dict[str, Any] = {}
         field_type = event_field._field._type
 
-        if field_type == DataType.STRING:
+        if field_type == M.DataType.STRING:
             class_def["like"] = _like
             class_def["not_like"] = _not_like
             add_enum_defs(event_field, class_def)
 
-        if field_type == DataType.BOOL:
-            class_def["is_true"] = SimpleSegment(
+        if field_type == M.DataType.BOOL:
+            class_def["is_true"] = M.SimpleSegment(
                 _left=event_field,
-                _operator=Operator.EQ,
+                _operator=M.Operator.EQ,
                 _right=True,
             )
-            class_def["is_false"] = SimpleSegment(
+            class_def["is_false"] = M.SimpleSegment(
                 _left=event_field,
-                _operator=Operator.EQ,
+                _operator=M.Operator.EQ,
                 _right=False,
             )
         else:
@@ -180,24 +168,24 @@ class ModelLoader:
             class_def["not_any_of"] = _not_any_of
             class_def["any_of"] = _any_of
 
-        class_def["is_null"] = SimpleSegment(
+        class_def["is_null"] = M.SimpleSegment(
             _left=event_field,
-            _operator=Operator.EQ,
+            _operator=M.Operator.EQ,
             _right=None,
         )
-        class_def["is_not_null"] = SimpleSegment(
+        class_def["is_not_null"] = M.SimpleSegment(
             _left=event_field,
-            _operator=Operator.NEQ,
+            _operator=M.Operator.NEQ,
             _right=None,
         )
 
         return type(
             f"_{event_name}_{fix_def(event_field._field._name)}",
-            (EventFieldDef,),
+            (M.EventFieldDef,),
             class_def,
         )
 
-    def _create_event_instance(self, event: EventDef, source: EventDataSource):
+    def _create_event_instance(self, event: M.EventDef, source: M.EventDataSource):
         fields = event._fields
 
         class_def: Dict[str, Any] = {}
@@ -227,36 +215,28 @@ class ModelLoader:
                 class_def[class_field_name] = class_instance
         class_def["__init__"] = _event_condition_constructor
 
-        return type(f"_{event._event_name}", (SimpleSegment,), class_def)(event)
+        return type(f"_{event._event_name}", (M.SimpleSegment,), class_def)(event)
 
-    def _copy_any_event(self, any_event: EventDef):
-        # Any events needs to be copied so the event name can be changed to every specific event
-        res = copy(any_event)
-        res._fields = {}
-        for f, ef in any_event._fields.items():
-            res._fields[f] = copy(ef)
-        return res
-
-    def _process_schema(self, defs: DiscoveredDataset):
-        schema = defs.definitions
+    def _process_schema(self, defs: M.DiscoveredEventDataSource):
+        gen_defs = defs.generic_definitions
+        spec_defs = defs.event_specific_definitions
         source = defs.source
         class_def = {}
-        any_evt = schema.get(
-            ANY_EVENT_NAME,
-            EventDef(_event_name=ANY_EVENT_NAME, _fields={}, _source=defs.source),
-        )
 
-        for event_name, event_def in schema.items():
-            any_evt_copy = self._copy_any_event(any_evt)
-            event_def._fields = {**any_evt_copy._fields, **event_def._fields}
-            event_def._event_name = event_name
-            for _, event_field in event_def._fields.items():
-                event_field._event_name = event_name
-            class_def[fix_def(event_name)] = self._create_event_instance(
-                event_def, source
-            )
+        for ed_table in source.event_data_tables:
+            any_event = gen_defs[ed_table]
+            for event_name, event_def in spec_defs[ed_table].items():
+                event_def._fields = {**any_event._fields, **event_def._fields}
+                event_def._event_name = event_name
+                for _, event_field in event_def._fields.items():
+                    event_field._event_name = event_name
+                class_def[fix_def(event_name)] = self._create_event_instance(
+                    event_def, source
+                )
         return class_def
 
-    def create_dataset_model(self, defs: DiscoveredDataset):
+    def create_datasource_class_model(
+        self, defs: M.DiscoveredEventDataSource
+    ) -> DatasetModel:
         class_def = self._process_schema(defs)
-        return type("_dataset_model", (DatasetModel,), class_def)
+        return cast(DatasetModel, type("_dataset_model", (DatasetModel,), class_def))

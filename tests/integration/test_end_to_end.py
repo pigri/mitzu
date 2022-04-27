@@ -1,5 +1,5 @@
 from mitzu.adapters.file_adapter import FileAdapter, SQLiteAdapter
-from mitzu.discovery.dataset_discovery import EventDatasetDiscovery
+from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
 from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
 from datetime import datetime
 from mitzu.notebook.model_loader import ModelLoader
@@ -12,11 +12,11 @@ import pytest
 def test_simple_big_data_discovery():
     adapter = SQLiteAdapter(SIMPLE_BIG_DATA)
 
-    discovery = EventDatasetDiscovery(
+    discovery = EventDatasourceDiscovery(
         SIMPLE_BIG_DATA, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
 
-    dd = discovery.discover_dataset()
+    dd = discovery.discover_datasource()
 
     ml = ModelLoader()
     m = ml.create_dataset_model(dd)
@@ -31,10 +31,10 @@ def test_simple_big_data_discovery():
 
 def test_simple_csv_segmentation():
     adapter = FileAdapter(SIMPLE_CSV)
-    discovery = EventDatasetDiscovery(
+    discovery = EventDatasourceDiscovery(
         SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
-    dd = discovery.discover_dataset()
+    dd = discovery.discover_datasource()
     ml = ModelLoader()
     m = ml.create_dataset_model(dd)
 
@@ -64,10 +64,10 @@ def test_simple_csv_segmentation():
 
 def test_simple_csv_funnel():
     adapter = FileAdapter(SIMPLE_CSV)
-    discovery = EventDatasetDiscovery(
+    discovery = EventDatasourceDiscovery(
         SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
-    dd = discovery.discover_dataset()
+    dd = discovery.discover_datasource()
     ml = ModelLoader()
     m = ml.create_dataset_model(dd)
 

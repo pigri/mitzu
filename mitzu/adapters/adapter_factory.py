@@ -4,27 +4,24 @@ import mitzu.adapters.generic_adapter as GA
 
 
 def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:
-    if source.adapter is None:
-        con_type = source.connection.connection_type
-        if con_type == M.ConnectionType.FILE:
-            from mitzu.adapters.file_adapter import FileAdapter
+    con_type = source.connection.connection_type
+    if con_type == M.ConnectionType.FILE:
+        from mitzu.adapters.file_adapter import FileAdapter
 
-            source.adapter = FileAdapter(source)
-        elif con_type == M.ConnectionType.SQLITE:
-            from mitzu.adapters.file_adapter import SQLiteAdapter
+        return FileAdapter(source)
+    elif con_type == M.ConnectionType.SQLITE:
+        from mitzu.adapters.file_adapter import SQLiteAdapter
 
-            source.adapter = SQLiteAdapter(source)
-        elif con_type == M.ConnectionType.ATHENA:
-            from mitzu.adapters.athena_adapter import AthenaAdapter
+        return SQLiteAdapter(source)
+    elif con_type == M.ConnectionType.ATHENA:
+        from mitzu.adapters.athena_adapter import AthenaAdapter
 
-            source.adapter = AthenaAdapter(source)
-        elif con_type == M.ConnectionType.MYSQL:
-            from mitzu.adapters.mysql_adapter import MySQLAdapter
+        return AthenaAdapter(source)
+    elif con_type == M.ConnectionType.MYSQL:
+        from mitzu.adapters.mysql_adapter import MySQLAdapter
 
-            source.adapter = MySQLAdapter(source)
-        else:
-            from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+        return MySQLAdapter(source)
+    else:
+        from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
-            source.adapter = SQLAlchemyAdapter(source)
-
-    return source.adapter
+        return SQLAlchemyAdapter(source)

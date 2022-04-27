@@ -33,19 +33,25 @@ class GenericDatasetAdapter:
     def validate_source(self):
         raise NotImplementedError()
 
-    def list_fields(self) -> List[M.Field]:
+    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_map_field_keys(
-        self, map_field: M.Field, event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        map_field: M.Field,
+        event_specific: bool,
     ) -> Dict[str, List[M.Field]]:
         raise NotImplementedError()
 
-    def get_distinct_event_names(self) -> List[str]:
+    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         raise NotImplementedError()
 
     def get_field_enums(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 

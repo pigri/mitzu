@@ -49,13 +49,16 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         return SA.func.datetime(SA.func.strftime(fmt, table_column))
 
     def _get_column_values_df(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> pd.DataFrame:
-        source = self.source
-        df = super()._get_column_values_df(fields, event_specific)
+        self.source
+        df = super()._get_column_values_df(event_data_table, fields, event_specific)
 
         for field in df.columns:
-            if field != source.event_data_table.event_name_field:
+            if field != event_data_table.event_name_field:
                 df[field] = (
                     df[field]
                     .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)

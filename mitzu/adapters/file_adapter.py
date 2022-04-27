@@ -18,17 +18,17 @@ class FileAdapter(SQLiteAdapter):
 
     def get_engine(self) -> Any:
         if self._engine is None:
-            source = self.source
-            df = self._read_file()
             self._engine = super().get_engine()
-            df.to_sql(
-                name=source.event_data_table.table_name,
-                con=self._engine,
-                index=False,
-            )
+            for ed_table in self.source.event_data_tables:
+                df = self._read_file(ed_table)
+                df.to_sql(
+                    name=ed_table.table_name,
+                    con=self._engine,
+                    index=False,
+                )
         return self._engine
 
-    def _read_file(self) -> pd.DataFrame:
+    def _read_file(self, event_data_table: M.EventDataTable) -> pd.DataFrame:
         source = self.source
         extension = source.connection.extra_configs["file_type"]
         path = source.connection.extra_configs["path"]
@@ -40,8 +40,8 @@ class FileAdapter(SQLiteAdapter):
             df = pd.read_parquet(path)
         else:
             raise Exception("Extension not supported: " + extension)
-        df[source.event_data_table.event_time_field] = pd.to_datetime(
-            df[source.event_data_table.event_time_field]
+        df[event_data_table.event_time_field] = pd.to_datetime(
+            df[event_data_table.event_time_field]
         )
         return self._fix_complex_types(df)
 

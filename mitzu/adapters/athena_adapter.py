@@ -22,16 +22,25 @@ class AthenaAdapter(SQLAlchemyAdapter):
         return super().execute_query(query=query)
 
     def _get_column_values_df(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> pd.DataFrame:
-        df = super()._get_column_values_df(fields=fields, event_specific=event_specific)
+        df = super()._get_column_values_df(
+            event_data_table=event_data_table,
+            fields=fields,
+            event_specific=event_specific,
+        )
         return pdf_string_array_to_array(df)
 
-    def _get_timewindow_where_clause(self, table: SA.Table, metric: M.Metric) -> Any:
+    def _get_timewindow_where_clause(
+        self, event_data_table: M.EventDataTable, table: SA.Table, metric: M.Metric
+    ) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)
         end_date = metric._end_dt.replace(microsecond=0)
 
-        evt_time_col = table.columns.get(self.source.event_data_table.event_time_field)
+        evt_time_col = table.columns.get(event_data_table.event_time_field)
         return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
             evt_time_col <= SA.text(f"timestamp '{end_date}'")
         )
