@@ -1,11 +1,30 @@
 from __future__ import annotations
-from typing import Any, Dict, List, cast
+from dataclasses import dataclass
+from typing import Any, Dict, List, cast, Optional
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 from sqlalchemy.orm import aliased  # type:ignore
+from sqlalchemy.sql.expression import CTE, Select
 from sql_formatter.core import format_sql  # type: ignore
+
+
+@dataclass
+class SegmentSubQuery:
+    event_name: str
+    event_data_table: M.EventDataTable
+    table_ref: SA.Table
+    where_clause: Any
+    _unioned_with: Optional[SegmentSubQuery] = None
+
+    def union_all(self, sub_query: SegmentSubQuery):
+        u = self._unioned_with
+        curr = self
+        while u is not None:
+            curr = u
+            u = curr._unioned_with
+        curr._unioned_with = sub_query
 
 
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
@@ -254,10 +273,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return field is not None
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
-    def _get_segment_where_clause(self, table: SA.Table, segment: M.Segment) -> Any:
+    def _get_segment_sub_query(self, segment: M.Segment) -> SegmentSubQuery:
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
+            table = self.get_table(left._event_data_table)
             evt_name_col = table.columns.get(left._event_data_table.event_name_field)
             event_name_filter = (
                 (evt_name_col == left._event_name)
@@ -265,41 +285,100 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 else SA.literal(True)
             )
             if s._operator is None:
-                return event_name_filter
+                return SegmentSubQuery(
+                    event_name=left._event_name,
+                    event_data_table=left._event_data_table,
+                    table_ref=table,
+                    where_clause=event_name_filter,
+                )
             else:
-                return (event_name_filter) & self._get_simple_segment_condition(
-                    table, s
+                return SegmentSubQuery(
+                    event_name=left._event_name,
+                    event_data_table=left._event_data_table,
+                    table_ref=table,
+                    where_clause=(
+                        (event_name_filter)
+                        & self._get_simple_segment_condition(table, segment)
+                    ),
                 )
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
+            l_query = self._get_segment_sub_query(c._left)
+            r_query = self._get_segment_sub_query(c._right)
             if c._operator == M.BinaryOperator.AND:
-                return self._get_segment_where_clause(
-                    table, c._left
-                ) & self._get_segment_where_clause(table, c._right)
+                if l_query.event_data_table != r_query.event_data_table:
+                    raise Exception(
+                        f"And (&) or OR (|) operators can only be between the same events (e.g. page_view & page_view)"
+                    )
+                return SegmentSubQuery(
+                    event_name=l_query.event_name,
+                    event_data_table=l_query.event_data_table,
+                    table_ref=l_query.table_ref,
+                    where_clause=l_query.where_clause & r_query.where_clause,
+                )
             else:
-                return self._get_segment_where_clause(
-                    table, c._left
-                ) | self._get_segment_where_clause(table, c._right)
+                if l_query.event_data_table == r_query.event_data_table:
+                    return SegmentSubQuery(
+                        event_name=l_query.event_name,
+                        event_data_table=l_query.event_data_table,
+                        table_ref=l_query.table_ref,
+                        where_clause=l_query.where_clause | r_query.where_clause,
+                    )
+                else:
+                    l_query.union_all(r_query)
+                    return l_query
         else:
+            # TODO add more validations
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
-    def _get_timewindow_where_clause(
-        self, event_data_table: M.EventDataTable, table: SA.Table, metric: M.Metric
-    ) -> Any:
+    def _get_segment_sub_query_cte(
+        self, segment: M.Segment, sub_query: SegmentSubQuery
+    ) -> CTE:
+        res_select: Select = None
+        while True:
+            ed_table = sub_query.event_data_table
+            columns = sub_query.table_ref.columns
+            group_by = segment._group_by
+            group_by_cols = []
+            if group_by is not None:
+                group_by_cols = [
+                    columns.get(group_by._field._name, None).label(GA.GROUP_COL)
+                ]
+
+            select = SA.select(
+                columns=[
+                    columns.get(ed_table.user_id_field).label(GA.USER_ID_ALIAS_COL),
+                    columns.get(ed_table.event_time_field).label(GA.DATETIME_COL),
+                    *group_by_cols,
+                ],
+                whereclause=(sub_query.where_clause),
+            )
+            if res_select is None:
+                res_select = select
+            else:
+                print("union")
+                res_select = res_select.union_all(select)
+            if sub_query._unioned_with is not None:
+                sub_query = sub_query._unioned_with
+            else:
+                break
+
+        return res_select.cte()
+
+    def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt
         end_date = metric._end_dt
 
-        evt_time_col = table.columns.get(event_data_table.event_time_field)
+        evt_time_col = cte.columns.get(GA.DATETIME_COL)
         return (evt_time_col >= start_date) & (evt_time_col <= end_date)
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
-        table = aliased(self.get_table())
-        columns = table.columns
-        source = self.source
+        sub_query = self._get_segment_sub_query(metric._segment)
+        cte: CTE = aliased(self._get_segment_sub_query_cte(metric._segment, sub_query))
 
         evt_time_group = (
             self._get_date_trunc(
-                table_column=columns.get(source.event_data_table.event_time_field),
+                table_column=cte.columns.get(GA.DATETIME_COL),
                 time_group=metric._time_group,
             )
             if metric._time_group != M.TimeGroup.TOTAL
@@ -307,7 +386,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
         group_by = (
-            columns.get(metric._group_by._field._name)
+            cte.columns.get(GA.GROUP_COL)
             if metric._group_by is not None
             else SA.literal(None)
         )
@@ -316,17 +395,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             columns=[
                 evt_time_group.label(GA.DATETIME_COL),
                 group_by.label(GA.GROUP_COL),
-                SA.func.count(
-                    columns.get(source.event_data_table.user_id_field).distinct()
-                ).label(GA.USER_COUNT_COL),
-                SA.func.count(columns.get(source.event_data_table.user_id_field)).label(
+                SA.func.count(cte.columns.get(GA.USER_ID_ALIAS_COL).distinct()).label(
+                    GA.USER_COUNT_COL
+                ),
+                SA.func.count(cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
                     GA.EVENT_COUNT_COL
                 ),
             ],
-            whereclause=(
-                self._get_segment_where_clause(table, metric._segment)
-                & self._get_timewindow_where_clause(table, metric)
-            ),
+            whereclause=(self._get_timewindow_where_clause(cte, metric)),
             group_by=(
                 [SA.literal(1), SA.literal(2)]
                 if self._column_index_support()

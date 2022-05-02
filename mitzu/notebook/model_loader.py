@@ -195,6 +195,7 @@ class ModelLoader:
                 _event_name=event._event_name,
                 _field=event_field._field,
                 _source=source,
+                _event_data_table=event_field._event_data_table,
             )
 
             if "." in event_field._field._name:

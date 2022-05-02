@@ -1,11 +1,17 @@
 import mitzu.project as P
-from mitzu.common.model import EventDataSource, Connection, ConnectionType  # type: ignore
+from mitzu.common.model import EventDataSource, Connection, ConnectionType, EventDataTable  # type: ignore
 from datetime import datetime
 from mitzu.notebook.model_loader import DatasetModel
 import inspect
 from typing import Dict, Optional
 
-__all__ = ["init_notebook_project", "Connection", "ConnectionType", "EventDataSource"]
+__all__ = [
+    "init_notebook_project",
+    "Connection",
+    "ConnectionType",
+    "EventDataSource",
+    "EventDataTable",
+]
 
 
 Connection
