@@ -6,12 +6,14 @@ from datetime import datetime, timedelta
 from enum import Enum
 from copy import copy
 
-import pandas as pd  # type: ignore
+import pandas as pd
 import mitzu.common.helper as helper
 import mitzu.adapters.adapter_factory as factory
 import mitzu.notebook.visualization as vis
 import mitzu.adapters.generic_adapter as GA
-from sshtunnel import SSHTunnelForwarder  # type: ignore
+import mitzu.discovery.datasource_discovery as D
+import mitzu.notebook.model_loader as ML
+from sshtunnel import SSHTunnelForwarder
 
 
 def default_field(obj):
@@ -169,29 +171,54 @@ class CombinedTimeWindow:
 
 
 @dataclass
-class EventDataSource:
-    connection: Connection
+class EventDataTable:
     table_name: str = "dataset"
     event_time_field: str = "event_time"
     user_id_field: str = "user_id"
-    event_name_field: str = "event_name"
+    event_name_field: Optional[str] = "event_name"
+    event_name_alias: Optional[str] = None
     ignored_fields: List[str] = default_field([])
     event_specific_fields: List[str] = default_field([])
     event_id_field: Optional[str] = None
-    max_enum_cardinality: int = 300
-    max_map_key_cardinality: int = 300
     description: Optional[str] = None
-    adapter: Optional[GA.GenericDatasetAdapter] = None
+
+    def __hash__(self):
+        return hash(
+            f"{self.table_name}{self.event_time_field}{self.user_id_field}"
+            f"{self.event_name_field}{self.event_name_alias}"
+        )
 
 
 @dataclass
-class DiscoveredDataset:
+class EventDataSource:
+    connection: Connection
+    event_data_tables: List[EventDataTable]
+    max_enum_cardinality: int = 300
+    max_map_key_cardinality: int = 300
+    _adapter: Optional[GA.GenericDatasetAdapter] = None
 
-    definitions: Dict[str, EventDef]
+    @property
+    def adapter(self) -> GA.GenericDatasetAdapter:
+        if self._adapter is None:
+            self._adapter = factory.get_or_create_adapter(self)
+        return self._adapter
+
+    def discover_datasource(
+        self, start_dt: datetime = None, end_dt: datetime = None
+    ) -> DiscoveredEventDataSource:
+        return D.EventDatasourceDiscovery(
+            source=self, start_dt=start_dt, end_dt=end_dt
+        ).discover_datasource()
+
+
+@dataclass
+class DiscoveredEventDataSource:
+    event_specific_definitions: Dict[EventDataTable, Dict[str, EventDef]]
+    generic_definitions: Dict[EventDataTable, EventDef]
     source: EventDataSource
 
-    def __str__(self) -> str:
-        return "\n".join([str(v) for v in self.definitions.values()])
+    def create_notebook_class_model(self) -> ML.DatasetModel:
+        return ML.ModelLoader().create_datasource_class_model(self)
 
 
 @dataclass(unsafe_hash=True)
@@ -215,6 +242,7 @@ class EventFieldDef:
     _event_name: str
     _field: Field
     _source: EventDataSource
+    _event_data_table: EventDataTable
     _description: Optional[str] = ""
     _enums: Optional[List[Any]] = None
 
@@ -224,6 +252,7 @@ class EventDef:
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
     _source: EventDataSource
+    _event_data_table: EventDataTable
     _description: Optional[str] = ""
 
     def __str__(self) -> str:
@@ -267,18 +296,15 @@ class ConversionMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        adapter = factory.get_or_create_adapter(source=source)
-        return adapter.get_conversion_df(self)
+        return source.adapter.get_conversion_df(self)
 
     def get_sql(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        adapter = factory.get_or_create_adapter(source=source)
-        return adapter.get_conversion_sql(self)
+        return source.adapter.get_conversion_sql(self)
 
     def print_sql(self):
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        adapter = factory.get_or_create_adapter(source=source)
-        print(adapter.get_conversion_sql(self))
+        print(source.adapter.get_conversion_sql(self))
 
     def __repr__(self) -> str:
         fig = vis.plot_conversion(self)
@@ -296,18 +322,15 @@ class SegmentationMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.get_or_create_adapter(source=source)
-        return adapter.get_segmentation_df(self)
+        return source.adapter.get_segmentation_df(self)
 
     def get_sql(self) -> str:
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.get_or_create_adapter(source=source)
-        return adapter.get_segmentation_sql(self)
+        return source.adapter.get_segmentation_sql(self)
 
     def print_sql(self):
         source = helper.get_segment_event_datasource(self._segment)
-        adapter = factory.get_or_create_adapter(source=source)
-        print(adapter.get_segmentation_sql(self))
+        print(source.adapter.get_segmentation_sql(self))
 
     def __repr__(self) -> str:
         fig = vis.plot_segmentation(self)

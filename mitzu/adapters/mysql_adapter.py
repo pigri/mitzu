@@ -3,9 +3,9 @@ from typing import Any, List
 
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
-import pandas as pd  # type: ignore
-import sqlalchemy as SA  # type: ignore
-import sqlalchemy.sql.expression as EXP  # type: ignore
+import pandas as pd
+import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
 from mitzu.adapters.helper import pdf_string_array_to_array
 
 NULL_VALUE_KEY = "##NULL##"
@@ -21,9 +21,16 @@ class MySQLAdapter(SQLAlchemyAdapter):
         )
 
     def _get_column_values_df(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> pd.DataFrame:
-        df = super()._get_column_values_df(fields=fields, event_specific=event_specific)
+        df = super()._get_column_values_df(
+            event_data_table=event_data_table,
+            fields=fields,
+            event_specific=event_specific,
+        )
         df = pdf_string_array_to_array(df, split_text='", "', omit_chars=2)
         return df
 

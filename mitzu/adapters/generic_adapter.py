@@ -1,16 +1,21 @@
 from __future__ import annotations
 import mitzu.common.model as M
 from typing import Dict, List, Any
-import pandas as pd  # type: ignore
+import pandas as pd
 
+# Final Select Columns
 EVENT_NAME_ALIAS_COL = "_event_type"
 DATETIME_COL = "_datetime"
 GROUP_COL = "_group"
 USER_COUNT_COL = "_unique_user_count"
 EVENT_COUNT_COL = "_event_count"
 CVR_COL = "_conversion_rate"
-PERCENTILE_50_COL = "_p50_conv_time"
-PERCENTILE_95_COL = "_p95_conv_time"
+
+
+# CTE Colmns
+CTE_USER_ID_ALIAS_COL = "_cte_user_id"
+CTE_DATETIME_COL = "_cte_datetime"
+CTE_GROUP_COL = "_cte_group"
 
 
 class GenericDatasetAdapter:
@@ -33,19 +38,25 @@ class GenericDatasetAdapter:
     def validate_source(self):
         raise NotImplementedError()
 
-    def list_fields(self) -> List[M.Field]:
+    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_map_field_keys(
-        self, map_field: M.Field, event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        map_field: M.Field,
+        event_specific: bool,
     ) -> Dict[str, List[M.Field]]:
         raise NotImplementedError()
 
-    def get_distinct_event_names(self) -> List[str]:
+    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         raise NotImplementedError()
 
     def get_field_enums(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 

@@ -6,7 +6,7 @@ from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
 def test_simple_list_columns():
     adapter = fa.FileAdapter(SIMPLE_CSV)
 
-    fields = adapter.list_fields()
+    fields = adapter.list_fields(SIMPLE_CSV.event_data_tables[0])
     assert 9 == len(fields)
     assert 3 == len(
         set(fields)
@@ -23,7 +23,7 @@ def test_simple_list_columns():
 def test_complex_list_columns():
     adapter = fa.FileAdapter(SIMPLE_BIG_DATA)
 
-    fields = adapter.list_fields()
+    fields = adapter.list_fields(SIMPLE_BIG_DATA.event_data_tables[0])
     assert 3 == len(
         set(fields)
         & set(

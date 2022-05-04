@@ -4,8 +4,8 @@ from typing import Any, List
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
-import pandas as pd  # type: ignore
-import sqlalchemy as SA  # type: ignore
+import pandas as pd
+import sqlalchemy as SA
 from mitzu.adapters.helper import dataframe_str_to_datetime
 
 VALUE_SEPARATOR = "###"
@@ -49,13 +49,16 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         return SA.func.datetime(SA.func.strftime(fmt, table_column))
 
     def _get_column_values_df(
-        self, fields: List[M.Field], event_specific: bool
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
     ) -> pd.DataFrame:
-        source = self.source
-        df = super()._get_column_values_df(fields, event_specific)
+        self.source
+        df = super()._get_column_values_df(event_data_table, fields, event_specific)
 
         for field in df.columns:
-            if field != source.event_name_field:
+            if field != event_data_table.event_name_field:
                 df[field] = (
                     df[field]
                     .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)

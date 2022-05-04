@@ -12,7 +12,7 @@ autoflake: ## fixes imports, unused variables
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/
 
 mypy:
-	$(POETRY) run mypy mitzu tests
+	$(POETRY) run mypy mitzu tests --ignore-missing-imports
 
 unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
