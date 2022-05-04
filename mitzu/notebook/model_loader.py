@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Dict, Any, cast
 import re
 import mitzu.common.model as M
-
+from copy import copy
 
 NUM_2_WORDS = {
     1: "one",
@@ -132,6 +132,7 @@ class ModelLoader:
         event_name: str,
         event_field: M.EventFieldDef,
     ):
+        event_field = copy(event_field)
         class_def: Dict[str, Any] = {}
         field_type = event_field._field._type
 

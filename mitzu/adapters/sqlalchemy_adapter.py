@@ -111,7 +111,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return self._engine
 
     def get_table(
-        self, event_data_table: M.EventDataTable, create_alias: bool = True
+        self, event_data_table: M.EventDataTable, create_alias: bool = False
     ) -> SA.Table:
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
@@ -486,9 +486,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
                 )
             ).label(GA.CVR_COL),
-            SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
-                self._fix_col_index(1, GA.USER_COUNT_COL)
-            ),
+            SA.func.count(
+                first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+            ).label(self._fix_col_index(1, GA.USER_COUNT_COL)),
             SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
                 self._fix_col_index(1, GA.EVENT_COUNT_COL)
             ),

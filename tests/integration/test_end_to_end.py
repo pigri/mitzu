@@ -84,7 +84,7 @@ anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) as _datetime,
        anon_1._cte_group as _group,
        (count(distinct anon_2._cte_user_id) * 1.0) / count(distinct anon_1._cte_user_id) as _conversion_rate,
-       count(anon_1._cte_user_id) as _unique_user_count_1,
+       count(distinct anon_1._cte_user_id) as _unique_user_count_1,
        count(anon_1._cte_user_id) as _event_count_1,
        count(distinct anon_2._cte_user_id) as _unique_user_count_2,
        count(anon_2._cte_user_id) as _event_count_2

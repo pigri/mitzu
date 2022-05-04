@@ -2,6 +2,7 @@ from copy import copy
 from typing import Any, Dict, cast
 from mitzu import init_notebook_project
 from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
+from tests.integration.helper import ingest_test_data
 from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import (
     Connection,
@@ -9,7 +10,6 @@ from mitzu.common.model import (
     EventDataSource,
     default_field,
 )
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import pandas as pd  # type: ignore
 import pytest
 from retry import retry  # type: ignore
@@ -43,38 +43,14 @@ CONFIGS = [
 ]
 
 
-@retry(Exception, delay=5, tries=6)
-def check_table(engine, source: EventDataSource) -> bool:
-    ed_table = source.event_data_tables[0]
-    print(f"Trying to connect to {ed_table.table_name}")
-    ins = inspect(engine)
-    return ins.dialect.has_table(
-        engine.connect(), source.event_data_tables[0].table_name
-    )
+@pytest.mark.parametrize("config", CONFIGS)
+def test_db_integrations(config: TestCase):
+    test_source = copy(SIMPLE_CSV)
+    raw_path = test_source.connection.extra_configs["path"]
+    test_source.connection = Connection(connection_type=config.type, **config.configs)
 
-
-def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapter:
-    adapter = cast(SQLAlchemyAdapter, source.adapter)
-    engine = adapter.get_engine()
-    ret = check_table(engine, source)
-    ed_table = source.event_data_tables[0]
-
-    print(f"Table {ed_table.table_name} exists: {ret}")
-    if not ret:
-        if raw_path.endswith(".csv"):
-            pdf = pd.read_csv(raw_path)
-        elif raw_path.endswith(".parquet"):
-            pdf = pd.read_parquet(raw_path)
-        else:
-            raise Exception("Unsupported integration test data at\n" + raw_path)
-        try:
-            pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(
-                lambda v: datetime.fromisoformat(v)
-            )
-        except Exception as exc:
-            print(exc)
-        pdf.to_sql(con=engine, name=ed_table.table_name, index=False)
-    return adapter
+    ingest_test_data(source=test_source, raw_path=raw_path)
+    validate_integration(source=test_source)
 
 
 def validate_integration(source: EventDataSource):
@@ -86,15 +62,7 @@ def validate_integration(source: EventDataSource):
     )
 
     df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
-    assert_row(
-        df,
-        _datetime=datetime(2020, 1, 1),
-        _unique_user_count=1,
-        _event_count=1,
-        _group=None,
-    )
-
-    df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
+    assert 1 == df.shape[0]
     assert_row(
         df,
         _datetime=datetime(2020, 1, 1),
@@ -152,16 +120,6 @@ def validate_integration(source: EventDataSource):
     )
 
 
-@pytest.mark.parametrize("config", CONFIGS)
-def test_db_integrations(config: TestCase):
-    test_source = copy(SIMPLE_CSV)
-    raw_path = test_source.connection.extra_configs["path"]
-    test_source.connection = Connection(connection_type=config.type, **config.configs)
-
-    ingest_test_data(source=test_source, raw_path=raw_path)
-    validate_integration(source=test_source)
-
-
 def test_ssh_tunnel():
     server = SSHTunnelForwarder(
         ssh_address_or_host=("localhost", 2222),
@@ -186,19 +144,3 @@ def test_ssh_tunnel():
 
     ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(source=test_source)
-
-
-@pytest.mark.skip
-def test_big_data_integarion():
-    real_source = SIMPLE_BIG_DATA
-    raw_path = real_source.connection.extra_configs["path"]
-    test_source = copy(real_source)
-    test_source.connection = Connection(
-        connection_type=ConnectionType.POSTGRESQL,
-        user_name="test",
-        password="test",
-        schema="test",
-        host="localhost",
-    )
-
-    ingest_test_data(source=test_source, raw_path=raw_path)
