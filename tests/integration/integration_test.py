@@ -116,29 +116,3 @@ def validate_integration(source: EventDataSource):
         _group="cosmoprofi",
         _conversion_rate=0.33333,
     )
-
-
-def test_ssh_tunnel():
-    server = SSHTunnelForwarder(
-        ssh_address_or_host=("localhost", 2222),
-        ssh_username="test",
-        ssh_password="test",
-        remote_bind_address=("postgres_tunnel", 5432),
-        local_bind_address=("0.0.0.0", 5433),
-    )
-
-    test_source = copy(SIMPLE_CSV)
-    raw_path = test_source.connection.extra_configs["path"]
-    test_source.connection = Connection(
-        connection_type=ConnectionType.POSTGRESQL,
-        user_name="test",
-        password="test",
-        schema="test",
-        port=5433,
-        host="localhost",
-        ssh_tunnel_forwarder=server,
-    )
-    server.close()
-
-    ingest_test_data(source=test_source, raw_path=raw_path)
-    validate_integration(source=test_source)

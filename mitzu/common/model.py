@@ -166,20 +166,14 @@ class TimeWindow:
 
 
 @dataclass
-class CombinedTimeWindow:
-    windows: List[TimeWindow]
-
-
-@dataclass
 class EventDataTable:
-    table_name: str = "dataset"
-    event_time_field: str = "event_time"
-    user_id_field: str = "user_id"
-    event_name_field: Optional[str] = "event_name"
+    table_name: str
+    event_time_field: str
+    user_id_field: str
+    event_name_field: Optional[str] = None
     event_name_alias: Optional[str] = None
     ignored_fields: List[str] = default_field([])
     event_specific_fields: List[str] = default_field([])
-    event_id_field: Optional[str] = None
     description: Optional[str] = None
 
     def __hash__(self):
@@ -187,6 +181,16 @@ class EventDataTable:
             f"{self.table_name}{self.event_time_field}{self.user_id_field}"
             f"{self.event_name_field}{self.event_name_alias}"
         )
+
+    def validate(self):
+        if self.event_name_alias is not None and self.event_name_field is not None:
+            raise Exception(
+                f"For {self.table_name} both event_name_alias and event_name_field can't be defined in the same time."
+            )
+        if self.event_name_alias is None and self.event_name_field is None:
+            raise Exception(
+                f"For {self.table_name} define the event_name_alias or the event_name_field property."
+            )
 
 
 @dataclass
@@ -210,6 +214,15 @@ class EventDataSource:
             source=self, start_dt=start_dt, end_dt=end_dt
         ).discover_datasource()
 
+    def validate(self):
+        if len(self.event_data_tables) == 0:
+            raise Exception(
+                "At least a single EventDataTable needs to be added to the EventDataSource.\n"
+                "EventDataSource(event_data_tables = [ EventDataTable(...)])"
+            )
+        for edt in self.event_data_tables:
+            edt.validate()
+
 
 @dataclass
 class DiscoveredEventDataSource:
@@ -218,10 +231,11 @@ class DiscoveredEventDataSource:
     source: EventDataSource
 
     def create_notebook_class_model(self) -> ML.DatasetModel:
+        self.source.validate()
         return ML.ModelLoader().create_datasource_class_model(self)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass
 class Field:
     _name: str
     _type: DataType
@@ -235,6 +249,9 @@ class Field:
 
     def __repr__(self) -> str:
         return str(self)
+
+    def __hash__(self) -> int:
+        return hash(f"{self._name}{self._type}{self._parent}")
 
 
 @dataclass
