@@ -1,8 +1,6 @@
-from mitzu.adapters.file_adapter import FileAdapter, SQLiteAdapter
 from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
 from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
 from datetime import datetime
-from mitzu.notebook.model_loader import ModelLoader
 from mitzu.common.model import ConversionMetric, Segment
 from tests.helper import assert_row, assert_sql
 import pytest
@@ -10,50 +8,45 @@ import pytest
 
 @pytest.mark.skip
 def test_simple_big_data_discovery():
-    adapter = SQLiteAdapter(SIMPLE_BIG_DATA)
-
     discovery = EventDatasourceDiscovery(
-        SIMPLE_BIG_DATA, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        SIMPLE_BIG_DATA, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
-
-    dd = discovery.discover_datasource()
-
-    ml = ModelLoader()
-    m = ml.create_dataset_model(dd)
+    m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.app_install.config(
         start_dt="2021-01-01", end_dt="2022-01-01", time_group="total"
     )
-
-    assert 1 == seg.get_df().shape[0]
-    assert_row(seg.get_df(), _unique_user_count=2254, _datetime=None, _event_count=4706)
+    df = seg.get_df()
+    print(df)
+    assert 1 == df.shape[0]
+    assert_row(df, _unique_user_count=2254, _datetime=None, _event_count=4706)
 
 
 def test_simple_csv_segmentation():
-    adapter = FileAdapter(SIMPLE_CSV)
     discovery = EventDatasourceDiscovery(
-        SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        SIMPLE_CSV, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
-    dd = discovery.discover_datasource()
-    ml = ModelLoader()
-    m = ml.create_dataset_model(dd)
+    m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.cart.config(
         start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
     )
-    print(seg.get_sql())
+    # print(seg.get_sql())
     assert_sql(
         """
-        SELECT null as _datetime,
-            null as _group,
-            count(distinct anon_1.user_id) as _unique_user_count,
-            count(anon_1.user_id) as _event_count
-        FROM   simple_dataset as anon_1
-        WHERE  anon_1.event_type = 'cart'
-            and anon_1.event_time >= '2020-01-01 00:00:00'
-            and anon_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY _datetime, _group
-    """,
+with anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
+                       simple_dataset.event_time as _cte_datetime,
+                       null as _cte_group
+                FROM   simple_dataset
+                WHERE  simple_dataset.event_type = 'cart')
+SELECT null as _datetime,
+       null as _group,
+       count(distinct anon_1._cte_user_id) as _unique_user_count,
+       count(anon_1._cte_user_id) as _event_count
+FROM   anon_2 as anon_1
+WHERE  anon_1._cte_datetime >= '2020-01-01 00:00:00'
+   and anon_1._cte_datetime <= '2021-01-01 00:00:00'
+GROUP BY _datetime, _group""",
         seg.get_sql(),
     )
 
@@ -63,13 +56,10 @@ def test_simple_csv_segmentation():
 
 
 def test_simple_csv_funnel():
-    adapter = FileAdapter(SIMPLE_CSV)
     discovery = EventDatasourceDiscovery(
-        SIMPLE_CSV, adapter, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        SIMPLE_CSV, datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
-    dd = discovery.discover_datasource()
-    ml = ModelLoader()
-    m = ml.create_dataset_model(dd)
+    m = discovery.discover_datasource().create_notebook_class_model()
 
     conv: ConversionMetric = (m.view >> m.cart).config(
         conv_window="1 month",
@@ -81,24 +71,31 @@ def test_simple_csv_funnel():
     print(conv.get_sql())
     assert_sql(
         """
-        SELECT datetime(strftime('%Y-%m-%dT00:00:00', simple_dataset_1.event_time)) as _datetime,
-            simple_dataset_1.category_id as _group,
-            (count(distinct simple_dataset_2.user_id) * 1.0) /
-                 count(distinct simple_dataset_1.user_id) as _conversion_rate,
-            count(distinct simple_dataset_1.user_id) as _unique_user_count_1,
-            count(simple_dataset_1.user_id) as _event_count_1,
-            count(distinct simple_dataset_2.user_id) as _unique_user_count_2,
-            count(simple_dataset_2.user_id) as _event_count_2
-        FROM   simple_dataset as simple_dataset_1 left
-            OUTER JOIN simple_dataset as simple_dataset_2
-                ON simple_dataset_1.user_id = simple_dataset_2.user_id and
-                simple_dataset_2.event_time > simple_dataset_1.event_time and
-                simple_dataset_2.event_time <= datetime(simple_dataset_1.event_time, '+1 month') and
-                simple_dataset_2.event_type = 'cart'
-        WHERE  simple_dataset_1.event_type = 'view'
-        and simple_dataset_1.event_time >= '2020-01-01 00:00:00'
-        and simple_dataset_1.event_time <= '2021-01-01 00:00:00'
-        GROUP BY _datetime, _group""",
+with anon_1 as (SELECT simple_dataset.user_id as _cte_user_id,
+                simple_dataset.event_time as _cte_datetime,
+                simple_dataset.category_id as _cte_group
+        FROM   simple_dataset
+        WHERE  simple_dataset.event_type = 'view'), 
+anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
+            simple_dataset.event_time as _cte_datetime,
+            null as _cte_group
+    FROM   simple_dataset
+    WHERE  simple_dataset.event_type = 'cart')
+SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) as _datetime,
+       anon_1._cte_group as _group,
+       (count(distinct anon_2._cte_user_id) * 1.0) / count(distinct anon_1._cte_user_id) as _conversion_rate,
+       count(anon_1._cte_user_id) as _unique_user_count_1,
+       count(anon_1._cte_user_id) as _event_count_1,
+       count(distinct anon_2._cte_user_id) as _unique_user_count_2,
+       count(anon_2._cte_user_id) as _event_count_2
+FROM   anon_1 left
+    OUTER JOIN anon_2
+        ON anon_1._cte_user_id = anon_2._cte_user_id and
+           anon_2._cte_datetime > anon_1._cte_datetime and
+           anon_2._cte_datetime <= datetime(anon_1._cte_datetime, '+1 month')
+WHERE  anon_1._cte_datetime >= '2020-01-01 00:00:00'
+   and anon_1._cte_datetime <= '2021-01-01 00:00:00'
+GROUP BY _datetime, _group""",
         conv.get_sql(),
     )
 

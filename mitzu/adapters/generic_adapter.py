@@ -3,15 +3,19 @@ import mitzu.common.model as M
 from typing import Dict, List, Any
 import pandas as pd  # type: ignore
 
+# Final Select Columns
 EVENT_NAME_ALIAS_COL = "_event_type"
 DATETIME_COL = "_datetime"
 GROUP_COL = "_group"
 USER_COUNT_COL = "_unique_user_count"
-USER_ID_ALIAS_COL = "_user_id"
 EVENT_COUNT_COL = "_event_count"
 CVR_COL = "_conversion_rate"
-PERCENTILE_50_COL = "_p50_conv_time"
-PERCENTILE_95_COL = "_p95_conv_time"
+
+
+# CTE Colmns
+CTE_USER_ID_ALIAS_COL = "_cte_user_id"
+CTE_DATETIME_COL = "_cte_datetime"
+CTE_GROUP_COL = "_cte_group"
 
 
 class GenericDatasetAdapter:

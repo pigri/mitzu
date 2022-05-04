@@ -348,9 +348,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             )
             select = SA.select(
                 columns=[
-                    columns.get(ed_table.user_id_field).label(GA.USER_ID_ALIAS_COL),
-                    columns.get(ed_table.event_time_field).label(GA.DATETIME_COL),
-                    group_by_col.label(GA.GROUP_COL),
+                    columns.get(ed_table.user_id_field).label(GA.CTE_USER_ID_ALIAS_COL),
+                    columns.get(ed_table.event_time_field).label(GA.CTE_DATETIME_COL),
+                    group_by_col.label(GA.CTE_GROUP_COL),
                 ],
                 whereclause=(sub_query.where_clause),
             )
@@ -369,7 +369,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         start_date = metric._start_dt
         end_date = metric._end_dt
 
-        evt_time_col = cte.columns.get(GA.DATETIME_COL)
+        evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
         return (evt_time_col >= start_date) & (evt_time_col <= end_date)
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
@@ -378,7 +378,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         evt_time_group = (
             self._get_date_trunc(
-                table_column=cte.columns.get(GA.DATETIME_COL),
+                table_column=cte.columns.get(GA.CTE_DATETIME_COL),
                 time_group=metric._time_group,
             )
             if metric._time_group != M.TimeGroup.TOTAL
@@ -386,7 +386,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
         group_by = (
-            cte.columns.get(GA.GROUP_COL)
+            cte.columns.get(GA.CTE_GROUP_COL)
             if metric._group_by is not None
             else SA.literal(None)
         )
@@ -395,10 +395,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             columns=[
                 evt_time_group.label(GA.DATETIME_COL),
                 group_by.label(GA.GROUP_COL),
-                SA.func.count(cte.columns.get(GA.USER_ID_ALIAS_COL).distinct()).label(
-                    GA.USER_COUNT_COL
-                ),
-                SA.func.count(cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
+                SA.func.count(
+                    cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                ).label(GA.USER_COUNT_COL),
+                SA.func.count(cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
                     GA.EVENT_COUNT_COL
                 ),
             ],
@@ -416,18 +416,19 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._get_segment_sub_query(first_segment), metric._group_by
         )
         first_group_by = (
-            first_cte.columns.get(metric._group_by._field._name)
+            first_cte.columns.get(GA.CTE_GROUP_COL)
             if metric._group_by is not None
             else SA.literal(None)
         )
+
         time_group = metric._time_group
         if time_group != M.TimeGroup.TOTAL:
-            evt_time_group = self._get_date_trunc(
-                table_column=first_cte.columns.get(GA.DATETIME_COL),
+            first_evt_time_group = self._get_date_trunc(
+                table_column=first_cte.columns.get(GA.CTE_DATETIME_COL),
                 time_group=time_group,
             )
         else:
-            evt_time_group = SA.literal(None)
+            first_evt_time_group = SA.literal(None)
 
         other_segments = metric._conversion._segments[1:]
 
@@ -439,7 +440,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             prev_cols = prev_table.columns
             curr_cte = self._get_segment_sub_query_cte(self._get_segment_sub_query(seg))
             curr_cols = curr_cte.columns
-            curr_used_id_col = curr_cols.get(GA.USER_ID_ALIAS_COL)
+            curr_used_id_col = curr_cols.get(GA.CTE_USER_ID_ALIAS_COL)
 
             steps.append(curr_cte)
             other_selects.extend(
@@ -455,12 +456,15 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             joined_source = joined_source.join(
                 curr_cte,
                 (
-                    (prev_cols.get(GA.USER_ID_ALIAS_COL) == curr_used_id_col)
-                    & (curr_cols.get(GA.DATETIME_COL) > prev_cols.get(GA.DATETIME_COL))
+                    (prev_cols.get(GA.CTE_USER_ID_ALIAS_COL) == curr_used_id_col)
                     & (
-                        curr_cols.get(GA.DATETIME_COL)
+                        curr_cols.get(GA.CTE_DATETIME_COL)
+                        > prev_cols.get(GA.CTE_DATETIME_COL)
+                    )
+                    & (
+                        curr_cols.get(GA.CTE_DATETIME_COL)
                         <= self._get_datetime_interval(
-                            first_cte.columns.get(GA.DATETIME_COL),
+                            first_cte.columns.get(GA.CTE_DATETIME_COL),
                             metric._conv_window,
                         )
                     )
@@ -469,23 +473,26 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             )
 
         columns = [
-            evt_time_group.label(GA.DATETIME_COL),
+            first_evt_time_group.label(GA.DATETIME_COL),
             first_group_by.label(GA.GROUP_COL),
             (
                 SA.func.count(
-                    steps[len(steps) - 1].columns.get(GA.USER_ID_ALIAS_COL).distinct()
+                    steps[len(steps) - 1]
+                    .columns.get(GA.CTE_USER_ID_ALIAS_COL)
+                    .distinct()
                 )
                 * 1.0
-                / SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL).distinct())
+                / SA.func.count(
+                    first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                )
             ).label(GA.CVR_COL),
-            SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
+            SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
                 self._fix_col_index(1, GA.USER_COUNT_COL)
             ),
-            SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
+            SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
                 self._fix_col_index(1, GA.EVENT_COUNT_COL)
             ),
         ]
-
         columns.extend(other_selects)
         return SA.select(
             columns=columns,
