@@ -184,7 +184,8 @@ class EventDataTable:
 
     def __hash__(self):
         return hash(
-            f"{self.table_name}{self.event_time_field}{self.user_id_field}{self.event_name_field}{self.event_name_alias}"
+            f"{self.table_name}{self.event_time_field}{self.user_id_field}"
+            f"{self.event_name_field}{self.event_name_alias}"
         )
 
 

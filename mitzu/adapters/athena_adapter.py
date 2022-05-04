@@ -2,10 +2,12 @@ from __future__ import annotations
 from typing import Any, List
 
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd  # type: ignore
 from sql_formatter.core import format_sql  # type: ignore
 import sqlalchemy as SA  # type: ignore
+from sqlalchemy.sql.expression import CTE  # type: ignore
 from mitzu.adapters.helper import pdf_string_array_to_array
 
 
@@ -34,13 +36,11 @@ class AthenaAdapter(SQLAlchemyAdapter):
         )
         return pdf_string_array_to_array(df)
 
-    def _get_timewindow_where_clause(
-        self, event_data_table: M.EventDataTable, table: SA.Table, metric: M.Metric
-    ) -> Any:
+    def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)
         end_date = metric._end_dt.replace(microsecond=0)
 
-        evt_time_col = table.columns.get(event_data_table.event_time_field)
+        evt_time_col = cte.columns.get(GA.DATETIME_COL)
         return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
             evt_time_col <= SA.text(f"timestamp '{end_date}'")
         )

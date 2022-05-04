@@ -6,7 +6,7 @@ import mitzu.common.model as M
 import pandas as pd  # type: ignore
 import sqlalchemy as SA  # type: ignore
 from sqlalchemy.orm import aliased  # type:ignore
-from sqlalchemy.sql.expression import CTE, Select
+from sqlalchemy.sql.expression import CTE, Select  # type:ignore
 from sql_formatter.core import format_sql  # type: ignore
 
 
@@ -110,7 +110,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._engine = SA.create_engine(url)
         return self._engine
 
-    def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
+    def get_table(
+        self, event_data_table: M.EventDataTable, create_alias: bool = True
+    ) -> SA.Table:
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
@@ -120,7 +122,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 autoload_with=engine,
                 autoload=True,
             )
-        return aliased(self._table_cache[event_data_table])
+        cached_table = self._table_cache[event_data_table]
+        return aliased(cached_table) if create_alias else cached_table
 
     def validate_source(self):
         table = self.get_table()
@@ -277,7 +280,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
-            table = self.get_table(left._event_data_table)
+            table = self.get_table(left._event_data_table, create_alias=False)
             evt_name_col = table.columns.get(left._event_data_table.event_name_field)
             event_name_filter = (
                 (evt_name_col == left._event_name)
@@ -308,7 +311,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             if c._operator == M.BinaryOperator.AND:
                 if l_query.event_data_table != r_query.event_data_table:
                     raise Exception(
-                        f"And (&) or OR (|) operators can only be between the same events (e.g. page_view & page_view)"
+                        "And (&) or OR (|) operators can only be between the same events (e.g. page_view & page_view)"
                     )
                 return SegmentSubQuery(
                     event_name=l_query.event_name,
@@ -332,31 +335,28 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
     def _get_segment_sub_query_cte(
-        self, segment: M.Segment, sub_query: SegmentSubQuery
+        self, sub_query: SegmentSubQuery, group_field: Optional[M.EventFieldDef] = None
     ) -> CTE:
         res_select: Select = None
         while True:
             ed_table = sub_query.event_data_table
             columns = sub_query.table_ref.columns
-            group_by = segment._group_by
-            group_by_cols = []
-            if group_by is not None:
-                group_by_cols = [
-                    columns.get(group_by._field._name, None).label(GA.GROUP_COL)
-                ]
-
+            group_by_col = (
+                SA.literal(None)
+                if group_field is None
+                else columns.get(group_field._field._name)
+            )
             select = SA.select(
                 columns=[
                     columns.get(ed_table.user_id_field).label(GA.USER_ID_ALIAS_COL),
                     columns.get(ed_table.event_time_field).label(GA.DATETIME_COL),
-                    *group_by_cols,
+                    group_by_col.label(GA.GROUP_COL),
                 ],
                 whereclause=(sub_query.where_clause),
             )
             if res_select is None:
                 res_select = select
             else:
-                print("union")
                 res_select = res_select.union_all(select)
             if sub_query._unioned_with is not None:
                 sub_query = sub_query._unioned_with
@@ -374,7 +374,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         sub_query = self._get_segment_sub_query(metric._segment)
-        cte: CTE = aliased(self._get_segment_sub_query_cte(metric._segment, sub_query))
+        cte: CTE = aliased(self._get_segment_sub_query_cte(sub_query, metric._group_by))
 
         evt_time_group = (
             self._get_date_trunc(
@@ -411,41 +411,37 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
-        table = self.get_table()
-        columns = table.columns
-        source = self.source
         first_segment = metric._conversion._segments[0]
-        other_segments = metric._conversion._segments[1:]
-        user_id_col = columns.get(source.event_data_table.user_id_field)
-        event_time_col = columns.get(source.event_data_table.event_time_field)
+        first_cte = self._get_segment_sub_query_cte(
+            self._get_segment_sub_query(first_segment), metric._group_by
+        )
+        first_group_by = (
+            first_cte.columns.get(metric._group_by._field._name)
+            if metric._group_by is not None
+            else SA.literal(None)
+        )
         time_group = metric._time_group
-
         if time_group != M.TimeGroup.TOTAL:
             evt_time_group = self._get_date_trunc(
-                table_column=event_time_col,
+                table_column=first_cte.columns.get(GA.DATETIME_COL),
                 time_group=time_group,
             )
         else:
             evt_time_group = SA.literal(None)
 
-        group_by = (
-            columns.get(metric._group_by._field._name)
-            if metric._group_by is not None
-            else SA.literal(None)
-        )
+        other_segments = metric._conversion._segments[1:]
 
-        steps = [table]
+        steps = [first_cte]
         other_selects = []
-        joined_source = table
+        joined_source = first_cte
         for i, seg in enumerate(other_segments):
             prev_table = steps[i]
             prev_cols = prev_table.columns
-            curr_table = self.get_table()
-            curr_cols = curr_table.columns
-            curr_used_id_col = curr_cols.get(source.event_data_table.user_id_field)
+            curr_cte = self._get_segment_sub_query_cte(self._get_segment_sub_query(seg))
+            curr_cols = curr_cte.columns
+            curr_used_id_col = curr_cols.get(GA.USER_ID_ALIAS_COL)
 
-            steps.append(curr_table)
-
+            steps.append(curr_cte)
             other_selects.extend(
                 [
                     SA.func.count(curr_used_id_col.distinct()).label(
@@ -457,44 +453,35 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ]
             )
             joined_source = joined_source.join(
-                curr_table,
+                curr_cte,
                 (
-                    (
-                        prev_cols.get(source.event_data_table.user_id_field)
-                        == curr_used_id_col
-                    )
+                    (prev_cols.get(GA.USER_ID_ALIAS_COL) == curr_used_id_col)
+                    & (curr_cols.get(GA.DATETIME_COL) > prev_cols.get(GA.DATETIME_COL))
                     & (
-                        curr_cols.get(source.event_data_table.event_time_field)
-                        > prev_cols.get(source.event_data_table.event_time_field)
-                    )
-                    & (
-                        curr_cols.get(source.event_data_table.event_time_field)
+                        curr_cols.get(GA.DATETIME_COL)
                         <= self._get_datetime_interval(
-                            columns.get(source.event_data_table.event_time_field),
+                            first_cte.columns.get(GA.DATETIME_COL),
                             metric._conv_window,
                         )
                     )
-                    & self._get_segment_where_clause(curr_table, seg)
                 ),
                 isouter=True,
             )
 
         columns = [
             evt_time_group.label(GA.DATETIME_COL),
-            group_by.label(GA.GROUP_COL),
+            first_group_by.label(GA.GROUP_COL),
             (
                 SA.func.count(
-                    steps[len(steps) - 1]
-                    .columns.get(source.event_data_table.user_id_field)
-                    .distinct()
+                    steps[len(steps) - 1].columns.get(GA.USER_ID_ALIAS_COL).distinct()
                 )
                 * 1.0
-                / SA.func.count(user_id_col.distinct())
+                / SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL).distinct())
             ).label(GA.CVR_COL),
-            SA.func.count(user_id_col.distinct()).label(
+            SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
                 self._fix_col_index(1, GA.USER_COUNT_COL)
             ),
-            SA.func.count(user_id_col).label(
+            SA.func.count(first_cte.columns.get(GA.USER_ID_ALIAS_COL)).label(
                 self._fix_col_index(1, GA.EVENT_COUNT_COL)
             ),
         ]
@@ -502,10 +489,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         columns.extend(other_selects)
         return SA.select(
             columns=columns,
-            whereclause=(
-                self._get_segment_where_clause(table, first_segment)
-                & self._get_timewindow_where_clause(table, metric)
-            ),
+            whereclause=(self._get_timewindow_where_clause(first_cte, metric)),
             group_by=(
                 [SA.literal(1), SA.literal(2)]
                 if self._column_index_support()
