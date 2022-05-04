@@ -1,26 +1,20 @@
-from copy import copy
-from typing import Any, Dict, cast
+from __future__ import annotations
+from typing import Any, Dict, cast, Optional
 from mitzu import init_notebook_project
-from tests.test_samples.sources import SIMPLE_CSV
+from tests.test_samples.sources import get_simple_csv
 from tests.integration.helper import ingest_test_data
-from mitzu.common.model import (
-    Connection,
-    ConnectionType,
-    EventDataSource,
-    default_field,
-)
+import mitzu.common.model as M
 import pandas as pd
 import pytest
 from datetime import datetime
 from tests.helper import assert_row
 from dataclasses import dataclass
-from sshtunnel import SSHTunnelForwarder
 
 
 @dataclass
 class TestCase:
-    type: ConnectionType
-    configs: Dict = default_field(
+    type: M.ConnectionType
+    configs: Dict = M.default_field(
         {
             "user_name": "test",
             "password": "test",
@@ -28,6 +22,8 @@ class TestCase:
             "host": "localhost",
         }
     )
+    ingest: bool = True
+    table_name: Optional[str] = None
 
     def __repr__(self) -> str:
         confs = "" if self.configs is None else f"({self.configs})"
@@ -35,23 +31,39 @@ class TestCase:
 
 
 CONFIGS = [
-    TestCase(type=ConnectionType.POSTGRESQL),
-    TestCase(type=ConnectionType.MYSQL),
-    TestCase(type=ConnectionType.SQLITE, configs={"url": "sqlite://"}),
+    TestCase(type=M.ConnectionType.POSTGRESQL),
+    TestCase(type=M.ConnectionType.MYSQL),
+    TestCase(
+        type=M.ConnectionType.TRINO,
+        configs={
+            "host": "localhost",
+            "password": None,
+            "user_name": "test",
+            "port": 8080,
+            "schema": "mysql",
+            "extra_configs": {"secondary_schema": "test"},
+        },
+        ingest=False,
+        table_name="test.simple_dataset",
+    ),
+    TestCase(type=M.ConnectionType.SQLITE, configs={"url": "sqlite://"}),
 ]
 
 
 @pytest.mark.parametrize("config", CONFIGS)
 def test_db_integrations(config: TestCase):
-    test_source = copy(SIMPLE_CSV)
+    test_source = get_simple_csv()
     raw_path = test_source.connection.extra_configs["path"]
-    test_source.connection = Connection(connection_type=config.type, **config.configs)
+    test_source.connection = M.Connection(connection_type=config.type, **config.configs)
+    if config.ingest:
+        ingest_test_data(source=test_source, raw_path=raw_path)
+    if config.table_name is not None:
+        test_source.event_data_tables[0].table_name = config.table_name
 
-    ingest_test_data(source=test_source, raw_path=raw_path)
     validate_integration(source=test_source)
 
 
-def validate_integration(source: EventDataSource):
+def validate_integration(source: M.EventDataSource):
     m = cast(
         Any,
         init_notebook_project(
@@ -90,7 +102,7 @@ def validate_integration(source: EventDataSource):
         _unique_user_count_2=2,
         _event_count_2=6,
         _group="cosmoprofi",
-        _conversion_rate=0.66667,
+        _conversion_rate=66.667,
     )
 
     df = (
@@ -114,5 +126,5 @@ def validate_integration(source: EventDataSource):
         _unique_user_count_2=2,
         _event_count_2=6,
         _group="cosmoprofi",
-        _conversion_rate=0.33333,
+        _conversion_rate=33.333,
     )

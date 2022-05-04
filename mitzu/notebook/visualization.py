@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pandas as pd
 import plotly.express as px
-from typing import List, cast
+from typing import List, cast, Tuple
 import mitzu.common.model as M
 import mitzu.adapters.generic_adapter as GA
 
@@ -17,7 +17,7 @@ def filter_top_segmentation_groups(
     pdf: pd.DataFrame,
     metric: M.Metric,
     order_by_col: str = GA.USER_COUNT_COL,
-) -> List[str]:
+) -> Tuple[List[str], int]:
     max = metric._max_group_count
     g_users = (
         pdf[[GA.GROUP_COL, order_by_col]].groupby(GA.GROUP_COL).sum().reset_index()
@@ -26,21 +26,21 @@ def filter_top_segmentation_groups(
         g_users = g_users.sort_values(order_by_col, ascending=False)
     g_users = g_users.head(max)
     top_groups = list(g_users[GA.GROUP_COL].values)
-    return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
+    return pdf[pdf[GA.GROUP_COL].isin(top_groups)], len(top_groups)
 
 
 def filter_top_conversion_groups(
     pdf: pd.DataFrame, metric: M.ConversionMetric
-) -> List[str]:
+) -> Tuple[List[str], int]:
     return filter_top_segmentation_groups(
         pdf=pdf, metric=metric, order_by_col=f"{GA.USER_COUNT_COL}_1"
     )
 
 
-def get_segmented_by_str(metric: M.Metric) -> str:
+def get_grouped_by_str(metric: M.Metric) -> str:
     if metric._group_by:
         grp = metric._group_by._field._name
-        return f"segmented by <b>{grp}</b> (top {metric._max_group_count})"
+        return f"<br />grouped by <b>{grp}</b> (top {metric._max_group_count})"
     return ""
 
 
@@ -89,8 +89,8 @@ def get_segmentation_title(metric: M.SegmentationMetric):
     time_group = metric._time_group
     tg = get_time_group_text(time_group).title()
     agg = "count of unique users"
-    segment_by = get_segmented_by_str(metric)
-    return f"{tg} {agg}<br />who did {event}<br />{segment_by}"
+    segment_by = get_grouped_by_str(metric)
+    return f"{tg} {agg}<br />who did {event}{segment_by}"
 
 
 def get_conversion_title(metric: M.ConversionMetric) -> str:
@@ -110,8 +110,12 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
         agg = "conversion rate of unique users"
 
     within_str = f"within {metric._conv_window}"
-    segment_by = get_segmented_by_str(metric)
+    segment_by = get_grouped_by_str(metric)
     return f"{tg} {agg}<br />who did {events}<br />{within_str} {segment_by}"
+
+
+def get_title_height(title: str) -> int:
+    return len(title.split("<br />")) * 35
 
 
 def get_melted_conv_column(
@@ -153,17 +157,75 @@ def get_melted_conv_pdf(pdf: pd.DataFrame, metric: M.ConversionMetric) -> pd.Dat
     return res
 
 
+def get_conversion_hover_template(metric: M.ConversionMetric) -> str:
+    tooltip = []
+    if metric._time_group == M.TimeGroup.TOTAL:
+        if metric._group_by is not None:
+            tooltip.append("<b>Group:</b> %{customdata[3]}")
+        tooltip.extend(
+            [
+                "<b>Total Conversion:</b> %{customdata[0]}%",
+                "<b>User count:</b> %{customdata[1]}",
+                "<b>Event count:</b> %{customdata[2]}",
+            ]
+        )
+    else:
+        funnel_length = len(metric._conversion._segments)
+        tooltip.append("<b>%{x}</b>")
+        if metric._group_by is not None:
+            tooltip.append("<b>Group:</b> %{customdata[4]}")
+
+        tooltip.extend(
+            [
+                "<b>Conversion:</b> %{y}%",
+                "<b>User count:</b>",
+                " <b>Step 1:</b> %{customdata[0]}",
+                f" <b>Step {funnel_length}:</b> %{{customdata[1]}}",
+                "<b>Event count:</b>",
+                " <b>Step 1:</b>%{customdata[2]}",
+                f" <b>Step {funnel_length}:</b> %{{customdata[3]}}",
+            ]
+        )
+    return "<br />".join(tooltip) + "<extra></extra>"
+
+
+def get_segmentation_hover_template(metric: M.SegmentationMetric) -> str:
+    tooltip = []
+    if metric._time_group != M.TimeGroup.TOTAL:
+        tooltip.append("<b>%{x}</b>")
+    if metric._group_by is not None:
+        tooltip.append("<b>Group:</b> %{customdata[1]}")
+
+    tooltip.extend(
+        [
+            "<b>User count:</b> %{y}",
+            "<b>Event count:</b> %{customdata[0]}",
+        ]
+    )
+    return "<br />".join(tooltip) + "<extra></extra>"
+
+
+def get_hover_mode(metric: M.Metric, group_count: int):
+    if metric._time_group == M.TimeGroup.TOTAL:
+        return "closest"
+    else:
+        if metric._group_by is None:
+            return "x"
+        else:
+            return "closest" if group_count > 2 else "x"
+
+
 def plot_conversion(metric: M.ConversionMetric):
     pdf = metric.get_df()
     pdf = fix_na_cols(pdf)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
-    pdf = filter_top_conversion_groups(pdf, metric)
+    pdf, group_count = filter_top_conversion_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
         pdf = get_melted_conv_pdf(pdf, metric)
         pdf = pdf.sort_values([STEP_COL], ascending=[True])
-        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL] * 100, 2)
+        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL], 2)
         fig = px.bar(
             pdf,
             x=STEP_COL,
@@ -178,7 +240,7 @@ def plot_conversion(metric: M.ConversionMetric):
                 GA.GROUP_COL,
             ],
             labels={
-                STEP_COL: get_conversion_title(metric),
+                STEP_COL: "Steps",
                 GA.CVR_COL: "Conversion",
                 GA.USER_COUNT_COL: "Unique user count",
                 GA.GROUP_COL: "Group",
@@ -186,14 +248,7 @@ def plot_conversion(metric: M.ConversionMetric):
         )
         fig.update_traces(
             textposition="auto",
-            hovertemplate="""<b>%{x}</b>
-                    <br /><b>%{customdata[3]}</b>
-                    <br />
-                    <br />Total Conversion: <b>%{customdata[0]}%</b>
-                    <br />User count: <b>%{customdata[1]}</b>
-                    <br />Event count: <b>%{customdata[2]}</b>                                       
-                     <extra></extra>
-            """,
+            hovertemplate=get_conversion_hover_template(metric),
         )
     else:
         funnel_length = len(metric._conversion._segments)
@@ -201,7 +256,7 @@ def plot_conversion(metric: M.ConversionMetric):
             pdf[GA.DATETIME_COL]
         )  # Serverless bug workaround
         pdf = pdf.sort_values(by=[GA.DATETIME_COL])
-        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL] * 100, 2)
+        pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL], 2)
         if metric._group_by is None:
             pdf[GA.GROUP_COL] = ""
 
@@ -219,7 +274,7 @@ def plot_conversion(metric: M.ConversionMetric):
                 GA.GROUP_COL,
             ],
             labels={
-                GA.DATETIME_COL: get_conversion_title(metric),
+                GA.DATETIME_COL: "",
                 GA.CVR_COL: "Conversion",
                 GA.GROUP_COL: "Group",
             },
@@ -229,28 +284,25 @@ def plot_conversion(metric: M.ConversionMetric):
             textfont_size=9,
             line=dict(width=3.5),
             mode="markers+lines+text",
-            hovertemplate="""<b>%{x}</b>
-                    <br /><b>%{customdata[4]}</b>
-                    <br />
-                    <br />Conversion: <b>%{y}%</b>             
-                    <br />Activated users:<b>%{customdata[0]}</b>                    
-                    <br />Converted users: <b>%{customdata[1]}</b>
-                    <br />
-                    <br />Activated event count:<b>%{customdata[2]}</b>                    
-                    <br />Converted event count:<b>%{customdata[3]}</b>                            
-                    <extra></extra>
-            """,
+            hovertemplate=get_conversion_hover_template(metric),
         )
+    title = get_conversion_title(metric)
     fig.update_yaxes(rangemode="tozero")
     fig.update_layout(
+        title={
+            "text": title,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+        },
         autosize=True,
         bargap=0.30,
         bargroupgap=0.15,
-        margin=dict(t=5, l=5, r=5, b=15, pad=1),
+        margin=dict(t=get_title_height(title), l=5, r=5, b=15, pad=1),
         uniformtext_minsize=8,
         uniformtext_mode="hide",
         hoverlabel={"font": {"size": 12}},
-        hovermode="closest",
+        hovermode=get_hover_mode(metric, group_count),
     )
     return fig
 
@@ -261,21 +313,25 @@ def plot_segmentation(metric: M.SegmentationMetric):
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
 
-    pdf = filter_top_segmentation_groups(pdf, metric)
+    pdf, group_count = filter_top_segmentation_groups(pdf, metric)
 
     if metric._time_group == M.TimeGroup.TOTAL:
-        pdf["segmentation"] = ""
+        x_title = "segmentation"
+        x_title_label = (
+            metric._group_by._field._name if metric._group_by is not None else ""
+        )
+        pdf[x_title] = ""
         pdf = pdf.sort_values([GA.USER_COUNT_COL], ascending=[False])
         fig = px.bar(
             pdf,
-            x="segmentation",
+            x=x_title,
             y=GA.USER_COUNT_COL,
             color=GA.GROUP_COL,
             barmode="group",
             text=GA.USER_COUNT_COL,
             custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
             labels={
-                "segmentation": get_segmentation_title(metric),
+                x_title: x_title_label,
                 GA.GROUP_COL: "Groups",
                 GA.USER_COUNT_COL: "Unique user count",
             },
@@ -291,7 +347,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
                 text=GA.USER_COUNT_COL,
                 custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
                 labels={
-                    GA.DATETIME_COL: get_segmentation_title(metric),
+                    GA.DATETIME_COL: "",
                     GA.USER_COUNT_COL: "Unique user count",
                 },
             )
@@ -304,7 +360,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
                 text=GA.USER_COUNT_COL,
                 custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
                 labels={
-                    GA.DATETIME_COL: get_segmentation_title(metric),
+                    GA.DATETIME_COL: "",
                     GA.GROUP_COL: "Groups",
                     GA.USER_COUNT_COL: "Unique user count",
                 },
@@ -316,23 +372,24 @@ def plot_segmentation(metric: M.SegmentationMetric):
             textposition="top center",
         )
     fig.update_traces(
-        hovertemplate="""<b>%{x}</b> 
-            <br /><b>%{customdata[1]}</b>
-            <br />
-            <br />User count: <b>%{y}</b>
-            <br />Event count: <b>%{customdata[0]}</b>
-             <extra></extra>
-        """,
+        hovertemplate=get_segmentation_hover_template(metric),
     )
     fig.update_yaxes(rangemode="tozero")
+    title = get_segmentation_title(metric)
     fig.update_layout(
+        title={
+            "text": title,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+        },
         bargap=0.30,
         bargroupgap=0.15,
         uniformtext_minsize=9,
         uniformtext_mode="hide",
         autosize=True,
-        margin=dict(t=5, l=5, r=5, b=15, pad=1),
+        margin=dict(t=get_title_height(title), l=5, r=5, b=15, pad=0),
         hoverlabel={"font": {"size": 12}},
-        hovermode="closest",
+        hovermode=get_hover_mode(metric, group_count),
     )
     return fig

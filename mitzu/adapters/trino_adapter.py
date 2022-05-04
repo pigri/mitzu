@@ -8,12 +8,23 @@ import pandas as pd
 from sql_formatter.core import format_sql
 import sqlalchemy as SA
 from sqlalchemy.sql.expression import CTE
-from mitzu.adapters.helper import pdf_string_array_to_array
+from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 
 
-class AthenaAdapter(SQLAlchemyAdapter):
+class TrinoAdapter(SQLAlchemyAdapter):
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
+
+    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
+        df = super().get_conversion_df(metric)
+        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        df[GA.CVR_COL] = df[GA.CVR_COL].astype(float)
+        return df
+
+    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
+        df = super().get_segmentation_df(metric)
+        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        return df
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
@@ -21,7 +32,8 @@ class AthenaAdapter(SQLAlchemyAdapter):
             query = format_sql(
                 str(query.compile(compile_kwargs={"literal_binds": True}))
             )
-        return super().execute_query(query=query)
+        res = super().execute_query(query=query)
+        return res
 
     def _get_column_values_df(
         self,

@@ -13,7 +13,7 @@ def assert_sql(expected: str, actual: str):
 
 def is_similar(a, b) -> bool:
     if type(a) == float:
-        return abs(a - b) < 0.01
+        return abs(a - b) < 0.1
         # Todo add more rules
     return a == b
 

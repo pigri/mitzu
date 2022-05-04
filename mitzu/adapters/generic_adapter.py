@@ -22,16 +22,6 @@ class GenericDatasetAdapter:
     def __init__(self, source: M.EventDataSource):
         self.source = source
 
-    def __del__(self):
-        forwarder = self.source.connection.ssh_tunnel_forwarder
-        if forwarder is not None and forwarder.is_alive:
-            forwarder.close()
-
-    def _create_ssh_tunnel(self):
-        forwarder = self.source.connection.ssh_tunnel_forwarder
-        if forwarder is not None and not forwarder.is_alive:
-            forwarder.start()
-
     def execute_query(self, query: Any) -> pd.DataFrame:
         raise NotImplementedError()
 

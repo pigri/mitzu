@@ -3,7 +3,7 @@ services:
   postgres:
     image: postgres
     restart: always
-    hostname:  postgres
+    hostname: postgres
     environment:
       POSTGRES_PASSWORD: test
       POSTGRES_USER: test
@@ -11,11 +11,13 @@ services:
       - '5432:5432'
     expose:
       - '5432'
-    
+    networks:
+      - trino-network
+
   mysql:
     image: mysql
     restart: always
-    command: '--max_allowed_packet=536870912'        
+    command: '--max_allowed_packet=536870912'
     environment:
       - MYSQL_HOST=localhost
       - MYSQL_ROOT_HOST=%
@@ -29,11 +31,23 @@ services:
       - '3306'
     volumes:
       - ./.dbs/mysql:/var/lib/mysql
-  
+    networks:
+      - trino-network
+
+  trino-coordinator:
+    image: 'trinodb/trino:latest'
+    hostname: trino-coordinator
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./trino/etc:/etc/trino
+    networks:
+      - trino-network
+
   ssh-server:
     image: lscr.io/linuxserver/openssh-server
     container_name: openssh-server
-    hostname:  shh-server
+    hostname: shh-server
     environment:
       - PUID=501
       - PGID=20
@@ -44,9 +58,13 @@ services:
       - ./ssh:/remote-ssh/
       - ./ssh/config/:/config/
     ports:
-      - 2222:2222      
+      - 2222:2222
     restart: always
-    depends_on: 
+    depends_on:
       - postgres
     links:
       - postgres:postgres_tunnel
+
+networks:
+  trino-network:
+    driver: bridge

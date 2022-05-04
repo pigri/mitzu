@@ -13,7 +13,6 @@ import mitzu.notebook.visualization as vis
 import mitzu.adapters.generic_adapter as GA
 import mitzu.discovery.datasource_discovery as D
 import mitzu.notebook.model_loader as ML
-from sshtunnel import SSHTunnelForwarder
 
 
 def default_field(obj):
@@ -124,6 +123,7 @@ class AttributionMode(Enum):
 class ConnectionType(Enum):
     FILE = "file"
     ATHENA = "awsathena+rest"
+    TRINO = "trino"
     POSTGRESQL = "postgresql+psycopg2"
     MYSQL = "mysql+mysqlconnector"
     SQLITE = "sqlite"
@@ -143,7 +143,6 @@ class Connection:
     url_params: Optional[str] = None
     # Used for adapter configuration
     extra_configs: Dict[str, Any] = default_field({})
-    ssh_tunnel_forwarder: Optional[SSHTunnelForwarder] = None
 
 
 @dataclass

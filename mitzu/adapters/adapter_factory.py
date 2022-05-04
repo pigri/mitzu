@@ -21,6 +21,11 @@ def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter
         from mitzu.adapters.mysql_adapter import MySQLAdapter
 
         return MySQLAdapter(source)
+
+    elif con_type == M.ConnectionType.TRINO:
+        from mitzu.adapters.trino_adapter import TrinoAdapter
+
+        return TrinoAdapter(source)
     else:
         from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 

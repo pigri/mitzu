@@ -5,7 +5,7 @@ from mitzu.common.model import (
 )
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import pandas as pd
-from retry import retry
+from retry import retry  # type: ignore
 from datetime import datetime
 
 
@@ -39,5 +39,6 @@ def ingest_test_data(source: EventDataSource, raw_path: str) -> SQLAlchemyAdapte
             )
         except Exception as exc:
             print(exc)
-        pdf.to_sql(con=engine, name=ed_table.table_name, index=False)
+        sec_schema = source.connection.extra_configs.get("secondary_schema")
+        pdf.to_sql(con=engine, name=ed_table.table_name, index=False, schema=sec_schema)
     return adapter

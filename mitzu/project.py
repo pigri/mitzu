@@ -1,3 +1,4 @@
+from __future__ import annotations
 from mitzu.notebook.model_loader import DatasetModel
 import mitzu.common.model as M
 from datetime import datetime, timedelta

@@ -100,9 +100,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def get_engine(self) -> Any:
         con = self.source.connection
         if self._engine is None:
-            if self.source.connection.ssh_tunnel_forwarder is not None:
-                self._create_ssh_tunnel()
-
             if con.url is None:
                 url = self._get_connection_url(con)
             else:
@@ -115,7 +112,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     ) -> SA.Table:
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
-            metadata_obj = SA.MetaData()
+            secondary_schema = self.source.connection.extra_configs.get(
+                "secondary_schema", None
+            )
+            metadata_obj = SA.MetaData(schema=secondary_schema)
             self._table_cache[event_data_table] = SA.Table(
                 event_data_table.table_name,
                 metadata_obj,
@@ -141,11 +141,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         table = self.get_table(event_data_table)
-        result = self.execute_query(
-            SA.select(
-                [SA.distinct(table.columns.get(event_data_table.event_name_field))]
-            )
-        )
+        columns = table.columns
+        event_name_field = columns.get(event_data_table.event_name_field)
+        result = self.execute_query(SA.select([SA.distinct(event_name_field)]))
         return pd.DataFrame(result)[event_data_table.event_name_field].tolist()
 
     def _get_datetime_interval(
@@ -156,10 +154,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
     def _get_connection_url(self, con: M.Connection):
-        credentials = (
-            "" if con.user_name is None else f"{con.user_name}:{con.password}@"
-        )
+        user_name = "" if con.user_name is None else con.user_name
+        password = "" if con.password is None else f":{con.password}"
         host_str = "" if con.host is None else str(con.host)
+        if con.user_name is not None and con.host is not None:
+            host_str = f"@{host_str}"
         port_str = "" if con.port is None else ":" + str(con.port)
         schema_str = "" if con.schema is None else f"/{con.schema}"
         url_params_str = "" if con.url_params is None else con.url_params
@@ -167,7 +166,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             url_params_str = "?" + url_params_str
 
         protocol = con.connection_type.value.lower()
-        return f"{protocol}://{credentials}{host_str}{port_str}{schema_str}{url_params_str}"
+        return f"{protocol}://{user_name}{password}{host_str}{port_str}{schema_str}{url_params_str}"
 
     def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
         return SA.func.array_agg(column.distinct())
@@ -481,7 +480,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     .columns.get(GA.CTE_USER_ID_ALIAS_COL)
                     .distinct()
                 )
-                * 1.0
+                * 100.0
                 / SA.func.count(
                     first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
                 )
