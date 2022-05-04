@@ -4,10 +4,10 @@ from typing import Any, List
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
-import pandas as pd  # type: ignore
-from sql_formatter.core import format_sql  # type: ignore
-import sqlalchemy as SA  # type: ignore
-from sqlalchemy.sql.expression import CTE  # type: ignore
+import pandas as pd
+from sql_formatter.core import format_sql
+import sqlalchemy as SA
+from sqlalchemy.sql.expression import CTE
 from mitzu.adapters.helper import pdf_string_array_to_array
 
 

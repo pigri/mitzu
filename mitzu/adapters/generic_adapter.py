@@ -1,7 +1,7 @@
 from __future__ import annotations
 import mitzu.common.model as M
 from typing import Dict, List, Any
-import pandas as pd  # type: ignore
+import pandas as pd
 
 # Final Select Columns
 EVENT_NAME_ALIAS_COL = "_event_type"

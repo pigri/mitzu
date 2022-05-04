@@ -1,6 +1,6 @@
 from __future__ import annotations
-import pandas as pd  # type: ignore
-import plotly.express as px  # type: ignore
+import pandas as pd
+import plotly.express as px
 from typing import List, cast
 import mitzu.common.model as M
 import mitzu.adapters.generic_adapter as GA

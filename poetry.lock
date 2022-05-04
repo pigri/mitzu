@@ -1291,6 +1291,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "types-retry"
+version = "0.9.6"
+description = "Typing stubs for retry"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "typing-extensions"
 version = "4.2.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -1344,7 +1352,7 @@ postgres = ["psycopg2"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1"
-content-hash = "e8c442bb7ed812c2f97da521222c9e913262342959b3373af88ed1940f719e79"
+content-hash = "ce2a65786aa4ac82170f8293df7bde27af92ac241099d4a005dfa9ac907b6021"
 
 [metadata.files]
 appnope = [
@@ -2401,6 +2409,10 @@ typed-ast = [
     {file = "typed_ast-1.5.3-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:8831479695eadc8b5ffed06fdfb3e424adc37962a75925668deeb503f446c0a3"},
     {file = "typed_ast-1.5.3-cp39-cp39-win_amd64.whl", hash = "sha256:20d5118e494478ef2d3a2702d964dae830aedd7b4d3b626d003eea526be18718"},
     {file = "typed_ast-1.5.3.tar.gz", hash = "sha256:27f25232e2dd0edfe1f019d6bfaaf11e86e657d9bdb7b0956db95f560cceb2b3"},
+]
+types-retry = [
+    {file = "types-retry-0.9.6.tar.gz", hash = "sha256:76009581fca7546795c5ed19629c995fe28893e1e7dec53c7b127cd6d1d87a6b"},
+    {file = "types_retry-0.9.6-py3-none-any.whl", hash = "sha256:b42b67dd8aee960be244e1aeb474f13ee3238e19956cec1aa3f6e8b10a90b942"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.2.0-py3-none-any.whl", hash = "sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"},

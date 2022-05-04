@@ -3,7 +3,7 @@ from typing import Any
 
 from mitzu.adapters.sqlite_adapter import SQLiteAdapter
 import mitzu.common.model as M
-import pandas as pd  # type: ignore
+import pandas as pd
 import json
 
 VALUE_SEPARATOR = "###"

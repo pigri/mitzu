@@ -18,6 +18,7 @@ sshtunnel = "^0.4.0"
 
 psycopg2 = {version = "~2.9.3", optional=true}
 mysql-connector-python = {version = "^8.0.28", optional=true}
+types-retry = "^0.9.6"
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]

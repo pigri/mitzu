@@ -1,5 +1,10 @@
 import mitzu.project as P
-from mitzu.common.model import EventDataSource, Connection, ConnectionType, EventDataTable  # type: ignore
+from mitzu.common.model import (
+    EventDataSource,
+    Connection,
+    ConnectionType,
+    EventDataTable,
+)
 from datetime import datetime
 from mitzu.notebook.model_loader import DatasetModel
 import inspect

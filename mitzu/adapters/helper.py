@@ -1,5 +1,5 @@
 from datetime import datetime
-import pandas as pd  # type: ignore
+import pandas as pd
 import mitzu.adapters.generic_adapter as GA
 from typing import Optional
 

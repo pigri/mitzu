@@ -1,5 +1,5 @@
 import re
-import pandas as pd  # type: ignore
+import pandas as pd
 from typing import List, Dict
 
 

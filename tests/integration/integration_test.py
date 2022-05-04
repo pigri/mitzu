@@ -1,22 +1,20 @@
 from copy import copy
 from typing import Any, Dict, cast
 from mitzu import init_notebook_project
-from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
+from tests.test_samples.sources import SIMPLE_CSV
 from tests.integration.helper import ingest_test_data
-from sqlalchemy import inspect  # type: ignore
 from mitzu.common.model import (
     Connection,
     ConnectionType,
     EventDataSource,
     default_field,
 )
-import pandas as pd  # type: ignore
+import pandas as pd
 import pytest
-from retry import retry  # type: ignore
 from datetime import datetime
 from tests.helper import assert_row
 from dataclasses import dataclass
-from sshtunnel import SSHTunnelForwarder  # type: ignore
+from sshtunnel import SSHTunnelForwarder
 
 
 @dataclass

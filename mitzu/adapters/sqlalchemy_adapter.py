@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, cast, Optional
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
-import pandas as pd  # type: ignore
-import sqlalchemy as SA  # type: ignore
+import pandas as pd
+import sqlalchemy as SA
 from sqlalchemy.orm import aliased  # type:ignore
 from sqlalchemy.sql.expression import CTE, Select  # type:ignore
-from sql_formatter.core import format_sql  # type: ignore
+from sql_formatter.core import format_sql
 
 
 @dataclass
