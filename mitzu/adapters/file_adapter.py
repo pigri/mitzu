@@ -1,10 +1,11 @@
 from __future__ import annotations
+
+import json
 from typing import Any
 
-from mitzu.adapters.sqlite_adapter import SQLiteAdapter
 import mitzu.common.model as M
 import pandas as pd
-import json
+from mitzu.adapters.sqlite_adapter import SQLiteAdapter
 
 VALUE_SEPARATOR = "###"
 

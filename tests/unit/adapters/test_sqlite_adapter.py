@@ -1,12 +1,13 @@
 import mitzu.adapters.file_adapter as fa
 from mitzu.common.model import DataType, Field
-from tests.test_samples.sources import SIMPLE_CSV, SIMPLE_BIG_DATA
+from tests.test_samples.sources import get_simple_big_data, get_simple_csv
 
 
 def test_simple_list_columns():
-    adapter = fa.FileAdapter(SIMPLE_CSV)
+    scv = get_simple_csv()
+    adapter = fa.FileAdapter(scv)
 
-    fields = adapter.list_fields(SIMPLE_CSV.event_data_tables[0])
+    fields = adapter.list_fields(scv.event_data_tables[0])
     assert 9 == len(fields)
     assert 3 == len(
         set(fields)
@@ -21,9 +22,10 @@ def test_simple_list_columns():
 
 
 def test_complex_list_columns():
-    adapter = fa.FileAdapter(SIMPLE_BIG_DATA)
+    sbd = get_simple_big_data()
+    adapter = fa.FileAdapter(sbd)
 
-    fields = adapter.list_fields(SIMPLE_BIG_DATA.event_data_tables[0])
+    fields = adapter.list_fields(sbd.event_data_tables[0])
     assert 3 == len(
         set(fields)
         & set(

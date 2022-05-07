@@ -1,7 +1,8 @@
 from datetime import datetime
-import pandas as pd
-import mitzu.adapters.generic_adapter as GA
 from typing import Optional
+
+import mitzu.adapters.generic_adapter as GA
+import pandas as pd
 
 
 def str_to_datetime(val: str) -> Optional[datetime]:
@@ -16,7 +17,7 @@ def dataframe_str_to_datetime(pdf: pd.DataFrame, column: str) -> pd.DataFrame:
 
 
 def pdf_string_array_to_array(
-    pdf: pd.DataFrame, split_text: str = ", ", omit_chars: int = 2
+    pdf: pd.DataFrame, split_text: str = ", ", omit_chars: int = 1
 ):
     for col in pdf.columns:
         if col != GA.EVENT_NAME_ALIAS_COL:

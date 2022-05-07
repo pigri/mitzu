@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Dict, Any, cast
+
 import re
-import mitzu.common.model as M
 from copy import copy
+from typing import Any, Dict, cast
+
+import mitzu.common.model as M
 
 NUM_2_WORDS = {
     1: "one",
@@ -98,11 +100,6 @@ def _lt_eq(self: M.EventFieldDef, val: Any) -> M.SimpleSegment:
         _operator=M.Operator.LT_EQ,
         _right=val,
     )
-
-
-def _event_condition_constructor(self: M.SimpleSegment, event_def: M.EventDef):
-    M.Segment.__init__(self)
-    self._left = event_def
 
 
 def add_enum_defs(
@@ -215,26 +212,17 @@ class ModelLoader:
             else:
                 class_field_name = fix_def(event_field._field._name)
                 class_def[class_field_name] = class_instance
-        class_def["__init__"] = _event_condition_constructor
 
         return type(f"_{event._event_name}", (M.SimpleSegment,), class_def)(event)
 
-    def _process_schema(self, defs: M.DiscoveredEventDataSource):
-        gen_defs = defs.generic_definitions
-        spec_defs = defs.event_specific_definitions
-        source = defs.source
+    def _process_schema(self, discovered_dataset: M.DiscoveredEventDataSource):
+        source = discovered_dataset.source
         class_def = {}
-
         for ed_table in source.event_data_tables:
-            any_event = gen_defs[ed_table]
-            for event_name, event_def in spec_defs[ed_table].items():
-                event_def._fields = {**any_event._fields, **event_def._fields}
-                event_def._event_name = event_name
-                for _, event_field in event_def._fields.items():
-                    event_field._event_name = event_name
-                class_def[fix_def(event_name)] = self._create_event_instance(
-                    event_def, source
-                )
+            definitions = discovered_dataset.definitions[ed_table]
+            for event_name, event_def in definitions.items():
+                fixed_name = fix_def(event_name)
+                class_def[fixed_name] = self._create_event_instance(event_def, source)
         return class_def
 
     def create_datasource_class_model(

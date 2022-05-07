@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+from abc import ABC
+from typing import Any, Dict, List
+
 import mitzu.common.model as M
-from typing import Dict, List, Any
 import pandas as pd
 
 # Final Select Columns
@@ -18,7 +21,7 @@ CTE_DATETIME_COL = "_cte_datetime"
 CTE_GROUP_COL = "_cte_group"
 
 
-class GenericDatasetAdapter:
+class GenericDatasetAdapter(ABC):
     def __init__(self, source: M.EventDataSource):
         self.source = source
 
@@ -62,5 +65,5 @@ class GenericDatasetAdapter:
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def _fix_col_index(self, index: int, col_name: str):
-        return col_name + f"_{index}"
+    def test_connection(self):
+        raise NotImplementedError()

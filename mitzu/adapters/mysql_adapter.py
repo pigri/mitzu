@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from typing import Any, List
 
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 from mitzu.adapters.helper import pdf_string_array_to_array
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
 NULL_VALUE_KEY = "##NULL##"
 

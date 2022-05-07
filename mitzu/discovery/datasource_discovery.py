@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Dict
+from typing import Dict, List
+
 import mitzu.common.model as M
 
 
@@ -24,10 +26,9 @@ class EventDatasourceDiscovery:
         """Returns the extended field names (a.b.c) for every field that is event_specific"""
 
         res_fields = all_fields.copy()
-        for mf, evt_keys in map_fields.items():
+        for evt_keys in map_fields.values():
             map_key_field = evt_keys[event_name]
             for mkf in map_key_field:
-                mkf._parent = mf
                 res_fields.append(mkf)
         return res_fields
 
@@ -78,26 +79,57 @@ class EventDatasourceDiscovery:
             res.extend([col for col in columns if col._name.startswith(spec_col_name)])
         return res
 
+    def _copy_gen_field_def_to_spec(
+        self, spec_event_name: str, gen_evt_field_def: M.EventFieldDef
+    ):
+        return M.EventFieldDef(
+            _event_name=spec_event_name,
+            _field=gen_evt_field_def._field,
+            _source=gen_evt_field_def._source,
+            _event_data_table=gen_evt_field_def._event_data_table,
+            _enums=gen_evt_field_def._enums,
+        )
+
+    def _merge_generic_and_specific_definitions(
+        self,
+        source: M.EventDataSource,
+        event_data_table: M.EventDataTable,
+        generic: M.EventDef,
+        specific: Dict[str, M.EventDef],
+    ) -> Dict[str, M.EventDef]:
+        res: Dict[str, M.EventDef] = {}
+
+        for evt_name, spec_evt_def in specific.items():
+            copied_gen_fields = {
+                field: self._copy_gen_field_def_to_spec(evt_name, field_def)
+                for field, field_def in generic._fields.items()
+            }
+
+            new_def = M.EventDef(
+                _source=source,
+                _event_data_table=event_data_table,
+                _event_name=evt_name,
+                _fields={**spec_evt_def._fields, **copied_gen_fields},
+            )
+            res[evt_name] = new_def
+        return res
+
     def discover_datasource(self) -> M.DiscoveredEventDataSource:
-        generic_definitions: Dict[M.EventDataTable, M.EventDef] = {}
-        event_specific_definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
+        definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
+
         for ed_table in self.source.event_data_tables:
             fields = self.source.adapter.list_fields(event_data_table=ed_table)
             fields = [f for f in fields if f._name not in ed_table.ignored_fields]
             specific_fields = self._get_specific_fields(ed_table, fields)
             generic_fields = [c for c in fields if c not in specific_fields]
-
-            generic_definitions[ed_table] = self._get_generic_field_values(
-                ed_table, generic_fields
-            )
-
-            event_specific_definitions[ed_table] = self._get_specific_field_values(
-                ed_table, specific_fields
+            generic = self._get_generic_field_values(ed_table, generic_fields)
+            event_specific = self._get_specific_field_values(ed_table, specific_fields)
+            definitions[ed_table] = self._merge_generic_and_specific_definitions(
+                self.source, ed_table, generic, event_specific
             )
 
         dd = M.DiscoveredEventDataSource(
-            generic_definitions=generic_definitions,
-            event_specific_definitions=event_specific_definitions,
+            definitions=definitions,
             source=self.source,
         )
         return dd

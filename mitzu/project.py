@@ -1,8 +1,10 @@
 from __future__ import annotations
-from mitzu.notebook.model_loader import DatasetModel
-import mitzu.common.model as M
+
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+
+import mitzu.common.model as M
+from mitzu.notebook.model_loader import DatasetModel
 
 
 def init_project(
@@ -18,6 +20,17 @@ def init_project(
     m = source.discover_datasource(
         start_dt=start_dt, end_dt=end_dt
     ).create_notebook_class_model()
+    if glbs is not None:
+        m._to_globals(glbs)
+    return m
+
+
+def load_project(
+    project: str, folder: str = "./", extension="mitzu", glbs: Optional[Dict] = None
+) -> DatasetModel:
+    dd = M.DiscoveredEventDataSource.from_pickle(project, folder, extension)
+    dd.source.adapter.test_connection()
+    m = dd.create_notebook_class_model()
     if glbs is not None:
         m._to_globals(glbs)
     return m

@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 from typing import Any, List
 
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd
-from sql_formatter.core import format_sql
 import sqlalchemy as SA
-from sqlalchemy.sql.expression import CTE
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from sql_formatter.core import format_sql
+from sqlalchemy.sql.expression import CTE
 
 
 class TrinoAdapter(SQLAlchemyAdapter):

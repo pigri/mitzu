@@ -1,12 +1,11 @@
-from typing import cast
-from sqlalchemy import inspect
-from mitzu.common.model import (
-    EventDataSource,
-)
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-import pandas as pd
-from retry import retry  # type: ignore
 from datetime import datetime
+from typing import cast
+
+import pandas as pd
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.common.model import EventDataSource
+from retry import retry  # type: ignore
+from sqlalchemy import inspect
 
 
 @retry(Exception, delay=5, tries=6)

@@ -1,27 +1,20 @@
-import mitzu.project as P
-from mitzu.common.model import (
-    EventDataSource,
-    Connection,
-    ConnectionType,
-    EventDataTable,
-)
-from datetime import datetime
-from mitzu.notebook.model_loader import DatasetModel
 import inspect
+from datetime import datetime
 from typing import Dict, Optional
 
-__all__ = [
-    "init_notebook_project",
-    "Connection",
-    "ConnectionType",
-    "EventDataSource",
-    "EventDataTable",
-]
-
+import mitzu.project as P
+from mitzu.common.model import (
+    Connection,
+    ConnectionType,
+    EventDataSource,
+    EventDataTable,
+)
+from mitzu.notebook.model_loader import DatasetModel
 
 Connection
 ConnectionType
 EventDataSource
+EventDataTable
 
 
 def _find_notebook_globals() -> Optional[Dict]:
@@ -34,7 +27,16 @@ def _find_notebook_globals() -> Optional[Dict]:
     return None
 
 
-def init_notebook_project(
+def load_project(project: str, folder: str = "./", extension="mitzu", glbs=None):
+    if glbs is None:
+        glbs = _find_notebook_globals()
+    print("Initializing project ...")
+    res = P.load_project(project, folder, extension)
+    print("Finished project initialization")
+    return res
+
+
+def init_project(
     source: EventDataSource,
     start_dt: datetime = None,
     end_dt: datetime = None,

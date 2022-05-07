@@ -1,22 +1,26 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+
+import os
+import pathlib
+import pickle
+from abc import ABC
+from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-
 from enum import Enum
-from copy import copy
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
-import pandas as pd
-import mitzu.common.helper as helper
 import mitzu.adapters.adapter_factory as factory
-import mitzu.notebook.visualization as vis
 import mitzu.adapters.generic_adapter as GA
+import mitzu.common.helper as helper
 import mitzu.discovery.datasource_discovery as D
 import mitzu.notebook.model_loader as ML
+import mitzu.notebook.visualization as vis
+import pandas as pd
 
 
-def default_field(obj):
-    return field(default_factory=lambda: copy(obj))
+def default_field(obj, repr: bool = True):
+    return field(repr=repr, default_factory=lambda: copy(obj))
 
 
 ANY_EVENT_NAME = "any_event"
@@ -129,12 +133,73 @@ class ConnectionType(Enum):
     SQLITE = "sqlite"
 
 
+T = TypeVar("T")
+
+
 @dataclass
+class ProtectedState(Generic[T]):
+    _value: Optional[T] = None
+
+    def get_value(self) -> Optional[T]:
+        return self._value
+
+    def set_value(self, value: T):
+        self._value = value
+
+    def has_value(self) -> bool:
+        return self._value is not None
+
+    def __getstate__(self):
+        """Override so pickle doesn't store state"""
+        return None
+
+    def __str__(self) -> str:
+        return ""
+
+    def __repr__(self) -> str:
+        return ""
+
+
+class SecretResolver(ABC):
+    def resolve_secret(self) -> str:
+        raise NotImplementedError()
+
+
+@dataclass(frozen=True)
+class PromptSecretResolver(SecretResolver):
+    title: str
+
+    def resolve_secret(self) -> str:
+        import getpass
+
+        return getpass.getpass(prompt=self.title)
+
+
+@dataclass(frozen=True)
+class ConstSecretResolver(SecretResolver):
+    secret: str
+
+    def resolve_secret(self) -> str:
+        return self.secret
+
+
+@dataclass(frozen=True)
+class EnvVarSecretResolver(SecretResolver):
+    variable_name: str
+
+    def resolve_secret(self) -> str:
+        secret = os.getenv(self.variable_name)
+        if secret is not None:
+            return secret
+        else:
+            raise Exception(f"Environmental variable {self.variable_name} was not set.")
+
+
+@dataclass(frozen=True)
 class Connection:
 
     connection_type: ConnectionType
     user_name: Optional[str] = None
-    password: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     url: Optional[str] = None
@@ -143,9 +208,21 @@ class Connection:
     url_params: Optional[str] = None
     # Used for adapter configuration
     extra_configs: Dict[str, Any] = default_field({})
+    _secret: ProtectedState[str] = default_field(ProtectedState())
+    secret_resolver: Optional[SecretResolver] = None
+
+    @property
+    def password(self):
+        if not self._secret.has_value():
+            if self.secret_resolver is not None:
+                secret = self.secret_resolver.resolve_secret()
+                self._secret.set_value(secret)
+            else:
+                return ""
+        return self._secret.get_value()
 
 
-@dataclass
+@dataclass(frozen=True)
 class TimeWindow:
     value: int = 1
     period: TimeGroup = TimeGroup.DAY
@@ -164,7 +241,7 @@ class TimeWindow:
         return f"{self.value} {self.period}"
 
 
-@dataclass
+@dataclass(frozen=True)
 class EventDataTable:
     table_name: str
     event_time_field: str
@@ -192,19 +269,27 @@ class EventDataTable:
             )
 
 
-@dataclass
+@dataclass(frozen=True)
 class EventDataSource:
     connection: Connection
     event_data_tables: List[EventDataTable]
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
-    _adapter: Optional[GA.GenericDatasetAdapter] = None
+    _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
+        ProtectedState()
+    )
 
     @property
     def adapter(self) -> GA.GenericDatasetAdapter:
-        if self._adapter is None:
-            self._adapter = factory.get_or_create_adapter(self)
-        return self._adapter
+        if not self._adapter_cache.has_value():
+            self._adapter_cache.set_value(factory.create_adapter(self))
+        res = self._adapter_cache.get_value()
+        if res is None:
+            raise Exception("Adapter wasn't set for the datasource")
+        return res
+
+    def clear_adapter_cache(self):
+        self._adapter_cache.set_value(None)
 
     def discover_datasource(
         self, start_dt: datetime = None, end_dt: datetime = None
@@ -223,37 +308,45 @@ class EventDataSource:
             edt.validate()
 
 
-@dataclass
+@dataclass(frozen=True)
 class DiscoveredEventDataSource:
-    event_specific_definitions: Dict[EventDataTable, Dict[str, EventDef]]
-    generic_definitions: Dict[EventDataTable, EventDef]
+    definitions: Dict[EventDataTable, Dict[str, EventDef]]
     source: EventDataSource
 
-    def create_notebook_class_model(self) -> ML.DatasetModel:
+    def __post_init__(self):
         self.source.validate()
+
+    def create_notebook_class_model(self) -> ML.DatasetModel:
         return ML.ModelLoader().create_datasource_class_model(self)
 
+    @staticmethod
+    def _get_path(project: str, folder: str = "./", extension="mitzu") -> pathlib.Path:
+        return pathlib.Path(folder, f"{project}.{extension}")
 
-@dataclass
+    def to_pickle(self, project: str, folder: str = "./", extension="mitzu"):
+        path = self._get_path(project, folder, extension)
+        with path.open(mode="wb") as file:
+            pickle.dump(self, file)
+
+    @classmethod
+    def from_pickle(
+        cls, project: str, folder: str = "./", extension="mitzu"
+    ) -> DiscoveredEventDataSource:
+        path = cls._get_path(project, folder, extension)
+        with path.open(mode="rb") as file:
+            return pickle.load(file)
+
+
+@dataclass(frozen=True)
 class Field:
     _name: str
-    _type: DataType
-    _parent: Optional[Field] = None
-
-    def __str__(self) -> str:
-        if self._parent:
-            return f"{self._parent}.{self._name}"
-        else:
-            return self._name
-
-    def __repr__(self) -> str:
-        return str(self)
+    _type: DataType = field(repr=False)
 
     def __hash__(self) -> int:
-        return hash(f"{self._name}{self._type}{self._parent}")
+        return hash(f"{self._name}{self._type}")
 
 
-@dataclass
+@dataclass(frozen=True)
 class EventFieldDef:
     _event_name: str
     _field: Field
@@ -263,7 +356,7 @@ class EventFieldDef:
     _enums: Optional[List[Any]] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class EventDef:
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
@@ -455,23 +548,23 @@ class Segment(SegmentationMetric):
         return super().__repr__()
 
 
-@dataclass
+@dataclass(init=False)
 class ComplexSegment(Segment):
     _left: Segment
     _operator: BinaryOperator
     _right: Segment
 
     def __init__(self, _left: Segment, _operator: BinaryOperator, _right: Segment):
+        object.__setattr__(self, "_left", _left)
+        object.__setattr__(self, "_operator", _operator)
+        object.__setattr__(self, "_right", _right)
         super().__init__()
-        self._left = _left
-        self._right = _right
-        self._operator = _operator
 
     def __repr__(self) -> str:
         return super().__repr__()
 
 
-@dataclass
+@dataclass(init=False)
 class SimpleSegment(Segment):
     _left: EventFieldDef | EventDef  # str is an event_name without any filters
     _operator: Optional[Operator] = None
@@ -483,10 +576,10 @@ class SimpleSegment(Segment):
         _operator: Optional[Operator] = None,
         _right: Optional[Any] = None,
     ):
+        object.__setattr__(self, "_left", _left)
+        object.__setattr__(self, "_operator", _operator)
+        object.__setattr__(self, "_right", _right)
         super().__init__()
-        self._left = _left
-        self._right = _right
-        self._operator = _operator
 
     def __repr__(self) -> str:
         return super().__repr__()

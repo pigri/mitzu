@@ -1,15 +1,16 @@
-from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
-from tests.test_samples.sources import SIMPLE_BIG_DATA, SIMPLE_CSV
 from datetime import datetime
-from mitzu.common.model import ConversionMetric, Segment
-from tests.helper import assert_row, assert_sql
+
 import pytest
+from mitzu.common.model import ConversionMetric, DiscoveredEventDataSource, Segment
+from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
+from tests.helper import assert_row, assert_sql
+from tests.test_samples.sources import get_simple_big_data, get_simple_csv
 
 
 @pytest.mark.skip
 def test_simple_big_data_discovery():
     discovery = EventDatasourceDiscovery(
-        SIMPLE_BIG_DATA, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        get_simple_big_data(), datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
     m = discovery.discover_datasource().create_notebook_class_model()
 
@@ -22,16 +23,33 @@ def test_simple_big_data_discovery():
     assert_row(df, _unique_user_count=2254, _datetime=None, _event_count=4706)
 
 
+def test_discovered_dataset_pickle():
+    discovery = EventDatasourceDiscovery(
+        get_simple_csv(), datetime(2021, 1, 1), datetime(2022, 1, 1)
+    )
+    dd1 = discovery.discover_datasource()
+    dd1.to_pickle("test_app")
+
+    dd2 = DiscoveredEventDataSource.from_pickle("test_app")
+    m = dd2.create_notebook_class_model()
+
+    seg: Segment = m.cart.config(
+        start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
+    )
+    assert 1 == seg.get_df().shape[0]
+    assert_row(seg.get_df(), _unique_user_count=108, _datetime=None, _event_count=787)
+
+
 def test_simple_csv_segmentation():
     discovery = EventDatasourceDiscovery(
-        SIMPLE_CSV, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        get_simple_csv(), datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
     m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.cart.config(
         start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
     )
-    # print(seg.get_sql())
+    print(seg.get_sql())
     assert_sql(
         """
 with anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
@@ -57,7 +75,7 @@ GROUP BY _datetime, _group""",
 
 def test_simple_csv_funnel():
     discovery = EventDatasourceDiscovery(
-        SIMPLE_CSV, datetime(2021, 1, 1), datetime(2022, 1, 1)
+        get_simple_csv(), datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
     m = discovery.discover_datasource().create_notebook_class_model()
 
@@ -68,7 +86,6 @@ def test_simple_csv_funnel():
         end_dt="2021-01-01",
         group_by=m.view.category_id,
     )
-    print(conv.get_sql())
     assert_sql(
         """
 with anon_1 as (SELECT simple_dataset.user_id as _cte_user_id,

@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
+
 import mitzu.common.model as ml
 
 

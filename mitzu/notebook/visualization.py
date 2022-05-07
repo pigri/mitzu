@@ -1,9 +1,11 @@
 from __future__ import annotations
+
+from typing import List, Tuple, cast
+
+import mitzu.adapters.generic_adapter as GA
+import mitzu.common.model as M
 import pandas as pd
 import plotly.express as px
-from typing import List, cast, Tuple
-import mitzu.common.model as M
-import mitzu.adapters.generic_adapter as GA
 
 MAX_TITLE_LENGTH = 80
 STEP_COL = "step"

@@ -1,9 +1,10 @@
 from __future__ import annotations
-import mitzu.common.model as M
+
 import mitzu.adapters.generic_adapter as GA
+import mitzu.common.model as M
 
 
-def get_or_create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:
+def create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:
     con_type = source.connection.connection_type
     if con_type == M.ConnectionType.FILE:
         from mitzu.adapters.file_adapter import FileAdapter

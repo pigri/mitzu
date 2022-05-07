@@ -1,13 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Dict, List, cast, Optional
+from typing import Any, Dict, List, Optional, cast
+
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
+from sql_formatter.core import format_sql
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import CTE, Select
-from sql_formatter.core import format_sql
+
+
+def fix_col_index(index: int, col_name: str):
+    return col_name + f"_{index}"
 
 
 @dataclass
@@ -445,10 +451,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             other_selects.extend(
                 [
                     SA.func.count(curr_used_id_col.distinct()).label(
-                        self._fix_col_index(i + 2, GA.USER_COUNT_COL)
+                        fix_col_index(i + 2, GA.USER_COUNT_COL)
                     ),
                     SA.func.count(curr_used_id_col).label(
-                        self._fix_col_index(i + 2, GA.EVENT_COUNT_COL)
+                        fix_col_index(i + 2, GA.EVENT_COUNT_COL)
                     ),
                 ]
             )
@@ -487,9 +493,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             ).label(GA.CVR_COL),
             SA.func.count(
                 first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
-            ).label(self._fix_col_index(1, GA.USER_COUNT_COL)),
+            ).label(fix_col_index(1, GA.USER_COUNT_COL)),
             SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
-                self._fix_col_index(1, GA.EVENT_COUNT_COL)
+                fix_col_index(1, GA.EVENT_COUNT_COL)
             ),
         ]
         columns.extend(other_selects)
@@ -502,3 +508,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 else [SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)]
             ),
         ).select_from(joined_source)
+
+    def test_connection(self):
+        self.execute_query(
+            SA.select(columns=[SA.literal(True).label("test_connection")])
+        )

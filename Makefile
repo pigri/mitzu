@@ -17,7 +17,7 @@ mypy:
 unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
 
-integration_tests:
+test_integrations:
 	docker-compose -f tests/integration/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
 
@@ -28,7 +28,7 @@ docker_test_down:
 docker_test_up:	
 	docker-compose -f tests/integration/docker-compose.yml up
 
-test: unit_tests integration_tests
+test: unit_tests test_integrations
 	@ECHO "done"
 
 check: format autoflake mypy lint test

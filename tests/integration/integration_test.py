@@ -1,66 +1,86 @@
 from __future__ import annotations
-from typing import Any, Dict, cast, Optional
-from mitzu import init_notebook_project
-from tests.test_samples.sources import get_simple_csv
-from tests.integration.helper import ingest_test_data
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, Optional, cast
+
 import mitzu.common.model as M
 import pandas as pd
 import pytest
-from datetime import datetime
+from mitzu import init_notebook_project
 from tests.helper import assert_row
-from dataclasses import dataclass
+from tests.integration.helper import ingest_test_data
+from tests.test_samples.sources import get_simple_csv
 
 
-@dataclass
+@dataclass(frozen=True)
 class TestCase:
-    type: M.ConnectionType
-    configs: Dict = M.default_field(
+    connection_type: M.ConnectionType
+    connection_configs: Dict = M.default_field(
         {
             "user_name": "test",
-            "password": "test",
+            "secret_resolver": M.ConstSecretResolver("test"),
             "schema": "test",
             "host": "localhost",
         }
     )
+    table_name_override: Optional[str] = None
     ingest: bool = True
-    table_name: Optional[str] = None
 
     def __repr__(self) -> str:
-        confs = "" if self.configs is None else f"({self.configs})"
+        confs = (
+            "" if self.connection_configs is None else f"({self.connection_configs})"
+        )
         return f"{type}{confs}"
 
 
-CONFIGS = [
-    TestCase(type=M.ConnectionType.POSTGRESQL),
-    TestCase(type=M.ConnectionType.MYSQL),
+TEST_CASES = [
+    TestCase(connection_type=M.ConnectionType.POSTGRESQL),
+    TestCase(connection_type=M.ConnectionType.MYSQL),
     TestCase(
-        type=M.ConnectionType.TRINO,
-        configs={
+        connection_type=M.ConnectionType.TRINO,
+        connection_configs={
             "host": "localhost",
-            "password": None,
+            "secret_resolver": None,
             "user_name": "test",
             "port": 8080,
             "schema": "mysql",
             "extra_configs": {"secondary_schema": "test"},
         },
         ingest=False,
-        table_name="test.simple_dataset",
+        table_name_override="test.simple_dataset",
     ),
-    TestCase(type=M.ConnectionType.SQLITE, configs={"url": "sqlite://"}),
+    TestCase(
+        connection_type=M.ConnectionType.SQLITE, connection_configs={"url": "sqlite://"}
+    ),
 ]
 
 
-@pytest.mark.parametrize("config", CONFIGS)
-def test_db_integrations(config: TestCase):
+@pytest.mark.parametrize("test_case", TEST_CASES)
+def test_db_integrations(test_case: TestCase):
     test_source = get_simple_csv()
     raw_path = test_source.connection.extra_configs["path"]
-    test_source.connection = M.Connection(connection_type=config.type, **config.configs)
-    if config.ingest:
-        ingest_test_data(source=test_source, raw_path=raw_path)
-    if config.table_name is not None:
-        test_source.event_data_tables[0].table_name = config.table_name
+    real_source = copy_source(
+        test_source,
+        test_case,
+    )
 
-    validate_integration(source=test_source)
+    if test_case.ingest:
+        ingest_test_data(source=real_source, raw_path=raw_path)
+    validate_integration(source=real_source)
+
+
+def copy_source(test_source: M.EventDataSource, test_case: TestCase):
+    edt_vals = test_source.event_data_tables[0].__dict__
+    if test_case.table_name_override is not None:
+        edt_vals["table_name"] = test_case.table_name_override
+
+    return M.EventDataSource(
+        event_data_tables=[M.EventDataTable(**edt_vals)],
+        connection=M.Connection(
+            connection_type=test_case.connection_type, **test_case.connection_configs
+        ),
+    )
 
 
 def validate_integration(source: M.EventDataSource):
