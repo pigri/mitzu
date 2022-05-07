@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC
+from datetime import datetime
 from typing import Any, Dict, List
 
 import mitzu.common.model as M
 import pandas as pd
 
 # Final Select Columns
-EVENT_NAME_ALIAS_COL = "_event_type"
+EVENT_NAME_ALIAS_COL = "_event_name"
 DATETIME_COL = "_datetime"
 GROUP_COL = "_group"
 USER_COUNT_COL = "_unique_user_count"
@@ -66,4 +67,9 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def test_connection(self):
+        raise NotImplementedError()
+
+    def get_last_event_times(
+        self,
+    ) -> Dict[str, datetime]:
         raise NotImplementedError()

@@ -6,10 +6,10 @@ import mitzu.project as P
 from mitzu.common.model import (
     Connection,
     ConnectionType,
+    DatasetModel,
     EventDataSource,
     EventDataTable,
 )
-from mitzu.notebook.model_loader import DatasetModel
 
 Connection
 ConnectionType
@@ -20,7 +20,9 @@ EventDataTable
 def _find_notebook_globals() -> Optional[Dict]:
     for stk in inspect.stack():
         parent_globals = stk[0].f_globals
-        if "init_notebook_project" in parent_globals and parent_globals != globals():
+        if (
+            "init_project" in parent_globals or "load_project"
+        ) and parent_globals != globals():
             print("Found notebook context")
             return parent_globals
     print("Couldn't find notebook context")
@@ -31,7 +33,7 @@ def load_project(project: str, folder: str = "./", extension="mitzu", glbs=None)
     if glbs is None:
         glbs = _find_notebook_globals()
     print("Initializing project ...")
-    res = P.load_project(project, folder, extension)
+    res = P.load_project(project, folder, extension, glbs=glbs)
     print("Finished project initialization")
     return res
 

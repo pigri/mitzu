@@ -115,14 +115,6 @@ def add_enum_defs(
             )
 
 
-class DatasetModel:
-    @classmethod
-    def _to_globals(cls, glbs: Dict):
-        for k, v in cls.__dict__.items():
-            if k != "_to_globals":
-                glbs[k] = v
-
-
 class ModelLoader:
     def _create_event_field_class(
         self,
@@ -227,6 +219,8 @@ class ModelLoader:
 
     def create_datasource_class_model(
         self, defs: M.DiscoveredEventDataSource
-    ) -> DatasetModel:
+    ) -> M.DatasetModel:
         class_def = self._process_schema(defs)
-        return cast(DatasetModel, type("_dataset_model", (DatasetModel,), class_def))
+        return cast(
+            M.DatasetModel, type("_dataset_model", (M.DatasetModel,), class_def)
+        )

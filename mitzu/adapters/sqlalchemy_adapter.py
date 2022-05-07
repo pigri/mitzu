@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional, cast
 
 import mitzu.adapters.generic_adapter as GA
@@ -513,3 +514,36 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self.execute_query(
             SA.select(columns=[SA.literal(True).label("test_connection")])
         )
+
+    def _get_last_event_times_pdf(self) -> pd.DataFrame:
+        main = None
+        for edt in self.source.event_data_tables:
+            t = self.get_table(edt)
+            et_col = t.columns.get(edt.event_time_field)
+            en_col = t.columns.get(edt.event_name_field)
+
+            sel = SA.select(
+                columns=[
+                    en_col.label(GA.EVENT_NAME_ALIAS_COL),
+                    SA.func.max(et_col).label(GA.DATETIME_COL),
+                ],
+                group_by=[
+                    SA.literal(1)
+                    if self._column_index_support()
+                    else SA.text(GA.EVENT_NAME_ALIAS_COL)
+                ],
+            )
+            if main is None:
+                main = sel
+            else:
+                main = main.union_all(sel)
+        return self.execute_query(main)
+
+    def get_last_event_times(self) -> Dict[str, datetime]:
+        pdf = self._get_last_event_times_pdf()
+        pdf = pdf.set_index(GA.EVENT_NAME_ALIAS_COL)
+
+        return {
+            k: v[GA.DATETIME_COL].to_pydatetime()
+            for k, v in pdf.to_dict("index").items()
+        }

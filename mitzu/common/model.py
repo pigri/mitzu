@@ -15,7 +15,7 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.common.helper as helper
 import mitzu.discovery.datasource_discovery as D
 import mitzu.notebook.model_loader as ML
-import mitzu.notebook.visualization as vis
+import mitzu.notebook.visualization as VIS
 import pandas as pd
 
 
@@ -45,7 +45,9 @@ class TimeGroup(Enum):
     YEAR = 9
 
     @classmethod
-    def parse(cls, val: str | TimeGroup) -> TimeGroup:
+    def parse(cls, val: Optional[str | TimeGroup]) -> Optional[TimeGroup]:
+        if val is None:
+            return None
         if type(val) == TimeGroup:
             return val
         elif type(val) == str:
@@ -278,6 +280,9 @@ class EventDataSource:
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
         ProtectedState()
     )
+    _last_event_times: ProtectedState[Dict[str, datetime]] = default_field(
+        ProtectedState()
+    )
 
     @property
     def adapter(self) -> GA.GenericDatasetAdapter:
@@ -287,6 +292,14 @@ class EventDataSource:
         if res is None:
             raise Exception("Adapter wasn't set for the datasource")
         return res
+
+    def get_last_event_times(self) -> Dict[str, datetime]:
+        if self._last_event_times.get_value() is None:
+            lets = self.adapter.get_last_event_times()
+            self._last_event_times.set_value(lets)
+
+        res = self._last_event_times.get_value()
+        return res if res is not None else {}
 
     def clear_adapter_cache(self):
         self._adapter_cache.set_value(None)
@@ -308,6 +321,14 @@ class EventDataSource:
             edt.validate()
 
 
+class DatasetModel(ABC):
+    @classmethod
+    def _to_globals(cls, glbs: Dict):
+        for k, v in cls.__dict__.items():
+            if k != "_to_globals":
+                glbs[k] = v
+
+
 @dataclass(frozen=True)
 class DiscoveredEventDataSource:
     definitions: Dict[EventDataTable, Dict[str, EventDef]]
@@ -316,20 +337,20 @@ class DiscoveredEventDataSource:
     def __post_init__(self):
         self.source.validate()
 
-    def create_notebook_class_model(self) -> ML.DatasetModel:
+    def create_notebook_class_model(self) -> DatasetModel:
         return ML.ModelLoader().create_datasource_class_model(self)
 
     @staticmethod
     def _get_path(project: str, folder: str = "./", extension="mitzu") -> pathlib.Path:
         return pathlib.Path(folder, f"{project}.{extension}")
 
-    def to_pickle(self, project: str, folder: str = "./", extension="mitzu"):
+    def save_project(self, project: str, folder: str = "./", extension="mitzu"):
         path = self._get_path(project, folder, extension)
         with path.open(mode="wb") as file:
             pickle.dump(self, file)
 
     @classmethod
-    def from_pickle(
+    def load_from_project_file(
         cls, project: str, folder: str = "./", extension="mitzu"
     ) -> DiscoveredEventDataSource:
         path = cls._get_path(project, folder, extension)
@@ -377,31 +398,100 @@ class EventDef:
 # =========================================== Metric definitions ===========================================
 
 DEF_MAX_GROUP_COUNT = 10
-DEF_LOOK_BACK_DAYS = 365
+DEF_LOOK_BACK_DAYS = 30
 DEF_CONV_WINDOW = TimeWindow(1, TimeGroup.DAY)
 DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
 DEF_TIME_GROUP = TimeGroup.DAY
 
 
-class Metric:
-    def __init__(self):
-        # Default specified values, used if no config is applied
-        self._start_dt = datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
-        self._end_dt = datetime.now()
-        self._time_group: TimeGroup = DEF_TIME_GROUP
-        self._max_group_count: int = DEF_MAX_GROUP_COUNT
-        self._group_by: Optional[EventFieldDef] = None
-        self._custom_title: Optional[str] = None
+@dataclass(frozen=True)
+class MetricConfig:
+    start_dt: Optional[datetime] = None
+    end_dt: Optional[datetime] = None
+    lookback_days: Optional[int] = None
+    time_group: Optional[TimeGroup] = None
+    max_group_count: Optional[int] = None
+    group_by: Optional[EventFieldDef] = None
+    custom_title: Optional[str] = None
+
+
+@dataclass(init=False, frozen=True)
+class Metric(ABC):
+    _config: MetricConfig
+
+    def __init__(self, config: MetricConfig):
+        object.__setattr__(self, "_config", config)
+
+    @property
+    def _max_group_count(self) -> int:
+        if self._config.max_group_count is None:
+            return DEF_MAX_GROUP_COUNT
+        return self._config.max_group_count
+
+    @property
+    def _lookback_days(self) -> int:
+        if self._config.lookback_days is None:
+            return DEF_LOOK_BACK_DAYS
+        return self._config.lookback_days
+
+    @property
+    def _time_group(self) -> TimeGroup:
+        if self._config.time_group is None:
+            # TBD TG calc
+            return DEF_TIME_GROUP
+        return self._config.time_group
+
+    @property
+    def _group_by(self) -> Optional[EventFieldDef]:
+        return self._config.group_by
+
+    @property
+    def _custom_title(self) -> Optional[str]:
+        return self._config.custom_title
+
+    @property
+    def _start_dt(self) -> datetime:
+        return (
+            self._config.start_dt
+            if self._config.start_dt is not None
+            else self._end_dt - timedelta(days=self._lookback_days)
+        )
+
+    @property
+    def _end_dt(self) -> datetime:
+        raise NotImplementedError()
+
+    def get_df(self) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def get_sql(self) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def print_sql(self):
+        print(self.get_sql(self))
+
+    def get_figure(self):
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        fig = self.get_figure()
+        fig.show()
+        return ""
 
 
 class ConversionMetric(Metric):
+    _conversion: Conversion
+    _conv_window: TimeWindow
+
     def __init__(
         self,
         conversion: Conversion,
+        config: MetricConfig,
+        conv_window: TimeWindow = DEF_CONV_WINDOW,
     ):
-        super().__init__()
+        super().__init__(config)
         self._conversion = conversion
-        self._conv_window: TimeWindow = DEF_CONV_WINDOW
+        self._conv_window = conv_window
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
@@ -411,23 +501,26 @@ class ConversionMetric(Metric):
         source = helper.get_segment_event_datasource(self._conversion._segments[0])
         return source.adapter.get_conversion_sql(self)
 
-    def print_sql(self):
-        source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        print(source.adapter.get_conversion_sql(self))
+    def get_figure(self):
+        return VIS.plot_conversion(self)
+
+    @property
+    def _end_dt(self) -> datetime:
+        if self._config.end_dt is not None:
+            return self._config.end_dt
+        return helper.get_segment_end_date(self._conversion._segments[0])
 
     def __repr__(self) -> str:
-        fig = vis.plot_conversion(self)
-        fig.show()
-        return ""
+        return super().__repr__()
 
 
+@dataclass(frozen=True, init=False)
 class SegmentationMetric(Metric):
-    def __init__(
-        self,
-        segment: Segment,
-    ):
-        super().__init__()
-        self._segment = segment
+    _segment: Segment
+
+    def __init__(self, segment: Segment, config: MetricConfig):
+        super().__init__(config)
+        object.__setattr__(self, "_segment", segment)
 
     def get_df(self) -> pd.DataFrame:
         source = helper.get_segment_event_datasource(self._segment)
@@ -437,29 +530,48 @@ class SegmentationMetric(Metric):
         source = helper.get_segment_event_datasource(self._segment)
         return source.adapter.get_segmentation_sql(self)
 
-    def print_sql(self):
-        source = helper.get_segment_event_datasource(self._segment)
-        print(source.adapter.get_segmentation_sql(self))
+    def get_figure(self):
+        return VIS.plot_segmentation(self)
+
+    @property
+    def _end_dt(self) -> datetime:
+        if self._config.end_dt is not None:
+            return self._config.end_dt
+        return helper.get_segment_end_date(self._segment)
 
     def __repr__(self) -> str:
-        fig = vis.plot_segmentation(self)
-        fig.show()
-        return ""
+        return super().__repr__()
 
 
+@dataclass(frozen=True, init=False)
 class RetentionMetric(Metric):
+
+    _conversion: Conversion
+    _ret_window: TimeWindow
+
     def __init__(
         self,
         conversion: Conversion,
+        config: MetricConfig,
+        ret_window: TimeWindow = DEF_RET_WINDOW,
     ):
-        super().__init__()
-        self._conversion = conversion
-        self._ret_window: TimeWindow = DEF_RET_WINDOW
+        super().__init__(config)
+        object.__setattr__(self, "_conversion", conversion)
+        object.__setattr__(self, "_ret_window", ret_window)
+
+    @property
+    def _end_dt(self) -> datetime:
+        if self._config.end_dt is not None:
+            return self._config.end_dt
+        return helper.get_segment_end_date(self._conversion._segments[0])
+
+    def __repr__(self) -> str:
+        return super().__repr__()
 
 
 class Conversion(ConversionMetric):
     def __init__(self, segments: List[Segment]):
-        super().__init__(self)
+        super().__init__(self, config=MetricConfig())
         self._segments = segments
 
     def __rshift__(self, right: Segment) -> Conversion:
@@ -473,39 +585,35 @@ class Conversion(ConversionMetric):
         ret_window: Optional[str | TimeWindow] = None,
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
-        time_group: str | TimeGroup = DEF_TIME_GROUP,
-        group_by: EventFieldDef = None,
-        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title: str = None,
+        time_group: Optional[str | TimeGroup] = None,
+        group_by: Optional[EventFieldDef] = None,
+        max_group_by_count: Optional[int] = None,
+        lookback_days: Optional[int] = None,
+        custom_title: Optional[str] = None,
     ) -> ConversionMetric | RetentionMetric:
+        config = MetricConfig(
+            start_dt=helper.parse_datetime_input(start_dt, None),
+            end_dt=helper.parse_datetime_input(end_dt, None),
+            time_group=TimeGroup.parse(time_group),
+            group_by=group_by,
+            max_group_count=max_group_by_count,
+            custom_title=custom_title,
+            lookback_days=lookback_days,
+        )
         if ret_window is not None:
-            ret_res = RetentionMetric(conversion=self._conversion)
-            ret_res._ret_window = TimeWindow.parse_input(ret_window)
-            ret_res._start_dt = helper.parse_datetime_input(
-                start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
+            ret_res = RetentionMetric(
+                conversion=self._conversion,
+                config=config,
+                ret_window=TimeWindow.parse_input(ret_window),
             )
-            ret_res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
-            ret_res._time_group = TimeGroup.parse(time_group)
-            ret_res._group_by = group_by
-            ret_res._max_group_count = max_group_by_count
-            ret_res._custom_title = custom_title
+
             return ret_res
-        else:
-            if conv_window is None:
-                raise ValueError(
-                    "Conversion window must be defined.\n e.g. \".config(conv_window='1 day')\""
-                )
-            conv_res = ConversionMetric(conversion=self._conversion)
+        elif conv_window is not None:
+            conv_res = ConversionMetric(conversion=self._conversion, config=config)
             conv_res._conv_window = TimeWindow.parse_input(conv_window)
-            conv_res._start_dt = helper.parse_datetime_input(
-                start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
-            )
-            conv_res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
-            conv_res._time_group = TimeGroup.parse(time_group)
-            conv_res._group_by = group_by
-            conv_res._max_group_count = max_group_by_count
-            conv_res._custom_title = custom_title
             return conv_res
+        else:
+            raise ValueError("conw_window or ret_window must be defined")
 
     def __repr__(self) -> str:
         return super().__repr__()
@@ -513,7 +621,7 @@ class Conversion(ConversionMetric):
 
 class Segment(SegmentationMetric):
     def __init__(self):
-        super().__init__(self)
+        super().__init__(self, config=MetricConfig())
 
     def __and__(self, right: Segment) -> ComplexSegment:
         return ComplexSegment(self, BinaryOperator.AND, right)
@@ -528,27 +636,29 @@ class Segment(SegmentationMetric):
         self,
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
-        time_group: str | TimeGroup = DEF_TIME_GROUP,
-        group_by: EventFieldDef = None,
-        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
-        custom_title: str = None,
+        time_group: Optional[str | TimeGroup] = None,
+        group_by: Optional[EventFieldDef] = None,
+        max_group_by_count: Optional[int] = None,
+        lookback_days: Optional[int] = None,
+        custom_title: Optional[str] = None,
     ) -> SegmentationMetric:
-        res = SegmentationMetric(segment=self)
-        res._start_dt = helper.parse_datetime_input(
-            start_dt, datetime.now() - timedelta(days=DEF_LOOK_BACK_DAYS)
+        config = MetricConfig(
+            start_dt=helper.parse_datetime_input(start_dt, None),
+            end_dt=helper.parse_datetime_input(end_dt, None),
+            time_group=TimeGroup.parse(time_group),
+            group_by=group_by,
+            max_group_count=max_group_by_count,
+            custom_title=custom_title,
+            lookback_days=lookback_days,
         )
-        res._end_dt = helper.parse_datetime_input(end_dt, datetime.now())
-        res._time_group = TimeGroup.parse(time_group)
-        res._group_by = group_by
-        res._max_group_count = max_group_by_count
-        res._custom_title = custom_title
-        return res
+
+        return SegmentationMetric(segment=self, config=config)
 
     def __repr__(self) -> str:
         return super().__repr__()
 
 
-@dataclass(init=False)
+@dataclass(init=False, frozen=True)
 class ComplexSegment(Segment):
     _left: Segment
     _operator: BinaryOperator
@@ -564,7 +674,7 @@ class ComplexSegment(Segment):
         return super().__repr__()
 
 
-@dataclass(init=False)
+@dataclass(init=False, frozen=True)
 class SimpleSegment(Segment):
     _left: EventFieldDef | EventDef  # str is an event_name without any filters
     _operator: Optional[Operator] = None

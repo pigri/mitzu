@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 import mitzu.common.model as M
-from mitzu.notebook.model_loader import DatasetModel
 
 
 def init_project(
@@ -12,7 +11,7 @@ def init_project(
     start_dt: datetime = None,
     end_dt: datetime = None,
     glbs: Optional[Dict] = None,
-) -> DatasetModel:
+) -> M.DatasetModel:
     if start_dt is None:
         start_dt = datetime.now() - timedelta(days=365 * 5)
     if end_dt is None:
@@ -27,8 +26,8 @@ def init_project(
 
 def load_project(
     project: str, folder: str = "./", extension="mitzu", glbs: Optional[Dict] = None
-) -> DatasetModel:
-    dd = M.DiscoveredEventDataSource.from_pickle(project, folder, extension)
+) -> M.DatasetModel:
+    dd = M.DiscoveredEventDataSource.load_from_project_file(project, folder, extension)
     dd.source.adapter.test_connection()
     m = dd.create_notebook_class_model()
     if glbs is not None:

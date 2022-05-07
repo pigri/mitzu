@@ -28,9 +28,9 @@ def test_discovered_dataset_pickle():
         get_simple_csv(), datetime(2021, 1, 1), datetime(2022, 1, 1)
     )
     dd1 = discovery.discover_datasource()
-    dd1.to_pickle("test_app")
+    dd1.save_project("test_app")
 
-    dd2 = DiscoveredEventDataSource.from_pickle("test_app")
+    dd2 = DiscoveredEventDataSource.load_from_project_file("test_app")
     m = dd2.create_notebook_class_model()
 
     seg: Segment = m.cart.config(

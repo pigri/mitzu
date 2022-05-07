@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Tuple, cast
+from typing import List, Tuple
 
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
+import mitzu.notebook.titles as T
 import pandas as pd
 import plotly.express as px
 
@@ -39,85 +40,8 @@ def filter_top_conversion_groups(
     )
 
 
-def get_grouped_by_str(metric: M.Metric) -> str:
-    if metric._group_by:
-        grp = metric._group_by._field._name
-        return f"<br />grouped by <b>{grp}</b> (top {metric._max_group_count})"
-    return ""
-
-
-def fix_title_text(title_text: str, max_length=MAX_TITLE_LENGTH) -> str:
-    if len(title_text) > max_length:
-        return title_text[:max_length] + "..."
-    else:
-        return title_text
-
-
-def get_segment_title_text(segment: M.Segment) -> str:
-    if isinstance(segment, M.SimpleSegment):
-        s = cast(M.SimpleSegment, segment)
-        if s._operator is None:
-            return s._left._event_name
-        else:
-            left = cast(M.EventFieldDef, s._left)
-            right = s._right
-            if right is None:
-                right = "null"
-
-            return f"{left._event_name} with {left._field._name} {s._operator} {right}"
-    elif isinstance(segment, M.ComplexSegment):
-        c = cast(M.ComplexSegment, segment)
-        return f"{get_segment_title_text(c._left)} {c._operator} {get_segment_title_text(c._right)}"
-    else:
-        raise ValueError(f"Segment of type {type(segment)} is not supported.")
-
-
-def get_time_group_text(time_group: M.TimeGroup) -> str:
-    if time_group == M.TimeGroup.TOTAL:
-        return "total"
-    if time_group == M.TimeGroup.DAY:
-        return "daily"
-    if time_group == M.TimeGroup.MINUTE:
-        return "minute by minute"
-
-    return time_group.name.lower() + "ly"
-
-
-def get_segmentation_title(metric: M.SegmentationMetric):
-    if metric._custom_title:
-        return metric._custom_title
-    title_text = fix_title_text(get_segment_title_text(metric._segment))
-    event = f"<b>{title_text}</b>"
-    time_group = metric._time_group
-    tg = get_time_group_text(time_group).title()
-    agg = "count of unique users"
-    segment_by = get_grouped_by_str(metric)
-    return f"{tg} {agg}<br />who did {event}{segment_by}"
-
-
-def get_conversion_title(metric: M.ConversionMetric) -> str:
-    if metric._custom_title:
-        return metric._custom_title
-    events = " then did ".join(
-        [
-            f"<b>{fix_title_text(get_segment_title_text(seg), 100)}</b>"
-            for seg in metric._conversion._segments
-        ]
-    )
-    time_group = metric._time_group
-    agg = "count and cvr. of unique users"
-    tg = get_time_group_text(time_group).title()
-
-    if time_group != M.TimeGroup.TOTAL:
-        agg = "conversion rate of unique users"
-
-    within_str = f"within {metric._conv_window}"
-    segment_by = get_grouped_by_str(metric)
-    return f"{tg} {agg}<br />who did {events}<br />{within_str} {segment_by}"
-
-
 def get_title_height(title: str) -> int:
-    return len(title.split("<br />")) * 35
+    return len(title.split("<br />")) * 30
 
 
 def get_melted_conv_column(
@@ -134,7 +58,7 @@ def get_melted_conv_column(
     )
     res[STEP_COL] = res[STEP_COL].replace(
         {
-            f"{column_prefix}{i+1}": f"{i+1}. {fix_title_text(get_segment_title_text(val))}"
+            f"{column_prefix}{i+1}": f"{i+1}. {T.fix_title_text(T.get_segment_title_text(val))}"
             for i, val in enumerate(metric._conversion._segments)
         }
     )
@@ -288,7 +212,7 @@ def plot_conversion(metric: M.ConversionMetric):
             mode="markers+lines+text",
             hovertemplate=get_conversion_hover_template(metric),
         )
-    title = get_conversion_title(metric)
+    title = T.get_conversion_title(metric)
     fig.update_yaxes(rangemode="tozero")
     fig.update_layout(
         title={
@@ -296,11 +220,12 @@ def plot_conversion(metric: M.ConversionMetric):
             "x": 0.5,
             "xanchor": "center",
             "yanchor": "top",
+            "font": {"size": 14},
         },
         autosize=True,
         bargap=0.30,
         bargroupgap=0.15,
-        margin=dict(t=get_title_height(title), l=5, r=5, b=15, pad=1),
+        margin=dict(t=get_title_height(title), l=1, r=1, b=1, pad=0),
         uniformtext_minsize=8,
         uniformtext_mode="hide",
         hoverlabel={"font": {"size": 12}},
@@ -377,20 +302,21 @@ def plot_segmentation(metric: M.SegmentationMetric):
         hovertemplate=get_segmentation_hover_template(metric),
     )
     fig.update_yaxes(rangemode="tozero")
-    title = get_segmentation_title(metric)
+    title = T.get_segmentation_title(metric)
     fig.update_layout(
         title={
             "text": title,
             "x": 0.5,
             "xanchor": "center",
             "yanchor": "top",
+            "font": {"size": 14},
         },
         bargap=0.30,
         bargroupgap=0.15,
         uniformtext_minsize=9,
         uniformtext_mode="hide",
         autosize=True,
-        margin=dict(t=get_title_height(title), l=5, r=5, b=15, pad=0),
+        margin=dict(t=get_title_height(title), l=1, r=1, b=1, pad=0),
         hoverlabel={"font": {"size": 12}},
         hovermode=get_hover_mode(metric, group_count),
     )

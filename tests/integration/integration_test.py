@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, cast
 import mitzu.common.model as M
 import pandas as pd
 import pytest
-from mitzu import init_notebook_project
+from mitzu import init_project
 from tests.helper import assert_row
 from tests.integration.helper import ingest_test_data
 from tests.test_samples.sources import get_simple_csv
@@ -86,10 +86,14 @@ def copy_source(test_source: M.EventDataSource, test_case: TestCase):
 def validate_integration(source: M.EventDataSource):
     m = cast(
         Any,
-        init_notebook_project(
+        init_project(
             source=source, start_dt=datetime(2021, 1, 1), end_dt=datetime(2022, 1, 1)
         ),
     )
+
+    lets = source.get_last_event_times()
+    assert datetime(2020, 1, 1, 4, 31, 1) == lets["cart"]
+    assert datetime(2020, 1, 1, 4, 11, 59) == lets["purchase"]
 
     df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
     assert 1 == df.shape[0]

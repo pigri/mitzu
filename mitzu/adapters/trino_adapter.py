@@ -57,3 +57,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
         return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
             evt_time_col <= SA.text(f"timestamp '{end_date}'")
         )
+
+    def _get_last_event_times_pdf(self) -> pd.DataFrame:
+        pdf = super()._get_last_event_times_pdf()
+        return dataframe_str_to_datetime(pdf, GA.DATETIME_COL)
