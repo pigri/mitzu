@@ -73,3 +73,4 @@ tests/integration/ssh/config/*
 tests/integration/ssh/config/ssh_host_keys/*
 !tests/integration/ssh/config/ssh_host_keys/sshd_config
 *.mitzu
+.mutmut-cache
