@@ -28,10 +28,10 @@ docker_test_down:
 docker_test_up:	
 	docker-compose -f tests/integration/docker-compose.yml up
 
-test: unit_tests test_integrations
-	@ECHO "done"
+test_coverage:
+	$(POETRY) run  pytest --cov=mitzu  tests/
 
-check: format autoflake mypy lint test
+check: format autoflake mypy lint test_coverage
 	@ECHO 'done'
 
 notebook:

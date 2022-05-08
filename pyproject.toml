@@ -32,6 +32,7 @@ mypy = "^0.920"
 jupyter = "^1.0.0"
 pytest = "^6.2.5"
 black = "^22.1.0"
+pytest-cov = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
