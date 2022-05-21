@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any, List
 
 import mitzu.adapters.generic_adapter as GA
@@ -16,9 +17,9 @@ class AthenaAdapter(SQLAlchemyAdapter):
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
 
+    @lru_cache
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
-            # PyAthena has a bug that the query needs to be compiled and casted to string before execution
             query = format_sql(
                 str(query.compile(compile_kwargs={"literal_binds": True}))
             )

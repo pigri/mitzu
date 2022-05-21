@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import re
-from copy import copy
-from typing import Any, Dict, cast
+from typing import Any, Dict, List, cast
 
 import mitzu.common.model as M
 
@@ -121,7 +120,7 @@ class ModelLoader:
         event_name: str,
         event_field: M.EventFieldDef,
     ):
-        event_field = copy(event_field)
+        event_field = event_field
         class_def: Dict[str, Any] = {}
         field_type = event_field._field._type
 
@@ -175,34 +174,45 @@ class ModelLoader:
             class_def,
         )
 
+    def _get_complex_ref(self, field: M.Field) -> List[str]:
+        curr = field
+        res: List[str] = []
+        while curr._parent is not None:
+            curr = curr._parent
+            res.insert(0, curr._name)
+        return res
+
     def _create_event_instance(self, event: M.EventDef, source: M.EventDataSource):
         fields = event._fields
 
         class_def: Dict[str, Any] = {}
-        for event_field in fields.values():
-            field_class = self._create_event_field_class(event._event_name, event_field)
+        for event_field, event_field_def in fields.items():
+
+            field_class = self._create_event_field_class(
+                event._event_name, event_field_def
+            )
             class_instance = field_class(
                 _event_name=event._event_name,
-                _field=event_field._field,
+                _field=event_field,
                 _source=source,
-                _event_data_table=event_field._event_data_table,
+                _event_data_table=event_field_def._event_data_table,
             )
 
-            if "." in event_field._field._name:
-                split = event_field._field._name.split(".")
-                if len(split) > 2:
-                    raise Exception(
-                        "Recursively nested types are not supported (e.g. map<string, map<string,string>>)"
-                    )
-                inter_field_name = fix_def(split[0])
-                class_field_name = fix_def(split[1])
-                if inter_field_name not in class_def:
-                    class_def[inter_field_name] = type(
-                        f"_{event._event_name}_{inter_field_name}", (object,), {}
-                    )
-                setattr(class_def[inter_field_name], class_field_name, class_instance)
+            if event_field._parent is not None:
+                field_name_chunks = self._get_complex_ref(event_field)
+                curr_class = class_def
+                type_name = f"_{event._event_name}"
+                for fnc in field_name_chunks:
+                    fnc = fix_def(fnc)
+                    type_name = f"{type_name}_{fnc}"
+                    if fnc not in curr_class:
+                        curr_class[fnc] = type(type_name, (object,), {})()
+                    curr_class = curr_class[fnc]
+
+                class_field_name = fix_def(event_field._name)
+                setattr(curr_class, class_field_name, class_instance)
             else:
-                class_field_name = fix_def(event_field._field._name)
+                class_field_name = fix_def(event_field._name)
                 class_def[class_field_name] = class_instance
 
         return type(f"_{event._event_name}", (M.SimpleSegment,), class_def)(event)
@@ -222,5 +232,5 @@ class ModelLoader:
     ) -> M.DatasetModel:
         class_def = self._process_schema(defs)
         return cast(
-            M.DatasetModel, type("_dataset_model", (M.DatasetModel,), class_def)
+            M.DatasetModel, type("_dataset_model", (M.DatasetModel,), class_def)()
         )

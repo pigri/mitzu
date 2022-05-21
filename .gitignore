@@ -62,15 +62,19 @@ coverage.xml
 .dmypy.json
 dmypy.json
 
-test_notebook.ipynb
+*.ipynb
 
 # vscode
 .vscode/
 .dbs/
-tests/integration/ssh/config/*
-!tests/integration/ssh/config/
-!tests/integration/ssh/config/ssh_host_keys/
-tests/integration/ssh/config/ssh_host_keys/*
-!tests/integration/ssh/config/ssh_host_keys/sshd_config
+tests/integration/docker/ssh/config/*
+!tests/integration/docker/ssh/config/
+!tests/integration/docker/ssh/config/ssh_host_keys/
+
+tests/integration/docker/ssh/config/ssh_host_keys/*
+!tests/integration/docker/ssh/config/ssh_host_keys/sshd_config
+
+tests/integration/docker/minio/data/.minio.sys/*
+
 *.mitzu
 .mutmut-cache

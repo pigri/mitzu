@@ -1,6 +1,6 @@
 import mitzu.adapters.file_adapter as fa
 from mitzu.common.model import DataType, Field
-from tests.test_samples.sources import get_simple_big_data, get_simple_csv
+from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 
 def test_simple_list_columns():

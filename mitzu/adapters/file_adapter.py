@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 from typing import Any
 
 import mitzu.common.model as M
@@ -22,6 +23,7 @@ class FileAdapter(SQLiteAdapter):
             self._engine = super().get_engine()
             for ed_table in self.source.event_data_tables:
                 df = self._read_file(ed_table)
+                print(ed_table.table_name)
                 df.to_sql(
                     name=ed_table.table_name,
                     con=self._engine,
@@ -31,18 +33,20 @@ class FileAdapter(SQLiteAdapter):
 
     def _read_file(self, event_data_table: M.EventDataTable) -> pd.DataFrame:
         source = self.source
-        extension = source.connection.extra_configs["file_type"]
+        extension: str = source.connection.extra_configs["file_type"]
         path = source.connection.extra_configs["path"]
-        if extension == "csv":
-            df = pd.read_csv(path, header=0)
-        elif extension == "json":
-            df = pd.read_json(path)
-        elif extension == "parquet":
-            df = pd.read_parquet(path)
+        table_name = event_data_table.table_name
+        file_loc = pathlib.Path(path, f"{table_name}.{extension}")
+        if extension.endswith("csv"):
+            df = pd.read_csv(file_loc, header=0)
+        elif extension.endswith("json"):
+            df = pd.read_json(file_loc)
+        elif extension.endswith("parquet"):
+            df = pd.read_parquet(file_loc)
         else:
             raise Exception("Extension not supported: " + extension)
-        df[event_data_table.event_time_field] = pd.to_datetime(
-            df[event_data_table.event_time_field]
+        df[event_data_table.event_time_field._get_name()] = pd.to_datetime(
+            df[event_data_table.event_time_field._get_name()]
         )
         return self._fix_complex_types(df)
 

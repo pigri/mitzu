@@ -42,11 +42,18 @@ def init_project(
     source: EventDataSource,
     start_dt: datetime = None,
     end_dt: datetime = None,
+    persist_as: str = None,
     glbs=None,
 ) -> DatasetModel:
     if glbs is None:
         glbs = _find_notebook_globals()
     print("Initializing project ...")
-    res = P.init_project(source=source, start_dt=start_dt, end_dt=end_dt, glbs=glbs)
+    res = P.init_project(
+        source=source,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        glbs=glbs,
+        persist_as=persist_as,
+    )
     print("Finished project initialization")
     return res

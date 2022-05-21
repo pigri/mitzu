@@ -18,15 +18,18 @@ unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
 
 test_integrations:
-	docker-compose -f tests/integration/docker-compose.yml up -d --no-recreate
+	docker-compose -f tests/integration/docker/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
 
 docker_test_down:
 	rm -rf tests/.dbs/
-	docker-compose -f tests/integration/docker-compose.yml down
+	docker-compose -f tests/integration/docker/docker-compose.yml down
 
 docker_test_up:	
-	docker-compose -f tests/integration/docker-compose.yml up
+	docker-compose -f tests/integration/docker/docker-compose.yml up	
+
+trino_setup_test_data:
+	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 test_coverage:
 	$(POETRY) run  pytest --cov=mitzu  tests/

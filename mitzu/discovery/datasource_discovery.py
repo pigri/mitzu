@@ -73,10 +73,12 @@ class EventDatasourceDiscovery:
             event_data_table=ed_table, fields=all_fields, event_specific=True
         )
 
-    def _get_specific_fields(self, ed_table: M.EventDataTable, columns: List[M.Field]):
+    def _get_specific_fields(
+        self, ed_table: M.EventDataTable, all_fields: List[M.Field]
+    ):
         res = []
-        for spec_col_name in ed_table.event_specific_fields:
-            res.extend([col for col in columns if col._name.startswith(spec_col_name)])
+        for scpe_field in ed_table.event_specific_fields:
+            res.extend([f for f in all_fields if f._name.startswith(scpe_field)])
         return res
 
     def _copy_gen_field_def_to_spec(
@@ -114,12 +116,24 @@ class EventDatasourceDiscovery:
             res[evt_name] = new_def
         return res
 
+    def flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
+        res = []
+        for f in fields:
+            if f._type.is_complex():
+                if f._sub_fields is not None:
+                    res.extend(self.flatten_fields(list(f._sub_fields)))
+            else:
+                res.append(f)
+        return res
+
     def discover_datasource(self) -> M.DiscoveredEventDataSource:
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
         for ed_table in self.source.event_data_tables:
             fields = self.source.adapter.list_fields(event_data_table=ed_table)
             fields = [f for f in fields if f._name not in ed_table.ignored_fields]
+            fields = self.flatten_fields(fields)
+
             specific_fields = self._get_specific_fields(ed_table, fields)
             generic_fields = [c for c in fields if c not in specific_fields]
             generic = self._get_generic_field_values(ed_table, generic_fields)

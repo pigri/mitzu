@@ -18,12 +18,12 @@ retry = "~0.9.2"
 # extras
 psycopg2 = {version = "~2.9.3", optional=true}
 mysql-connector-python = {version = "~8.0.28", optional=true}
-sqlalchemy-trino = { version = "~0.4.1", optional=true }
+trino = { version = "~0.313.0", optional=true }
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]
 mysql= ["mysql-connector-python"]
-trino= ["sqlalchemy-trino"]
+trino= ["trino"]
 # Athena can't be here there are dependency conflicts, but it can be installed
 
 
@@ -34,6 +34,7 @@ pytest = "^6.2.5"
 black = "^22.1.0"
 pytest-cov = "^3.0.0"
 mutmut = "^2.4.0"
+Faker = "^13.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

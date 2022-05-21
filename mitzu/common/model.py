@@ -7,8 +7,8 @@ from abc import ABC
 from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from enum import Enum, auto
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
 
 import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
@@ -27,22 +27,22 @@ ANY_EVENT_NAME = "any_event"
 
 
 class MetricType(Enum):
-    SEGMENTATION = 1
-    CONVERSION = 2
-    RETENTION = 3
-    JOURNEY = 4
+    SEGMENTATION = auto()
+    CONVERSION = auto()
+    RETENTION = auto()
+    JOURNEY = auto()
 
 
 class TimeGroup(Enum):
-    TOTAL = 1
-    SECOND = 2
-    MINUTE = 3
-    HOUR = 4
-    DAY = 5
-    WEEK = 6
-    MONTH = 7
-    QUARTER = 8
-    YEAR = 9
+    TOTAL = auto()
+    SECOND = auto()
+    MINUTE = auto()
+    HOUR = auto()
+    DAY = auto()
+    WEEK = auto()
+    MONTH = auto()
+    QUARTER = auto()
+    YEAR = auto()
 
     @classmethod
     def parse(cls, val: Optional[str | TimeGroup]) -> Optional[TimeGroup]:
@@ -60,22 +60,22 @@ class TimeGroup(Enum):
 
 
 class Operator(Enum):
-    EQ = 1
-    NEQ = 2
-    GT = 3
-    LT = 4
-    GT_EQ = 4
-    LT_EQ = 5
-    ANY_OF = 6
-    NONE_OF = 7
-    LIKE = 8
-    NOT_LIKE = 9
-    IS_NULL = 10
-    IS_NOT_NULL = 11
+    EQ = auto()
+    NEQ = auto()
+    GT = auto()
+    LT = auto()
+    GT_EQ = auto()
+    LT_EQ = auto()
+    ANY_OF = auto()
+    NONE_OF = auto()
+    LIKE = auto()
+    NOT_LIKE = auto()
+    IS_NULL = auto()
+    IS_NOT_NULL = auto()
 
     def __str__(self) -> str:
         if self == Operator.EQ:
-            return "=="
+            return "="
         if self == Operator.NEQ:
             return "!="
         if self == Operator.GT:
@@ -103,21 +103,23 @@ class Operator(Enum):
 
 
 class BinaryOperator(Enum):
-    AND = 1
-    OR = 2
+    AND = auto()
+    OR = auto()
 
     def __str__(self) -> str:
         return self.name.lower()
 
 
 class DataType(Enum):
-    STRING = 1
-    NUMBER = 2
-    BOOL = 3
-    DATETIME = 4
-    MAP = 5
-    STRUCT = 6
-    ARRAY = 7
+    STRING = auto()
+    NUMBER = auto()
+    BOOL = auto()
+    DATETIME = auto()
+    MAP = auto()
+    STRUCT = auto()
+
+    def is_complex(self) -> bool:
+        return self in (DataType.MAP, DataType.STRUCT)
 
 
 class AttributionMode(Enum):
@@ -133,6 +135,25 @@ class ConnectionType(Enum):
     POSTGRESQL = "postgresql+psycopg2"
     MYSQL = "mysql+mysqlconnector"
     SQLITE = "sqlite"
+
+
+@dataclass(frozen=True)
+class TimeWindow:
+    value: int = 1
+    period: TimeGroup = TimeGroup.DAY
+
+    @classmethod
+    def parse_input(cls, val: str | TimeWindow) -> TimeWindow:
+        if type(val) == str:
+            vals = val.strip().split(" ")
+            return TimeWindow(value=int(vals[0]), period=TimeGroup[vals[1].upper()])
+        elif type(val) == TimeWindow:
+            return val
+        else:
+            raise ValueError(f"Invalid argument type for TimeWindow parse: {type(val)}")
+
+    def __str__(self) -> str:
+        return f"{self.value} {self.period}"
 
 
 T = TypeVar("T")
@@ -225,34 +246,42 @@ class Connection:
 
 
 @dataclass(frozen=True)
-class TimeWindow:
-    value: int = 1
-    period: TimeGroup = TimeGroup.DAY
-
-    @classmethod
-    def parse_input(cls, val: str | TimeWindow) -> TimeWindow:
-        if type(val) == str:
-            vals = val.strip().split(" ")
-            return TimeWindow(value=int(vals[0]), period=TimeGroup[vals[1].upper()])
-        elif type(val) == TimeWindow:
-            return val
-        else:
-            raise ValueError(f"Invalid argument type for TimeWindow parse: {type(val)}")
-
-    def __str__(self) -> str:
-        return f"{self.value} {self.period}"
-
-
-@dataclass(frozen=True)
 class EventDataTable:
     table_name: str
-    event_time_field: str
-    user_id_field: str
-    event_name_field: Optional[str] = None
+    event_time_field: Field
+    user_id_field: Field
+    event_name_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
     ignored_fields: List[str] = default_field([])
     event_specific_fields: List[str] = default_field([])
     description: Optional[str] = None
+
+    @classmethod
+    def create(
+        cls,
+        table_name: str,
+        event_time_field: str,
+        user_id_field: str,
+        event_name_field: str = None,
+        event_name_alias: str = None,
+        ignored_fields: List[str] = None,
+        event_specific_fields: List[str] = None,
+        description: str = None,
+    ):
+        return EventDataTable(
+            table_name=table_name,
+            event_name_alias=event_name_alias,
+            description=description,
+            ignored_fields=([] if ignored_fields is None else ignored_fields),
+            event_specific_fields=(
+                [] if event_specific_fields is None else event_specific_fields
+            ),
+            event_name_field=Field(_name=event_name_field, _type=DataType.STRING)
+            if event_name_field is not None
+            else None,
+            event_time_field=Field(_name=event_time_field, _type=DataType.DATETIME),
+            user_id_field=Field(_name=user_id_field, _type=DataType.STRING),
+        )
 
     def __hash__(self):
         return hash(
@@ -315,7 +344,7 @@ class EventDataSource:
         if len(self.event_data_tables) == 0:
             raise Exception(
                 "At least a single EventDataTable needs to be added to the EventDataSource.\n"
-                "EventDataSource(event_data_tables = [ EventDataTable(...)])"
+                "EventDataSource(event_data_tables = [ EventDataTable.create(...)])"
             )
         for edt in self.event_data_tables:
             edt.validate()
@@ -358,13 +387,48 @@ class DiscoveredEventDataSource:
             return pickle.load(file)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Field:
     _name: str
     _type: DataType = field(repr=False)
+    _sub_fields: Optional[Tuple[Field, ...]] = None
+    _parent: Optional[Field] = field(
+        repr=False,
+        hash=False,
+        default=None,
+        compare=False,
+    )
 
-    def __hash__(self) -> int:
-        return hash(f"{self._name}{self._type}")
+    def __init__(
+        self,
+        _name: str,
+        _type: DataType,
+        _sub_fields: Optional[Tuple[Field, ...]] = None,
+    ):
+        object.__setattr__(self, "_name", _name)
+        object.__setattr__(self, "_type", _type)
+        object.__setattr__(self, "_sub_fields", _sub_fields)
+        if _sub_fields is not None:
+            for sf in _sub_fields:
+                object.__setattr__(sf, "_parent", self)
+
+    def has_sub_field(self, field: Field) -> bool:
+        if self._sub_fields is None:
+            return False
+        curr = field
+        while curr._parent is not None:
+            curr = curr._parent
+        return curr == self
+
+    def __str__(self) -> str:
+        if self._sub_fields is not None:
+            return "(" + (", ".join([str(f) for f in self._sub_fields])) + ")"
+        return f"{self._name} {self._type.name}"
+
+    def _get_name(self) -> str:
+        if self._parent is None:
+            return self._name
+        return f"{self._parent._get_name()}.{self._name}"
 
 
 @dataclass(frozen=True)
@@ -468,7 +532,7 @@ class Metric(ABC):
         raise NotImplementedError()
 
     def print_sql(self):
-        print(self.get_sql(self))
+        print(self.get_sql())
 
     def get_figure(self):
         raise NotImplementedError()

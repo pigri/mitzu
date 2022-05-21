@@ -7,7 +7,7 @@ import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.helper import dataframe_str_to_datetime
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 
 VALUE_SEPARATOR = "###"
 
@@ -27,9 +27,9 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def _column_index_support(self):
         return False
 
-    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
+    def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
-            return SA.func.datetime(SA.func.date(table_column, "weekday 0", "-6 days"))
+            return SA.func.datetime(SA.func.date(field_ref, "weekday 0", "-6 days"))
         if time_group == M.TimeGroup.SECOND:
             fmt = "%Y-%m-%dT%H:%M:%S"
         elif time_group == M.TimeGroup.MINUTE:
@@ -47,7 +47,7 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         elif time_group == M.TimeGroup.YEAR:
             fmt = "%Y-01-01T00:00:00"
 
-        return SA.func.datetime(SA.func.strftime(fmt, table_column))
+        return SA.func.datetime(SA.func.strftime(fmt, field_ref))
 
     def _get_column_values_df(
         self,
@@ -55,24 +55,22 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         fields: List[M.Field],
         event_specific: bool,
     ) -> pd.DataFrame:
-        self.source
         df = super()._get_column_values_df(event_data_table, fields, event_specific)
 
         for field in df.columns:
-            if field != event_data_table.event_name_field:
-                df[field] = (
-                    df[field]
-                    .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)
-                    .str.split(f"{VALUE_SEPARATOR},")
-                )
+            df[field] = (
+                df[field]
+                .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)
+                .str.split(f"{VALUE_SEPARATOR},")
+            )
         return df
 
-    def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
-        return SA.func.group_concat(column.concat(VALUE_SEPARATOR).distinct())
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.group_concat(SA.distinct(field_ref.concat(VALUE_SEPARATOR)))
 
     def _get_datetime_interval(
-        self, table_column: SA.Column, timewindow: M.TimeWindow
+        self, field_ref: FieldReference, timewindow: M.TimeWindow
     ) -> Any:
         return SA.func.datetime(
-            table_column, f"+{timewindow.value} {timewindow.period.name.lower()}"
+            field_ref, f"+{timewindow.value} {timewindow.period.name.lower()}"
         )

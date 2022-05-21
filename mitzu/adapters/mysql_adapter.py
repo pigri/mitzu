@@ -7,7 +7,7 @@ import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 from mitzu.adapters.helper import pdf_string_array_to_array
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 
 NULL_VALUE_KEY = "##NULL##"
 
@@ -16,9 +16,9 @@ class MySQLAdapter(SQLAlchemyAdapter):
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
 
-    def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
         return SA.func.json_keys(
-            SA.func.json_objectagg(SA.func.coalesce(column, NULL_VALUE_KEY), "")
+            SA.func.json_objectagg(SA.func.coalesce(field_ref, NULL_VALUE_KEY), "")
         )
 
     def _get_column_values_df(
@@ -35,11 +35,11 @@ class MySQLAdapter(SQLAlchemyAdapter):
         df = pdf_string_array_to_array(df, split_text='", "', omit_chars=2)
         return df
 
-    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column):
+    def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.date_add(
-                SA.func.date(table_column),
-                EXP.text(f"interval -{SA.func.weekday(table_column)} day"),
+                SA.func.date(field_ref),
+                EXP.text(f"interval -{SA.func.weekday(field_ref)} day"),
             )
 
         elif time_group == M.TimeGroup.SECOND:
@@ -59,4 +59,4 @@ class MySQLAdapter(SQLAlchemyAdapter):
         elif time_group == M.TimeGroup.YEAR:
             fmt = "%Y-01-01"
 
-        return SA.func.timestamp(SA.func.date_format(table_column, fmt))
+        return SA.func.timestamp(SA.func.date_format(field_ref, fmt))

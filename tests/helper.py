@@ -1,7 +1,13 @@
 import re
-from typing import Dict, List
+from datetime import datetime
+from typing import Any, Dict, List, cast
 
 import pandas as pd
+import sqlalchemy as SA
+from mitzu.adapters.file_adapter import FileAdapter
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.common.model import Connection, EventDataSource, EventDataTable
+from retry import retry  # type: ignore
 
 
 def assert_sql(expected: str, actual: str):
@@ -43,3 +49,49 @@ def assert_row(df: pd.DataFrame, **kwargs):
         return
 
     assert False, f"Not matching record for {kwargs}\nClosest records:\n{closest}"
+
+
+@retry(Exception, delay=5, tries=6)
+def check_table(engine, ed_table: EventDataTable) -> bool:
+    print(f"Trying to connect to {ed_table.table_name}")
+    ins = SA.inspect(engine)
+    return ins.dialect.has_table(engine.connect(), ed_table.table_name)
+
+
+def ingest_test_file_data(
+    source: EventDataSource,
+    target_connection: Connection,
+    transform_dt_col: bool = True,
+    dtype: Dict[str, Any] = None,
+) -> SQLAlchemyAdapter:
+    adapter = cast(FileAdapter, source.adapter)
+
+    target_source = EventDataSource(
+        connection=target_connection, event_data_tables=source.event_data_tables
+    )
+    target_adapter = cast(SQLAlchemyAdapter, target_source.adapter)
+    target_engine = target_adapter.get_engine()
+
+    for ed_table in source.event_data_tables:
+        ret = check_table(target_engine, ed_table)
+        if ret:
+            print(f"Table {ed_table.table_name} already exists")
+            continue
+        else:
+            print(f"Ingesting {ed_table.table_name}")
+        pdf = adapter._read_file(ed_table)
+        if transform_dt_col:
+            pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(
+                lambda v: datetime.fromisoformat(v)
+            )
+        sec_schema = source.connection.extra_configs.get("secondary_schema")
+        pdf.to_sql(
+            con=target_engine,
+            name=ed_table.table_name,
+            index=False,
+            schema=sec_schema,
+            dtype=dtype,
+            if_exists="replace",
+        )
+
+    return target_adapter

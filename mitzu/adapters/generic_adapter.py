@@ -29,9 +29,6 @@ class GenericDatasetAdapter(ABC):
     def execute_query(self, query: Any) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def validate_source(self):
-        raise NotImplementedError()
-
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         raise NotImplementedError()
 

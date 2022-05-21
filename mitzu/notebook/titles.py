@@ -5,7 +5,8 @@ from typing import cast
 
 import mitzu.common.model as M
 
-MAX_TITLE_LENGTH = 80
+MAX_TITLE_LENGTH = 300
+MAX_SEGMENT_LENGTH = 150
 DT_FORMAT = "%Y-%m-%d %H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 
@@ -37,7 +38,7 @@ def get_grouped_by_str(metric: M.Metric) -> str:
     return ""
 
 
-def fix_title_text(title_text: str, max_length=MAX_TITLE_LENGTH) -> str:
+def fix_title_text(title_text: str, max_length=MAX_SEGMENT_LENGTH) -> str:
     if len(title_text) > max_length:
         return title_text[:max_length] + "..."
     else:
@@ -48,14 +49,14 @@ def get_segment_title_text(segment: M.Segment) -> str:
     if isinstance(segment, M.SimpleSegment):
         s = cast(M.SimpleSegment, segment)
         if s._operator is None:
-            return s._left._event_name
+            return f"<b>{s._left._event_name}</b>"
         else:
             left = cast(M.EventFieldDef, s._left)
             right = s._right
             if right is None:
                 right = "null"
 
-            return f"{left._event_name} with {left._field._name} {s._operator} {right}"
+            return f"<b>{left._event_name}</b> with <b>{left._field._name}</b> {s._operator} <b>{right}</b>"
     elif isinstance(segment, M.ComplexSegment):
         c = cast(M.ComplexSegment, segment)
         return f"{get_segment_title_text(c._left)} {c._operator} {get_segment_title_text(c._right)}"
@@ -81,7 +82,7 @@ def get_segmentation_title(metric: M.SegmentationMetric):
     tg = get_time_group_text(metric._time_group).title()
     lines = [
         f"{tg} count of unique users",
-        f"who did <b>{segment_str}</b>",
+        f"who did {segment_str}",
     ]
     if metric._group_by is not None:
         lines.append(get_grouped_by_str(metric))
@@ -94,7 +95,7 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
         return metric._custom_title
     events = " then did ".join(
         [
-            f"<b>{fix_title_text(get_segment_title_text(seg), 100)}</b>"
+            f"{fix_title_text(get_segment_title_text(seg), 100)}"
             for seg in metric._conversion._segments
         ]
     )

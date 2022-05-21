@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any, List, cast
 
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
+import sqlalchemy_trino.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 from sql_formatter.core import format_sql
@@ -29,12 +30,29 @@ class TrinoAdapter(SQLAlchemyAdapter):
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
-            # PyAthena has a bug that the query needs to be compiled and casted to string before execution
             query = format_sql(
                 str(query.compile(compile_kwargs={"literal_binds": True}))
             )
         res = super().execute_query(query=query)
         return res
+
+    def map_type(self, sa_type: Any) -> M.DataType:
+        if isinstance(sa_type, SA_T.ROW):
+            return M.DataType.STRUCT
+
+        return super().map_type(sa_type)
+
+    def _parse_complex_type(self, sa_type: Any, name: str) -> M.Field:
+        if isinstance(sa_type, SA_T.ROW):
+            row: SA_T.ROW = cast(SA_T.ROW, sa_type)
+            sub_fields: List[M.Field] = []
+            for n, st in row.attr_types:
+                sub_fields.append(self._parse_complex_type(sa_type=st, name=n))
+            return M.Field(
+                _name=name, _type=M.DataType.STRUCT, _sub_fields=tuple(sub_fields)
+            )
+        else:
+            return M.Field(_name=name, _type=self.map_type(sa_type))
 
     def _get_column_values_df(
         self,

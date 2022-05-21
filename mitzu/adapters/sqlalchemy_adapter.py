@@ -2,46 +2,69 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
+import sqlalchemy.sql.sqltypes as SA_T
 from sql_formatter.core import format_sql
 from sqlalchemy.orm import aliased
-from sqlalchemy.sql.expression import CTE, Select
 
 
 def fix_col_index(index: int, col_name: str):
     return col_name + f"_{index}"
 
 
+FieldReference = Union[SA.Column, EXP.Label]
+
+SIMPLE_TYPE_MAPPINGS = {
+    SA_T.Numeric: M.DataType.NUMBER,
+    SA_T.Integer: M.DataType.NUMBER,
+    SA_T.Boolean: M.DataType.BOOL,
+    SA_T.DateTime: M.DataType.DATETIME,
+    SA_T.Date: M.DataType.DATETIME,
+    SA_T.Time: M.DataType.DATETIME,
+    SA_T.VARCHAR: M.DataType.STRING,
+    SA_T.TEXT: M.DataType.STRING,
+}
+
+
 @dataclass
 class SegmentSubQuery:
-    event_name: str
     event_data_table: M.EventDataTable
     table_ref: SA.Table
     where_clause: Any
-    _unioned_with: Optional[SegmentSubQuery] = None
+    event_name: Optional[str] = None
+    unioned_with: Optional[SegmentSubQuery] = None
 
-    def union_all(self, sub_query: SegmentSubQuery):
-        u = self._unioned_with
+    def union_all(self, sub_query: Optional[SegmentSubQuery]) -> SegmentSubQuery:
+        if sub_query is None:
+            return self
+        uwith = self.unioned_with
         curr = self
-        while u is not None:
-            curr = u
-            u = curr._unioned_with
-        curr._unioned_with = sub_query
+        while uwith is not None:
+            curr = uwith
+            uwith = curr.unioned_with
+
+        curr.unioned_with = sub_query
+        return self
 
 
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
-    _table_cache: Dict[M.EventDataTable, SA.Table] = {}
-    _engine: Any
-
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
         self._table = None
         self._engine = None
+        self._table_cache: Dict[M.EventDataTable, SA.Table] = {}
+
+    def get_event_name_field(self, ed_table: M.EventDataTable) -> Any:
+        if ed_table.event_name_field is not None:
+            return self.get_field_reference(ed_table.event_name_field, ed_table)
+        else:
+            return SA.literal(ed_table.event_name_alias)
 
     def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
         return format_sql(
@@ -68,16 +91,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return self.execute_query(self._get_segmentation_select(metric))
 
     def map_type(self, sa_type: Any) -> M.DataType:
-        if isinstance(sa_type, SA.Integer):
-            return M.DataType.NUMBER
-        if isinstance(sa_type, SA.Float):
-            return M.DataType.NUMBER
-        if isinstance(sa_type, SA.Text):
-            return M.DataType.STRING
-        if isinstance(sa_type, SA.String):
-            return M.DataType.STRING
-        if isinstance(sa_type, SA.DateTime):
-            return M.DataType.DATETIME
+        for sa_t, data_type in SIMPLE_TYPE_MAPPINGS.items():
+            if issubclass(type(sa_type), sa_t):
+                return data_type
+
         raise ValueError(f"{sa_type}[{type(sa_type)}]: is not supported.")
 
     def execute_query(self, query: Any) -> pd.DataFrame:
@@ -132,33 +149,53 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         cached_table = self._table_cache[event_data_table]
         return aliased(cached_table) if create_alias else cached_table
 
-    def validate_source(self):
-        table = self.get_table()
-        if (
-            self.source.user_id_field not in table.columns
-            or self.source.event_time_field not in table.columns
-            or self.source.event_name_field not in table.columns
-        ):
-            raise Exception("Table doesn't contain all essential columns.")
+    def get_field_reference(
+        self,
+        field: M.Field,
+        event_data_table: M.EventDataTable = None,
+        sa_table: SA.Table = None,
+    ) -> FieldReference:
+        if sa_table is None and event_data_table is not None:
+            sa_table = self.get_table(event_data_table)
+        if sa_table is None:
+            raise ValueError("Either sa_table or event_data_table has to be provided")
+
+        if field._parent is None:
+            return sa_table.columns.get(field._name)
+
+        return SA.literal_column(f"{sa_table}.{field._get_name()}")
+
+    def _parse_complex_type(self, sa_type: Any, name: str) -> M.Field:
+        raise NotImplementedError(
+            "Generic SQL Alchemy Adapter doesn't support complex types"
+        )
 
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         table = self.get_table(event_data_table)
         field_types = table.columns.items()
-        return [M.Field(_name=k, _type=self.map_type(v.type)) for k, v in field_types]
+        res = []
+        for k, v in field_types:
+            data_type = self.map_type(v.type)
+            if data_type == M.DataType.STRUCT:
+                complex_field = self._parse_complex_type(sa_type=v.type, name=k)
+                res.append(complex_field)
+            else:
+                field = M.Field(_name=k, _type=data_type)
+                res.append(field)
+        return res
 
     def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
-        table = self.get_table(event_data_table)
-        columns = table.columns
-        event_name_field = columns.get(event_data_table.event_name_field)
+        event_name_field = self.get_event_name_field(event_data_table).label(
+            GA.EVENT_NAME_ALIAS_COL
+        )
         result = self.execute_query(SA.select([SA.distinct(event_name_field)]))
-        return pd.DataFrame(result)[event_data_table.event_name_field].tolist()
+
+        return pd.DataFrame(result)[GA.EVENT_NAME_ALIAS_COL].tolist()
 
     def _get_datetime_interval(
-        self, table_column: SA.Column, timewindow: M.TimeWindow
+        self, field_ref: FieldReference, timewindow: M.TimeWindow
     ) -> Any:
-        return table_column + SA.text(
-            f"interval '{timewindow.value}' {timewindow.period}"
-        )
+        return field_ref + SA.text(f"interval '{timewindow.value}' {timewindow.period}")
 
     def _get_connection_url(self, con: M.Connection):
         user_name = "" if con.user_name is None else con.user_name
@@ -175,8 +212,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         protocol = con.connection_type.value.lower()
         return f"{protocol}://{user_name}{password}{host_str}{port_str}{schema_str}{url_params_str}"
 
-    def _get_distinct_array_agg_func(self, column: SA.Column) -> Any:
-        return SA.func.array_agg(column.distinct())
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.array_agg(SA.distinct(field_ref))
 
     def _column_index_support(self):
         return True
@@ -188,10 +225,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_specific: bool,
     ) -> pd.DataFrame:
         source = self.source
-        columns = self.get_table(event_data_table).columns
-        event_name_field = event_data_table.event_name_field
+
         event_name_select_field = (
-            columns.get(event_name_field).label(GA.EVENT_NAME_ALIAS_COL)
+            self.get_event_name_field(event_data_table).label(GA.EVENT_NAME_ALIAS_COL)
             if event_specific
             else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
         )
@@ -205,14 +241,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             + [
                 SA.case(
                     (
-                        SA.func.count(columns.get(f._name).distinct())
+                        SA.func.count(
+                            SA.distinct(self.get_field_reference(f, event_data_table))
+                        )
                         < source.max_enum_cardinality,
-                        self._get_distinct_array_agg_func(columns.get(f._name)),
+                        self._get_distinct_array_agg_func(
+                            self.get_field_reference(f, event_data_table)
+                        ),
                     ),
                     else_=SA.literal(None),
                 ).label(f._name)
                 for f in fields
-                if f._name != event_name_field
             ],
         )
         df = self.execute_query(query)
@@ -240,46 +279,47 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         _enums=values[f._name],
                     )
                     for f in fields
-                    if f._name != event_data_table.event_name_field
                 },
                 _source=self.source,
                 _event_data_table=event_data_table,
             )
         return res
 
-    def _get_date_trunc(self, time_group: M.TimeGroup, table_column: SA.Column) -> Any:
-        return SA.func.date_trunc(time_group.name, table_column)
+    def _get_date_trunc(
+        self, time_group: M.TimeGroup, field_ref: FieldReference
+    ) -> Any:
+        return SA.func.date_trunc(time_group.name, field_ref)
 
     def _get_simple_segment_condition(
         self, table: SA.Table, segment: M.SimpleSegment
     ) -> Any:
         left = cast(M.EventFieldDef, segment._left)
-        field = table.columns.get(left._field._name)
+        ref = self.get_field_reference(left._field, sa_table=table)
         op = segment._operator
         if op == M.Operator.EQ:
-            return field == segment._right
+            return ref == segment._right
         if op == M.Operator.NEQ:
-            return field != segment._right
+            return ref != segment._right
         if op == M.Operator.GT:
-            return field > segment._right
+            return ref > segment._right
         if op == M.Operator.LT:
-            return field < segment._right
+            return ref < segment._right
         if op == M.Operator.GT_EQ:
-            return field >= segment._right
+            return ref >= segment._right
         if op == M.Operator.LT_EQ:
-            return field <= segment._right
+            return ref <= segment._right
         if op == M.Operator.LIKE:
-            return field.like(segment._right)
+            return ref.like(segment._right)
         if op == M.Operator.NOT_LIKE:
-            return SA.not_(field.like(segment._right))
+            return SA.not_(ref.like(segment._right))
         if op == M.Operator.ANY_OF:
-            return field.in_(segment._right)
+            return ref.in_(segment._right)
         if op == M.Operator.NONE_OF:
-            return SA.not_(field.in_(segment._right))
+            return SA.not_(ref.in_(segment._right))
         if op == M.Operator.IS_NULL:
-            return field is None
+            return ref is None
         if op == M.Operator.IS_NOT_NULL:
-            return field is not None
+            return ref is not None
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
     def _get_segment_sub_query(self, segment: M.Segment) -> SegmentSubQuery:
@@ -287,7 +327,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             s = cast(M.SimpleSegment, segment)
             left = s._left
             table = self.get_table(left._event_data_table, create_alias=False)
-            evt_name_col = table.columns.get(left._event_data_table.event_name_field)
+            evt_name_col = self.get_event_name_field(left._event_data_table)
             event_name_filter = (
                 (evt_name_col == left._event_name)
                 if left._event_name != M.ANY_EVENT_NAME
@@ -317,61 +357,78 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             if c._operator == M.BinaryOperator.AND:
                 if l_query.event_data_table != r_query.event_data_table:
                     raise Exception(
-                        "And (&) or OR (|) operators can only be between the same events (e.g. page_view & page_view)"
+                        "And (&) operator can only be between the same events (e.g. page_view & page_view)"
                     )
                 return SegmentSubQuery(
-                    event_name=l_query.event_name,
+                    event_name=None,
                     event_data_table=l_query.event_data_table,
                     table_ref=l_query.table_ref,
                     where_clause=l_query.where_clause & r_query.where_clause,
                 )
             else:
                 if l_query.event_data_table == r_query.event_data_table:
-                    return SegmentSubQuery(
-                        event_name=l_query.event_name,
+                    merged = SegmentSubQuery(
                         event_data_table=l_query.event_data_table,
                         table_ref=l_query.table_ref,
                         where_clause=l_query.where_clause | r_query.where_clause,
                     )
+                    merged = merged.union_all(l_query.unioned_with)
+                    return merged.union_all(r_query.unioned_with)
                 else:
-                    l_query.union_all(r_query)
-                    return l_query
+                    return l_query.union_all(r_query)
         else:
-            # TODO add more validations
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
+
+    def _find_group_by_field_ref(
+        self, field: M.Field, sa_table: SA.Table, ed_table: M.EventDataTable
+    ):
+        if field._parent is None:
+            columns = sa_table.columns
+            if field._name in columns:
+                return self.get_field_reference(field, sa_table=sa_table)
+        else:
+            ed_table_fields = self.list_fields(ed_table)
+            for f in ed_table_fields:
+                if f.has_sub_field(field):
+                    return self.get_field_reference(field, sa_table=sa_table)
+        return SA.literal(None)
 
     def _get_segment_sub_query_cte(
         self, sub_query: SegmentSubQuery, group_field: Optional[M.EventFieldDef] = None
-    ) -> CTE:
-        res_select: Select = None
+    ) -> EXP.CTE:
+        selects = []
         while True:
             ed_table = sub_query.event_data_table
-            columns = sub_query.table_ref.columns
-            group_by_col = (
-                SA.literal(None)
-                if group_field is None
-                else columns.get(group_field._field._name)
-            )
+
+            group_by_col = SA.literal(None)
+            if group_field is not None:
+                group_by_col = self._find_group_by_field_ref(
+                    group_field._field, sub_query.table_ref, ed_table
+                )
+
             select = SA.select(
                 columns=[
-                    columns.get(ed_table.user_id_field).label(GA.CTE_USER_ID_ALIAS_COL),
-                    columns.get(ed_table.event_time_field).label(GA.CTE_DATETIME_COL),
+                    self.get_field_reference(ed_table.user_id_field, ed_table).label(
+                        GA.CTE_USER_ID_ALIAS_COL
+                    ),
+                    self.get_field_reference(ed_table.event_time_field, ed_table).label(
+                        GA.CTE_DATETIME_COL
+                    ),
                     group_by_col.label(GA.CTE_GROUP_COL),
                 ],
                 whereclause=(sub_query.where_clause),
             )
-            if res_select is None:
-                res_select = select
-            else:
-                res_select = res_select.union_all(select)
-            if sub_query._unioned_with is not None:
-                sub_query = sub_query._unioned_with
+            self.execute_query(select)
+
+            selects.append(select)
+            if sub_query.unioned_with is not None:
+                sub_query = sub_query.unioned_with
             else:
                 break
 
-        return res_select.cte()
+        return SA.union_all(*selects).cte()
 
-    def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
+    def _get_timewindow_where_clause(self, cte: EXP.CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt
         end_date = metric._end_dt
 
@@ -380,11 +437,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         sub_query = self._get_segment_sub_query(metric._segment)
-        cte: CTE = aliased(self._get_segment_sub_query_cte(sub_query, metric._group_by))
+        cte: EXP.CTE = aliased(
+            self._get_segment_sub_query_cte(sub_query, metric._group_by)
+        )
 
         evt_time_group = (
             self._get_date_trunc(
-                table_column=cte.columns.get(GA.CTE_DATETIME_COL),
+                field_ref=cte.columns.get(GA.CTE_DATETIME_COL),
                 time_group=metric._time_group,
             )
             if metric._time_group != M.TimeGroup.TOTAL
@@ -430,7 +489,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         time_group = metric._time_group
         if time_group != M.TimeGroup.TOTAL:
             first_evt_time_group = self._get_date_trunc(
-                table_column=first_cte.columns.get(GA.CTE_DATETIME_COL),
+                field_ref=first_cte.columns.get(GA.CTE_DATETIME_COL),
                 time_group=time_group,
             )
         else:
@@ -518,10 +577,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_last_event_times_pdf(self) -> pd.DataFrame:
         main = None
         for edt in self.source.event_data_tables:
-            t = self.get_table(edt)
-            et_col = t.columns.get(edt.event_time_field)
-            en_col = t.columns.get(edt.event_name_field)
-
+            et_col = self.get_field_reference(
+                edt.event_time_field, event_data_table=edt
+            )
+            en_col = self.get_event_name_field(edt)
             sel = SA.select(
                 columns=[
                     en_col.label(GA.EVENT_NAME_ALIAS_COL),

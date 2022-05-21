@@ -4,7 +4,7 @@ import pytest
 from mitzu.common.model import ConversionMetric, DiscoveredEventDataSource, Segment
 from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
 from tests.helper import assert_row, assert_sql
-from tests.test_samples.sources import get_simple_big_data, get_simple_csv
+from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 
 @pytest.mark.skip
@@ -52,11 +52,11 @@ def test_simple_csv_segmentation():
     print(seg.get_sql())
     assert_sql(
         """
-with anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
-                       simple_dataset.event_time as _cte_datetime,
+with anon_2 as (SELECT simple.user_id as _cte_user_id,
+                       simple.event_time as _cte_datetime,
                        null as _cte_group
-                FROM   simple_dataset
-                WHERE  simple_dataset.event_type = 'cart')
+                FROM   simple
+                WHERE  simple.event_type = 'cart')
 SELECT null as _datetime,
        null as _group,
        count(distinct anon_1._cte_user_id) as _unique_user_count,
@@ -88,16 +88,16 @@ def test_simple_csv_funnel():
     )
     assert_sql(
         """
-with anon_1 as (SELECT simple_dataset.user_id as _cte_user_id,
-                simple_dataset.event_time as _cte_datetime,
-                simple_dataset.category_id as _cte_group
-        FROM   simple_dataset
-        WHERE  simple_dataset.event_type = 'view'), 
-anon_2 as (SELECT simple_dataset.user_id as _cte_user_id,
-            simple_dataset.event_time as _cte_datetime,
+with anon_1 as (SELECT simple.user_id as _cte_user_id,
+                simple.event_time as _cte_datetime,
+                simple.category_id as _cte_group
+        FROM   simple
+        WHERE  simple.event_type = 'view'), 
+anon_2 as (SELECT simple.user_id as _cte_user_id,
+            simple.event_time as _cte_datetime,
             null as _cte_group
-    FROM   simple_dataset
-    WHERE  simple_dataset.event_type = 'cart')
+    FROM   simple
+    WHERE  simple.event_type = 'cart')
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) as _datetime,
        anon_1._cte_group as _group,
        (count(distinct anon_2._cte_user_id) * 100.0) / count(distinct anon_1._cte_user_id) as _conversion_rate,

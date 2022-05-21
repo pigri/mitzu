@@ -13,7 +13,9 @@ STEP_COL = "step"
 
 
 def fix_na_cols(pdf: pd.DataFrame) -> pd.DataFrame:
-    return pdf.apply(lambda x: x.fillna(0) if x.dtype.kind in "biufc" else x.fillna(""))
+    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("n/a")
+    pdf = pdf.apply(lambda x: x.fillna(0) if x.dtype.kind in "biufc" else x.fillna(""))
+    return pdf
 
 
 def filter_top_segmentation_groups(
@@ -144,7 +146,6 @@ def get_hover_mode(metric: M.Metric, group_count: int):
 def plot_conversion(metric: M.ConversionMetric):
     pdf = metric.get_df()
     pdf = fix_na_cols(pdf)
-
     px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
     pdf, group_count = filter_top_conversion_groups(pdf, metric)
 
