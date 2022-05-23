@@ -48,6 +48,8 @@ class GenericDatasetAdapter(ABC):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
+        start_date: datetime,
+        end_date: datetime,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 

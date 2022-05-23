@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 
 import mitzu.common.model as M
@@ -10,12 +10,20 @@ class EventDatasourceDiscovery:
     def __init__(
         self,
         source: M.EventDataSource,
-        end_dt: datetime = None,
-        start_dt: datetime = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
     ):
         self.source = source
-        self.start_dt = start_dt
-        self.end_dt = end_dt
+
+        if end_date is None:
+            self.end_date = max(self.source.get_last_event_times().values())
+        else:
+            self.end_date = end_date
+
+        if start_date is None:
+            self.start_date = self.end_date - timedelta(days=365)
+        else:
+            self.start_date = start_date
 
     def _get_all_event_fields(
         self,
@@ -33,7 +41,9 @@ class EventDatasourceDiscovery:
         return res_fields
 
     def _get_generic_field_values(
-        self, ed_table: M.EventDataTable, generic_fields: List[M.Field]
+        self,
+        ed_table: M.EventDataTable,
+        generic_fields: List[M.Field],
     ) -> M.EventDef:
         adapter = self.source.adapter
         map_field_keys = {}
@@ -46,8 +56,13 @@ class EventDatasourceDiscovery:
         all_fields = self._get_all_event_fields(
             M.ANY_EVENT_NAME, generic_fields, map_field_keys
         )
+
         return adapter.get_field_enums(
-            event_data_table=ed_table, fields=all_fields, event_specific=False
+            event_data_table=ed_table,
+            fields=all_fields,
+            event_specific=False,
+            start_date=self.start_date,
+            end_date=self.end_date,
         )[M.ANY_EVENT_NAME]
 
     def _get_specific_field_values(
@@ -70,7 +85,11 @@ class EventDatasourceDiscovery:
                 event_name, specific_fields, map_field_keys
             )
         return adapter.get_field_enums(
-            event_data_table=ed_table, fields=all_fields, event_specific=True
+            event_data_table=ed_table,
+            fields=all_fields,
+            event_specific=True,
+            start_date=self.start_date,
+            end_date=self.end_date,
         )
 
     def _get_specific_fields(
@@ -78,7 +97,7 @@ class EventDatasourceDiscovery:
     ):
         res = []
         for scpe_field in ed_table.event_specific_fields:
-            res.extend([f for f in all_fields if f._name.startswith(scpe_field)])
+            res.extend([f for f in all_fields if f._get_name().startswith(scpe_field)])
         return res
 
     def _copy_gen_field_def_to_spec(
@@ -101,6 +120,19 @@ class EventDatasourceDiscovery:
     ) -> Dict[str, M.EventDef]:
         res: Dict[str, M.EventDef] = {}
 
+        # if (
+        #     event_data_table.event_name_field is None
+        #     and event_data_table.event_name_alias is not None
+        # ):
+        #     evt_name = event_data_table.event_name_alias
+        #     new_def = M.EventDef(
+        #         _source=source,
+        #         _event_data_table=event_data_table,
+        #         _event_name=evt_name,
+        #         _fields={k: v for k, v in generic._fields.items()},
+        #     )
+        #     res[evt_name] = new_def
+        # elif event_data_table.event_name_field is not None:
         for evt_name, spec_evt_def in specific.items():
             copied_gen_fields = {
                 field: self._copy_gen_field_def_to_spec(evt_name, field_def)
@@ -114,6 +146,7 @@ class EventDatasourceDiscovery:
                 _fields={**spec_evt_def._fields, **copied_gen_fields},
             )
             res[evt_name] = new_def
+
         return res
 
     def flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
@@ -131,7 +164,6 @@ class EventDatasourceDiscovery:
 
         for ed_table in self.source.event_data_tables:
             fields = self.source.adapter.list_fields(event_data_table=ed_table)
-            fields = [f for f in fields if f._name not in ed_table.ignored_fields]
             fields = self.flatten_fields(fields)
 
             specific_fields = self._get_specific_fields(ed_table, fields)
@@ -146,4 +178,5 @@ class EventDatasourceDiscovery:
             definitions=definitions,
             source=self.source,
         )
+
         return dd

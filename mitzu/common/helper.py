@@ -9,6 +9,12 @@ import mitzu.common.model as M
 def get_segment_end_date(segment: M.Segment) -> datetime:
     if isinstance(segment, M.SimpleSegment):
         evt_name = segment._left._event_name
+        if (
+            evt_name == M.ANY_EVENT_NAME
+            and segment._left._event_data_table.event_name_alias is not None
+        ):
+            evt_name = segment._left._event_data_table.event_name_alias
+
         return segment._left._source.get_last_event_times().get(
             evt_name, datetime.now()
         )

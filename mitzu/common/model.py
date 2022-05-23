@@ -334,10 +334,10 @@ class EventDataSource:
         self._adapter_cache.set_value(None)
 
     def discover_datasource(
-        self, start_dt: datetime = None, end_dt: datetime = None
+        self, start_date: datetime = None, end_date: datetime = None
     ) -> DiscoveredEventDataSource:
         return D.EventDatasourceDiscovery(
-            source=self, start_dt=start_dt, end_dt=end_dt
+            source=self, start_date=start_date, end_date=end_date
         ).discover_datasource()
 
     def validate(self):

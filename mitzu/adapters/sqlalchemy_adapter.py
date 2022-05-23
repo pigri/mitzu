@@ -165,7 +165,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.literal_column(f"{sa_table}.{field._get_name()}")
 
-    def _parse_complex_type(self, sa_type: Any, name: str) -> M.Field:
+    def _parse_complex_type(
+        self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
+    ) -> M.Field:
         raise NotImplementedError(
             "Generic SQL Alchemy Adapter doesn't support complex types"
         )
@@ -175,9 +177,18 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         field_types = table.columns.items()
         res = []
         for k, v in field_types:
+            if k in event_data_table.ignored_fields:
+                continue
             data_type = self.map_type(v.type)
             if data_type == M.DataType.STRUCT:
-                complex_field = self._parse_complex_type(sa_type=v.type, name=k)
+                complex_field = self._parse_complex_type(
+                    sa_type=v.type, name=k, event_data_table=event_data_table, path=k
+                )
+                if (
+                    complex_field._sub_fields is None
+                    or len(complex_field._sub_fields) == 0
+                ):
+                    continue
                 res.append(complex_field)
             else:
                 field = M.Field(_name=k, _type=data_type)
@@ -223,6 +234,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
+        start_date: datetime,
+        end_date: datetime,
     ) -> pd.DataFrame:
         source = self.source
 
@@ -230,6 +243,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self.get_event_name_field(event_data_table).label(GA.EVENT_NAME_ALIAS_COL)
             if event_specific
             else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
+        )
+        dt_field = self.get_field_reference(
+            field=event_data_table.event_time_field, event_data_table=event_data_table
         )
         query = SA.select(
             group_by=(
@@ -253,6 +269,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ).label(f._name)
                 for f in fields
             ],
+            whereclause=(
+                (dt_field >= self._correct_timestamp(start_date))
+                & (dt_field <= self._correct_timestamp(end_date))
+            ),
         )
         df = self.execute_query(query)
         return df.set_index(GA.EVENT_NAME_ALIAS_COL)
@@ -262,9 +282,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
+        start_date: datetime,
+        end_date: datetime,
     ) -> Dict[str, M.EventDef]:
         enums = self._get_column_values_df(
-            event_data_table, fields, event_specific
+            event_data_table, fields, event_specific, start_date, end_date
         ).to_dict("index")
         res = {}
         for evt, values in enums.items():
@@ -428,12 +450,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.union_all(*selects).cte()
 
+    def _correct_timestamp(self, dt: datetime) -> Any:
+        return dt
+
     def _get_timewindow_where_clause(self, cte: EXP.CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt
         end_date = metric._end_dt
 
         evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
-        return (evt_time_col >= start_date) & (evt_time_col <= end_date)
+        return (evt_time_col >= self._correct_timestamp(start_date)) & (
+            evt_time_col <= self._correct_timestamp(end_date)
+        )
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         sub_query = self._get_segment_sub_query(metric._segment)
@@ -601,7 +628,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def get_last_event_times(self) -> Dict[str, datetime]:
         pdf = self._get_last_event_times_pdf()
         pdf = pdf.set_index(GA.EVENT_NAME_ALIAS_COL)
-
         return {
             k: v[GA.DATETIME_COL].to_pydatetime()
             for k, v in pdf.to_dict("index").items()

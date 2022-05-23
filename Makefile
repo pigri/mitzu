@@ -32,7 +32,7 @@ trino_setup_test_data:
 	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 test_coverage:
-	$(POETRY) run  pytest --cov=mitzu  tests/
+	$(POETRY) run  pytest --cov=mitzu --cov-report=html tests/
 
 check: format autoflake mypy lint test_coverage
 	@ECHO 'done'
@@ -42,6 +42,9 @@ notebook:
 
 build: check
 	$(POETRY) build
+
+generate_test_data:
+	$(POETRY) run python scripts/create_test_data.py $(SIZE)
 
 bump_version:
 	$(POETRY) version patch

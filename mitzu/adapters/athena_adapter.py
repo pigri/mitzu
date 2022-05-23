@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from functools import lru_cache
 from typing import Any, List
 
@@ -30,19 +31,26 @@ class AthenaAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
+        start_date: datetime,
+        end_date: datetime,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
+            start_date=start_date,
+            end_date=end_date,
         )
         return pdf_string_array_to_array(df)
+
+    def _correct_timestamp(self, dt: datetime) -> Any:
+        return SA.text(f"timestamp '{dt}'")
 
     def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)
         end_date = metric._end_dt.replace(microsecond=0)
 
         evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
-        return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
-            evt_time_col <= SA.text(f"timestamp '{end_date}'")
+        return (evt_time_col >= self._correct_timestamp(start_date)) & (
+            evt_time_col <= self._correct_timestamp(end_date)
         )

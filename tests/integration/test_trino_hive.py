@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import mitzu.common.model as M
 from mitzu import init_project
 
@@ -16,6 +18,7 @@ def test_trion_complex_data():
                 event_name_field="event_name",
                 event_time_field="event_time",
                 user_id_field="user_id",
+                event_specific_fields=["event_properties"],
             ),
         ],
         connection=M.Connection(
@@ -28,10 +31,11 @@ def test_trion_complex_data():
         ),
     )
 
-    m = init_project(target)
+    m = init_project(
+        target, start_date=datetime(2021, 1, 1), end_date=datetime(2022, 1, 1)
+    )
 
     pdf = (m.user_subscribe.event_properties.reason.is_referral).get_df()
-    print
 
     pdf = (m.page_visit).config(group_by=m.page_visit.event_name).get_df()
     assert pdf is not None

@@ -40,8 +40,8 @@ def load_project(project: str, folder: str = "./", extension="mitzu", glbs=None)
 
 def init_project(
     source: EventDataSource,
-    start_dt: datetime = None,
-    end_dt: datetime = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
     persist_as: str = None,
     glbs=None,
 ) -> DatasetModel:
@@ -50,8 +50,8 @@ def init_project(
     print("Initializing project ...")
     res = P.init_project(
         source=source,
-        start_dt=start_dt,
-        end_dt=end_dt,
+        start_date=start_date,
+        end_date=end_date,
         glbs=glbs,
         persist_as=persist_as,
     )

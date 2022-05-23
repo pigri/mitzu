@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, List, cast
 
 import mitzu.adapters.generic_adapter as GA
@@ -10,7 +11,6 @@ import sqlalchemy_trino.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 from sql_formatter.core import format_sql
-from sqlalchemy.sql.expression import CTE
 
 
 class TrinoAdapter(SQLAlchemyAdapter):
@@ -42,12 +42,27 @@ class TrinoAdapter(SQLAlchemyAdapter):
 
         return super().map_type(sa_type)
 
-    def _parse_complex_type(self, sa_type: Any, name: str) -> M.Field:
+    def _parse_complex_type(
+        self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
+    ) -> M.Field:
         if isinstance(sa_type, SA_T.ROW):
             row: SA_T.ROW = cast(SA_T.ROW, sa_type)
             sub_fields: List[M.Field] = []
             for n, st in row.attr_types:
-                sub_fields.append(self._parse_complex_type(sa_type=st, name=n))
+                next_path = f"{path}.{n}"
+                if next_path in event_data_table.ignored_fields:
+                    continue
+                sf = self._parse_complex_type(
+                    sa_type=st,
+                    name=n,
+                    event_data_table=event_data_table,
+                    path=next_path,
+                )
+                if sf._type == M.DataType and (
+                    sf._sub_fields is None or len(sf._sub_fields) == 0
+                ):
+                    continue
+                sub_fields.append(sf)
             return M.Field(
                 _name=name, _type=M.DataType.STRUCT, _sub_fields=tuple(sub_fields)
             )
@@ -59,22 +74,20 @@ class TrinoAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
+        start_date: datetime,
+        end_date: datetime,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
+            start_date=start_date,
+            end_date=end_date,
         )
         return pdf_string_array_to_array(df)
 
-    def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
-        start_date = metric._start_dt.replace(microsecond=0)
-        end_date = metric._end_dt.replace(microsecond=0)
-
-        evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
-        return (evt_time_col >= SA.text(f"timestamp '{start_date}'")) & (
-            evt_time_col <= SA.text(f"timestamp '{end_date}'")
-        )
+    def _correct_timestamp(self, dt: datetime) -> Any:
+        return SA.text(f"timestamp '{dt}'")
 
     def _get_last_event_times_pdf(self) -> pd.DataFrame:
         pdf = super()._get_last_event_times_pdf()

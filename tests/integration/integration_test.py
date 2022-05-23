@@ -88,7 +88,9 @@ def validate_integration(source: M.EventDataSource):
     m = cast(
         Any,
         init_project(
-            source=source, start_dt=datetime(2021, 1, 1), end_dt=datetime(2022, 1, 1)
+            source=source,
+            start_date=datetime(2019, 1, 1),
+            end_date=datetime(2022, 1, 1),
         ),
     )
 

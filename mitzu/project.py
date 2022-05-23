@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Optional
 
 import mitzu.common.model as M
@@ -10,17 +10,13 @@ import mitzu.common.model as M
 def init_project(
     source: M.EventDataSource,
     persist_as: str = None,
-    start_dt: datetime = None,
-    end_dt: datetime = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
     glbs: Optional[Dict] = None,
 ) -> M.DatasetModel:
     warnings.filterwarnings("ignore")
 
-    if start_dt is None:
-        start_dt = datetime.now() - timedelta(days=365 * 5)
-    if end_dt is None:
-        end_dt = datetime.now()
-    dd = source.discover_datasource(start_dt=start_dt, end_dt=end_dt)
+    dd = source.discover_datasource(start_date=start_date, end_date=end_date)
     if persist_as is not None:
         dd.save_project(persist_as)
 
