@@ -25,9 +25,8 @@ def test_trion_complex_data():
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
             secret_resolver=None,
-            schema="minio",
+            schema="minio/tiny",
             host="localhost",
-            extra_configs={"secondary_schema": "tiny"},
         ),
     )
 

@@ -84,12 +84,10 @@ def ingest_test_file_data(
             pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(
                 lambda v: datetime.fromisoformat(v)
             )
-        sec_schema = source.connection.extra_configs.get("secondary_schema")
         pdf.to_sql(
             con=target_engine,
             name=ed_table.table_name,
             index=False,
-            schema=sec_schema,
             dtype=dtype,
             if_exists="replace",
         )

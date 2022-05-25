@@ -124,10 +124,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     ) -> SA.Table:
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
-            secondary_schema = self.source.connection.extra_configs.get(
-                "secondary_schema", None
-            )
-            metadata_obj = SA.MetaData(schema=secondary_schema)
+            metadata_obj = SA.MetaData()
             self._table_cache[event_data_table] = SA.Table(
                 event_data_table.table_name,
                 metadata_obj,

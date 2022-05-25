@@ -11,7 +11,7 @@ import plotly.express as px
 
 MAX_TITLE_LENGTH = 80
 STEP_COL = "step"
-CVR_FIXED_COL = "_cvr_fixed_col"
+TEXT_COL = "_text"
 
 
 def fix_na_cols(pdf: pd.DataFrame, metric: M.Metric) -> pd.DataFrame:
@@ -180,13 +180,17 @@ def plot_conversion(metric: M.ConversionMetric):
     if metric._time_group == M.TimeGroup.TOTAL:
         pdf = get_melted_conv_pdf(pdf, metric)
         pdf = pdf.sort_values([STEP_COL], ascending=[True])
-        pdf[CVR_FIXED_COL] = pdf[GA.CVR_COL].apply(lambda val: f"{val:.1f}%")
+        pdf[TEXT_COL] = (
+            pdf[GA.CVR_COL].apply(lambda val: f"{val:.1f}%")
+            + "<br>"
+            + pdf[GA.GROUP_COL]
+        )
 
         fig = px.bar(
             pdf,
             x=STEP_COL,
             y=GA.CVR_COL,
-            text=CVR_FIXED_COL,
+            text=TEXT_COL,
             color=GA.GROUP_COL,
             barmode="group",
             custom_data=[
@@ -210,12 +214,12 @@ def plot_conversion(metric: M.ConversionMetric):
         funnel_length = len(metric._conversion._segments)
         pdf[GA.DATETIME_COL] = pd.to_datetime(pdf[GA.DATETIME_COL])
         pdf = pdf.sort_values(by=[GA.DATETIME_COL])
-        pdf[CVR_FIXED_COL] = pdf[GA.CVR_COL].apply(lambda val: f"{val:.1f}%")
+        pdf[TEXT_COL] = pdf[GA.CVR_COL].apply(lambda val: f"{val:.1f}%")
         fig = px.line(
             pdf,
             x=GA.DATETIME_COL,
             y=GA.CVR_COL,
-            text=CVR_FIXED_COL,
+            text=TEXT_COL,
             color=GA.GROUP_COL,
             custom_data=[
                 f"{GA.USER_COUNT_COL}_1",
@@ -277,6 +281,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
             metric._group_by._field._name if metric._group_by is not None else ""
         )
         pdf[x_title] = ""
+        pdf[TEXT_COL] = pdf[GA.USER_COUNT_COL].astype(str) + "<br>" + pdf[GA.GROUP_COL]
         pdf = pdf.sort_values([GA.USER_COUNT_COL], ascending=[False])
         fig = px.bar(
             pdf,
@@ -284,7 +289,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
             y=GA.USER_COUNT_COL,
             color=GA.GROUP_COL,
             barmode="group",
-            text=GA.USER_COUNT_COL,
+            text=TEXT_COL,
             custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
             labels={
                 x_title: x_title_label,
