@@ -22,7 +22,10 @@ def create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:
         from mitzu.adapters.mysql_adapter import MySQLAdapter
 
         return MySQLAdapter(source)
+    elif con_type == M.ConnectionType.POSTGRESQL:
+        from mitzu.adapters.postgresql_adapter import PostgresqlAdapter
 
+        return PostgresqlAdapter(source)
     elif con_type == M.ConnectionType.TRINO:
         from mitzu.adapters.trino_adapter import TrinoAdapter
 

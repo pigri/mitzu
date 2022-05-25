@@ -15,6 +15,10 @@ from tests.samples.sources import get_simple_csv
 WD = os.path.dirname(os.path.abspath(__file__)) + "/../samples/"
 
 
+def case_name(tc: TestCase):
+    return f"{tc.connection.connection_type.name} {tc.connection.schema}"
+
+
 @dataclass(frozen=True)
 class TestCase:
     connection: M.Connection
@@ -32,29 +36,29 @@ def def_con(type: M.ConnectionType) -> M.Connection:
 
 
 TEST_CASES = [
-    TestCase(
-        M.Connection(
-            connection_type=M.ConnectionType.MYSQL,
-            host="localhost",
-            secret_resolver=M.ConstSecretResolver("test"),
-            user_name="test",
-            port=3307,
-            schema="test",
-        ),
-    ),
-    TestCase(def_con(M.ConnectionType.POSTGRESQL)),
-    TestCase(
-        M.Connection(
-            connection_type=M.ConnectionType.TRINO,
-            host="localhost",
-            secret_resolver=None,
-            user_name="test",
-            port=8080,
-            schema="mysql",
-            extra_configs={"secondary_schema": "test"},
-        ),
-        ingest=False,
-    ),
+    # TestCase(
+    #     M.Connection(
+    #         connection_type=M.ConnectionType.MYSQL,
+    #         host="localhost",
+    #         secret_resolver=M.ConstSecretResolver("test"),
+    #         user_name="test",
+    #         port=3307,
+    #         schema="test",
+    #     ),
+    # ),
+    # TestCase(def_con(M.ConnectionType.POSTGRESQL)),
+    # TestCase(
+    #     M.Connection(
+    #         connection_type=M.ConnectionType.TRINO,
+    #         host="localhost",
+    #         secret_resolver=None,
+    #         user_name="test",
+    #         port=8080,
+    #         schema="mysql",
+    #         extra_configs={"secondary_schema": "test"},
+    #     ),
+    #     ingest=False,
+    # ),
     TestCase(
         M.Connection(
             connection_type=M.ConnectionType.FILE,
@@ -68,7 +72,7 @@ TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("test_case", TEST_CASES)
+@pytest.mark.parametrize("test_case", TEST_CASES, ids=case_name)
 def test_db_integrations(test_case: TestCase):
     test_source = get_simple_csv()
     ingested_source = M.EventDataSource(
@@ -140,6 +144,30 @@ def validate_integration(source: M.EventDataSource):
             conv_window="12 day",
             group_by=m.view.brand,
             max_group_by_count=3,
+        )
+        .get_df()
+    )
+
+    assert 99 == df.shape[0]
+    assert_row(
+        df,
+        _datetime=pd.Timestamp("2019-12-30 00:00:00"),
+        _unique_user_count_1=6,
+        _event_count_1=12,
+        _unique_user_count_2=2,
+        _event_count_2=6,
+        _group="cosmoprofi",
+        _conversion_rate=33.333,
+    )
+
+    df = (
+        (m.view >> m.cart)
+        .config(
+            start_dt="2020-01-01",
+            time_group="week",
+            conv_window="1 week",
+            group_by=m.view.brand,
+            max_group_by_count=1,
         )
         .get_df()
     )

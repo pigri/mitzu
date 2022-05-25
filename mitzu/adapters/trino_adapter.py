@@ -9,7 +9,7 @@ import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy_trino.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 from sql_formatter.core import format_sql
 
 
@@ -92,3 +92,12 @@ class TrinoAdapter(SQLAlchemyAdapter):
     def _get_last_event_times_pdf(self) -> pd.DataFrame:
         pdf = super()._get_last_event_times_pdf()
         return dataframe_str_to_datetime(pdf, GA.DATETIME_COL)
+
+    def _get_datetime_interval(
+        self, field_ref: FieldReference, timewindow: M.TimeWindow
+    ) -> Any:
+        return SA.func.date_add(
+            timewindow.period.name.lower(),
+            timewindow.value,
+            field_ref,
+        )

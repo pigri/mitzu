@@ -23,7 +23,6 @@ class FileAdapter(SQLiteAdapter):
             self._engine = super().get_engine()
             for ed_table in self.source.event_data_tables:
                 df = self._read_file(ed_table)
-                print(ed_table.table_name)
                 df.to_sql(
                     name=ed_table.table_name,
                     con=self._engine,

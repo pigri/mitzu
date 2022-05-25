@@ -111,6 +111,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return pdf
         except Exception as exc:
             print("Failed Query:")
+            raise exc
+        finally:
             if type(query) == str:
                 print(format_sql(str(query)))
             else:
@@ -119,7 +121,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         str(query.compile(compile_kwargs={"literal_binds": True}))
                     )
                 )
-            raise exc
 
     def get_engine(self) -> Any:
         con = self.source.connection
@@ -440,8 +441,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ],
                 whereclause=(sub_query.where_clause),
             )
-            self.execute_query(select)
-
             selects.append(select)
             if sub_query.unioned_with is not None:
                 sub_query = sub_query.unioned_with

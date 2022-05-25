@@ -26,7 +26,7 @@ docker_test_down:
 	docker-compose -f tests/integration/docker/docker-compose.yml down
 
 docker_test_up:	
-	docker-compose -f tests/integration/docker/docker-compose.yml up	
+	docker-compose -f tests/integration/docker/docker-compose.yml u
 
 trino_setup_test_data:
 	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
@@ -38,7 +38,7 @@ check: format autoflake mypy lint test_coverage
 	@ECHO 'done'
 
 notebook:
-	$(POETRY) run jupyter-notebook
+	$(POETRY) run jupyter lab
 
 build: check
 	$(POETRY) build

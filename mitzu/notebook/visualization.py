@@ -255,6 +255,7 @@ def plot_conversion(metric: M.ConversionMetric):
         margin=dict(t=get_title_height(title), l=1, r=1, b=1, pad=0),
         uniformtext_minsize=8,
         uniformtext_mode="hide",
+        height=600,
         hoverlabel={"font": {"size": 12}},
         hovermode=get_hover_mode(metric, group_count),
     )
@@ -345,6 +346,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
         uniformtext_mode="hide",
         autosize=True,
         margin=dict(t=get_title_height(title), l=1, r=1, b=1, pad=0),
+        height=600,
         hoverlabel={"font": {"size": 12}},
         hovermode=get_hover_mode(metric, group_count),
     )

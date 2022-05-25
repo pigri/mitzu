@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.1.19"
+version = "0.1.20"
 description = "Product analytics for your notebook"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 
@@ -35,6 +35,8 @@ black = "^22.1.0"
 pytest-cov = "^3.0.0"
 mutmut = "^2.4.0"
 Faker = "^13.7.0"
+jupyterlab = "^3.4.2"
+voila = "^0.3.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

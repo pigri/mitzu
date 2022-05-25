@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from functools import lru_cache
 from typing import Any, List
 
 import mitzu.adapters.generic_adapter as GA
@@ -18,7 +17,6 @@ class AthenaAdapter(SQLAlchemyAdapter):
     def __init__(self, source: M.EventDataSource):
         super().__init__(source)
 
-    @lru_cache
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
             query = format_sql(
