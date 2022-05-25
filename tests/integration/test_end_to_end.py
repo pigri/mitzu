@@ -84,18 +84,19 @@ def test_simple_csv_funnel():
         end_dt="2021-01-01",
         group_by=m.view.category_id,
     )
+
     assert_sql(
         """
 with anon_1 as (SELECT simple.user_id as _cte_user_id,
-                simple.event_time as _cte_datetime,
-                simple.category_id as _cte_group
-        FROM   simple
-        WHERE  simple.event_type = 'view'), 
+                       simple.event_time as _cte_datetime,
+                       simple.category_id as _cte_group
+                FROM   simple
+                WHERE  simple.event_type = 'view'), 
 anon_2 as (SELECT simple.user_id as _cte_user_id,
-            simple.event_time as _cte_datetime,
-            null as _cte_group
-    FROM   simple
-    WHERE  simple.event_type = 'cart')
+                        simple.event_time as _cte_datetime,
+                        null as _cte_group
+                FROM   simple
+                WHERE  simple.event_type = 'cart')
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) as _datetime,
        anon_1._cte_group as _group,
        (count(distinct anon_2._cte_user_id) * 100.0) / count(distinct anon_1._cte_user_id) as _conversion_rate,

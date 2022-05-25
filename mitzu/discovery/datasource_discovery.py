@@ -119,20 +119,6 @@ class EventDatasourceDiscovery:
         specific: Dict[str, M.EventDef],
     ) -> Dict[str, M.EventDef]:
         res: Dict[str, M.EventDef] = {}
-
-        # if (
-        #     event_data_table.event_name_field is None
-        #     and event_data_table.event_name_alias is not None
-        # ):
-        #     evt_name = event_data_table.event_name_alias
-        #     new_def = M.EventDef(
-        #         _source=source,
-        #         _event_data_table=event_data_table,
-        #         _event_name=evt_name,
-        #         _fields={k: v for k, v in generic._fields.items()},
-        #     )
-        #     res[evt_name] = new_def
-        # elif event_data_table.event_name_field is not None:
         for evt_name, spec_evt_def in specific.items():
             copied_gen_fields = {
                 field: self._copy_gen_field_def_to_spec(evt_name, field_def)
@@ -163,6 +149,7 @@ class EventDatasourceDiscovery:
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
         for ed_table in self.source.event_data_tables:
+            print(f"Discovering {ed_table.table_name}")
             fields = self.source.adapter.list_fields(event_data_table=ed_table)
             fields = self.flatten_fields(fields)
 

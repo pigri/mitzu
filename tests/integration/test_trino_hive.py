@@ -32,10 +32,22 @@ def test_trion_complex_data():
     )
 
     m = init_project(
-        target, start_date=datetime(2021, 1, 1), end_date=datetime(2022, 1, 1)
+        target, start_date=datetime(2021, 1, 1), end_date=datetime(2021, 1, 4)
     )
+    pdf = (
+        (m.page_visit.event_properties.url.is_not_null >> m.purchase)
+        .config(
+            group_by=m.page_visit.user_properties.is_subscribed,
+            time_group="total",
+            conv_window="1 week",
+        )
+        .get_df()
+    )
+    assert pdf is not None
 
-    pdf = (m.user_subscribe.event_properties.reason.is_referral).get_df()
-
-    pdf = (m.page_visit).config(group_by=m.page_visit.event_name).get_df()
+    pdf = (
+        (m.user_subscribe.event_properties.reason.is_referral)
+        .config(group_by=m.user_subscribe.event_properties.reason, time_group="week")
+        .get_df()
+    )
     assert pdf is not None

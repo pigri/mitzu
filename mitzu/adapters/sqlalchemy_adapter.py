@@ -10,7 +10,7 @@ import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 import sqlalchemy.sql.sqltypes as SA_T
-from sql_formatter.core import format_sql
+import sqlparse
 from sqlalchemy.orm import aliased
 
 
@@ -30,6 +30,13 @@ SIMPLE_TYPE_MAPPINGS = {
     SA_T.VARCHAR: M.DataType.STRING,
     SA_T.TEXT: M.DataType.STRING,
 }
+
+
+def format_query(raw_query: Any):
+    if type(raw_query) != str:
+        raw_query = str(raw_query.compile(compile_kwargs={"literal_binds": True}))
+
+    return sqlparse.format(raw_query, reindent=True, keyword_case="upper")
 
 
 @dataclass
@@ -67,25 +74,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return SA.literal(ed_table.event_name_alias)
 
     def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
-        return format_sql(
-            str(
-                self._get_conversion_select(metric).compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-        )
+        return format_query(self._get_conversion_select(metric))
 
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         return self.execute_query(self._get_conversion_select(metric))
 
     def get_segmentation_sql(self, metric: M.SegmentationMetric) -> str:
-        return format_sql(
-            str(
-                self._get_segmentation_select(metric).compile(
-                    compile_kwargs={"literal_binds": True}
-                )
-            )
-        )
+        return format_query(self._get_segmentation_select(metric))
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         return self.execute_query(self._get_segmentation_select(metric))
@@ -111,14 +106,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return pdf
         except Exception as exc:
             print("Failed Query:")
-            if type(query) == str:
-                print(format_sql(str(query)))
-            else:
-                print(
-                    format_sql(
-                        str(query.compile(compile_kwargs={"literal_binds": True}))
-                    )
-                )
+            print(format_query(query))
             raise exc
 
     def get_engine(self) -> Any:
@@ -440,8 +428,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ],
                 whereclause=(sub_query.where_clause),
             )
-            self.execute_query(select)
-
             selects.append(select)
             if sub_query.unioned_with is not None:
                 sub_query = sub_query.unioned_with

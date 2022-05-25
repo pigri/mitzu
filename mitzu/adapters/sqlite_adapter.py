@@ -80,6 +80,10 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def _get_datetime_interval(
         self, field_ref: FieldReference, timewindow: M.TimeWindow
     ) -> Any:
+        if timewindow.period == M.TimeGroup.WEEK:
+            # SQL Lite doesn't have the week concept
+            timewindow = M.TimeWindow(timewindow.value * 7, M.TimeGroup.DAY)
         return SA.func.datetime(
-            field_ref, f"+{timewindow.value} {timewindow.period.name.lower()}"
+            field_ref,
+            SA.text(f"'+{timewindow.value} {timewindow.period.name.lower()}'"),
         )
