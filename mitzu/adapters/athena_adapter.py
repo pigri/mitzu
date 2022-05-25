@@ -9,7 +9,6 @@ import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.helper import pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from sql_formatter.core import format_sql
 from sqlalchemy.sql.expression import CTE
 
 
@@ -19,9 +18,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
-            query = format_sql(
-                str(query.compile(compile_kwargs={"literal_binds": True}))
-            )
+            query = str(query.compile(compile_kwargs={"literal_binds": True}))
         return super().execute_query(query=query)
 
     def _get_column_values_df(

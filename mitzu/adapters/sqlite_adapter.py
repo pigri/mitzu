@@ -85,5 +85,5 @@ class SQLiteAdapter(SQLAlchemyAdapter):
             timewindow = M.TimeWindow(timewindow.value * 7, M.TimeGroup.DAY)
         return SA.func.datetime(
             field_ref,
-            SA.text(f"+ '{timewindow.value} {timewindow.period.name.lower()}'"),
+            SA.text(f"'+{timewindow.value} {timewindow.period.name.lower()}'"),
         )

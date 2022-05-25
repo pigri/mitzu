@@ -10,7 +10,6 @@ import sqlalchemy as SA
 import sqlalchemy_trino.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
-from sql_formatter.core import format_sql
 
 
 class TrinoAdapter(SQLAlchemyAdapter):
@@ -30,11 +29,8 @@ class TrinoAdapter(SQLAlchemyAdapter):
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
-            query = format_sql(
-                str(query.compile(compile_kwargs={"literal_binds": True}))
-            )
-        res = super().execute_query(query=query)
-        return res
+            query = str(query.compile(compile_kwargs={"literal_binds": True}))
+        return super().execute_query(query=query)
 
     def map_type(self, sa_type: Any) -> M.DataType:
         if isinstance(sa_type, SA_T.ROW):

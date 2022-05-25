@@ -36,29 +36,29 @@ def def_con(type: M.ConnectionType) -> M.Connection:
 
 
 TEST_CASES = [
-    # TestCase(
-    #     M.Connection(
-    #         connection_type=M.ConnectionType.MYSQL,
-    #         host="localhost",
-    #         secret_resolver=M.ConstSecretResolver("test"),
-    #         user_name="test",
-    #         port=3307,
-    #         schema="test",
-    #     ),
-    # ),
-    # TestCase(def_con(M.ConnectionType.POSTGRESQL)),
-    # TestCase(
-    #     M.Connection(
-    #         connection_type=M.ConnectionType.TRINO,
-    #         host="localhost",
-    #         secret_resolver=None,
-    #         user_name="test",
-    #         port=8080,
-    #         schema="mysql",
-    #         extra_configs={"secondary_schema": "test"},
-    #     ),
-    #     ingest=False,
-    # ),
+    TestCase(
+        M.Connection(
+            connection_type=M.ConnectionType.MYSQL,
+            host="localhost",
+            secret_resolver=M.ConstSecretResolver("test"),
+            user_name="test",
+            port=3307,
+            schema="test",
+        ),
+    ),
+    TestCase(def_con(M.ConnectionType.POSTGRESQL)),
+    TestCase(
+        M.Connection(
+            connection_type=M.ConnectionType.TRINO,
+            host="localhost",
+            secret_resolver=None,
+            user_name="test",
+            port=8080,
+            schema="mysql",
+            extra_configs={"secondary_schema": "test"},
+        ),
+        ingest=False,
+    ),
     TestCase(
         M.Connection(
             connection_type=M.ConnectionType.FILE,

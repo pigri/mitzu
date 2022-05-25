@@ -1364,14 +1364,6 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "sql-formatter"
-version = "0.6.2"
-description = "A SQL formatter"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[[package]]
 name = "sqlalchemy"
 version = "1.4.36"
 description = "Database Abstraction Library"
@@ -1403,6 +1395,14 @@ postgresql_psycopg2binary = ["psycopg2-binary"]
 postgresql_psycopg2cffi = ["psycopg2cffi"]
 pymysql = ["pymysql (<1)", "pymysql"]
 sqlcipher = ["sqlcipher3-binary"]
+
+[[package]]
+name = "sqlparse"
+version = "0.4.2"
+description = "A non-validating SQL parser."
+category = "main"
+optional = false
+python-versions = ">=3.5"
 
 [[package]]
 name = "tenacity"
@@ -1618,7 +1618,7 @@ trino = ["trino"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1"
-content-hash = "5fd3fc1bcc70ca580176ff4fd40375a7b7008687b6e01a45962efbdbdecae8a8"
+content-hash = "f79e82c9c2afd4a51598943e6d5be3e378a93f5124e84722dd3a6e6c2861373d"
 
 [metadata.files]
 anyio = [
@@ -2611,10 +2611,6 @@ soupsieve = [
     {file = "soupsieve-2.3.2.post1-py3-none-any.whl", hash = "sha256:3b2503d3c7084a42b1ebd08116e5f81aadfaea95863628c80a3b774a11b7c759"},
     {file = "soupsieve-2.3.2.post1.tar.gz", hash = "sha256:fc53893b3da2c33de295667a0e19f078c14bf86544af307354de5fcf12a3f30d"},
 ]
-sql-formatter = [
-    {file = "sql_formatter-0.6.2-py3-none-any.whl", hash = "sha256:5c38651a93031b2ea96c977309d38bba94ad77e8f2dcae7b1b6b71e116423c33"},
-    {file = "sql_formatter-0.6.2.tar.gz", hash = "sha256:98b83810e42ba989073c9ea5d53ddda45c36e91004904ca2916fc5fc13373c10"},
-]
 sqlalchemy = [
     {file = "SQLAlchemy-1.4.36-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:81e53bd383c2c33de9d578bfcc243f559bd3801a0e57f2bcc9a943c790662e0c"},
     {file = "SQLAlchemy-1.4.36-cp27-cp27m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:6e1fe00ee85c768807f2a139b83469c1e52a9ffd58a6eb51aa7aeb524325ab18"},
@@ -2652,6 +2648,10 @@ sqlalchemy = [
     {file = "SQLAlchemy-1.4.36-cp39-cp39-win32.whl", hash = "sha256:e12532c4d3f614678623da5d852f038ace1f01869b89f003ed6fe8c793f0c6a3"},
     {file = "SQLAlchemy-1.4.36-cp39-cp39-win_amd64.whl", hash = "sha256:cb441ca461bf97d00877b607f132772644b623518b39ced54da433215adce691"},
     {file = "SQLAlchemy-1.4.36.tar.gz", hash = "sha256:64678ac321d64a45901ef2e24725ec5e783f1f4a588305e196431447e7ace243"},
+]
+sqlparse = [
+    {file = "sqlparse-0.4.2-py3-none-any.whl", hash = "sha256:48719e356bb8b42991bdbb1e8b83223757b93789c00910a616a071910ca4a64d"},
+    {file = "sqlparse-0.4.2.tar.gz", hash = "sha256:0c00730c74263a94e5a9919ade150dfc3b19c574389985446148402998287dae"},
 ]
 tenacity = [
     {file = "tenacity-8.0.1-py3-none-any.whl", hash = "sha256:f78f4ea81b0fabc06728c11dc2a8c01277bfc5181b321a4770471902e3eb844a"},
