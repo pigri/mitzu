@@ -37,6 +37,7 @@ mutmut = "^2.4.0"
 Faker = "^13.7.0"
 jupyterlab = "^3.4.2"
 voila = "^0.3.5"
+voila-gridstack = "^0.3.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
