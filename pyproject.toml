@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.1.20"
+version = "0.1.22"
 description = "Product analytics for your notebook"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 

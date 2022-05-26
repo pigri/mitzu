@@ -40,11 +40,12 @@ def load_project(project: str, folder: str = "./", extension="mitzu", glbs=None)
 
 def init_project(
     source: EventDataSource,
-    start_date: datetime = None,
-    end_date: datetime = None,
+    start_date: datetime = datetime(1900, 1, 1),
+    end_date: datetime = datetime(2100, 1, 1),
     persist_as: str = None,
     glbs=None,
 ) -> DatasetModel:
+
     if glbs is None:
         glbs = _find_notebook_globals()
     print("Initializing project ...")
