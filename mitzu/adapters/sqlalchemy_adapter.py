@@ -27,8 +27,7 @@ SIMPLE_TYPE_MAPPINGS = {
     SA_T.DateTime: M.DataType.DATETIME,
     SA_T.Date: M.DataType.DATETIME,
     SA_T.Time: M.DataType.DATETIME,
-    SA_T.VARCHAR: M.DataType.STRING,
-    SA_T.TEXT: M.DataType.STRING,
+    SA_T.String: M.DataType.STRING,
 }
 
 

@@ -30,6 +30,10 @@ def create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:
         from mitzu.adapters.trino_adapter import TrinoAdapter
 
         return TrinoAdapter(source)
+    elif con_type == M.ConnectionType.DATABRICKS:
+        from mitzu.adapters.databricks_adapter import DatabricksAdapter
+
+        return DatabricksAdapter(source)
     else:
         from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 

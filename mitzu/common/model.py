@@ -135,6 +135,7 @@ class ConnectionType(Enum):
     POSTGRESQL = "postgresql+psycopg2"
     MYSQL = "mysql+mysqlconnector"
     SQLITE = "sqlite"
+    DATABRICKS = "databricks"
 
 
 @dataclass(frozen=True)
