@@ -1,11 +1,11 @@
 import inspect
-from datetime import datetime
 from typing import Dict, Optional
 
 import mitzu.project as P
 from mitzu.common.model import (
     Connection,
     ConnectionType,
+    DatasetDiscoveryConfig,
     DatasetModel,
     EventDataSource,
     EventDataTable,
@@ -40,8 +40,7 @@ def load_project(project: str, folder: str = "./", extension="mitzu", glbs=None)
 
 def init_project(
     source: EventDataSource,
-    start_date: datetime = datetime(1900, 1, 1),
-    end_date: datetime = datetime(2100, 1, 1),
+    config: DatasetDiscoveryConfig,
     persist_as: str = None,
     glbs=None,
 ) -> DatasetModel:
@@ -51,8 +50,7 @@ def init_project(
     print("Initializing project ...")
     res = P.init_project(
         source=source,
-        start_date=start_date,
-        end_date=end_date,
+        config=config,
         glbs=glbs,
         persist_as=persist_as,
     )

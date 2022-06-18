@@ -225,6 +225,7 @@ class ModelLoader:
             for event_name, event_def in definitions.items():
                 fixed_name = fix_def(event_name)
                 class_def[fixed_name] = self._create_event_instance(event_def, source)
+
         return class_def
 
     def create_datasource_class_model(

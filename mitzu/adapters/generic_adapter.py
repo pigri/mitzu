@@ -29,7 +29,9 @@ class GenericDatasetAdapter(ABC):
     def execute_query(self, query: Any) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
+    def list_fields(
+        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
+    ) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_map_field_keys(
@@ -40,7 +42,9 @@ class GenericDatasetAdapter(ABC):
     ) -> Dict[str, List[M.Field]]:
         raise NotImplementedError()
 
-    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
+    def get_distinct_event_names(
+        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
+    ) -> List[str]:
         raise NotImplementedError()
 
     def get_field_enums(
@@ -48,8 +52,7 @@ class GenericDatasetAdapter(ABC):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        start_date: datetime,
-        end_date: datetime,
+        config: M.DatasetDiscoveryConfig,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 

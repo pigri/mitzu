@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, List, cast
+from typing import Any, List, Union, cast
 
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.model as M
 import pandas as pd
 import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
 import sqlalchemy_trino.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
@@ -32,11 +33,66 @@ class TrinoAdapter(SQLAlchemyAdapter):
             query = str(query.compile(compile_kwargs={"literal_binds": True}))
         return super().execute_query(query=query)
 
+    def get_field_reference(
+        self,
+        field: M.Field,
+        event_data_table: M.EventDataTable = None,
+        sa_table: Union[SA.Table, EXP.CTE] = None,
+    ) -> FieldReference:
+        if sa_table is None and event_data_table is not None:
+            sa_table = self.get_table(event_data_table)
+        if sa_table is None:
+            raise ValueError("Either sa_table or event_data_table has to be provided")
+
+        if field._parent is not None and field._parent._type == M.DataType.MAP:
+            map_key = field._name
+            property = SA.literal_column(f"{sa_table.name}.{field._parent._get_name()}")
+            return SA.func.element_at(property, map_key)
+
+        return super().get_field_reference(field, event_data_table, sa_table)
+
     def map_type(self, sa_type: Any) -> M.DataType:
         if isinstance(sa_type, SA_T.ROW):
             return M.DataType.STRUCT
-
+        if isinstance(sa_type, SA_T.MAP):
+            return M.DataType.MAP
         return super().map_type(sa_type)
+
+    def _parse_map_type(
+        self,
+        sa_type: Any,
+        name: str,
+        event_data_table: M.EventDataTable,
+        config: M.DatasetDiscoveryConfig,
+    ) -> M.Field:
+        print(f"Discovering map: {name}")
+        map: SA_T.MAP = cast(SA_T.MAP, sa_type)
+        if map.value_type in (SA_T.ROW, SA_T.MAP):
+            raise Exception(
+                f"Compounded map types are not supported: map<{map.key_type}, {map.value_type}>"
+            )
+        cte = self._get_dataset_discovery_cte(event_data_table, config)
+        F = SA.func
+        map_keys_func = F.array_distinct(
+            F.flatten(F.array_agg(F.distinct(F.map_keys(cte.columns[name]))))
+        )
+
+        max_cardinality = self.source.max_map_key_cardinality
+        q = SA.select(
+            columns=[
+                SA.case(
+                    [(F.cardinality(map_keys_func) < max_cardinality, map_keys_func)],
+                    else_=None,
+                ).label("sub_fields")
+            ]
+        )
+        df = self.execute_query(q)
+        if df.shape[0] == 0:
+            return M.Field(_name=name, _type=M.DataType.MAP)
+        keys = df.iat[0, 0]
+        sf_type = self.map_type(map.value_type)
+        sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
+        return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))
 
     def _parse_complex_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
@@ -70,15 +126,13 @@ class TrinoAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        start_date: datetime,
-        end_date: datetime,
+        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
-            start_date=start_date,
-            end_date=end_date,
+            config=config,
         )
         return pdf_string_array_to_array(df)
 

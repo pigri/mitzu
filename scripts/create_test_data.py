@@ -72,25 +72,31 @@ def random_web_event(user: Dict) -> Dict:
         cart_size = random.randrange(1, 8) * random.randrange(1, 8)
     purchase_event = event_name in ("add_to_cart", "checkout", "purchase")
 
-    return {
+    evt_props = {
+        "url": random.choice(urls),
+        "search_term": search_term,
+        "items_hash": (
+            f"item_{random.randrange(1000, 10000)}" if purchase_event else None
+        ),
+        "price_shown": (
+            random.randrange(10, 1000) * random.randrange(10, 1000)
+            if event_name == "checkout"
+            else None
+        ),
+        "cart_size": cart_size,
+    }
+
+    evt_props = {k: v for k, v in evt_props.items() if v is not None}
+
+    res = {
         "event_name": event_name,
         "user_properties": user,
         "event_time": event_time,
         "user_id": user["user_id"],
-        "event_properties": {
-            "url": random.choice(urls),
-            "search_term": search_term,
-            "items_hash": (
-                f"item_{random.randrange(1000, 10000)}" if purchase_event else None
-            ),
-            "price_shown": (
-                random.randrange(10, 1000) * random.randrange(10, 1000)
-                if event_name == "checkout"
-                else None
-            ),
-            "cart_size": cart_size,
-        },
+        "event_properties": evt_props,
     }
+
+    return res
 
 
 subscription_reason = ["promo", "other", "referral", "unknown"]
@@ -114,6 +120,8 @@ def random_sub_event(users: List[Dict]) -> Dict:
     }
 
 
+ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%f%z"
+
 if __name__ == "__main__":
 
     WEB_EVENT_COUNT = int(sys.argv[1])
@@ -126,5 +134,20 @@ if __name__ == "__main__":
     ]
     sub_events = [random_sub_event(users) for _ in range(0, SUB_EVENT_COUNT)]
 
-    pd.DataFrame(web_events).to_parquet(f"./web_events_{WEB_EVENT_COUNT}.parquet")
-    pd.DataFrame(sub_events).to_parquet(f"./sub_events_{SUB_EVENT_COUNT}.parquet")
+    web_events_df = pd.DataFrame(web_events)
+    sub_events_df = pd.DataFrame(sub_events)
+
+    web_events_df.to_parquet(f"./web_events_{WEB_EVENT_COUNT}.parquet")
+    sub_events_df.to_parquet(f"./sub_events_{SUB_EVENT_COUNT}.parquet")
+
+    web_events_df["event_time"] = web_events_df["event_time"].dt.strftime(ISO_FORMAT)
+    sub_events_df["subscription_time"] = sub_events_df["subscription_time"].dt.strftime(
+        ISO_FORMAT
+    )
+
+    web_events_df.to_json(
+        f"./web_events_{WEB_EVENT_COUNT}.json", orient="records", lines=True
+    )
+    sub_events_df.to_json(
+        f"./sub_events_{SUB_EVENT_COUNT}.json", orient="records", lines=True
+    )

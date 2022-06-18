@@ -35,6 +35,42 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             return M.DataType.STRUCT
         return super().map_type(sa_type)
 
+    def _parse_map_type(
+        self,
+        sa_type: Any,
+        name: str,
+        event_data_table: M.EventDataTable,
+        config: M.DatasetDiscoveryConfig,
+    ) -> M.Field:
+        print(f"Discovering map: {name}")
+        map: DA_T.MAP = cast(DA_T.MAP, sa_type)
+        if map.value_type in (DA_T.STRUCT, DA_T.MAP):
+            raise Exception(
+                f"Compounded map types are not supported: map<{map.key_type}, {map.value_type}>"
+            )
+        cte = self._get_dataset_discovery_cte(event_data_table, config)
+        F = SA.func
+        map_keys_func = F.array_distinct(
+            F.flatten(F.collect_set(F.map_keys(cte.columns[name])))
+        )
+
+        max_cardinality = self.source.max_map_key_cardinality
+        q = SA.select(
+            columns=[
+                SA.case(
+                    [(F.size(map_keys_func) < max_cardinality, map_keys_func)],
+                    else_=None,
+                ).label("sub_fields")
+            ]
+        )
+        df = self.execute_query(q)
+        if df.shape[0] == 0:
+            return M.Field(_name=name, _type=M.DataType.MAP)
+        keys = df.iat[0, 0].tolist()
+        sf_type = self.map_type(map.value_type)
+        sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
+        return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))
+
     def _parse_complex_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
     ) -> M.Field:

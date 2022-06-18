@@ -13,6 +13,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
 import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
 import mitzu.common.helper as helper
+import mitzu.common.model as M
 import mitzu.discovery.datasource_discovery as D
 import mitzu.notebook.model_loader as ML
 import mitzu.notebook.visualization as VIS
@@ -314,6 +315,10 @@ class EventDataSource:
         ProtectedState()
     )
 
+    _discovered_event_datasource: ProtectedState[
+        DiscoveredEventDataSource
+    ] = default_field(ProtectedState())
+
     @property
     def adapter(self) -> GA.GenericDatasetAdapter:
         if not self._adapter_cache.has_value():
@@ -335,10 +340,11 @@ class EventDataSource:
         self._adapter_cache.set_value(None)
 
     def discover_datasource(
-        self, start_date: datetime = None, end_date: datetime = None
+        self,
+        config: M.DatasetDiscoveryConfig,
     ) -> DiscoveredEventDataSource:
         return D.EventDatasourceDiscovery(
-            source=self, start_date=start_date, end_date=end_date
+            source=self, config=config
         ).discover_datasource()
 
     def validate(self):
@@ -351,7 +357,7 @@ class EventDataSource:
             edt.validate()
 
 
-class DatasetModel(ABC):
+class DatasetModel:
     @classmethod
     def _to_globals(cls, glbs: Dict):
         for k, v in cls.__dict__.items():
@@ -359,10 +365,19 @@ class DatasetModel(ABC):
                 glbs[k] = v
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class DiscoveredEventDataSource:
     definitions: Dict[EventDataTable, Dict[str, EventDef]]
     source: EventDataSource
+
+    def __init__(
+        self,
+        definitions: Dict[EventDataTable, Dict[str, EventDef]],
+        source: EventDataSource,
+    ) -> None:
+        object.__setattr__(self, "definitions", definitions)
+        object.__setattr__(self, "source", source)
+        source._discovered_event_datasource.set_value(self)
 
     def __post_init__(self):
         self.source.validate()
@@ -385,7 +400,9 @@ class DiscoveredEventDataSource:
     ) -> DiscoveredEventDataSource:
         path = cls._get_path(project, folder, extension)
         with path.open(mode="rb") as file:
-            return pickle.load(file)
+            res: DiscoveredEventDataSource = pickle.load(file)
+            res.source._discovered_event_datasource.set_value(res)
+            return res
 
 
 @dataclass(frozen=True, init=False)
@@ -419,6 +436,7 @@ class Field:
         curr = field
         while curr._parent is not None:
             curr = curr._parent
+
         return curr == self
 
     def __str__(self) -> str:
@@ -458,6 +476,24 @@ class EventDef:
 
     def __repr__(self) -> str:
         return str(self)
+
+
+@dataclass(frozen=True, init=False)
+class DatasetDiscoveryConfig:
+    start_date: datetime
+    end_date: datetime
+    event_sample_size: int = 10000
+
+    def __init__(
+        self, start_date: datetime, end_date: datetime, event_sample_size: int = 10000
+    ):
+        if end_date is None:
+            end_date = datetime.now()
+        if start_date is None:
+            start_date = end_date - timedelta(days=365)
+        object.__setattr__(self, "start_date", start_date)
+        object.__setattr__(self, "end_date", end_date)
+        object.__setattr__(self, "event_sample_size", event_sample_size)
 
 
 # =========================================== Metric definitions ===========================================

@@ -1,6 +1,11 @@
 from datetime import datetime
 
-from mitzu.common.model import ConversionMetric, DiscoveredEventDataSource, Segment
+from mitzu.common.model import (
+    ConversionMetric,
+    DatasetDiscoveryConfig,
+    DiscoveredEventDataSource,
+    Segment,
+)
 from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
 from tests.helper import assert_row, assert_sql
 from tests.samples.sources import get_simple_big_data, get_simple_csv
@@ -8,7 +13,8 @@ from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 def test_simple_big_data_discovery():
     discovery = EventDatasourceDiscovery(
-        get_simple_big_data(), datetime(2019, 1, 1), datetime(2022, 1, 1)
+        get_simple_big_data(),
+        DatasetDiscoveryConfig(datetime(2019, 1, 1), datetime(2022, 1, 1)),
     )
     m = discovery.discover_datasource().create_notebook_class_model()
 
@@ -22,9 +28,10 @@ def test_simple_big_data_discovery():
 
 
 def test_discovered_dataset_pickle():
-    discovery = EventDatasourceDiscovery(
-        get_simple_csv(), datetime(2019, 1, 1), datetime(2022, 1, 1)
+    config = DatasetDiscoveryConfig(
+        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
     )
+    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
     dd1 = discovery.discover_datasource()
     dd1.save_project("test_app")
 
@@ -39,9 +46,10 @@ def test_discovered_dataset_pickle():
 
 
 def test_simple_csv_segmentation():
-    discovery = EventDatasourceDiscovery(
-        get_simple_csv(), datetime(2019, 1, 1), datetime(2022, 1, 1)
+    config = DatasetDiscoveryConfig(
+        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
     )
+    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
     m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.cart.config(
@@ -72,9 +80,10 @@ GROUP BY _datetime, _group""",
 
 
 def test_simple_csv_funnel():
-    discovery = EventDatasourceDiscovery(
-        get_simple_csv(), datetime(2019, 1, 1), datetime(2022, 1, 1)
+    config = DatasetDiscoveryConfig(
+        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
     )
+    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
     m = discovery.discover_datasource().create_notebook_class_model()
 
     conv: ConversionMetric = (m.view >> m.cart).config(

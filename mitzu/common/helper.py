@@ -15,9 +15,10 @@ def get_segment_end_date(segment: M.Segment) -> datetime:
         ):
             evt_name = segment._left._event_data_table.event_name_alias
 
-        return segment._left._source.get_last_event_times().get(
-            evt_name, datetime.now()
-        )
+        # return segment._left._source.get_last_event_times().get(
+        #     evt_name, datetime.now()
+        # )
+        return datetime.now()
     elif isinstance(segment, M.ComplexSegment):
         return max(
             get_segment_end_date(segment._left), get_segment_end_date(segment._right)

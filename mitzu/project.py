@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-from datetime import datetime
 from typing import Dict, Optional
 
 import mitzu.common.model as M
@@ -9,14 +8,13 @@ import mitzu.common.model as M
 
 def init_project(
     source: M.EventDataSource,
+    config: M.DatasetDiscoveryConfig,
     persist_as: str = None,
-    start_date: datetime = None,
-    end_date: datetime = None,
     glbs: Optional[Dict] = None,
 ) -> M.DatasetModel:
     warnings.filterwarnings("ignore")
 
-    dd = source.discover_datasource(start_date=start_date, end_date=end_date)
+    dd = source.discover_datasource(config)
     if persist_as is not None:
         dd.save_project(persist_as)
 

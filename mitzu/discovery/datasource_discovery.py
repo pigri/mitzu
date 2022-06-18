@@ -1,103 +1,34 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from typing import Dict, List
 
 import mitzu.common.model as M
 
 
 class EventDatasourceDiscovery:
-    def __init__(
-        self,
-        source: M.EventDataSource,
-        start_date: datetime = None,
-        end_date: datetime = None,
-    ):
+    def __init__(self, source: M.EventDataSource, config: M.DatasetDiscoveryConfig):
         self.source = source
+        self.config = config
 
-        if end_date is None:
-            self.end_date = max(self.source.get_last_event_times().values())
-        else:
-            self.end_date = end_date
-
-        if start_date is None:
-            self.start_date = self.end_date - timedelta(days=365)
-        else:
-            self.start_date = start_date
-
-    def _get_all_event_fields(
-        self,
-        event_name: str,
-        all_fields: List[M.Field],
-        map_fields: Dict[M.Field, Dict[str, List[M.Field]]],
-    ) -> List[M.Field]:
-        """Returns the extended field names (a.b.c) for every field that is event_specific"""
-
-        res_fields = all_fields.copy()
-        for evt_keys in map_fields.values():
-            map_key_field = evt_keys[event_name]
-            for mkf in map_key_field:
-                res_fields.append(mkf)
-        return res_fields
-
-    def _get_generic_field_values(
+    def _get_field_values(
         self,
         ed_table: M.EventDataTable,
-        generic_fields: List[M.Field],
-    ) -> M.EventDef:
-        adapter = self.source.adapter
-        map_field_keys = {}
-        map_fields = [gf for gf in generic_fields if gf._type == M.DataType.MAP]
-        for mf in map_fields:
-            map_field_keys[mf] = adapter.get_map_field_keys(
-                event_data_table=ed_table, map_field=mf, event_specific=False
-            )
-
-        all_fields = self._get_all_event_fields(
-            M.ANY_EVENT_NAME, generic_fields, map_field_keys
-        )
-
-        return adapter.get_field_enums(
-            event_data_table=ed_table,
-            fields=all_fields,
-            event_specific=False,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )[M.ANY_EVENT_NAME]
-
-    def _get_specific_field_values(
-        self, ed_table: M.EventDataTable, specific_fields: List[M.Field]
+        specific_fields: List[M.Field],
+        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        adapter = self.source.adapter
-        map_fields = [sf for sf in specific_fields if sf._type == M.DataType.MAP]
-        event_names = adapter.get_distinct_event_names(event_data_table=ed_table)
-        event_names.sort()
-
-        map_field_keys: Dict[M.Field, Dict[str, List[M.Field]]] = {}
-
-        for mf in map_fields:
-            map_field_keys[mf] = adapter.get_map_field_keys(
-                event_data_table=ed_table, map_field=mf, event_specific=True
-            )
-
-        for event_name in event_names:
-            all_fields = self._get_all_event_fields(
-                event_name, specific_fields, map_field_keys
-            )
-        return adapter.get_field_enums(
+        return self.source.adapter.get_field_enums(
             event_data_table=ed_table,
-            fields=all_fields,
-            event_specific=True,
-            start_date=self.start_date,
-            end_date=self.end_date,
+            fields=specific_fields,
+            event_specific=event_specific,
+            config=self.config,
         )
 
     def _get_specific_fields(
         self, ed_table: M.EventDataTable, all_fields: List[M.Field]
     ):
         res = []
-        for scpe_field in ed_table.event_specific_fields:
-            res.extend([f for f in all_fields if f._get_name().startswith(scpe_field)])
+        for spec_field in ed_table.event_specific_fields:
+            res.extend([f for f in all_fields if f._get_name().startswith(spec_field)])
         return res
 
     def _copy_gen_field_def_to_spec(
@@ -150,15 +81,24 @@ class EventDatasourceDiscovery:
 
         for ed_table in self.source.event_data_tables:
             print(f"Discovering {ed_table.table_name}")
-            fields = self.source.adapter.list_fields(event_data_table=ed_table)
+            fields = self.source.adapter.list_fields(
+                event_data_table=ed_table, config=self.config
+            )
             fields = self.flatten_fields(fields)
 
             specific_fields = self._get_specific_fields(ed_table, fields)
             generic_fields = [c for c in fields if c not in specific_fields]
-            generic = self._get_generic_field_values(ed_table, generic_fields)
-            event_specific = self._get_specific_field_values(ed_table, specific_fields)
+            generic_field_values = self._get_field_values(
+                ed_table, generic_fields, False
+            )[M.ANY_EVENT_NAME]
+            event_specific_field_values = self._get_field_values(
+                ed_table, specific_fields, True
+            )
             definitions[ed_table] = self._merge_generic_and_specific_definitions(
-                self.source, ed_table, generic, event_specific
+                self.source,
+                ed_table,
+                generic_field_values,
+                event_specific_field_values,
             )
 
         dd = M.DiscoveredEventDataSource(

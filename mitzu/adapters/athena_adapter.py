@@ -26,15 +26,13 @@ class AthenaAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        start_date: datetime,
-        end_date: datetime,
+        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
-            start_date=start_date,
-            end_date=end_date,
+            config=config,
         )
         return pdf_string_array_to_array(df)
 

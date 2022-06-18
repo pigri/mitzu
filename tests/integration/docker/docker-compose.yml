@@ -92,26 +92,6 @@ services:
     command: server --console-address ":9001" /data
     networks:
       - trino-network
-  # ssh-server:
-  #   image: lscr.io/linuxserver/openssh-server
-  #   container_name: openssh-server
-  #   hostname: shh-server
-  #   environment:
-  #     - PUID=501
-  #     - PGID=20
-  #     - USER_PASSWORD=test
-  #     - USER_NAME=test
-  #     - PASSWORD_ACCESS=true
-  #   volumes:
-  #     - ./ssh:/remote-ssh/
-  #     - ./ssh/config/:/config/
-  #   ports:
-  #     - 2222:2222
-  #   restart: always
-  #   depends_on:
-  #     - postgres
-  #   links:
-  #     - postgres:postgres_tunnel
 
 networks:
   trino-network:

@@ -19,6 +19,7 @@ def fix_col_index(index: int, col_name: str):
 
 
 FieldReference = Union[SA.Column, EXP.Label]
+SAMPLED_SOURCE_CTE_NAME = "sampled_source"
 
 SIMPLE_TYPE_MAPPINGS = {
     SA_T.Numeric: M.DataType.NUMBER,
@@ -66,9 +67,15 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self._engine = None
         self._table_cache: Dict[M.EventDataTable, SA.Table] = {}
 
-    def get_event_name_field(self, ed_table: M.EventDataTable) -> Any:
+    def get_event_name_field(
+        self,
+        ed_table: M.EventDataTable,
+        sa_table: Union[SA.table, EXP.CTE] = None,
+    ) -> Any:
         if ed_table.event_name_field is not None:
-            return self.get_field_reference(ed_table.event_name_field, ed_table)
+            return self.get_field_reference(
+                ed_table.event_name_field, ed_table, sa_table
+            )
         else:
             return SA.literal(ed_table.event_name_alias)
 
@@ -137,7 +144,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self,
         field: M.Field,
         event_data_table: M.EventDataTable = None,
-        sa_table: SA.Table = None,
+        sa_table: Union[SA.Table, EXP.CTE] = None,
     ) -> FieldReference:
         if sa_table is None and event_data_table is not None:
             sa_table = self.get_table(event_data_table)
@@ -147,26 +154,42 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if field._parent is None:
             return sa_table.columns.get(field._name)
 
-        return SA.literal_column(f"{sa_table}.{field._get_name()}")
+        return SA.literal_column(f"{sa_table.name}.{field._get_name()}")
 
     def _parse_complex_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
     ) -> M.Field:
         raise NotImplementedError(
-            "Generic SQL Alchemy Adapter doesn't support complex types"
+            "Generic SQL Alchemy Adapter doesn't support complex types (struct, row)"
         )
 
-    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
+    def _parse_map_type(
+        self,
+        sa_type: Any,
+        name: str,
+        event_data_table: M.EventDataTable,
+        config: M.DatasetDiscoveryConfig,
+    ) -> M.Field:
+        raise NotImplementedError(
+            "Generic SQL Alchemy Adapter doesn't support map types"
+        )
+
+    def list_fields(
+        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
+    ) -> List[M.Field]:
         table = self.get_table(event_data_table)
-        field_types = table.columns.items()
+        field_types = table.columns
         res = []
-        for k, v in field_types:
-            if k in event_data_table.ignored_fields:
+        for field_name, field_type in field_types.items():
+            if field_name in event_data_table.ignored_fields:
                 continue
-            data_type = self.map_type(v.type)
+            data_type = self.map_type(field_type.type)
             if data_type == M.DataType.STRUCT:
                 complex_field = self._parse_complex_type(
-                    sa_type=v.type, name=k, event_data_table=event_data_table, path=k
+                    sa_type=field_type.type,
+                    name=field_name,
+                    event_data_table=event_data_table,
+                    path=field_name,
                 )
                 if (
                     complex_field._sub_fields is None
@@ -174,16 +197,38 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ):
                     continue
                 res.append(complex_field)
+            if data_type == M.DataType.MAP:
+                map_field = self._parse_map_type(
+                    sa_type=field_type.type,
+                    name=field_name,
+                    event_data_table=event_data_table,
+                    config=config,
+                )
+                if map_field._sub_fields is None or len(map_field._sub_fields) == 0:
+                    continue
+                res.append(map_field)
             else:
-                field = M.Field(_name=k, _type=data_type)
+                field = M.Field(_name=field_name, _type=data_type)
                 res.append(field)
         return res
 
-    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
-        event_name_field = self.get_event_name_field(event_data_table).label(
+    def get_distinct_event_names(
+        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
+    ) -> List[str]:
+        cte = aliased(
+            self._get_dataset_discovery_cte(event_data_table, config),
+            alias=SAMPLED_SOURCE_CTE_NAME,
+            name=SAMPLED_SOURCE_CTE_NAME,
+        )
+        event_name_field = self.get_event_name_field(event_data_table, cte).label(
             GA.EVENT_NAME_ALIAS_COL
         )
-        result = self.execute_query(SA.select([SA.distinct(event_name_field)]))
+
+        result = self.execute_query(
+            SA.select(
+                columns=[SA.distinct(event_name_field)],
+            )
+        )
 
         return pd.DataFrame(result)[GA.EVENT_NAME_ALIAS_COL].tolist()
 
@@ -213,24 +258,56 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _column_index_support(self):
         return True
 
+    def _get_dataset_discovery_cte(
+        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
+    ) -> EXP.CTE:
+        dt_field = self.get_field_reference(
+            field=event_data_table.event_time_field, event_data_table=event_data_table
+        )
+        table = self.get_table(event_data_table)
+        event_name_field = self.get_event_name_field(event_data_table, table)
+
+        raw_cte: EXP.CTE = SA.select(
+            columns=[
+                *table.columns.values(),
+                SA.func.row_number()
+                .over(partition_by=event_name_field, order_by=SA.func.random())
+                .label("rn"),
+            ],
+            whereclause=(
+                (dt_field >= self._correct_timestamp(config.start_date))
+                & (dt_field <= self._correct_timestamp(config.end_date))
+            ),
+        ).cte()
+
+        return SA.select(
+            columns=raw_cte.columns.values(),
+            whereclause=(raw_cte.columns["rn"] < config.event_sample_size),
+        ).cte()
+
     def _get_column_values_df(
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        start_date: datetime,
-        end_date: datetime,
+        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
-        source = self.source
+        event_specifig_str = "event specific" if event_specific else "generic"
+        print(f"Discovering {event_specifig_str} field enums")
 
+        cte = aliased(
+            self._get_dataset_discovery_cte(event_data_table, config=config),
+            alias=SAMPLED_SOURCE_CTE_NAME,
+            name=SAMPLED_SOURCE_CTE_NAME,
+        )
         event_name_select_field = (
-            self.get_event_name_field(event_data_table).label(GA.EVENT_NAME_ALIAS_COL)
+            self.get_event_name_field(event_data_table, cte).label(
+                GA.EVENT_NAME_ALIAS_COL
+            )
             if event_specific
             else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
         )
-        dt_field = self.get_field_reference(
-            field=event_data_table.event_time_field, event_data_table=event_data_table
-        )
+
         query = SA.select(
             group_by=(
                 SA.literal(1)
@@ -242,21 +319,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 SA.case(
                     (
                         SA.func.count(
-                            SA.distinct(self.get_field_reference(f, event_data_table))
+                            SA.distinct(self.get_field_reference(f, sa_table=cte))
                         )
-                        < source.max_enum_cardinality,
+                        < self.source.max_enum_cardinality,
                         self._get_distinct_array_agg_func(
-                            self.get_field_reference(f, event_data_table)
+                            self.get_field_reference(f, sa_table=cte)
                         ),
                     ),
                     else_=SA.literal(None),
                 ).label(f._name)
                 for f in fields
             ],
-            whereclause=(
-                (dt_field >= self._correct_timestamp(start_date))
-                & (dt_field <= self._correct_timestamp(end_date))
-            ),
         )
         df = self.execute_query(query)
         return df.set_index(GA.EVENT_NAME_ALIAS_COL)
@@ -266,14 +339,21 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        start_date: datetime,
-        end_date: datetime,
+        config: M.DatasetDiscoveryConfig,
     ) -> Dict[str, M.EventDef]:
         enums = self._get_column_values_df(
-            event_data_table, fields, event_specific, start_date, end_date
+            event_data_table, fields, event_specific, config
         ).to_dict("index")
         res = {}
         for evt, values in enums.items():
+            for f in fields:
+                if (
+                    values[f._name] is not None
+                    and len(values[f._name]) == 1
+                    and values[f._name][0] is None
+                ):
+                    values[f._name] = []
+
             res[evt] = M.EventDef(
                 _event_name=evt,
                 _fields={
@@ -285,6 +365,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         _enums=values[f._name],
                     )
                     for f in fields
+                    # We return NONE if the cardinality is above the max_enum_cardinality for a field.
+                    # This is Needed as the NULL type will be accepted for every case-when as a return statement.
+                    # Empty list are the result of field not having any value
+                    if values[f._name] is None or len(values[f._name]) > 0
                 },
                 _source=self.source,
                 _event_data_table=event_data_table,
@@ -385,18 +469,42 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         else:
             raise ValueError(f"Segment of type {type(segment)} is not supported.")
 
+    def _has_edt_event_field(
+        self,
+        group_field: M.EventFieldDef,
+        ed_table: M.EventDataTable,
+    ) -> bool:
+        event_name = group_field._event_name
+        field = group_field._field
+        dd: Optional[
+            M.DiscoveredEventDataSource
+        ] = self.source._discovered_event_datasource.get_value()
+        if dd is None:
+            raise Exception(
+                "No DiscoveredEventDataSource was provided to SQLAlchemy Adapter."
+            )
+        events = dd.definitions.get(ed_table)
+        if events is not None:
+            event_def = events.get(event_name)
+            if event_def is not None:
+                for edt_evt_field in event_def._fields:
+                    if edt_evt_field == field:
+                        return True
+        return False
+
     def _find_group_by_field_ref(
-        self, field: M.Field, sa_table: SA.Table, ed_table: M.EventDataTable
+        self,
+        group_field: M.EventFieldDef,
+        sa_table: SA.Table,
+        ed_table: M.EventDataTable,
     ):
+        field = group_field._field
         if field._parent is None:
             columns = sa_table.columns
             if field._name in columns:
                 return self.get_field_reference(field, sa_table=sa_table)
-        else:
-            ed_table_fields = self.list_fields(ed_table)
-            for f in ed_table_fields:
-                if f.has_sub_field(field):
-                    return self.get_field_reference(field, sa_table=sa_table)
+        elif self._has_edt_event_field(group_field, ed_table):
+            return self.get_field_reference(field, sa_table=sa_table)
         return SA.literal(None)
 
     def _get_segment_sub_query_cte(
@@ -409,7 +517,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             group_by_col = SA.literal(None)
             if group_field is not None:
                 group_by_col = self._find_group_by_field_ref(
-                    group_field._field, sub_query.table_ref, ed_table
+                    group_field,
+                    sub_query.table_ref,
+                    ed_table,
                 )
 
             select = SA.select(
