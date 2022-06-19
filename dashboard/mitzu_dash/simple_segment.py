@@ -26,7 +26,7 @@ OPERATOR_MAPPING = {
     M.Operator.GT: ">",
     M.Operator.GT_EQ: ">=",
     M.Operator.LT: "<",
-    M.Operator.LT_EQ: ">=",
+    M.Operator.LT_EQ: "<=",
     M.Operator.IS_NOT_NULL: "present",
     M.Operator.IS_NULL: "missing",
     M.Operator.LIKE: "like",
@@ -66,7 +66,7 @@ def create_value_input(
 ) -> dcc.Dropdown:
     enums = get_enums(path, dataset_model)
     options = [{"label": k, "value": v} for k, v in enums.items()]
-    options.sort()
+    options.sort(key=lambda v: v["label"])
     options_str = (", ".join(enums.keys()))[0:20]
     if len(options_str) == 20:
         options_str = options_str + "..."

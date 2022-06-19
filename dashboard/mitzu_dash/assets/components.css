@@ -1,0 +1,43 @@
+/* .Select-control {
+    height: 26px !important;
+}
+
+.Select-control .Select-placeholder {
+    line-height: 24px !important;
+}
+
+.Select-control .Select-value {
+    line-height: 24px !important;
+    height: 24px !important;
+}
+
+.Select-control .Select-input {
+    height: 24px !important;
+} */
+
+.DateInput_input {
+    padding: 4px;
+    font-size: 14px;
+}
+
+.card-body {
+    padding: 7px;
+}
+
+.Select-menu-outer {
+    min-width: 200px;
+}
+
+.Select-arrow-zone {
+    display: None;
+}
+
+.Select-control {
+    border: 1px solid #cccccc33;
+    box-shadow: 0px;
+    background-color: #ffffff00;
+}
+
+.has-value .Select-control {
+    border: 1px solid #ccccccff;
+}

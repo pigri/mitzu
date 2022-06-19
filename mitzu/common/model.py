@@ -168,7 +168,7 @@ class ProtectedState(Generic[T]):
     def get_value(self) -> Optional[T]:
         return self._value
 
-    def set_value(self, value: T):
+    def set_value(self, value: Optional[T]):
         self._value = value
 
     def has_value(self) -> bool:
@@ -576,7 +576,7 @@ class Metric(ABC):
 
     def __repr__(self) -> str:
         fig = self.get_figure()
-        fig.show()
+        fig.show(config={"displayModeBar": False})
         return ""
 
 

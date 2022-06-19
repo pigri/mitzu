@@ -238,13 +238,24 @@ def plot_conversion(metric: M.ConversionMetric):
             textposition="top center",
             textfont_size=9,
             line=dict(width=3.5),
-            mode="markers+lines+text",
+            mode="lines+text",
             hovertemplate=get_conversion_hover_template(metric),
         )
 
     fig.update_layout(yaxis_ticksuffix="%")
     title = T.get_conversion_title(metric)
-    fig.update_yaxes(rangemode="tozero")
+    fig.update_yaxes(
+        rangemode="tozero",
+        showline=True,
+        linecolor="rgba(127,127,127,0.1)",
+        gridcolor="rgba(127,127,127,0.1)",
+    )
+    fig.update_xaxes(
+        rangemode="tozero",
+        showline=True,
+        linecolor="rgba(127,127,127,0.3)",
+        gridcolor="rgba(127,127,127,0.3)",
+    )
     fig.update_layout(
         title={
             "text": title,
@@ -261,6 +272,8 @@ def plot_conversion(metric: M.ConversionMetric):
         uniformtext_mode="hide",
         height=600,
         hoverlabel={"font": {"size": 12}},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode=get_hover_mode(metric, group_count),
     )
     return fig
@@ -329,13 +342,24 @@ def plot_segmentation(metric: M.SegmentationMetric):
         fig.update_traces(
             line=dict(width=3.5),
             textfont_size=9,
-            mode="markers+lines+text",
+            mode="lines+text",
             textposition="top center",
         )
     fig.update_traces(
         hovertemplate=get_segmentation_hover_template(metric),
     )
-    fig.update_yaxes(rangemode="tozero")
+    fig.update_yaxes(
+        rangemode="tozero",
+        showline=True,
+        linecolor="rgba(127,127,127,0.1)",
+        gridcolor="rgba(127,127,127,0.1)",
+    )
+    fig.update_xaxes(
+        rangemode="tozero",
+        showline=True,
+        linecolor="rgba(127,127,127,0.3)",
+        gridcolor="rgba(127,127,127,0.3)",
+    )
     title = T.get_segmentation_title(metric)
     fig.update_layout(
         title={
@@ -353,6 +377,8 @@ def plot_segmentation(metric: M.SegmentationMetric):
         margin=dict(t=get_title_height(title), l=1, r=1, b=1, pad=0),
         height=600,
         hoverlabel={"font": {"size": 12}},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode=get_hover_mode(metric, group_count),
     )
     return fig

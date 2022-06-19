@@ -125,9 +125,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._engine = SA.create_engine(url)
         return self._engine
 
-    def get_table(
-        self, event_data_table: M.EventDataTable, create_alias: bool = False
-    ) -> SA.Table:
+    def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
@@ -137,8 +135,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 autoload_with=engine,
                 autoload=True,
             )
-        cached_table = self._table_cache[event_data_table]
-        return aliased(cached_table) if create_alias else cached_table
+        return self._table_cache[event_data_table]
 
     def get_field_reference(
         self,
@@ -416,7 +413,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
-            table = self.get_table(left._event_data_table, create_alias=False)
+            table = self.get_table(left._event_data_table)
             evt_name_col = self.get_event_name_field(left._event_data_table)
             event_name_filter = (
                 (evt_name_col == left._event_name)

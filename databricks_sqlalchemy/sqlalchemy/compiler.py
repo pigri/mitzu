@@ -12,6 +12,7 @@
 from typing import Any
 
 from databricks_sqlalchemy.sqlalchemy.error import DatabricksQueryError
+from this import d
 
 from sqlalchemy.sql import compiler
 
@@ -214,5 +215,20 @@ class DatabricksTypeCompiler(compiler.GenericTypeCompiler):
 class DatabricksIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = DB_RESERVED_WORDS
 
-    def _requires_quotes(self, value):
-        return False
+    def __init__(
+        self,
+        dialect,
+        initial_quote='"',
+        final_quote=None,
+        escape_quote='"',
+        quote_case_sensitive_collations=True,
+        omit_schema=False,
+    ):
+        super().__init__(
+            dialect=dialect,
+            initial_quote="",
+            final_quote=None,
+            escape_quote="",
+            quote_case_sensitive_collations=quote_case_sensitive_collations,
+            omit_schema=omit_schema,
+        )
