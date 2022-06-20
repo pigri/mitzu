@@ -145,7 +145,7 @@ class TimeWindow:
     period: TimeGroup = TimeGroup.DAY
 
     @classmethod
-    def parse_input(cls, val: str | TimeWindow) -> TimeWindow:
+    def parse(cls, val: str | TimeWindow) -> TimeWindow:
         if type(val) == str:
             vals = val.strip().split(" ")
             return TimeWindow(value=int(vals[0]), period=TimeGroup[vals[1].upper()])
@@ -468,15 +468,6 @@ class EventDef:
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
 
-    def __str__(self) -> str:
-        fields_str = ",".join(
-            [f"{fi._name}: {evd._enums}" for fi, evd in self._fields.items()]
-        )
-        return f"{self._event_name}: {fields_str}"
-
-    def __repr__(self) -> str:
-        return str(self)
-
 
 @dataclass(frozen=True, init=False)
 class DatasetDiscoveryConfig:
@@ -705,13 +696,13 @@ class Conversion(ConversionMetric):
             ret_res = RetentionMetric(
                 conversion=self._conversion,
                 config=config,
-                ret_window=TimeWindow.parse_input(ret_window),
+                ret_window=TimeWindow.parse(ret_window),
             )
 
             return ret_res
         elif conv_window is not None:
             conv_res = ConversionMetric(conversion=self._conversion, config=config)
-            conv_res._conv_window = TimeWindow.parse_input(conv_window)
+            conv_res._conv_window = TimeWindow.parse(conv_window)
             return conv_res
         else:
             raise ValueError("conw_window or ret_window must be defined")
