@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import mitzu.adapters.generic_adapter as GA
-import mitzu.common.model as M
+import mitzu.model as M
 
 
 def create_adapter(source: M.EventDataSource) -> GA.GenericDatasetAdapter:

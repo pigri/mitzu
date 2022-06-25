@@ -1,6 +1,6 @@
 from datetime import datetime
 
-import mitzu.common.model as M
+import mitzu.model as M
 from mitzu import init_project
 from tests.helper import assert_row
 

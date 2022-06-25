@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import dcc, html
 
 METRICS_CONFIG = "metrics_config"

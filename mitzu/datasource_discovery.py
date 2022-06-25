@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 
 class EventDatasourceDiscovery:

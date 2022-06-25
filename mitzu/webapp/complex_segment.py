@@ -5,10 +5,10 @@ from uuid import uuid4
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import dcc, html
-from dashboard.mitzu_dash.event_segment import EventSegment
-from dashboard.mitzu_dash.helper import recursive_find_all_props
+from mitzu.webapp.event_segment import EventSegment
+from mitzu.webapp.helper import recursive_find_all_props
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"

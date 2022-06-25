@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import mitzu.common.model as M
+import mitzu.model as M
 import sqlalchemy as SA
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 

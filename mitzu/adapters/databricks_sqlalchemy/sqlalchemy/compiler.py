@@ -9,10 +9,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any
 
-from databricks_sqlalchemy.sqlalchemy.error import DatabricksQueryError
-from this import d
+from mitzu.adapters.databricks_sqlalchemy.sqlalchemy.error import DatabricksQueryError
 
 from sqlalchemy.sql import compiler
 

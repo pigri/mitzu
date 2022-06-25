@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, cast
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 NUM_2_WORDS = {
     1: "one",

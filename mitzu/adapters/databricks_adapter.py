@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any, List, cast
 
-import databricks_sqlalchemy.sqlalchemy.datatype as DA_T
-import mitzu.common.model as M
+import mitzu.adapters.databricks_sqlalchemy.sqlalchemy.datatype as DA_T
+import mitzu.model as M
 import sqlalchemy as SA
-from databricks_sqlalchemy import sqlalchemy  # noqa: F401
+from mitzu.adapters.databricks_sqlalchemy import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
 

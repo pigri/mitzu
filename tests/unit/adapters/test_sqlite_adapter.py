@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import mitzu.adapters.file_adapter as fa
-from mitzu.common.model import DatasetDiscoveryConfig, DataType, Field
+from mitzu.model import DatasetDiscoveryConfig, DataType, Field
 from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 

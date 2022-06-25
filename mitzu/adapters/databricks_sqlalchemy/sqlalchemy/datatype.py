@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from typing import Iterator, List, Optional, Tuple, Type, Union
+from typing import Iterator, List, Tuple, Type, Union
 
 from sqlalchemy import util
 from sqlalchemy.sql import sqltypes
@@ -136,7 +136,9 @@ def aware_split(
         elif character == close_bracket:
             parens -= 1
         elif character == quote:
-            if quotes and string[j - len(escaped_quote) + 1 : j + 1] != escaped_quote:
+            left = j - len(escaped_quote) + 1
+            right = j + 1
+            if quotes and string[left:right] != escaped_quote:
                 quotes = False
             elif not quotes:
                 quotes = True

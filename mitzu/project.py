@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Dict, Optional
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 
 def init_project(

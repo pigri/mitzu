@@ -4,7 +4,7 @@ from abc import ABC
 from datetime import datetime
 from typing import Any, Dict, List
 
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 
 # Final Select Columns

@@ -2,7 +2,7 @@ import inspect
 from typing import Dict, Optional
 
 import mitzu.project as P
-from mitzu.common.model import (
+from mitzu.model import (
     Connection,
     ConnectionType,
     DatasetDiscoveryConfig,

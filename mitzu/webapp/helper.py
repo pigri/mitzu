@@ -2,7 +2,7 @@ from types import FunctionType
 from typing import Any, Dict, List
 
 import dash.development.base_component as bc
-import mitzu.common.model as M
+import mitzu.model as M
 
 
 def deserialize_component(val: Any) -> bc.Component:

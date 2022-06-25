@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
-from dashboard.mitzu_dash.helper import (
+from mitzu.webapp.helper import (
     deserialize_component,
     find_property_class,
     get_enums,
@@ -99,9 +99,9 @@ def create_property_operator_dropdown(index: str) -> dcc.Dropdown:
 
 
 def collect_values(values: List[str], options: List[Dict]) -> List[Any]:
-
+    prefix_length = len(CUSTOM_VAL_PREFIX)
     return [
-        val[len(CUSTOM_VAL_PREFIX) :] if val.startswith(CUSTOM_VAL_PREFIX) else val
+        val[prefix_length:] if val.startswith(CUSTOM_VAL_PREFIX) else val
         for val in values
     ]
 

@@ -12,5 +12,7 @@
 from sqlalchemy.dialects import registry
 
 registry.register(
-    "databricks", "databricks_sqlalchemy.sqlalchemy.dialect", "DatabricksDialect"
+    "databricks",
+    "mitzu.adapters.databricks_sqlalchemy.sqlalchemy.dialect",
+    "DatabricksDialect",
 )

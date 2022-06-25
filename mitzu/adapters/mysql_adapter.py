@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, List
 
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP

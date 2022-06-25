@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from mitzu.common.model import (
+from mitzu.datasource_discovery import EventDatasourceDiscovery
+from mitzu.model import (
     ConversionMetric,
     DatasetDiscoveryConfig,
     DiscoveredEventDataSource,
     Segment,
 )
-from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
 from tests.helper import assert_row, assert_sql
 from tests.samples.sources import get_simple_big_data, get_simple_csv
 

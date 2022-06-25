@@ -6,7 +6,7 @@ import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.file_adapter import FileAdapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from mitzu.common.model import Connection, EventDataSource, EventDataTable
+from mitzu.model import Connection, EventDataSource, EventDataTable
 from retry import retry  # type: ignore
 
 

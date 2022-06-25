@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 EFD_OR_ED_TYPE = Union[M.EventFieldDef, M.EventDef]
 

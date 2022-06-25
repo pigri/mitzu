@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 import dash.development.base_component as bc
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import Dash, html
 from dash.dependencies import ALL, Input, Output, State
-from dashboard.mitzu_dash.complex_segment import ComplexSegment
-from dashboard.mitzu_dash.event_segment import EVENT_NAME_DROPDOWN
-from dashboard.mitzu_dash.helper import deserialize_component
-from dashboard.mitzu_dash.simple_segment import (
+from mitzu.webapp.complex_segment import ComplexSegment
+from mitzu.webapp.event_segment import EVENT_NAME_DROPDOWN
+from mitzu.webapp.helper import deserialize_component
+from mitzu.webapp.simple_segment import (
     PROPERTY_NAME_DROPDOWN,
     PROPERTY_OPERATOR_DROPDOWN,
     SimpleSegment,

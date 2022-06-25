@@ -2,14 +2,14 @@ from typing import Dict, List, Optional, Union
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from dashboard.mitzu_dash.all_segments import ALL_SEGMENTS, AllSegmentsContainer
-from dashboard.mitzu_dash.complex_segment import ComplexSegment
-from dashboard.mitzu_dash.helper import deserialize_component, find_property_class
-from dashboard.mitzu_dash.metrics_config import METRICS_CONFIG
+from mitzu.webapp.all_segments import ALL_SEGMENTS, AllSegmentsContainer
+from mitzu.webapp.complex_segment import ComplexSegment
+from mitzu.webapp.helper import deserialize_component, find_property_class
+from mitzu.webapp.metrics_config import METRICS_CONFIG
 
 GRAPH = "graph"
 GRAPH_CONTAINER = "graph_container"

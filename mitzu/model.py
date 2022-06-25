@@ -10,14 +10,15 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
 
+import pandas as pd
+
 import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
-import mitzu.common.helper as helper
-import mitzu.common.model as M
-import mitzu.discovery.datasource_discovery as D
+import mitzu.datasource_discovery as D
+import mitzu.helper as helper
+import mitzu.model as M
 import mitzu.notebook.model_loader as ML
-import mitzu.notebook.visualization as VIS
-import pandas as pd
+import mitzu.visualization as VIS
 
 
 def default_field(obj, repr: bool = True):

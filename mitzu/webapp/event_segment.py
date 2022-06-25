@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Optional
 from uuid import uuid4
 
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import dcc, html
-from dashboard.mitzu_dash.simple_segment import SimpleSegment
+from mitzu.webapp.simple_segment import SimpleSegment
 
 EVENT_SEGMENT = "event_segment"
 EVENT_NAME_DROPDOWN = "event_name_dropdown"

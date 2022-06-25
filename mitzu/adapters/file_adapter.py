@@ -4,7 +4,7 @@ import json
 import pathlib
 from typing import Any
 
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 from mitzu.adapters.sqlite_adapter import SQLiteAdapter
 

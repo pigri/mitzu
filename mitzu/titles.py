@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import cast
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 MAX_TITLE_LENGTH = 300
 MAX_SEGMENT_LENGTH = 150

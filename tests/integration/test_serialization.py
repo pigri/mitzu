@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from mitzu.common.model import DatasetDiscoveryConfig, EventDataSource, Metric
-from mitzu.common.serialization import from_json, to_json
-from mitzu.discovery.datasource_discovery import EventDatasourceDiscovery
+from mitzu.datasource_discovery import EventDatasourceDiscovery
+from mitzu.model import DatasetDiscoveryConfig, EventDataSource, Metric
+from mitzu.serialization import from_json, to_json
 from tests.samples.sources import get_simple_csv
 
 

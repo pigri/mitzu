@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-import mitzu.common.model as M
+import mitzu.model as M
 
 
 def get_segment_end_date(segment: M.Segment) -> datetime:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 import pytest
 from mitzu import init_project

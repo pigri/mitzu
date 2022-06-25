@@ -15,9 +15,9 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import databricks.sql as db_sql
 import databricks.sql.client as db_client
-from databricks_sqlalchemy.sqlalchemy import compiler, datatype, error
+from mitzu.adapters.databricks_sqlalchemy.sqlalchemy import compiler, datatype
 
-from sqlalchemy import exc, sql
+from sqlalchemy import sql
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.engine.url import URL

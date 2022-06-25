@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, List, Union, cast
 
 import mitzu.adapters.generic_adapter as GA
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP

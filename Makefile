@@ -9,7 +9,7 @@ lint: ## lints and checks formatting all python code
 	$(POETRY) run flake8 mitzu tests
 
 autoflake: ## fixes imports, unused variables
-	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ dashboard/
+	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ 
 
 mypy:
 	$(POETRY) run mypy mitzu tests --ignore-missing-imports
@@ -41,7 +41,7 @@ notebook:
 	$(POETRY) run jupyter lab
 
 dash: 
-	$(POETRY) run python dashboard/mitzu_dash/app.py $(source)
+	$(POETRY) run python mitzu/webapp/app.py $(source)
 
 build: check
 	$(POETRY) build

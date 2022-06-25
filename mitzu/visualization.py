@@ -3,11 +3,12 @@ from __future__ import annotations
 import re
 from typing import Tuple
 
-import mitzu.adapters.generic_adapter as GA
-import mitzu.common.model as M
-import mitzu.notebook.titles as T
 import pandas as pd
 import plotly.express as px
+
+import mitzu.adapters.generic_adapter as GA
+import mitzu.model as M
+import mitzu.titles as T
 
 MAX_TITLE_LENGTH = 80
 STEP_COL = "step"

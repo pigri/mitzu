@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, List
 
 import mitzu.adapters.generic_adapter as GA
-import mitzu.common.model as M
+import mitzu.model as M
 import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.helper import dataframe_str_to_datetime

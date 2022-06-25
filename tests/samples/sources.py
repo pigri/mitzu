@@ -1,11 +1,6 @@
 import os
 
-from mitzu.common.model import (
-    Connection,
-    ConnectionType,
-    EventDataSource,
-    EventDataTable,
-)
+from mitzu.model import Connection, ConnectionType, EventDataSource, EventDataTable
 
 WD = os.path.dirname(os.path.abspath(__file__))
 

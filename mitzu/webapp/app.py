@@ -1,12 +1,12 @@
 import sys
 
 import dash_bootstrap_components as dbc
-import mitzu.common.model as M
+import mitzu.model as M
 from dash import Dash, html
-from dashboard.mitzu_dash.all_segments import AllSegmentsContainer
-from dashboard.mitzu_dash.graph import GraphContainer
-from dashboard.mitzu_dash.metrics_config import MetricsConfigDiv
 from mitzu.project import load_project
+from mitzu.webapp.all_segments import AllSegmentsContainer
+from mitzu.webapp.graph import GraphContainer
+from mitzu.webapp.metrics_config import MetricsConfigDiv
 
 MAIN = "main"
 
