@@ -53,6 +53,7 @@ class GraphContainer(dbc.Card):
                             children=[
                                 dcc.Graph(
                                     id=GRAPH,
+                                    className=GRAPH,
                                     figure={
                                         "data": [],
                                     },
