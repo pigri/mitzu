@@ -78,3 +78,5 @@ tests/integration/docker/minio/data/.minio.sys/*
 
 *.mitzu
 .mutmut-cache
+
+.aws-sam/
