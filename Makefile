@@ -29,7 +29,7 @@ docker_test_up:
 	docker-compose -f tests/integration/docker/docker-compose.yml up
 
 trino_setup_test_data:
-	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
+	docker container exec -it docker-trino-coordinator-1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 test_coverage:
 	$(POETRY) run  pytest --cov=mitzu --cov-report=html tests/

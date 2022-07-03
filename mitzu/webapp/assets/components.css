@@ -41,3 +41,28 @@
 .has-value .Select-control {
     border: 1px solid #ccccccff;
 }
+
+
+.metric-type-dropdown {
+    width: 180px;
+    margin-right: 8px;
+}
+
+.metric-type-dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.choose-project-dropdown {
+    width: 180px;
+    margin-right: 8px;
+}
+
+.metric-type-dropdown .Select-menu-outer {
+    min-width: 180px;
+}
+
+.choose-project-dropdown .Select-menu-outer {
+    min-width: 180px;
+}
