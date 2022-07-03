@@ -7,7 +7,7 @@ import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.notebook.model_loader as ML
 import mitzu.project as P
-import mitzu.webapp.app as MWA
+import mitzu.webapp.webapp as MWA
 from dash import Dash, html
 
 S3_BUCKET = os.getenv("MITZU_MODELS_BUCKET", None)

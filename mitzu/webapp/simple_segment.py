@@ -106,7 +106,7 @@ def collect_values(values: List[str], options: List[Dict]) -> List[Any]:
     ]
 
 
-class SimpleSegment(html.Div):
+class SimpleSegmentDiv(html.Div):
     def __init__(
         self, event_name: str, dataset_model: M.DatasetModel, simple_segment_index: int
     ):

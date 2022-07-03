@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+from importlib.resources import path
 from typing import Any, Dict, List
 
 import dash.development.base_component as bc
 import mitzu.model as M
+import mitzu.webapp.webapp as WA
 from dash import Dash, html
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.complex_segment import ComplexSegment
 from mitzu.webapp.event_segment import EVENT_NAME_DROPDOWN
 from mitzu.webapp.helper import deserialize_component
-from mitzu.webapp.simple_segment import (PROPERTY_NAME_DROPDOWN,
-                                         PROPERTY_OPERATOR_DROPDOWN,
-                                         SimpleSegment)
+from mitzu.webapp.simple_segment import (
+    PROPERTY_NAME_DROPDOWN,
+    PROPERTY_OPERATOR_DROPDOWN,
+    SimpleSegmentDiv,
+)
 
 ALL_SEGMENTS = "all_segments"
 
@@ -58,29 +62,34 @@ class AllSegmentsContainer(html.Div):
         return res
 
     @classmethod
-    def create_callbacks(
-        cls,
-        app: Dash,
-        dataset_model: M.DatasetModel,
-    ):
-        @app.callback(
+    def create_callbacks(cls, webapp: WA.MitzuWebApp):
+        @webapp.app.callback(
             Output(ALL_SEGMENTS, "children"),
             [
                 Input({"type": EVENT_NAME_DROPDOWN, "index": ALL}, "value"),
                 Input({"type": PROPERTY_NAME_DROPDOWN, "index": ALL}, "value"),
                 Input({"type": PROPERTY_OPERATOR_DROPDOWN, "index": ALL}, "value"),
+                Input(WA.MITZU_LOCATION, "pathname"),
             ],
             State(ALL_SEGMENTS, "children"),
             prevent_initial_call=True,
         )
         def input_changed(
-            evt_name_value: Any, prop_value: Any, op_value: Any, children: List[Dict]
+            evt_name_value: Any,
+            prop_value: Any,
+            op_value: Any,
+            pathname: str,
+            children: List[Dict],
         ):
+            webapp.set_dataset_model(pathname)
             complex_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in children
             ]
-            res_children = cls.fix(complex_seg_children, dataset_model)
+            dm = webapp.dataset_model.get_value()
+            if dm is None:
+                return []
 
+            res_children = cls.fix(complex_seg_children, dm)
             return [child.to_plotly_json() for child in res_children]
 
-        SimpleSegment.create_callbacks(app)
+        SimpleSegmentDiv.create_callbacks(webapp.app)

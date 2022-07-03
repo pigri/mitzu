@@ -7,7 +7,7 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 from dash import dcc, html
-from mitzu.webapp.event_segment import EventSegment
+from mitzu.webapp.event_segment import EventSegmentDiv
 from mitzu.webapp.helper import recursive_find_all_props
 
 COMPLEX_SEGMENT = "complex_segment"
@@ -61,7 +61,7 @@ class ComplexSegment(dbc.Card):
             ],
         )
         body = dbc.CardBody(
-            children=[EventSegment(dataset_model, step, 0)],
+            children=[EventSegmentDiv(dataset_model, step, 0)],
             className=COMPLEX_SEGMENT_BODY,
         )
         super().__init__(
@@ -77,7 +77,7 @@ class ComplexSegment(dbc.Card):
         children = complex_segment.children[1].children
         res_segment = None
         for seg_child in children:
-            complex_segment = EventSegment.get_segment(seg_child, dataset_model)
+            complex_segment = EventSegmentDiv.get_segment(seg_child, dataset_model)
             if complex_segment is None:
                 continue
             if res_segment is None:
@@ -112,10 +112,10 @@ class ComplexSegment(dbc.Card):
         res_props_children = []
         for event_segment in complex_segment.children[1].children:
             if event_segment.children[0].value is not None:
-                prop = EventSegment.fix(event_segment, dataset_model)
+                prop = EventSegmentDiv.fix(event_segment, dataset_model)
                 res_props_children.append(prop)
         res_props_children.append(
-            EventSegment(dataset_model, step, len(res_props_children))
+            EventSegmentDiv(dataset_model, step, len(res_props_children))
         )
 
         cls.fix_group_by_dd(complex_segment, res_props_children, dataset_model)

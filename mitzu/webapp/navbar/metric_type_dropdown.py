@@ -17,7 +17,7 @@ DEF_STYLE = {"font-size": 15, "padding-left": 10}
 
 
 def create_metric_type_dropdown():
-    return dcc.Dropdown(
+    res = dcc.Dropdown(
         options=[
             {
                 "label": html.Div(
@@ -35,4 +35,6 @@ def create_metric_type_dropdown():
         className=METRIC_TYPE_DROPDOWN,
         clearable=False,
         value="segmentation",
+        searchable=False,
     )
+    return res

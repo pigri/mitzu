@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Union
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+import mitzu.webapp.webapp as WA
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
@@ -36,12 +39,6 @@ class GraphContainer(dbc.Card):
                             className=GRAPH_REFRESH_BUTTON,
                             id=GRAPH_REFRESH_BUTTON,
                         ),
-                        # dbc.Switch(
-                        #     label="Auto refresh",
-                        #     value=False,
-                        #     className=GRAPH_CONTAINER_AUTOFREFRESH,
-                        #     id=GRAPH_CONTAINER_AUTOFREFRESH,
-                        # ),
                     ],
                 ),
                 dbc.CardBody(
@@ -132,14 +129,8 @@ class GraphContainer(dbc.Card):
         )
 
     @classmethod
-    def create_callbacks(
-        cls,
-        app: Dash,
-        dataset_model: M.DatasetModel,
-        requested_graph: M.ProtectedState[M.Metric],
-        current_graph: M.ProtectedState[M.Metric],
-    ):
-        @app.callback(
+    def create_callbacks(cls, webapp: WA.MitzuWebApp):
+        @webapp.app.callback(
             Output(GRAPH_REFRESH_INTERVAL, "disabled"),
             Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
             prevent_initial_call=True,
@@ -148,11 +139,12 @@ class GraphContainer(dbc.Card):
             print(f"Auto refresh {value}")
             return not value
 
-        @app.callback(
+        @webapp.app.callback(
             Output(GRAPH_CONTAINER, "children"),
             [
                 Input(GRAPH_REFRESH_BUTTON, "n_clicks"),
                 Input(GRAPH_REFRESH_INTERVAL, "n_intervals"),
+                Input(WA.MITZU_LOCATION, "pathname"),
             ],
             [
                 State(ALL_SEGMENTS, "children"),
@@ -161,36 +153,23 @@ class GraphContainer(dbc.Card):
             prevent_initial_call=True,
         )
         def input_changed(
-            n_intervals: int,
             n_clicks: int,
+            n_intervals: int,
+            pathname: str,
             all_segments: List[Dict],
             metric_configs: List[Dict],
         ) -> List[List]:
-            if requested_graph.has_value():
-                raise PreventUpdate()
-
+            webapp.set_dataset_model(pathname)
             all_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in all_segments
             ]
             metric_configs_children: List[bc.Component] = [
                 deserialize_component(child) for child in metric_configs
             ]
-            metric = cls.create_metric(
-                all_seg_children, metric_configs_children, dataset_model
-            )
+            dm = webapp.dataset_model.get_value()
+            if dm is None:
+                return []
 
-            # curr_metric = current_graph.get_value()
-            # if metric == curr_metric:
-            #     if (
-            #         metric is not None
-            #         and curr_metric is not None
-            #         and curr_metric._config == metric._config
-            #     ):
-            #         print("prevent update")
-            #         raise PreventUpdate()
-
-            requested_graph.set_value(metric)
+            metric = cls.create_metric(all_seg_children, metric_configs_children, dm)
             res = cls.create_graph(metric)
-            current_graph.set_value(metric)
-            requested_graph.set_value(None)
             return [res]

@@ -54,15 +54,6 @@
     justify-content: center;
 }
 
-.choose-project-dropdown {
-    width: 180px;
-    margin-right: 8px;
-}
-
 .metric-type-dropdown .Select-menu-outer {
-    min-width: 180px;
-}
-
-.choose-project-dropdown .Select-menu-outer {
     min-width: 180px;
 }
