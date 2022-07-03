@@ -5,14 +5,17 @@ from typing import Dict, List, Optional, Union
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+import mitzu.webapp.metrics_config as MC
 import mitzu.webapp.webapp as WA
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
 from mitzu.webapp.all_segments import ALL_SEGMENTS, AllSegmentsContainer
 from mitzu.webapp.complex_segment import ComplexSegment
-from mitzu.webapp.helper import deserialize_component, find_property_class
-from mitzu.webapp.metrics_config import METRICS_CONFIG
+from mitzu.webapp.helper import (
+    deserialize_component,
+    find_component,
+    find_property_class,
+)
 
 GRAPH = "graph"
 GRAPH_CONTAINER = "graph_container"
@@ -73,7 +76,7 @@ class GraphContainer(dbc.Card):
     def create_metric(
         cls,
         all_seg_children: List[ComplexSegment],
-        metric_configs_children: List[bc.Component],
+        mc_children: List[bc.Component],
         dataset_model: M.DatasetModel,
     ) -> Optional[M.Metric]:
         segments = AllSegmentsContainer.get_segments(all_seg_children, dataset_model)
@@ -86,14 +89,16 @@ class GraphContainer(dbc.Card):
         if metric is None:
             return None
 
-        time_group_value = metric_configs_children[1].children[1].children[1].value
-        time_window_interval = (
-            metric_configs_children[1].children[2].children[1].children[0].value
-        )
-        time_window_interval_steps = (
-            metric_configs_children[1].children[2].children[1].children[1].value
-        )
-        dates = metric_configs_children[1].children[0].children[1].children[0]
+        time_group_value = find_component(MC.TIME_GROUP_DROWDOWN, mc_children).value
+
+        time_window_interval = find_component(
+            MC.TIME_WINDOW_INTERVAL, mc_children
+        ).value
+        time_window_interval_steps = find_component(
+            MC.TIME_WINDOW_INTERVAL_STEPS, mc_children
+        ).value
+
+        dates = find_component(MC.DATE_RANGE_INPUT, mc_children)
 
         group_by_path = all_seg_children[0].children[2].children[0].value
         group_by = None
@@ -148,7 +153,7 @@ class GraphContainer(dbc.Card):
             ],
             [
                 State(ALL_SEGMENTS, "children"),
-                State(METRICS_CONFIG, "children"),
+                State(MC.METRICS_CONFIG, "children"),
             ],
             prevent_initial_call=True,
         )

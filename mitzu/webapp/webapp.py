@@ -41,8 +41,6 @@ class MitzuWebApp:
             return
         self.current_project = curr_path_project_name
 
-        print(f"Setting model {curr_path_project_name}")
-
         dd: M.DiscoveredEventDataSource = self.persistency_provider.get_item(
             f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
         )
@@ -57,7 +55,19 @@ class MitzuWebApp:
         graph = GraphContainer()
 
         self.app.layout = html.Div(
-            children=[navbar, loc, all_segments, metrics_config, graph],
+            children=[
+                loc,
+                navbar,
+                dbc.Container(
+                    children=[
+                        dbc.Row([dbc.Col(html.Div(metrics_config))]),
+                        dbc.Row(
+                            [dbc.Col(all_segments, width=3), dbc.Col(graph, width=9)]
+                        ),
+                    ],
+                    fluid=True,
+                ),
+            ],
             className=MAIN,
             id=MAIN,
         )
@@ -70,7 +80,7 @@ def __create_dash_debug_server(base_path: str):
     app = Dash(
         __name__,
         external_stylesheets=[
-            dbc.themes.MATERIA,
+            dbc.themes.MINTY,
             dbc.icons.BOOTSTRAP,
             "assets/layout.css",
             "assets/components.css",
@@ -83,7 +93,7 @@ def __create_dash_debug_server(base_path: str):
         app=app, persistency_provider=PathPersistencyProvider(base_path)
     )
     web_app.init_app()
-    app._favicon = "favicon_io/favicon.ico"
+    app._favicon = "favicon_io/round-favicon.ico"
     app.run_server(debug=True)
 
 

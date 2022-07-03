@@ -1,3 +1,7 @@
+.main {
+    min-width: 420px;
+}
+
 .navbar {
     padding-top: 5px;
     padding-bottom: 5px;
@@ -6,24 +10,18 @@
 /* all_segments.py */
 
 .all_segments {
-    display: flex;
     margin-bottom: 5px;
-    flex-wrap: wrap;
     font-size: 12px;
+    min-width: 250px;
 }
 
 /* complex_segment.py */
-.complex_segment {
-    margin-right: 5px;
-    margin-bottom: 5px;
-    min-width: 320px;
-}
+.complex_segment {}
 
 .complex_segment_group_by {
     color: #333;
     min-width: 150px;
 }
-
 
 
 /* event_segment.py */

@@ -80,6 +80,7 @@ def create_start_dt_input():
                     dcc.DatePickerRange(
                         clearable=True,
                         display_format="YYYY-MM-DD",
+                        id=DATE_RANGE_INPUT,
                         className=DATE_RANGE_INPUT,
                         start_date=None,
                         end_date=None,
@@ -93,18 +94,18 @@ def create_start_dt_input():
 
 class MetricsConfigDiv(dbc.Card):
     def __init__(self):
-        header = dbc.CardHeader("Metric configuration")
         super().__init__(
-            id=METRICS_CONFIG,
             children=[
-                header,
                 dbc.CardBody(
-                    children=[
-                        create_start_dt_input(),
-                        create_time_group_dropdown(),
-                        create_time_window_component(),
-                    ]
-                ),
+                    children=dbc.Row(
+                        children=[
+                            dbc.Col(create_start_dt_input()),
+                            dbc.Col(create_time_group_dropdown()),
+                            dbc.Col(create_time_window_component()),
+                        ]
+                    )
+                )
             ],
+            id=METRICS_CONFIG,
             className=METRICS_CONFIG,
         )

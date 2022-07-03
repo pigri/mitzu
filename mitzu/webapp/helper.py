@@ -1,5 +1,5 @@
 from types import FunctionType
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import dash.development.base_component as bc
 import mitzu.model as M
@@ -11,16 +11,24 @@ def value_to_label(value: str) -> str:
 
 def deserialize_component(val: Any) -> bc.Component:
     if type(val) == dict:
+
         namespace = val["namespace"]
         comp_type = val["type"]
         props = val["props"]
         children_dicts = props.get("children", [])
 
-        props["children"] = [deserialize_component(child) for child in children_dicts]
+        if type(children_dicts) == list:
+            props["children"] = [
+                deserialize_component(child) for child in children_dicts
+            ]
+        elif type(children_dicts) == dict:
+            props["children"] = [deserialize_component(children_dicts)]
 
         module = __import__(namespace)
         class_ = getattr(module, comp_type)
-        return class_(**props)
+        res = class_(**props)
+
+        return res
     else:
         return val
 
@@ -72,3 +80,21 @@ def find_property_class(path: str, dataset_model: M.DatasetModel) -> Any:
         else:
             raise ValueError(f"Incorrect Path {path}")
     return curr
+
+
+def find_component(
+    id: str, among: Union[bc.Component, List[bc.Component]]
+) -> bc.Component:
+
+    if type(among) == list:
+        for comp in among:
+            res = find_component(id, comp)
+            if res is not None:
+                return res
+    elif isinstance(among, bc.Component):
+        if getattr(among, "id", None) == id:
+            return among
+
+        return find_component(id, getattr(among, "children", []))
+
+    return None

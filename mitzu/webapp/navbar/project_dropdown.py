@@ -24,7 +24,6 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
             label="Select project",
             size="sm",
             color="primary",
-            align_end=True,
         ),
     )
 
