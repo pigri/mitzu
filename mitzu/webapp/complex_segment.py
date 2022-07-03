@@ -53,7 +53,7 @@ def create_group_by_dropdown(
 class ComplexSegment(dbc.Card):
     def __init__(self, dataset_model: M.DatasetModel, step: int):
         index = str(uuid4())
-        header = dbc.CardHeader(children=[html.B(f"Query step {step+1}.")])
+        header = dbc.CardHeader(children=[html.B(f"Step {step+1}.")])
         footer = dbc.CardFooter(
             className=COMPLEX_SEGMENT_FOOTER,
             children=[

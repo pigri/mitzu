@@ -29,7 +29,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                 )
                             ),
                             dbc.Col(create_project_dropdown(webapp)),
-                            dbc.Col(create_metric_type_dropdown()),
+                            dbc.Col(create_metric_type_dropdown(webapp)),
                         ]
                     ),
                 ),

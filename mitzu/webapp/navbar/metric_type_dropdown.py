@@ -1,4 +1,5 @@
-from dash import dcc, html
+import mitzu.webapp.webapp as WA
+from dash import Input, Output, dcc, html
 from mitzu.webapp.helper import value_to_label
 
 METRIC_TYPE_DROPDOWN = "metric-type-dropdown"
@@ -16,7 +17,7 @@ TYPES = {
 DEF_STYLE = {"font-size": 15, "padding-left": 10}
 
 
-def create_metric_type_dropdown():
+def create_metric_type_dropdown(webapp: WA.MitzuWebApp):
     res = dcc.Dropdown(
         options=[
             {
@@ -37,4 +38,17 @@ def create_metric_type_dropdown():
         value="segmentation",
         searchable=False,
     )
+
+    @webapp.app.callback(
+        Output(METRIC_TYPE_DROPDOWN, "value"),
+        Input(WA.MITZU_LOCATION, "pathname"),
+    )
+    def update(curr_pathname: str):
+        path_parts = curr_pathname.split("/")
+        curr_metric_type = "segmentation"
+        if len(path_parts) > WA.METRIC_TYPE_PATH_INDEX:
+            curr_metric_type = path_parts[WA.METRIC_TYPE_PATH_INDEX]
+
+        return curr_metric_type
+
     return res

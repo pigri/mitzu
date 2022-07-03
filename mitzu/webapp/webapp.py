@@ -19,6 +19,7 @@ PATH_RESULTS = "results"
 MITZU_LOCATION = "mitzu_location"
 MAIN_CONTAINER = "main_container"
 PROJECT_PATH_INDEX = 1
+METRIC_TYPE_PATH_INDEX = 2
 
 
 @dataclass
@@ -40,11 +41,11 @@ class MitzuWebApp:
         ):
             return
         self.current_project = curr_path_project_name
-
-        dd: M.DiscoveredEventDataSource = self.persistency_provider.get_item(
-            f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
-        )
-        self.dataset_model.set_value(dd.create_notebook_class_model())
+        if curr_path_project_name:
+            dd: M.DiscoveredEventDataSource = self.persistency_provider.get_item(
+                f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
+            )
+            self.dataset_model.set_value(dd.create_notebook_class_model())
 
     def init_app(self):
         loc = dcc.Location(id=MITZU_LOCATION)
@@ -60,9 +61,13 @@ class MitzuWebApp:
                 navbar,
                 dbc.Container(
                     children=[
-                        dbc.Row([dbc.Col(html.Div(metrics_config))]),
+                        dbc.Row(children=[dbc.Col(html.Div(metrics_config))]),
                         dbc.Row(
-                            [dbc.Col(all_segments, width=3), dbc.Col(graph, width=9)]
+                            children=[
+                                dbc.Col(all_segments, width=3),
+                                dbc.Col(graph, width=9),
+                            ],
+                            class_name="flex-wrap",
                         ),
                     ],
                     fluid=True,
@@ -93,7 +98,7 @@ def __create_dash_debug_server(base_path: str):
         app=app, persistency_provider=PathPersistencyProvider(base_path)
     )
     web_app.init_app()
-    app._favicon = "favicon_io/round-favicon.ico"
+    app._favicon = "favicon_io/favicon.ico"
     app.run_server(debug=True)
 
 
