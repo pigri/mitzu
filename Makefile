@@ -41,7 +41,7 @@ notebook:
 	$(POETRY) run jupyter lab
 
 dash: 
-	$(POETRY) run python mitzu/webapp/app.py $(source)
+	$(POETRY) run python mitzu/webapp/app.py
 
 build: check
 	$(POETRY) build

@@ -9,11 +9,9 @@ from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.complex_segment import ComplexSegment
 from mitzu.webapp.event_segment import EVENT_NAME_DROPDOWN
 from mitzu.webapp.helper import deserialize_component
-from mitzu.webapp.simple_segment import (
-    PROPERTY_NAME_DROPDOWN,
-    PROPERTY_OPERATOR_DROPDOWN,
-    SimpleSegment,
-)
+from mitzu.webapp.simple_segment import (PROPERTY_NAME_DROPDOWN,
+                                         PROPERTY_OPERATOR_DROPDOWN,
+                                         SimpleSegment)
 
 ALL_SEGMENTS = "all_segments"
 

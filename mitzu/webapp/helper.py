@@ -5,6 +5,10 @@ import dash.development.base_component as bc
 import mitzu.model as M
 
 
+def value_to_label(value: str) -> str:
+    return value.title().replace("_", " ")
+
+
 def deserialize_component(val: Any) -> bc.Component:
     if type(val) == dict:
         namespace = val["namespace"]

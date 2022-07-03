@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import dash_bootstrap_components as dbc
+import mitzu.webapp.app as WA
 from dash import Dash, Input, Output, State, html
 from mitzu.webapp.navbar.metric_type_dropdown import create_metric_type_dropdown
 from mitzu.webapp.navbar.project_dropdown import create_project_dropdown
@@ -9,7 +12,7 @@ METRIC_TYPE_DROPDOWN = "metric_type_dropdown"
 
 
 class MitzuNavbar(dbc.Navbar):
-    def __init__(self):
+    def __init__(self, web_app: WA.MitzuWebApp):
         super().__init__(
             children=dbc.Container(
                 children=[
@@ -30,7 +33,7 @@ class MitzuNavbar(dbc.Navbar):
                         children=[
                             dbc.Row(
                                 [
-                                    dbc.Col(create_project_dropdown()),
+                                    dbc.Col(create_project_dropdown(web_app)),
                                     dbc.Col(create_metric_type_dropdown()),
                                     dbc.Col(
                                         dbc.DropdownMenu(

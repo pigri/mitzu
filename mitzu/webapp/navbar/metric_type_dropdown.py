@@ -1,4 +1,5 @@
 from dash import dcc, html
+from mitzu.webapp.helper import value_to_label
 
 METRIC_TYPE_DROPDOWN = "metric-type-dropdown"
 METRIC_TYPE_DROPDOWN_OPTION = "metric-type-dropdown-option"
@@ -13,10 +14,6 @@ TYPES = {
 }
 
 DEF_STYLE = {"font-size": 15, "padding-left": 10}
-
-
-def value_to_label(value: str) -> str:
-    return value.title().replace("_", " ")
 
 
 def create_metric_type_dropdown():
