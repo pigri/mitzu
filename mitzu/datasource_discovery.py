@@ -6,9 +6,8 @@ import mitzu.model as M
 
 
 class EventDatasourceDiscovery:
-    def __init__(self, source: M.EventDataSource, config: M.DatasetDiscoveryConfig):
+    def __init__(self, source: M.EventDataSource):
         self.source = source
-        self.config = config
 
     def _get_field_values(
         self,
@@ -20,7 +19,6 @@ class EventDatasourceDiscovery:
             event_data_table=ed_table,
             fields=specific_fields,
             event_specific=event_specific,
-            config=self.config,
         )
 
     def _get_specific_fields(
@@ -81,9 +79,7 @@ class EventDatasourceDiscovery:
 
         for ed_table in self.source.event_data_tables:
             print(f"Discovering {ed_table.table_name}")
-            fields = self.source.adapter.list_fields(
-                event_data_table=ed_table, config=self.config
-            )
+            fields = self.source.adapter.list_fields(event_data_table=ed_table)
             fields = self.flatten_fields(fields)
 
             specific_fields = self._get_specific_fields(ed_table, fields)

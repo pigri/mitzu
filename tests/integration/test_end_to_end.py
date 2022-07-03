@@ -1,21 +1,14 @@
 from datetime import datetime
 
 from mitzu.datasource_discovery import EventDatasourceDiscovery
-from mitzu.model import (
-    ConversionMetric,
-    DatasetDiscoveryConfig,
-    DiscoveredEventDataSource,
-    Segment,
-)
+from mitzu.model import ConversionMetric, DiscoveredEventDataSource, Segment
 from tests.helper import assert_row, assert_sql
 from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 
 def test_simple_big_data_discovery():
-    discovery = EventDatasourceDiscovery(
-        get_simple_big_data(),
-        DatasetDiscoveryConfig(datetime(2019, 1, 1), datetime(2022, 1, 1)),
-    )
+    source = get_simple_big_data()
+    discovery = EventDatasourceDiscovery(source)
     m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.app_install.config(
@@ -28,10 +21,8 @@ def test_simple_big_data_discovery():
 
 
 def test_discovered_dataset_pickle():
-    config = DatasetDiscoveryConfig(
-        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
-    )
-    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
+
+    discovery = EventDatasourceDiscovery(source=get_simple_csv())
     dd1 = discovery.discover_datasource()
     dd1.save_project("test_app")
 
@@ -46,10 +37,7 @@ def test_discovered_dataset_pickle():
 
 
 def test_simple_csv_segmentation():
-    config = DatasetDiscoveryConfig(
-        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
-    )
-    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
+    discovery = EventDatasourceDiscovery(get_simple_csv())
     m = discovery.discover_datasource().create_notebook_class_model()
 
     seg: Segment = m.cart.config(
@@ -80,10 +68,8 @@ GROUP BY _datetime, _group""",
 
 
 def test_simple_csv_funnel():
-    config = DatasetDiscoveryConfig(
-        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
-    )
-    discovery = EventDatasourceDiscovery(get_simple_csv(), config)
+
+    discovery = EventDatasourceDiscovery(get_simple_csv())
     m = discovery.discover_datasource().create_notebook_class_model()
 
     conv: ConversionMetric = (m.view >> m.cart).config(

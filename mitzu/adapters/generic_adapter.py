@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from datetime import datetime
 from typing import Any, Dict, List
 
 import mitzu.model as M
@@ -29,9 +28,7 @@ class GenericDatasetAdapter(ABC):
     def execute_query(self, query: Any) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def list_fields(
-        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
-    ) -> List[M.Field]:
+    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_map_field_keys(
@@ -42,9 +39,7 @@ class GenericDatasetAdapter(ABC):
     ) -> Dict[str, List[M.Field]]:
         raise NotImplementedError()
 
-    def get_distinct_event_names(
-        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
-    ) -> List[str]:
+    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         raise NotImplementedError()
 
     def get_field_enums(
@@ -52,7 +47,6 @@ class GenericDatasetAdapter(ABC):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 
@@ -69,9 +63,4 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def test_connection(self):
-        raise NotImplementedError()
-
-    def get_last_event_times(
-        self,
-    ) -> Dict[str, datetime]:
         raise NotImplementedError()

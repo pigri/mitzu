@@ -165,15 +165,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         sa_type: Any,
         name: str,
         event_data_table: M.EventDataTable,
-        config: M.DatasetDiscoveryConfig,
     ) -> M.Field:
         raise NotImplementedError(
             "Generic SQL Alchemy Adapter doesn't support map types"
         )
 
-    def list_fields(
-        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
-    ) -> List[M.Field]:
+    def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         table = self.get_table(event_data_table)
         field_types = table.columns
         res = []
@@ -199,7 +196,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     sa_type=field_type.type,
                     name=field_name,
                     event_data_table=event_data_table,
-                    config=config,
                 )
                 if map_field._sub_fields is None or len(map_field._sub_fields) == 0:
                     continue
@@ -209,11 +205,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 res.append(field)
         return res
 
-    def get_distinct_event_names(
-        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
-    ) -> List[str]:
+    def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         cte = aliased(
-            self._get_dataset_discovery_cte(event_data_table, config),
+            self._get_dataset_discovery_cte(event_data_table),
             alias=SAMPLED_SOURCE_CTE_NAME,
             name=SAMPLED_SOURCE_CTE_NAME,
         )
@@ -255,9 +249,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _column_index_support(self):
         return True
 
-    def _get_dataset_discovery_cte(
-        self, event_data_table: M.EventDataTable, config: M.DatasetDiscoveryConfig
-    ) -> EXP.CTE:
+    def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
         dt_field = self.get_field_reference(
             field=event_data_table.event_time_field, event_data_table=event_data_table
         )
@@ -272,14 +264,22 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 .label("rn"),
             ],
             whereclause=(
-                (dt_field >= self._correct_timestamp(config.start_date))
-                & (dt_field <= self._correct_timestamp(config.end_date))
+                (
+                    dt_field
+                    >= self._correct_timestamp(self.source.get_default_start_dt())
+                )
+                & (
+                    dt_field
+                    <= self._correct_timestamp(self.source.get_default_end_dt())
+                )
             ),
         ).cte()
 
         return SA.select(
             columns=raw_cte.columns.values(),
-            whereclause=(raw_cte.columns["rn"] < config.event_sample_size),
+            whereclause=(
+                raw_cte.columns["rn"] < self.source.default_property_sample_size
+            ),
         ).cte()
 
     def _get_column_values_df(
@@ -287,13 +287,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         event_specifig_str = "event specific" if event_specific else "generic"
         print(f"Discovering {event_specifig_str} field enums")
 
         cte = aliased(
-            self._get_dataset_discovery_cte(event_data_table, config=config),
+            self._get_dataset_discovery_cte(event_data_table),
             alias=SAMPLED_SOURCE_CTE_NAME,
             name=SAMPLED_SOURCE_CTE_NAME,
         )
@@ -336,10 +335,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> Dict[str, M.EventDef]:
         enums = self._get_column_values_df(
-            event_data_table, fields, event_specific, config
+            event_data_table, fields, event_specific
         ).to_dict("index")
         res = {}
         for evt, values in enums.items():
@@ -689,35 +687,3 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self.execute_query(
             SA.select(columns=[SA.literal(True).label("test_connection")])
         )
-
-    def _get_last_event_times_pdf(self) -> pd.DataFrame:
-        main = None
-        for edt in self.source.event_data_tables:
-            et_col = self.get_field_reference(
-                edt.event_time_field, event_data_table=edt
-            )
-            en_col = self.get_event_name_field(edt)
-            sel = SA.select(
-                columns=[
-                    en_col.label(GA.EVENT_NAME_ALIAS_COL),
-                    SA.func.max(et_col).label(GA.DATETIME_COL),
-                ],
-                group_by=[
-                    SA.literal(1)
-                    if self._column_index_support()
-                    else SA.text(GA.EVENT_NAME_ALIAS_COL)
-                ],
-            )
-            if main is None:
-                main = sel
-            else:
-                main = main.union_all(sel)
-        return self.execute_query(main)
-
-    def get_last_event_times(self) -> Dict[str, datetime]:
-        pdf = self._get_last_event_times_pdf()
-        pdf = pdf.set_index(GA.EVENT_NAME_ALIAS_COL)
-        return {
-            k: v[GA.DATETIME_COL].to_pydatetime()
-            for k, v in pdf.to_dict("index").items()
-        }

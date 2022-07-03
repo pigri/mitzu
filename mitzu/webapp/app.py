@@ -3,7 +3,7 @@ import sys
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 from dash import Dash, html
-from mitzu.project import load_project
+from mitzu.project import load_project_from_file
 from mitzu.webapp.all_segments import AllSegmentsContainer
 from mitzu.webapp.graph import GraphContainer
 from mitzu.webapp.metrics_config import MetricsConfigDiv
@@ -29,7 +29,7 @@ def init_app(app: Dash, dataset_model: M.DatasetModel):
     GraphContainer.create_callbacks(app, dataset_model, requested_graph, current_graph)
 
 
-def create_dash_debug_server(project_name: str):
+def __create_dash_debug_server(project_name: str):
     app = Dash(
         __name__,
         external_stylesheets=[
@@ -39,11 +39,10 @@ def create_dash_debug_server(project_name: str):
             "assets/components.css",
         ],
     )
-    app.config.suppress_callback_exceptions = True
-    project = load_project(project_name)
+    project = load_project_from_file(project_name)
     init_app(app, project)
     app.run_server(debug=True)
 
 
 if __name__ == "__main__":
-    create_dash_debug_server(sys.argv[1])
+    __create_dash_debug_server(sys.argv[1])

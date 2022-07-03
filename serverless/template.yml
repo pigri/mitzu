@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  mitzu-demo-app
+
+Resources:
+  MitzuDemoBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: mitzu-demo
+
+  MitzuDemoApp:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Environment:
+        Variables:
+          DASH_DEBUG: true
+          MITZU_MODEL: demoproject.mitzu
+          MITZU_MODELS_BUCKET: !Ref MitzuDemoBucket
+      ImageUri: mitzu-demo-app:v2
+      Timeout: 120
+      MemorySize: 512
+      Events:
+        MitzuDemoApi:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        MitzuDemoRootApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+      Policies:
+        - Version: 2012-10-17
+          Statement:
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt MitzuDemoBucket.Arn
+              - !Sub "${MitzuDemoBucket.Arn}/*"
+    Metadata:
+      DockerTag: v2
+      DockerContext: ./app
+      DockerFile: Dockerfile
+
+Outputs:
+  MitzuDemo:
+    Description: "API Gateway endpoint URL for Mitzu Demo App [Prod]"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/app"

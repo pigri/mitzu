@@ -26,18 +26,17 @@ class AthenaAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
-            config=config,
         )
         return pdf_string_array_to_array(df)
 
     def _correct_timestamp(self, dt: datetime) -> Any:
-        return SA.text(f"timestamp '{dt}'")
+        timeformat = dt.strftime("%Y-%m-%d %H:%M:%S")
+        return SA.text(f"timestamp '{timeformat}'")
 
     def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)

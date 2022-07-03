@@ -8,13 +8,12 @@ import mitzu.model as M
 
 def init_project(
     source: M.EventDataSource,
-    config: M.DatasetDiscoveryConfig,
     persist_as: str = None,
     glbs: Optional[Dict] = None,
 ) -> M.DatasetModel:
     warnings.filterwarnings("ignore")
 
-    dd = source.discover_datasource(config)
+    dd = source.discover_datasource()
     if persist_as is not None:
         dd.save_project(persist_as)
 
@@ -24,7 +23,7 @@ def init_project(
     return m
 
 
-def load_project(
+def load_project_from_file(
     project: str,
     folder: str = "./",
     extension="mitzu",
@@ -33,7 +32,6 @@ def load_project(
     warnings.filterwarnings("ignore")
 
     dd = M.DiscoveredEventDataSource.load_from_project_file(project, folder, extension)
-    dd.source.adapter.test_connection()
     m = dd.create_notebook_class_model()
     if glbs is not None:
         m._to_globals(glbs)

@@ -1,7 +1,5 @@
-from datetime import datetime
-
 from mitzu.datasource_discovery import EventDatasourceDiscovery
-from mitzu.model import DatasetDiscoveryConfig, EventDataSource, Metric
+from mitzu.model import EventDataSource, Metric
 from mitzu.serialization import from_json, to_json
 from tests.samples.sources import get_simple_csv
 
@@ -15,10 +13,7 @@ def verify(metric: Metric, source: EventDataSource):
 
 def test_definition_to_json():
     eds = get_simple_csv()
-    config = DatasetDiscoveryConfig(
-        start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
-    )
-    discovery = EventDatasourceDiscovery(eds, config)
+    discovery = EventDatasourceDiscovery(eds)
     dd1 = discovery.discover_datasource()
     m = dd1.create_notebook_class_model()
 

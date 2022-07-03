@@ -75,7 +75,10 @@ TEST_CASES = [
 def test_db_integrations(test_case: TestCase):
     test_source = get_simple_csv()
     ingested_source = M.EventDataSource(
-        test_case.connection, event_data_tables=test_source.event_data_tables
+        test_case.connection,
+        event_data_tables=test_source.event_data_tables,
+        default_start_dt=datetime(2019, 1, 1),
+        default_end_dt=datetime(2022, 1, 1),
     )
 
     if test_case.ingest:
@@ -88,19 +91,7 @@ def test_db_integrations(test_case: TestCase):
 
 
 def validate_integration(source: M.EventDataSource):
-    m = cast(
-        Any,
-        init_project(
-            source=source,
-            config=M.DatasetDiscoveryConfig(
-                start_date=datetime(2019, 1, 1), end_date=datetime(2022, 1, 1)
-            ),
-        ),
-    )
-
-    lets = source.get_last_event_times()
-    assert datetime(2020, 1, 1, 4, 31, 1) == lets["cart"]
-    assert datetime(2020, 1, 1, 4, 11, 59) == lets["purchase"]
+    m = cast(Any, init_project(source=source))
 
     df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
     assert 1 == df.shape[0]

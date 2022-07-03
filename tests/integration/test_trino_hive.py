@@ -22,6 +22,8 @@ def test_trion_complex_data():
                 event_specific_fields=["event_properties"],
             ),
         ],
+        default_start_dt=datetime(2021, 1, 1),
+        default_end_dt=datetime(2021, 1, 4),
         connection=M.Connection(
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
@@ -30,10 +32,8 @@ def test_trion_complex_data():
             host="localhost",
         ),
     )
-    config = M.DatasetDiscoveryConfig(
-        start_date=datetime(2021, 1, 1), end_date=datetime(2021, 1, 4)
-    )
-    m = init_project(target, config)
+
+    m = init_project(target)
     pdf = (
         (m.page_visit.event_properties.url.is_not_null >> m.purchase)
         .config(
@@ -70,6 +70,8 @@ def test_trino_map_types_discovery():
                 event_specific_fields=["event_properties"],
             ),
         ],
+        default_start_dt=datetime(2021, 1, 1),
+        default_end_dt=datetime(2021, 1, 4),
         connection=M.Connection(
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
@@ -79,13 +81,7 @@ def test_trino_map_types_discovery():
         ),
     )
 
-    config = M.DatasetDiscoveryConfig(
-        start_date=datetime(2021, 1, 1),
-        end_date=datetime(2021, 2, 1),
-        event_sample_size=10,
-    )
-
-    m = init_project(target, config=config)
+    m = init_project(target)
 
     # Group by with Event Specific MAP type
     df = m.search.config(

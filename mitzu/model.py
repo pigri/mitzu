@@ -8,7 +8,7 @@ from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, cast
 
 import pandas as pd
 
@@ -16,7 +16,6 @@ import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
 import mitzu.datasource_discovery as D
 import mitzu.helper as helper
-import mitzu.model as M
 import mitzu.notebook.model_loader as ML
 import mitzu.visualization as VIS
 
@@ -309,6 +308,10 @@ class EventDataSource:
     event_data_tables: List[EventDataTable]
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
+    default_start_dt: Optional[datetime] = None
+    default_end_dt: Optional[datetime] = None
+    default_property_sample_size: int = 10000
+    default_lookback_days: int = 28
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
         ProtectedState()
     )
@@ -329,24 +332,21 @@ class EventDataSource:
             raise Exception("Adapter wasn't set for the datasource")
         return res
 
-    def get_last_event_times(self) -> Dict[str, datetime]:
-        if self._last_event_times.get_value() is None:
-            lets = self.adapter.get_last_event_times()
-            self._last_event_times.set_value(lets)
+    def get_default_end_dt(self) -> datetime:
+        if self.default_end_dt is None:
+            return datetime.now()
+        return self.default_end_dt
 
-        res = self._last_event_times.get_value()
-        return res if res is not None else {}
+    def get_default_start_dt(self) -> datetime:
+        if self.default_start_dt is None:
+            return self.get_default_end_dt() - timedelta(self.default_lookback_days)
+        return self.default_start_dt
 
     def clear_adapter_cache(self):
         self._adapter_cache.set_value(None)
 
-    def discover_datasource(
-        self,
-        config: M.DatasetDiscoveryConfig,
-    ) -> DiscoveredEventDataSource:
-        return D.EventDatasourceDiscovery(
-            source=self, config=config
-        ).discover_datasource()
+    def discover_datasource(self) -> DiscoveredEventDataSource:
+        return D.EventDatasourceDiscovery(source=self).discover_datasource()
 
     def validate(self):
         if len(self.event_data_tables) == 0:
@@ -401,9 +401,15 @@ class DiscoveredEventDataSource:
     ) -> DiscoveredEventDataSource:
         path = cls._get_path(project, folder, extension)
         with path.open(mode="rb") as file:
-            res: DiscoveredEventDataSource = pickle.load(file)
-            res.source._discovered_event_datasource.set_value(res)
-            return res
+            return cls.load_from_project_binary(file.read())
+
+    @classmethod
+    def load_from_project_binary(
+        cls, project_binary: bytes
+    ) -> DiscoveredEventDataSource:
+        res: DiscoveredEventDataSource = pickle.loads(project_binary)
+        res.source._discovered_event_datasource.set_value(res)
+        return res
 
 
 @dataclass(frozen=True, init=False)
@@ -470,24 +476,6 @@ class EventDef:
     _description: Optional[str] = ""
 
 
-@dataclass(frozen=True, init=False)
-class DatasetDiscoveryConfig:
-    start_date: datetime
-    end_date: datetime
-    event_sample_size: int = 10000
-
-    def __init__(
-        self, start_date: datetime, end_date: datetime, event_sample_size: int = 10000
-    ):
-        if end_date is None:
-            end_date = datetime.now()
-        if start_date is None:
-            start_date = end_date - timedelta(days=365)
-        object.__setattr__(self, "start_date", start_date)
-        object.__setattr__(self, "end_date", end_date)
-        object.__setattr__(self, "event_sample_size", event_sample_size)
-
-
 # =========================================== Metric definitions ===========================================
 
 DEF_MAX_GROUP_COUNT = 10
@@ -544,14 +532,23 @@ class Metric(ABC):
 
     @property
     def _start_dt(self) -> datetime:
-        return (
-            self._config.start_dt
-            if self._config.start_dt is not None
-            else self._end_dt - timedelta(days=self._lookback_days)
-        )
+        if self._config.start_dt is not None:
+            return self._config.start_dt
+        eds = self._get_event_datasource()
+        if eds.default_start_dt is not None:
+            return eds.default_start_dt
+        return self._end_dt - timedelta(days=self._lookback_days)
 
     @property
     def _end_dt(self) -> datetime:
+        if self._config.end_dt is not None:
+            return self._config.end_dt
+        eds = self._get_event_datasource()
+        if eds.default_end_dt is not None:
+            return eds.default_end_dt
+        return datetime.now()
+
+    def _get_event_datasource(self) -> EventDataSource:
         raise NotImplementedError()
 
     def get_df(self) -> pd.DataFrame:
@@ -597,14 +594,14 @@ class ConversionMetric(Metric):
     def get_figure(self):
         return VIS.plot_conversion(self)
 
-    @property
-    def _end_dt(self) -> datetime:
-        if self._config.end_dt is not None:
-            return self._config.end_dt
-        return helper.get_segment_end_date(self._conversion._segments[0])
-
     def __repr__(self) -> str:
         return super().__repr__()
+
+    def _get_event_datasource(self) -> EventDataSource:
+        curr: Segment = self._conversion._segments[0]
+        while not isinstance(curr, SimpleSegment):
+            curr = cast(ComplexSegment, curr)._left
+        return curr._left._source
 
 
 @dataclass(frozen=True, init=False)
@@ -626,14 +623,14 @@ class SegmentationMetric(Metric):
     def get_figure(self):
         return VIS.plot_segmentation(self)
 
-    @property
-    def _end_dt(self) -> datetime:
-        if self._config.end_dt is not None:
-            return self._config.end_dt
-        return helper.get_segment_end_date(self._segment)
-
     def __repr__(self) -> str:
         return super().__repr__()
+
+    def _get_event_datasource(self) -> EventDataSource:
+        curr: Segment = self._segment
+        while not isinstance(curr, SimpleSegment):
+            curr = cast(ComplexSegment, curr)._left
+        return curr._left._source
 
 
 @dataclass(frozen=True, init=False)
@@ -651,12 +648,6 @@ class RetentionMetric(Metric):
         super().__init__(config)
         object.__setattr__(self, "_conversion", conversion)
         object.__setattr__(self, "_ret_window", ret_window)
-
-    @property
-    def _end_dt(self) -> datetime:
-        if self._config.end_dt is not None:
-            return self._config.end_dt
-        return helper.get_segment_end_date(self._conversion._segments[0])
 
     def __repr__(self) -> str:
         return super().__repr__()

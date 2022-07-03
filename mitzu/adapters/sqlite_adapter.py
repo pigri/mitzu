@@ -54,11 +54,8 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
-        df = super()._get_column_values_df(
-            event_data_table, fields, event_specific, config
-        )
+        df = super()._get_column_values_df(event_data_table, fields, event_specific)
 
         for field in df.columns:
             df[field] = (

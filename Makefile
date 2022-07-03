@@ -57,3 +57,13 @@ publish: bump_version build
 
 publish_no_build:
 	$(POETRY) publish
+
+docker_build:
+	docker image build -t mitzu-demo-app ./serverless/app/
+
+deploy_sam:
+	cd serverless && \
+	sam build && \
+	sam deploy && \
+	cd ../
+

@@ -36,11 +36,7 @@ class DatabricksAdapter(SQLAlchemyAdapter):
         return super().map_type(sa_type)
 
     def _parse_map_type(
-        self,
-        sa_type: Any,
-        name: str,
-        event_data_table: M.EventDataTable,
-        config: M.DatasetDiscoveryConfig,
+        self, sa_type: Any, name: str, event_data_table: M.EventDataTable
     ) -> M.Field:
         print(f"Discovering map: {name}")
         map: DA_T.MAP = cast(DA_T.MAP, sa_type)
@@ -48,7 +44,7 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             raise Exception(
                 f"Compounded map types are not supported: map<{map.key_type}, {map.value_type}>"
             )
-        cte = self._get_dataset_discovery_cte(event_data_table, config)
+        cte = self._get_dataset_discovery_cte(event_data_table)
         F = SA.func
         map_keys_func = F.array_distinct(
             F.flatten(F.collect_set(F.map_keys(cte.columns[name])))

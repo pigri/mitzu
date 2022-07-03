@@ -1,0 +1,3 @@
+mitzu==0.1.25
+PyAthena==1.11.5
+aws-wsgi==0.2.7

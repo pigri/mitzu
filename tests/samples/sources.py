@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from mitzu.model import Connection, ConnectionType, EventDataSource, EventDataTable
 
@@ -17,6 +18,8 @@ def get_simple_csv() -> EventDataSource:
         ],
         max_enum_cardinality=300,
         max_map_key_cardinality=300,
+        default_start_dt=datetime(2019, 1, 1),
+        default_end_dt=datetime(2022, 1, 1),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={
@@ -39,6 +42,8 @@ def get_simple_big_data() -> EventDataSource:
         ],
         max_enum_cardinality=300,
         max_map_key_cardinality=300,
+        default_start_dt=datetime(2019, 1, 1),
+        default_end_dt=datetime(2022, 1, 1),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={

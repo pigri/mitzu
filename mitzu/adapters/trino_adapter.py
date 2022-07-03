@@ -63,7 +63,6 @@ class TrinoAdapter(SQLAlchemyAdapter):
         sa_type: Any,
         name: str,
         event_data_table: M.EventDataTable,
-        config: M.DatasetDiscoveryConfig,
     ) -> M.Field:
         print(f"Discovering map: {name}")
         map: SA_T.MAP = cast(SA_T.MAP, sa_type)
@@ -71,7 +70,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
             raise Exception(
                 f"Compounded map types are not supported: map<{map.key_type}, {map.value_type}>"
             )
-        cte = self._get_dataset_discovery_cte(event_data_table, config)
+        cte = self._get_dataset_discovery_cte(event_data_table)
         F = SA.func
         map_keys_func = F.array_distinct(
             F.flatten(F.array_agg(F.distinct(F.map_keys(cte.columns[name]))))
@@ -126,22 +125,16 @@ class TrinoAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
-            config=config,
         )
         return pdf_string_array_to_array(df)
 
     def _correct_timestamp(self, dt: datetime) -> Any:
         return SA.text(f"timestamp '{dt}'")
-
-    def _get_last_event_times_pdf(self) -> pd.DataFrame:
-        pdf = super()._get_last_event_times_pdf()
-        return dataframe_str_to_datetime(pdf, GA.DATETIME_COL)
 
     def _get_datetime_interval(
         self, field_ref: FieldReference, timewindow: M.TimeWindow

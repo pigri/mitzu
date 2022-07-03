@@ -1,0 +1,125 @@
+ /*  main.py */
+
+ .main {
+     padding: 10px;
+     width: 100%;
+     padding: 5px;
+
+ }
+
+
+ /* all_segments.py */
+
+ .all_segments {
+     display: flex;
+     margin-bottom: 5px;
+     flex-wrap: wrap;
+     font-size: 12px;
+ }
+
+ /* complex_segment.py */
+ .complex_segment {
+     margin-right: 5px;
+     margin-bottom: 5px;
+     min-width: 320px;
+ }
+
+ .complex_segment_group_by {
+     color: #333;
+     min-width: 150px;
+ }
+
+ .complex_segment_footer {}
+
+
+ /* event_segment.py */
+ .event_segment {
+     max-width: 500px;
+     min-width: 100px;
+ }
+
+ .event_name_dropdown {
+     min-width: 220px;
+     padding-bottom: 3px;
+ }
+
+ .simple_segment_container {}
+
+ /* simple_segment.py */
+
+ .simple_segment {
+     display: flex;
+     padding-bottom: 3px;
+     padding-left: 10px;
+ }
+
+ .property_name_dropdown {
+     min-width: 200px;
+     width: fit-content;
+     max-width: 250px;
+     margin-right: 5px;
+     word-wrap: break-word;
+ }
+
+ .property_name_dropdown .Select-menu-outer {
+     min-width: 300px;
+ }
+
+ .property_operator_dropdown {
+     width: 50px;
+     margin-right: 5px;
+ }
+
+ .property_value_input {
+     min-width: 100px;
+     max-width: 300px;
+ }
+
+ /* Metrics config div */
+
+ .metrics_config {
+     margin-bottom: 5px;
+     font-size: 12px;
+ }
+
+ .metrics_config .card-body {
+     display: flex;
+     margin-bottom: 10px;
+ }
+
+ .timegroup_dropdown {
+     width: 100px;
+     margin-right: 15px;
+ }
+
+ .time_window_interval {
+     max-width: 60px;
+     min-width: 30px;
+     border: 1px #ccccccff solid;
+     border-radius: 4px;
+     margin-right: 15px;
+     box-shadow: 0px;
+     padding-left: 5px;
+ }
+
+ .time_window_interval_steps {
+     width: 70px;
+ }
+
+ .time_window {
+     display: flex;
+     margin-right: 15px;
+ }
+
+ .date_range_input {
+     margin-right: 15px;
+ }
+
+ /* graph.py */
+ .graph_container_header {
+     display: flex;
+ }
+
+ .graph_container {
+     min-height: 500px;
+ }

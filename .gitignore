@@ -77,6 +77,6 @@ tests/integration/docker/ssh/config/ssh_host_keys/*
 tests/integration/docker/minio/data/.minio.sys/*
 
 *.mitzu
+serverless/.aws-sam/*
 .mutmut-cache
 
-.aws-sam/

@@ -26,13 +26,11 @@ class MySQLAdapter(SQLAlchemyAdapter):
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
         event_specific: bool,
-        config: M.DatasetDiscoveryConfig,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
             event_data_table=event_data_table,
             fields=fields,
             event_specific=event_specific,
-            config=config,
         )
         df = pdf_string_array_to_array(df, split_text='", "', omit_chars=2)
         return df
