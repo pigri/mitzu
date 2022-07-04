@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from importlib.resources import path
 from typing import Any, Dict, List
 
 import dash.development.base_component as bc
 import mitzu.model as M
+import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.webapp as WA
-from dash import Dash, html
+from dash import html
 from dash.dependencies import ALL, Input, Output, State
-from mitzu.webapp.complex_segment import ComplexSegment
+from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.event_segment import EVENT_NAME_DROPDOWN
 from mitzu.webapp.helper import deserialize_component
 from mitzu.webapp.simple_segment import (
@@ -21,8 +21,8 @@ ALL_SEGMENTS = "all_segments"
 
 
 class AllSegmentsContainer(html.Div):
-    def __init__(self, dataset_model: M.DatasetModel):
-        container = ComplexSegment(dataset_model, 0)
+    def __init__(self, dataset_model: M.DatasetModel, metric_type: str):
+        container = ComplexSegmentCard(dataset_model, 0, metric_type)
         super().__init__(
             id=ALL_SEGMENTS,
             children=[container],
@@ -31,31 +31,51 @@ class AllSegmentsContainer(html.Div):
 
     @classmethod
     def fix(
-        cls, complex_seg_children: List[bc.Component], dataset_model: M.DatasetModel
+        cls,
+        complex_seg_children: List[bc.Component],
+        dataset_model: M.DatasetModel,
+        metric_type: str,
     ) -> List[bc.Component]:
-
         fixed_complex_seg_children = []
+        limit = 5
+
+        if metric_type == WA.SEGMENTATION:
+            limit = 1
+        elif metric_type == WA.RETENTION:
+            limit = 2
+
         for i, seg_child in enumerate(complex_seg_children):
-            fixed_seg_child = ComplexSegment.fix(seg_child, dataset_model, i)
+            if i >= limit:
+                break
+            fixed_seg_child = ComplexSegmentCard.fix(
+                seg_child, dataset_model, i, metric_type
+            )
             fixed_complex_seg_children.append(fixed_seg_child)
 
-        res_children: List[ComplexSegment] = []
+        res_children: List[ComplexSegmentCard] = []
         for complex_seg in fixed_complex_seg_children:
             event_name_value = complex_seg.children[1].children[0].children[0].value
             if event_name_value is not None:
                 res_children.append(complex_seg)
-        res_children.append(ComplexSegment(dataset_model, len(res_children)))
+
+        if len(res_children) < limit:
+            res_children.append(
+                ComplexSegmentCard(dataset_model, len(res_children), metric_type)
+            )
         return res_children
 
     @classmethod
     def get_segments(
-        cls, all_seg_children: List[bc.Component], dataset_model: M.DatasetModel
+        cls,
+        all_seg_children: List[bc.Component],
+        dataset_model: M.DatasetModel,
+        metric_type: str,
     ) -> List[M.Segment]:
         res = []
-        all_seg_children = cls.fix(all_seg_children, dataset_model)
+        all_seg_children = cls.fix(all_seg_children, dataset_model, metric_type)
         for segment in all_seg_children:
 
-            segment = ComplexSegment.get_segment(segment, dataset_model)
+            segment = ComplexSegmentCard.get_segment(segment, dataset_model)
             if segment is not None:
                 res.append(segment)
 
@@ -69,6 +89,7 @@ class AllSegmentsContainer(html.Div):
                 Input({"type": EVENT_NAME_DROPDOWN, "index": ALL}, "value"),
                 Input({"type": PROPERTY_NAME_DROPDOWN, "index": ALL}, "value"),
                 Input({"type": PROPERTY_OPERATOR_DROPDOWN, "index": ALL}, "value"),
+                Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
                 Input(WA.MITZU_LOCATION, "pathname"),
             ],
             State(ALL_SEGMENTS, "children"),
@@ -78,6 +99,7 @@ class AllSegmentsContainer(html.Div):
             evt_name_value: Any,
             prop_value: Any,
             op_value: Any,
+            metric_type: str,
             pathname: str,
             children: List[Dict],
         ):
@@ -89,7 +111,7 @@ class AllSegmentsContainer(html.Div):
             if dm is None:
                 return []
 
-            res_children = cls.fix(complex_seg_children, dm)
+            res_children = cls.fix(complex_seg_children, dm, metric_type)
             return [child.to_plotly_json() for child in res_children]
 
         SimpleSegmentDiv.create_callbacks(webapp.app)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mitzu.webapp.webapp as WA
 from dash import Input, Output, dcc, html
 from mitzu.webapp.helper import value_to_label
@@ -7,11 +9,11 @@ METRIC_TYPE_DROPDOWN_OPTION = "metric-type-dropdown-option"
 
 
 TYPES = {
-    "segmentation": "bi bi-graph-up",
-    "conversion": "bi bi-filter-square",
-    "retention": "bi bi-arrow-clockwise",
-    "time_to_convert": "bi bi-clock-history",
-    "journey": "bi bi-bezier2",
+    WA.SEGMENTATION: "bi bi-graph-up",
+    WA.CONVERSION: "bi bi-filter-square",
+    WA.RETENTION: "bi bi-arrow-clockwise",
+    WA.TIME_TO_CONVERT: "bi bi-clock-history",
+    WA.JOURNEY: "bi bi-bezier2",
 }
 
 DEF_STYLE = {"font-size": 15, "padding-left": 10}
@@ -35,7 +37,7 @@ def create_metric_type_dropdown(webapp: WA.MitzuWebApp):
         id=METRIC_TYPE_DROPDOWN,
         className=METRIC_TYPE_DROPDOWN,
         clearable=False,
-        value="segmentation",
+        value=WA.SEGMENTATION,
         searchable=False,
     )
 
@@ -45,7 +47,7 @@ def create_metric_type_dropdown(webapp: WA.MitzuWebApp):
     )
     def update(curr_pathname: str):
         path_parts = curr_pathname.split("/")
-        curr_metric_type = "segmentation"
+        curr_metric_type = WA.SEGMENTATION
         if len(path_parts) > WA.METRIC_TYPE_PATH_INDEX:
             curr_metric_type = path_parts[WA.METRIC_TYPE_PATH_INDEX]
 

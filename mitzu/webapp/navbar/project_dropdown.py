@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dash_bootstrap_components as dbc
 import mitzu.webapp.webapp as WA
-from dash import Dash, Input, Output, callback_context, dcc, html
+from dash import Input, Output
 from mitzu.webapp.helper import value_to_label
 
 CHOOSE_PROJECT_DROPDOWN = "choose-project-dropdown"

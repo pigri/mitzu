@@ -6,9 +6,9 @@ from typing import Optional
 
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+import mitzu.webapp.all_segments as AS
 import mitzu.webapp.navbar.navbar as MN
 from dash import Dash, dcc, html
-from mitzu.webapp.all_segments import AllSegmentsContainer
 from mitzu.webapp.graph import GraphContainer
 from mitzu.webapp.metrics_config import MetricsConfigDiv
 from mitzu.webapp.persistence import PathPersistencyProvider, PersistencyProvider
@@ -20,6 +20,12 @@ MITZU_LOCATION = "mitzu_location"
 MAIN_CONTAINER = "main_container"
 PROJECT_PATH_INDEX = 1
 METRIC_TYPE_PATH_INDEX = 2
+
+SEGMENTATION = "segmentation"
+CONVERSION = "conversion"
+RETENTION = "retention"
+TIME_TO_CONVERT = "time_to_convert"
+JOURNEY = "journey"
 
 
 @dataclass
@@ -45,13 +51,16 @@ class MitzuWebApp:
             dd: M.DiscoveredEventDataSource = self.persistency_provider.get_item(
                 f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
             )
+            dd.source._discovered_event_datasource.set_value(dd)
             self.dataset_model.set_value(dd.create_notebook_class_model())
 
     def init_app(self):
         loc = dcc.Location(id=MITZU_LOCATION)
         navbar = MN.create_mitzu_navbar(self)
 
-        all_segments = AllSegmentsContainer(self.dataset_model.get_value())
+        all_segments = AS.AllSegmentsContainer(
+            self.dataset_model.get_value(), SEGMENTATION
+        )
         metrics_config = MetricsConfigDiv()
         graph = GraphContainer()
 
@@ -77,7 +86,7 @@ class MitzuWebApp:
             id=MAIN,
         )
 
-        AllSegmentsContainer.create_callbacks(self)
+        AS.AllSegmentsContainer.create_callbacks(self)
         GraphContainer.create_callbacks(self)
 
 

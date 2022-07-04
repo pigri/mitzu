@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc
+import mitzu.webapp.navbar.metric_type_dropdown as MTD
+import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
-from dash import Dash, Input, Output, State, html
-from mitzu.webapp.navbar.metric_type_dropdown import create_metric_type_dropdown
-from mitzu.webapp.navbar.project_dropdown import create_project_dropdown
+from dash import Input, Output, State, html
 
 LOGO = "/assets/favicon_io/round-android-chrome-192x192.png"
 
-METRIC_TYPE_DROPDOWN = "metric_type_dropdown"
+
 NAVBAR_COLLAPSE = "navbar-collapse"
 NAVBAR_TOGGLER = "navbar-toggler"
 
@@ -28,8 +28,8 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                     style={"textDecoration": "none"},
                                 )
                             ),
-                            dbc.Col(create_project_dropdown(webapp)),
-                            dbc.Col(create_metric_type_dropdown(webapp)),
+                            dbc.Col(PD.create_project_dropdown(webapp)),
+                            dbc.Col(MTD.create_metric_type_dropdown(webapp)),
                         ]
                     ),
                 ),

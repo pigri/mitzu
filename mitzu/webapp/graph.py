@@ -5,12 +5,13 @@ from typing import Dict, List, Optional, Union
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+import mitzu.webapp.all_segments as AS
 import mitzu.webapp.metrics_config as MC
+import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.webapp as WA
-from dash import Dash, dcc, html
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
-from mitzu.webapp.all_segments import ALL_SEGMENTS, AllSegmentsContainer
-from mitzu.webapp.complex_segment import ComplexSegment
+from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.helper import (
     deserialize_component,
     find_component,
@@ -75,11 +76,14 @@ class GraphContainer(dbc.Card):
     @classmethod
     def create_metric(
         cls,
-        all_seg_children: List[ComplexSegment],
+        all_seg_children: List[ComplexSegmentCard],
         mc_children: List[bc.Component],
         dataset_model: M.DatasetModel,
+        metric_type: str,
     ) -> Optional[M.Metric]:
-        segments = AllSegmentsContainer.get_segments(all_seg_children, dataset_model)
+        segments = AS.AllSegmentsContainer.get_segments(
+            all_seg_children, dataset_model, metric_type
+        )
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         for seg in segments:
             if metric is None:
@@ -100,7 +104,9 @@ class GraphContainer(dbc.Card):
 
         dates = find_component(MC.DATE_RANGE_INPUT, mc_children)
 
-        group_by_path = all_seg_children[0].children[2].children[0].value
+        group_by_path = (
+            all_seg_children[0].children[2].children[0].children[1].children[0].value
+        )
         group_by = None
         if group_by_path is not None:
             group_by = find_property_class(group_by_path, dataset_model)
@@ -152,7 +158,8 @@ class GraphContainer(dbc.Card):
                 Input(WA.MITZU_LOCATION, "pathname"),
             ],
             [
-                State(ALL_SEGMENTS, "children"),
+                State(MNB.METRIC_TYPE_DROPDOWN, "value"),
+                State(AS.ALL_SEGMENTS, "children"),
                 State(MC.METRICS_CONFIG, "children"),
             ],
             prevent_initial_call=True,
@@ -161,6 +168,7 @@ class GraphContainer(dbc.Card):
             n_clicks: int,
             n_intervals: int,
             pathname: str,
+            metric_type: str,
             all_segments: List[Dict],
             metric_configs: List[Dict],
         ) -> List[List]:
@@ -175,6 +183,8 @@ class GraphContainer(dbc.Card):
             if dm is None:
                 return []
 
-            metric = cls.create_metric(all_seg_children, metric_configs_children, dm)
+            metric = cls.create_metric(
+                all_seg_children, metric_configs_children, dm, metric_type
+            )
             res = cls.create_graph(metric)
             return [res]
