@@ -16,7 +16,9 @@
 }
 
 /* complex_segment.py */
-.complex_segment {}
+.complex_segment {
+    margin-bottom: 5px;
+}
 
 .complex_segment_group_by {
     color: #333;
