@@ -6,7 +6,7 @@ from uuid import uuid4
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-import mitzu.webapp.webapp as WA
+import mitzu.webapp.navbar.metric_type_dropdown as MNB
 from dash import dcc, html
 from mitzu.webapp.event_segment import EventSegmentDiv
 from mitzu.webapp.helper import recursive_find_all_props
@@ -57,7 +57,7 @@ class ComplexSegmentCard(dbc.Card):
         header = dbc.CardHeader(
             children=[
                 html.B(
-                    "Events" if metric_type == WA.SEGMENTATION else f"Step {step+1}."
+                    "Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}."
                 )
             ]
         )
@@ -133,7 +133,7 @@ class ComplexSegmentCard(dbc.Card):
         metric_type: str,
     ) -> ComplexSegmentCard:
         complex_segment.children[0].children[0].children = (
-            "Events" if metric_type == WA.SEGMENTATION else f"Step {step+1}."
+            "Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}."
         )
         res_props_children = []
         for event_segment in complex_segment.children[1].children:

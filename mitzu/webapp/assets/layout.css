@@ -103,10 +103,6 @@
     margin-right: 15px;
 }
 
-/* graph.py */
-.graph_container_header {
-    display: flex;
-}
 
 .graph_container {
     min-height: 500px;

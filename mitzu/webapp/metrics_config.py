@@ -92,7 +92,7 @@ def create_start_dt_input():
     )
 
 
-class MetricsConfigDiv(dbc.Card):
+class MetricsConfigCard(dbc.Card):
     def __init__(self):
         super().__init__(
             children=[

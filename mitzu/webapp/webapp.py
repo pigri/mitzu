@@ -7,10 +7,11 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.all_segments as AS
+import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.navbar.navbar as MN
 from dash import Dash, dcc, html
 from mitzu.webapp.graph import GraphContainer
-from mitzu.webapp.metrics_config import MetricsConfigDiv
+from mitzu.webapp.metrics_config import MetricsConfigCard
 from mitzu.webapp.persistence import PathPersistencyProvider, PersistencyProvider
 
 MAIN = "main"
@@ -21,12 +22,6 @@ MAIN_CONTAINER = "main_container"
 PROJECT_PATH_INDEX = 1
 METRIC_TYPE_PATH_INDEX = 2
 
-SEGMENTATION = "segmentation"
-CONVERSION = "conversion"
-RETENTION = "retention"
-TIME_TO_CONVERT = "time_to_convert"
-JOURNEY = "journey"
-
 
 @dataclass
 class MitzuWebApp:
@@ -34,16 +29,20 @@ class MitzuWebApp:
     persistency_provider: PersistencyProvider
     app: Dash
 
-    dataset_model: M.ProtectedState[M.DatasetModel] = M.ProtectedState[M.DatasetModel]()
+    _dataset_model: M.ProtectedState[M.DatasetModel] = M.ProtectedState[
+        M.DatasetModel
+    ]()
     current_project: Optional[str] = None
-    in_update: bool = False
 
-    def set_dataset_model(self, pathname: str):
+    def get_dataset_model(self) -> Optional[M.DatasetModel]:
+        return self._dataset_model.get_value()
+
+    def load_dataset_model(self, pathname: str):
         path_parts = pathname.split("/")
         curr_path_project_name = path_parts[PROJECT_PATH_INDEX]
         if (
             curr_path_project_name == self.current_project
-            and self.dataset_model.has_value()
+            and self._dataset_model.has_value()
         ):
             return
         self.current_project = curr_path_project_name
@@ -52,16 +51,18 @@ class MitzuWebApp:
                 f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
             )
             dd.source._discovered_event_datasource.set_value(dd)
-            self.dataset_model.set_value(dd.create_notebook_class_model())
+            self._dataset_model.set_value(dd.create_notebook_class_model())
+        else:
+            raise Exception(f"Unknown project {curr_path_project_name}")
 
     def init_app(self):
         loc = dcc.Location(id=MITZU_LOCATION)
         navbar = MN.create_mitzu_navbar(self)
 
         all_segments = AS.AllSegmentsContainer(
-            self.dataset_model.get_value(), SEGMENTATION
+            self._dataset_model.get_value(), MNB.SEGMENTATION
         )
-        metrics_config = MetricsConfigDiv()
+        metrics_config = MetricsConfigCard()
         graph = GraphContainer()
 
         self.app.layout = html.Div(

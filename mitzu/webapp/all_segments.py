@@ -39,9 +39,9 @@ class AllSegmentsContainer(html.Div):
         fixed_complex_seg_children = []
         limit = 5
 
-        if metric_type == WA.SEGMENTATION:
+        if metric_type == MNB.SEGMENTATION:
             limit = 1
-        elif metric_type == WA.RETENTION:
+        elif metric_type == MNB.RETENTION:
             limit = 2
 
         for i, seg_child in enumerate(complex_seg_children):
@@ -103,11 +103,11 @@ class AllSegmentsContainer(html.Div):
             pathname: str,
             children: List[Dict],
         ):
-            webapp.set_dataset_model(pathname)
+            webapp.load_dataset_model(pathname)
             complex_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in children
             ]
-            dm = webapp.dataset_model.get_value()
+            dm = webapp.get_dataset_model()
             if dm is None:
                 return []
 

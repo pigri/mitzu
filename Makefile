@@ -61,6 +61,12 @@ publish_no_build:
 docker_build:
 	docker image build -t mitzu-demo-app ./serverless/app/
 
+sam_local:
+	cd serverless && \
+	sam build && \
+	sam local start-api && \
+	cd ../
+
 deploy_sam:
 	cd serverless && \
 	sam build && \

@@ -172,14 +172,14 @@ class GraphContainer(dbc.Card):
             all_segments: List[Dict],
             metric_configs: List[Dict],
         ) -> List[List]:
-            webapp.set_dataset_model(pathname)
+            webapp.load_dataset_model(pathname)
             all_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in all_segments
             ]
             metric_configs_children: List[bc.Component] = [
                 deserialize_component(child) for child in metric_configs
             ]
-            dm = webapp.dataset_model.get_value()
+            dm = webapp.get_dataset_model()
             if dm is None:
                 return []
 
