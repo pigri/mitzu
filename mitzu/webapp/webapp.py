@@ -108,7 +108,6 @@ def __create_dash_debug_server(base_path: str):
         app=app, persistency_provider=PathPersistencyProvider(base_path)
     )
     web_app.init_app()
-    app._favicon = "favicon_io/favicon.ico"
     app.run_server(debug=True)
 
 

@@ -4,6 +4,13 @@ Description: >
   mitzu-demo-app
 
 Resources:
+  DashApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      BinaryMediaTypes:
+        - "image/*"
+
   MitzuDemoBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -27,11 +34,13 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
+            RestApiId: !Ref DashApi
         MitzuDemoRootApi:
           Type: Api
           Properties:
             Path: /
             Method: ANY
+            RestApiId: !Ref DashApi
       Policies:
         - Version: 2012-10-17
           Statement:
@@ -46,8 +55,3 @@ Resources:
       DockerTag: v2
       DockerContext: ./app
       DockerFile: Dockerfile
-
-Outputs:
-  MitzuDemo:
-    Description: "API Gateway endpoint URL for Mitzu Demo App [Prod]"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/app"

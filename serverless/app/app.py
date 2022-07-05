@@ -59,7 +59,6 @@ def create_app():
         title="Mitzu",
         suppress_callback_exceptions=True,
     )
-    app._favicon = "assets/favicon_io/favicon.ico"
     project_binary = read_project_from_s3()
     deds = M.DiscoveredEventDataSource.load_from_project_binary(project_binary)
     pp = SimplePersistencyProvider(deds, "demo_athena_project")
@@ -77,4 +76,5 @@ app = create_app()
 
 
 def handler(event, context):
-    return awsgi.response(app.server, event, context)
+    base64_content_types = ["image/*", "image/x-icon", "image/png"]
+    return awsgi.response(app.server, event, context, base64_content_types)
