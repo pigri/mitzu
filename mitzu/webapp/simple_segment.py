@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from uuid import uuid4
 
 import mitzu.model as M
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
-from mitzu.webapp.helper import (
-    deserialize_component,
-    find_property_class,
-    get_enums,
-    recursive_find_all_props,
-)
+from mitzu.webapp.helper import deserialize_component, find_event_field_def, get_enums
 
 SIMPLE_SEGMENT = "simple_segment"
 PROPERTY_NAME_DROPDOWN = "property_name_dropdown"
@@ -41,15 +36,15 @@ CUSTOM_VAL_PREFIX = "$EQ$_"
 def create_property_dropdown(
     event_name: str,
     index: str,
-    dataset_model: M.DatasetModel,
+    discovered_datasource: M.DiscoveredEventDataSource,
     simple_segment_index: int,
 ) -> dcc.Dropdown:
-    event = dataset_model.__class__.__dict__.get(event_name, [])
+    event = discovered_datasource.get_all_events()[event_name]
     placeholder = "Where ..." if simple_segment_index == 0 else "And ..."
-    props = recursive_find_all_props(event)
-    props.sort()
+    fields_names = [f._get_name() for f in event._fields.keys()]
+    fields_names.sort()
     return dcc.Dropdown(
-        options=[{"label": k, "value": f"{event_name}.{k}"} for k in props],
+        options=[{"label": f, "value": f"{event_name}.{f}"} for f in fields_names],
         value=None,
         multi=False,
         placeholder=placeholder,
@@ -62,12 +57,15 @@ def create_property_dropdown(
 
 
 def create_value_input(
-    index: str, path: str, dataset_model: M.DatasetModel, multi: bool = True
+    index: str,
+    path: str,
+    discovered_datasource: M.DiscoveredEventDataSource,
+    multi: bool = True,
 ) -> dcc.Dropdown:
-    enums = get_enums(path, dataset_model)
-    options = [{"label": k, "value": v} for k, v in enums.items()]
+    enums = get_enums(path, discovered_datasource)
+    options = [{"label": enum, "value": enum} for enum in enums]
     options.sort(key=lambda v: v["label"])
-    options_str = (", ".join(enums.keys()))[0:20]
+    options_str = (", ".join(enums))[0:20]
     if len(options_str) == 20:
         options_str = options_str + "..."
     return dcc.Dropdown(
@@ -98,7 +96,7 @@ def create_property_operator_dropdown(index: str) -> dcc.Dropdown:
     )
 
 
-def collect_values(values: List[str], options: List[Dict]) -> List[Any]:
+def collect_values(values: List[str]) -> List[Any]:
     prefix_length = len(CUSTOM_VAL_PREFIX)
     return [
         val[prefix_length:] if val.startswith(CUSTOM_VAL_PREFIX) else val
@@ -108,11 +106,14 @@ def collect_values(values: List[str], options: List[Dict]) -> List[Any]:
 
 class SimpleSegmentDiv(html.Div):
     def __init__(
-        self, event_name: str, dataset_model: M.DatasetModel, simple_segment_index: int
+        self,
+        event_name: str,
+        discovered_datasource: M.DiscoveredEventDataSource,
+        simple_segment_index: int,
     ):
         index = str(uuid4())
         prop_dd = create_property_dropdown(
-            event_name, index, dataset_model, simple_segment_index
+            event_name, index, discovered_datasource, simple_segment_index
         )
         super().__init__(
             id={"type": SIMPLE_SEGMENT, "index": index},
@@ -124,43 +125,42 @@ class SimpleSegmentDiv(html.Div):
     def get_simple_segment(
         cls,
         simple_segment: html.Div,
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
     ) -> Optional[M.Segment]:
         children = simple_segment.children
         if len(children) == 1:
             return None
         property_path: str = children[0].value
         property_operator: str = children[1].value
-        property = find_property_class(dataset_model=dataset_model, path=property_path)
+        event_field_def = find_event_field_def(property_path, discovered_datasource)
+        if event_field_def is None:
+            raise Exception("Invalid state, event field definition is null")
+
         if property_operator == OPERATOR_MAPPING[M.Operator.IS_NULL]:
-            return property.is_null
+            return M.SimpleSegment(event_field_def, M.Operator.IS_NULL)
         elif property_operator == OPERATOR_MAPPING[M.Operator.IS_NOT_NULL]:
-            return property.is_not_null
+            return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL)
 
         if children[2].value is None:
             return None
 
         if property_operator == OPERATOR_MAPPING[M.Operator.ANY_OF]:
-            return property.any_of(
-                *collect_values(children[2].value, children[2].options)
+            return M.SimpleSegment(
+                event_field_def,
+                M.Operator.ANY_OF,
+                tuple(collect_values(children[2].value)),
             )
         elif property_operator == OPERATOR_MAPPING[M.Operator.NONE_OF]:
-            return property.not_any_of(
-                *collect_values(children[2].value, children[2].options)
+            return M.SimpleSegment(
+                event_field_def,
+                M.Operator.NONE_OF,
+                tuple(collect_values(children[2].value)),
             )
-        elif property_operator == OPERATOR_MAPPING[M.Operator.GT]:
-            return property.gt(children[2].value)
-        elif property_operator == OPERATOR_MAPPING[M.Operator.GT_EQ]:
-            return property.gt_eq(children[2].value)
-        elif property_operator == OPERATOR_MAPPING[M.Operator.LT]:
-            return property.lt(children[2].value)
-        elif property_operator == OPERATOR_MAPPING[M.Operator.LT_EQ]:
-            return property.lt_eq(children[2].value)
-        elif property_operator == OPERATOR_MAPPING[M.Operator.LIKE]:
-            return property.like(children[2].value)
-        elif property_operator == OPERATOR_MAPPING[M.Operator.NOT_LIKE]:
-            return property.not_like(children[2].value)
         else:
+            for op, op_str in OPERATOR_MAPPING.items():
+                if op_str == property_operator:
+                    return M.SimpleSegment(event_field_def, op, children[2].value)
+
             raise ValueError(f"Not supported Operator { property_operator }")
 
     @classmethod
@@ -193,7 +193,11 @@ class SimpleSegmentDiv(html.Div):
             return options
 
     @classmethod
-    def fix(cls, simple_segment: html.Div, dataset_model: M.DatasetModel) -> html.Div:
+    def fix(
+        cls,
+        simple_segment: html.Div,
+        discovered_datasource: M.DiscoveredEventDataSource,
+    ) -> html.Div:
         children = simple_segment.children
         prop_dd: dcc.Dropdown = children[0]
         index = prop_dd.id.get("index")
@@ -225,7 +229,7 @@ class SimpleSegmentDiv(html.Div):
                 create_value_input(
                     index=index,
                     path=prop_dd.value,
-                    dataset_model=dataset_model,
+                    discovered_datasource=discovered_datasource,
                     multi=children[1].value in MULTI_OPTION_OPERATORS,
                 )
             )

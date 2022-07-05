@@ -13,11 +13,16 @@ SIMPLE_SEGMENT_CONTAINER = "simple_segment_container"
 
 
 def creat_event_name_dropdown(
-    index, dataset_model: M.DatasetModel, step: int, event_segment_index: int
+    index,
+    discovered_datasource: M.DiscoveredEventDataSource,
+    step: int,
+    event_segment_index: int,
 ) -> dcc.Dropdown:
-    evt_names = [
-        k for k in dataset_model.__class__.__dict__.keys() if not k.startswith("_")
-    ]
+    evt_names = (
+        list(discovered_datasource.get_all_events().keys())
+        if discovered_datasource is not None
+        else []
+    )
     evt_names.sort()
     if step == 0 and event_segment_index == 0:
         placeholder = "Select users who did ..."
@@ -46,13 +51,13 @@ def create_container(index: str) -> html.Div:
 class EventSegmentDiv(html.Div):
     def __init__(
         self,
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
         step: int,
         event_segment_index: int,
     ):
         index = str(uuid4())
         event_dd = creat_event_name_dropdown(
-            index, dataset_model, step, event_segment_index
+            index, discovered_datasource, step, event_segment_index
         )
         container = create_container(index)
         super().__init__(
@@ -62,7 +67,11 @@ class EventSegmentDiv(html.Div):
         )
 
     @classmethod
-    def fix(cls, event_segment: html.Div, dataset_model: M.DatasetModel) -> html.Div:
+    def fix(
+        cls,
+        event_segment: html.Div,
+        discovered_datasource: M.DiscoveredEventDataSource,
+    ) -> html.Div:
         children = event_segment.children
         evt_name_dd = children[0]
         props = children[1]
@@ -73,11 +82,11 @@ class EventSegmentDiv(html.Div):
             res_props_children = []
             for prop in props.children:
                 if prop.children[0].value is not None:
-                    prop = SimpleSegmentDiv.fix(prop, dataset_model)
+                    prop = SimpleSegmentDiv.fix(prop, discovered_datasource)
                     res_props_children.append(prop)
             res_props_children.append(
                 SimpleSegmentDiv(
-                    evt_name_dd.value, dataset_model, len(res_props_children)
+                    evt_name_dd.value, discovered_datasource, len(res_props_children)
                 )
             )
             props.children = res_props_children
@@ -86,7 +95,9 @@ class EventSegmentDiv(html.Div):
 
     @classmethod
     def get_segment(
-        cls, event_segment: html.Div, dataset_model: M.DatasetModel
+        cls,
+        event_segment: html.Div,
+        discovered_datasource: M.DiscoveredEventDataSource,
     ) -> Optional[M.Segment]:
         children = event_segment.children
         event_name = children[0].value
@@ -95,11 +106,15 @@ class EventSegmentDiv(html.Div):
             len(simple_seg_children) == 1
             and simple_seg_children[0].children[0].value is None
         ):
-            return dataset_model.__class__.__dict__[event_name]
+            return M.SimpleSegment(
+                _left=discovered_datasource.get_all_events()[event_name]
+            )
 
         res_segment = None
         for seg_child in simple_seg_children:
-            simple_seg = SimpleSegmentDiv.get_simple_segment(seg_child, dataset_model)
+            simple_seg = SimpleSegmentDiv.get_simple_segment(
+                seg_child, discovered_datasource
+            )
             if simple_seg is None:
                 continue
             if res_segment is None:

@@ -15,7 +15,7 @@ from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.helper import (
     deserialize_component,
     find_component,
-    find_property_class,
+    find_event_field_def,
 )
 
 GRAPH = "graph"
@@ -71,11 +71,11 @@ class GraphContainer(dbc.Card):
         cls,
         all_seg_children: List[ComplexSegmentCard],
         mc_children: List[bc.Component],
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
         metric_type: str,
     ) -> Optional[M.Metric]:
         segments = AS.AllSegmentsContainer.get_segments(
-            all_seg_children, dataset_model, metric_type
+            all_seg_children, discovered_datasource, metric_type
         )
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         for seg in segments:
@@ -102,7 +102,7 @@ class GraphContainer(dbc.Card):
         )
         group_by = None
         if group_by_path is not None:
-            group_by = find_property_class(group_by_path, dataset_model)
+            group_by = find_event_field_def(group_by_path, discovered_datasource)
 
         if len(segments) > 1 and isinstance(metric, M.Conversion):
             conv_window = M.TimeWindow(
@@ -163,7 +163,7 @@ class GraphContainer(dbc.Card):
             metric_configs_children: List[bc.Component] = [
                 deserialize_component(child) for child in metric_configs
             ]
-            dm = webapp.get_dataset_model()
+            dm = webapp.get_discovered_datasource()
             if dm is None:
                 return []
 

@@ -386,6 +386,12 @@ class DiscoveredEventDataSource:
     def create_notebook_class_model(self) -> DatasetModel:
         return ML.ModelLoader().create_datasource_class_model(self)
 
+    def get_all_events(self) -> Dict[str, EventDef]:
+        res: Dict[str, EventDef] = {}
+        for val in self.definitions.values():
+            res = {**res, **val}
+        return res
+
     @staticmethod
     def _get_path(project: str, folder: str = "./", extension="mitzu") -> pathlib.Path:
         return pathlib.Path(folder, f"{project}.{extension}")

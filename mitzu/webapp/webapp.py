@@ -28,36 +28,40 @@ class MitzuWebApp:
     persistency_provider: PersistencyProvider
     app: Dash
 
-    _dataset_model: M.ProtectedState[M.DatasetModel] = M.ProtectedState[
-        M.DatasetModel
-    ]()
+    _discovered_datasource: M.ProtectedState[
+        M.DiscoveredEventDataSource
+    ] = M.ProtectedState[M.DiscoveredEventDataSource]()
     _current_project: Optional[str] = None
 
-    def get_dataset_model(self) -> Optional[M.DatasetModel]:
-        return self._dataset_model.get_value()
+    def get_discovered_datasource(self) -> Optional[M.DiscoveredEventDataSource]:
+        return self._discovered_datasource.get_value()
 
     def load_dataset_model(self, pathname: str):
         path_parts = pathname.split("/")
         curr_path_project_name = path_parts[PROJECT_PATH_INDEX]
         if (
             curr_path_project_name == self._current_project
-            and self._dataset_model.has_value()
+            and self._discovered_datasource.has_value()
         ):
             return
         self._current_project = curr_path_project_name
         if curr_path_project_name:
-            dd: M.DiscoveredEventDataSource = self.persistency_provider.get_item(
+            print(f"Loading project: {curr_path_project_name}")
+            dd: Optional[
+                M.DiscoveredEventDataSource
+            ] = self.persistency_provider.get_item(
                 f"{PATH_PROJECTS}/{curr_path_project_name}.mitzu"
             )
-            dd.source._discovered_event_datasource.set_value(dd)
-            self._dataset_model.set_value(dd.create_notebook_class_model())
+            if dd is not None:
+                dd.source._discovered_event_datasource.set_value(dd)
+            self._discovered_datasource.set_value(dd)
 
     def init_app(self):
         loc = dcc.Location(id=MITZU_LOCATION)
         navbar = MN.create_mitzu_navbar(self)
 
         all_segments = AS.AllSegmentsContainer(
-            self._dataset_model.get_value(), MNB.SEGMENTATION
+            self._discovered_datasource.get_value(), MNB.SEGMENTATION
         )
         metrics_config = MetricsConfigCard()
         graph = GraphContainer()

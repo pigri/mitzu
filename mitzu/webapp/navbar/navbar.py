@@ -5,7 +5,6 @@ import mitzu.webapp.navbar.metric_type_dropdown as MTD
 import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
 from dash import Input, Output, State, html
-from pyparsing import col
 
 LOGO = "/assets/logo.png"
 

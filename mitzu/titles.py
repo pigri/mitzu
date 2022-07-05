@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import cast
+from typing import Any, Tuple, cast
 
 import mitzu.model as M
 
@@ -45,6 +45,15 @@ def fix_title_text(title_text: str, max_length=MAX_SEGMENT_LENGTH) -> str:
         return title_text
 
 
+def fix_operators(op: M.Operator, right: Any) -> Tuple[M.Operator, Any]:
+    if op == M.Operator.ANY_OF and type(right) == tuple and len(right) == 1:
+        return M.Operator.EQ, right[0]
+    elif op == M.Operator.NONE_OF and type(right) == tuple and len(right) == 1:
+        return M.Operator.NEQ, right[0]
+    else:
+        return op, right
+
+
 def get_segment_title_text(segment: M.Segment) -> str:
     if isinstance(segment, M.SimpleSegment):
         s = cast(M.SimpleSegment, segment)
@@ -53,10 +62,11 @@ def get_segment_title_text(segment: M.Segment) -> str:
         else:
             left = cast(M.EventFieldDef, s._left)
             right = s._right
+            operator, right = fix_operators(s._operator, right)
             if right is None:
                 right = "null"
 
-            return f"<b>{left._event_name}</b> with <b>{left._field._name}</b> {s._operator} <b>{right}</b>"
+            return f"<b>{left._event_name}</b> with <b>{left._field._name}</b> {operator} <b>{right}</b>"
     elif isinstance(segment, M.ComplexSegment):
         c = cast(M.ComplexSegment, segment)
         return f"{get_segment_title_text(c._left)} {c._operator} {get_segment_title_text(c._right)}"
