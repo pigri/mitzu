@@ -23,7 +23,6 @@ GRAPH_CONTAINER = "graph_container"
 GRAPH_CONTAINER_HEADER = "graph_container_header"
 GRAPH_CONTAINER_AUTOFREFRESH = "graph_auto_refresh"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
-GRAPH_REFRESH_INTERVAL = "graph_refresh_interval"
 
 
 class GraphContainer(dbc.Card):
@@ -63,12 +62,6 @@ class GraphContainer(dbc.Card):
                             ],
                         )
                     ],
-                ),
-                dcc.Interval(
-                    id=GRAPH_REFRESH_INTERVAL,
-                    interval=750,
-                    disabled=True,
-                    n_intervals=0,
                 ),
             ],
         )
@@ -133,28 +126,20 @@ class GraphContainer(dbc.Card):
 
     @classmethod
     def create_graph(cls, metric: Optional[M.Metric]) -> dcc.Graph:
+        fig = metric.get_figure() if metric is not None else {}
+
         return dcc.Graph(
             id=GRAPH,
-            figure=metric.get_figure() if metric is not None else {},
+            figure=fig,
             config={"displayModeBar": False},
         )
 
     @classmethod
     def create_callbacks(cls, webapp: WA.MitzuWebApp):
         @webapp.app.callback(
-            Output(GRAPH_REFRESH_INTERVAL, "disabled"),
-            Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
-            prevent_initial_call=True,
-        )
-        def autorefresh_callback(value: bool) -> bool:
-            print(f"Auto refresh {value}")
-            return not value
-
-        @webapp.app.callback(
             Output(GRAPH_CONTAINER, "children"),
             [
                 Input(GRAPH_REFRESH_BUTTON, "n_clicks"),
-                Input(GRAPH_REFRESH_INTERVAL, "n_intervals"),
                 Input(WA.MITZU_LOCATION, "pathname"),
             ],
             [
@@ -166,7 +151,6 @@ class GraphContainer(dbc.Card):
         )
         def input_changed(
             n_clicks: int,
-            n_intervals: int,
             pathname: str,
             metric_type: str,
             all_segments: List[Dict],

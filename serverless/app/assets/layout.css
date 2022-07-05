@@ -1,17 +1,16 @@
 .main {
     min-width: 420px;
+    font-size: 12px !important;
 }
 
 .navbar {
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 /* all_segments.py */
 
 .all_segments {
-    margin-bottom: 5px;
-    font-size: 12px;
     min-width: 250px;
 }
 
@@ -23,7 +22,6 @@
 
 /* event_segment.py */
 .event_segment {
-    max-width: 500px;
     min-width: 100px;
 }
 
@@ -106,4 +104,5 @@
 
 .graph_container {
     min-height: 500px;
+    min-width: 700px;
 }

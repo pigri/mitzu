@@ -250,12 +250,15 @@ def plot_conversion(metric: M.ConversionMetric):
         showline=True,
         linecolor="rgba(127,127,127,0.1)",
         gridcolor="rgba(127,127,127,0.1)",
+        fixedrange=True,
     )
     fig.update_xaxes(
         rangemode="tozero",
         showline=True,
         linecolor="rgba(127,127,127,0.3)",
         gridcolor="rgba(127,127,127,0.3)",
+        fixedrange=True,
+        showgrid=False,
     )
     fig.update_layout(
         title={
@@ -354,12 +357,15 @@ def plot_segmentation(metric: M.SegmentationMetric):
         showline=True,
         linecolor="rgba(127,127,127,0.1)",
         gridcolor="rgba(127,127,127,0.1)",
+        fixedrange=True,
     )
     fig.update_xaxes(
         rangemode="tozero",
         showline=True,
         linecolor="rgba(127,127,127,0.3)",
         gridcolor="rgba(127,127,127,0.3)",
+        fixedrange=True,
+        showgrid=False,
     )
     title = T.get_segmentation_title(metric)
     fig.update_layout(
@@ -382,4 +388,5 @@ def plot_segmentation(metric: M.SegmentationMetric):
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode=get_hover_mode(metric, group_count),
     )
+
     return fig

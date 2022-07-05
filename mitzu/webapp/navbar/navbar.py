@@ -5,6 +5,7 @@ import mitzu.webapp.navbar.metric_type_dropdown as MTD
 import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
 from dash import Input, Output, State, html
+from pyparsing import col
 
 LOGO = "/assets/logo.png"
 
@@ -47,6 +48,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                 size="sm",
                                 color="primary",
                                 in_navbar=True,
+                                align_end=True,
                             ),
                         ),
                         dbc.Col(
