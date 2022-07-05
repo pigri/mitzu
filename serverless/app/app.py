@@ -59,6 +59,7 @@ def create_app():
         title="Mitzu",
         suppress_callback_exceptions=True,
     )
+    app._favicon = "assets/favicon_io/favicon.ico"
     project_binary = read_project_from_s3()
     deds = M.DiscoveredEventDataSource.load_from_project_binary(project_binary)
     pp = SimplePersistencyProvider(deds, "demo_athena_project")
