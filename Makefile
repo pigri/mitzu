@@ -2,17 +2,17 @@ POETRY := $(shell command -v poetry 2> /dev/null)
 
 
 format: ## formats all python code
-	$(POETRY) run black mitzu tests
+	$(POETRY) run black mitzu tests serverless
 
 lint: ## lints and checks formatting all python code
-	$(POETRY) run black --check mitzu tests
-	$(POETRY) run flake8 mitzu tests
+	$(POETRY) run black --check mitzu tests serverless
+	$(POETRY) run flake8 mitzu tests serverless
 
 autoflake: ## fixes imports, unused variables
-	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ 
+	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/  serverless/
 
 mypy:
-	$(POETRY) run mypy mitzu tests --ignore-missing-imports
+	$(POETRY) run mypy mitzu tests serverless --ignore-missing-imports 
 
 unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
@@ -41,7 +41,7 @@ notebook:
 	$(POETRY) run jupyter lab
 
 dash: 
-	$(POETRY) run python mitzu/webapp/webapp.py
+	$(POETRY) run python serverless/app/test_app.py
 
 build: check
 	$(POETRY) build
@@ -62,12 +62,13 @@ docker_build:
 	docker image build -t mitzu-demo-app ./serverless/app/
 
 sam_local:
+	$(POETRY) install && \
 	cd serverless && \
 	sam build && \
 	sam local start-api && \
 	cd ../
 
-deploy_sam:
+deploy_sam: publish
 	cd serverless && \
 	sam build && \
 	sam deploy && \

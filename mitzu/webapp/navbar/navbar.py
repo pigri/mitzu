@@ -6,7 +6,7 @@ import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
 from dash import Input, Output, State, html
 
-LOGO = "/assets/favicon_io/round-android-chrome-192x192.png"
+LOGO = "/assets/logo.png"
 
 
 NAVBAR_COLLAPSE = "navbar-collapse"

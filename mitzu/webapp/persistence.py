@@ -1,5 +1,6 @@
 import os
 import pickle
+from email.mime import base
 from typing import Any, List, Protocol
 
 
@@ -20,7 +21,7 @@ class PersistencyProvider(Protocol):
 class PathPersistencyProvider(PersistencyProvider):
     def __init__(self, base_path: str):
         if base_path.endswith("/"):
-            raise Exception("Base path shouldn't end with /")
+            base_path = base_path[:-1]
         self.base_path = base_path
 
     def _get_path(self, path: str) -> str:
