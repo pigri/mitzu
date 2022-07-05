@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import mitzu.model as M
 from dash import dcc, html
-from mitzu.webapp.simple_segment import SimpleSegment
+from mitzu.webapp.simple_segment import SimpleSegmentDiv
 
 EVENT_SEGMENT = "event_segment"
 EVENT_NAME_DROPDOWN = "event_name_dropdown"
@@ -43,7 +43,7 @@ def create_container(index: str) -> html.Div:
     return html.Div(id={"type": SIMPLE_SEGMENT_CONTAINER, "index": index}, children=[])
 
 
-class EventSegment(html.Div):
+class EventSegmentDiv(html.Div):
     def __init__(
         self,
         dataset_model: M.DatasetModel,
@@ -73,10 +73,12 @@ class EventSegment(html.Div):
             res_props_children = []
             for prop in props.children:
                 if prop.children[0].value is not None:
-                    prop = SimpleSegment.fix(prop, dataset_model)
+                    prop = SimpleSegmentDiv.fix(prop, dataset_model)
                     res_props_children.append(prop)
             res_props_children.append(
-                SimpleSegment(evt_name_dd.value, dataset_model, len(res_props_children))
+                SimpleSegmentDiv(
+                    evt_name_dd.value, dataset_model, len(res_props_children)
+                )
             )
             props.children = res_props_children
 
@@ -97,7 +99,7 @@ class EventSegment(html.Div):
 
         res_segment = None
         for seg_child in simple_seg_children:
-            simple_seg = SimpleSegment.get_simple_segment(seg_child, dataset_model)
+            simple_seg = SimpleSegmentDiv.get_simple_segment(seg_child, dataset_model)
             if simple_seg is None:
                 continue
             if res_segment is None:

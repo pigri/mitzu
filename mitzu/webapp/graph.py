@@ -1,15 +1,22 @@
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Union
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-from dash import Dash, dcc, html
+import mitzu.webapp.all_segments as AS
+import mitzu.webapp.metrics_config as MC
+import mitzu.webapp.navbar.metric_type_dropdown as MNB
+import mitzu.webapp.webapp as WA
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
-from mitzu.webapp.all_segments import ALL_SEGMENTS, AllSegmentsContainer
-from mitzu.webapp.complex_segment import ComplexSegment
-from mitzu.webapp.helper import deserialize_component, find_property_class
-from mitzu.webapp.metrics_config import METRICS_CONFIG
+from mitzu.webapp.complex_segment import ComplexSegmentCard
+from mitzu.webapp.helper import (
+    deserialize_component,
+    find_component,
+    find_property_class,
+)
 
 GRAPH = "graph"
 GRAPH_CONTAINER = "graph_container"
@@ -36,12 +43,6 @@ class GraphContainer(dbc.Card):
                             className=GRAPH_REFRESH_BUTTON,
                             id=GRAPH_REFRESH_BUTTON,
                         ),
-                        # dbc.Switch(
-                        #     label="Auto refresh",
-                        #     value=False,
-                        #     className=GRAPH_CONTAINER_AUTOFREFRESH,
-                        #     id=GRAPH_CONTAINER_AUTOFREFRESH,
-                        # ),
                     ],
                 ),
                 dbc.CardBody(
@@ -75,11 +76,14 @@ class GraphContainer(dbc.Card):
     @classmethod
     def create_metric(
         cls,
-        all_seg_children: List[ComplexSegment],
-        metric_configs_children: List[bc.Component],
+        all_seg_children: List[ComplexSegmentCard],
+        mc_children: List[bc.Component],
         dataset_model: M.DatasetModel,
+        metric_type: str,
     ) -> Optional[M.Metric]:
-        segments = AllSegmentsContainer.get_segments(all_seg_children, dataset_model)
+        segments = AS.AllSegmentsContainer.get_segments(
+            all_seg_children, dataset_model, metric_type
+        )
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         for seg in segments:
             if metric is None:
@@ -89,16 +93,20 @@ class GraphContainer(dbc.Card):
         if metric is None:
             return None
 
-        time_group_value = metric_configs_children[1].children[1].children[1].value
-        time_window_interval = (
-            metric_configs_children[1].children[2].children[1].children[0].value
-        )
-        time_window_interval_steps = (
-            metric_configs_children[1].children[2].children[1].children[1].value
-        )
-        dates = metric_configs_children[1].children[0].children[1].children[0]
+        time_group_value = find_component(MC.TIME_GROUP_DROWDOWN, mc_children).value
 
-        group_by_path = all_seg_children[0].children[2].children[0].value
+        time_window_interval = find_component(
+            MC.TIME_WINDOW_INTERVAL, mc_children
+        ).value
+        time_window_interval_steps = find_component(
+            MC.TIME_WINDOW_INTERVAL_STEPS, mc_children
+        ).value
+
+        dates = find_component(MC.DATE_RANGE_INPUT, mc_children)
+
+        group_by_path = (
+            all_seg_children[0].children[2].children[0].children[1].children[0].value
+        )
         group_by = None
         if group_by_path is not None:
             group_by = find_property_class(group_by_path, dataset_model)
@@ -132,14 +140,8 @@ class GraphContainer(dbc.Card):
         )
 
     @classmethod
-    def create_callbacks(
-        cls,
-        app: Dash,
-        dataset_model: M.DatasetModel,
-        requested_graph: M.ProtectedState[M.Metric],
-        current_graph: M.ProtectedState[M.Metric],
-    ):
-        @app.callback(
+    def create_callbacks(cls, webapp: WA.MitzuWebApp):
+        @webapp.app.callback(
             Output(GRAPH_REFRESH_INTERVAL, "disabled"),
             Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
             prevent_initial_call=True,
@@ -148,49 +150,41 @@ class GraphContainer(dbc.Card):
             print(f"Auto refresh {value}")
             return not value
 
-        @app.callback(
+        @webapp.app.callback(
             Output(GRAPH_CONTAINER, "children"),
             [
                 Input(GRAPH_REFRESH_BUTTON, "n_clicks"),
                 Input(GRAPH_REFRESH_INTERVAL, "n_intervals"),
+                Input(WA.MITZU_LOCATION, "pathname"),
             ],
             [
-                State(ALL_SEGMENTS, "children"),
-                State(METRICS_CONFIG, "children"),
+                State(MNB.METRIC_TYPE_DROPDOWN, "value"),
+                State(AS.ALL_SEGMENTS, "children"),
+                State(MC.METRICS_CONFIG, "children"),
             ],
             prevent_initial_call=True,
         )
         def input_changed(
-            n_intervals: int,
             n_clicks: int,
+            n_intervals: int,
+            pathname: str,
+            metric_type: str,
             all_segments: List[Dict],
             metric_configs: List[Dict],
         ) -> List[List]:
-            if requested_graph.has_value():
-                raise PreventUpdate()
-
+            webapp.load_dataset_model(pathname)
             all_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in all_segments
             ]
             metric_configs_children: List[bc.Component] = [
                 deserialize_component(child) for child in metric_configs
             ]
+            dm = webapp.get_dataset_model()
+            if dm is None:
+                return []
+
             metric = cls.create_metric(
-                all_seg_children, metric_configs_children, dataset_model
+                all_seg_children, metric_configs_children, dm, metric_type
             )
-
-            # curr_metric = current_graph.get_value()
-            # if metric == curr_metric:
-            #     if (
-            #         metric is not None
-            #         and curr_metric is not None
-            #         and curr_metric._config == metric._config
-            #     ):
-            #         print("prevent update")
-            #         raise PreventUpdate()
-
-            requested_graph.set_value(metric)
             res = cls.create_graph(metric)
-            current_graph.set_value(metric)
-            requested_graph.set_value(None)
             return [res]
