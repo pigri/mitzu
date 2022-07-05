@@ -9,6 +9,7 @@ import mitzu.model as M
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
 from dash import dcc, html
 from mitzu.webapp.event_segment import EventSegmentDiv
+from mitzu.webapp.helper import value_to_label
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"
@@ -30,7 +31,8 @@ def create_group_by_dropdown(
     )
     for event_name in event_names:
         for field in events[event_name]._fields:
-            field_name = field._get_name()
+            field_name = value_to_label(field._get_name()).replace(".", "/")
+            field_value = field._get_name()
             should_break = False
             for op in options:
                 if op["label"] == field_name:
@@ -38,7 +40,7 @@ def create_group_by_dropdown(
                     break
             if not should_break:
                 options.append(
-                    {"label": field_name, "value": f"{event_name}.{field_name}"}
+                    {"label": field_name, "value": f"{event_name}.{field_value}"}
                 )
     options.sort(key=lambda v: v["label"])
 

@@ -30,19 +30,47 @@ class GraphContainer(dbc.Card):
         super().__init__(
             children=[
                 dbc.CardHeader(
-                    id=GRAPH_CONTAINER_HEADER,
-                    className=GRAPH_CONTAINER_HEADER,
                     children=[
                         dbc.Button(
-                            children=[
-                                html.I(className="bi bi-arrow-clockwise"),
-                                "Refresh",
-                            ],
+                            children=[html.B(className="bi bi-arrow-clockwise")],
                             size="sm",
+                            color="primary",
                             className=GRAPH_REFRESH_BUTTON,
                             id=GRAPH_REFRESH_BUTTON,
+                            style={"margin-right": "10px"},
+                        ),
+                        dbc.ButtonGroup(
+                            [
+                                dbc.Button(
+                                    html.B(className="bi bi-bar-chart-line"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-graph-up"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-bezier2"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                    disabled=True,
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-grid-3x3-gap-fill"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                    disabled=True,
+                                ),
+                            ],
                         ),
                     ],
+                    id=GRAPH_CONTAINER_HEADER,
                 ),
                 dbc.CardBody(
                     children=[

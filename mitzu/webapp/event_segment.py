@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import mitzu.model as M
 from dash import dcc, html
+from mitzu.webapp.helper import value_to_label
 from mitzu.webapp.simple_segment import SimpleSegmentDiv
 
 EVENT_SEGMENT = "event_segment"
@@ -19,11 +20,14 @@ def creat_event_name_dropdown(
     event_segment_index: int,
 ) -> dcc.Dropdown:
     evt_names = (
-        list(discovered_datasource.get_all_events().keys())
+        [
+            {"label": value_to_label(v), "value": v}
+            for v in discovered_datasource.get_all_events()
+        ]
         if discovered_datasource is not None
         else []
     )
-    evt_names.sort()
+    evt_names.sort(key=lambda v: v["label"])
     if step == 0 and event_segment_index == 0:
         placeholder = "Select users who did ..."
     elif step > 0 and event_segment_index == 0:

@@ -7,7 +7,12 @@ import mitzu.model as M
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
-from mitzu.webapp.helper import deserialize_component, find_event_field_def, get_enums
+from mitzu.webapp.helper import (
+    deserialize_component,
+    find_event_field_def,
+    get_enums,
+    value_to_label,
+)
 
 SIMPLE_SEGMENT = "simple_segment"
 PROPERTY_NAME_DROPDOWN = "property_name_dropdown"
@@ -43,8 +48,12 @@ def create_property_dropdown(
     placeholder = "Where ..." if simple_segment_index == 0 else "And ..."
     fields_names = [f._get_name() for f in event._fields.keys()]
     fields_names.sort()
+    options = [
+        {"label": value_to_label(f).replace(".", "/"), "value": f"{event_name}.{f}"}
+        for f in fields_names
+    ]
     return dcc.Dropdown(
-        options=[{"label": f, "value": f"{event_name}.{f}"} for f in fields_names],
+        options=options,
         value=None,
         multi=False,
         placeholder=placeholder,
