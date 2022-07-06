@@ -68,7 +68,7 @@ sam_local:
 	sam local start-api && \
 	cd ../
 
-deploy_sam: publish
+deploy_sam:
 	cd serverless && \
 	sam build && \
 	sam deploy && \

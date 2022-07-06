@@ -44,7 +44,7 @@ def read_project_from_s3() -> bytes:
 
 
 def create_persistency_provider():
-    access_token = os.getenv("AWS_ACCESS_TOKEN")
+    access_token = os.getenv("AWS_ACCESS_KEY_ID")
     if access_token:
         project_binary = read_project_from_s3()
         deds = M.DiscoveredEventDataSource.load_from_project_binary(project_binary)
