@@ -1,28 +1,18 @@
-from __future__ import annotations
-
 import logging
 import os
 from typing import Any, List
 
 import awsgi
 import boto3
-import dash_bootstrap_components as dbc
 import mitzu.model as M
+import mitzu.webapp.persistence as P
 import mitzu.webapp.webapp as MWA
-from dash import Dash
 
-S3_BUCKET = os.getenv("MITZU_MODELS_BUCKET", None)
-MODEL_PATH = os.getenv("MITZU_MODEL", None)
+from dash_app import create_app
 
 logging.getLogger().setLevel(logging.INFO)
-
-
-def read_project_from_s3() -> bytes:
-    logging.info(f"Reading model from {S3_BUCKET}/{MODEL_PATH}")
-    s3 = boto3.resource("s3")
-    bucket = s3.Bucket(S3_BUCKET)
-    obj = bucket.Object(MODEL_PATH)
-    return obj.get()["Body"].read()
+S3_BUCKET = os.getenv("MITZU_MODELS_BUCKET", None)
+MODEL_PATH = os.getenv("MITZU_MODEL", None)
 
 
 class SimplePersistencyProvider(MWA.PersistencyProvider):
@@ -45,34 +35,28 @@ class SimplePersistencyProvider(MWA.PersistencyProvider):
         pass
 
 
-def create_app():
-    logging.info(f"Creating Mitzu Webapp ------------------------------------------")
-    app = Dash(
-        __name__,
-        compress=False,
-        external_stylesheets=[
-            dbc.themes.MINTY,
-            dbc.icons.BOOTSTRAP,
-            "assets/layout.css",
-            "assets/components.css",
-        ],
-        title="Mitzu",
-        suppress_callback_exceptions=True,
-    )
-    project_binary = read_project_from_s3()
-    deds = M.DiscoveredEventDataSource.load_from_project_binary(project_binary)
-    pp = SimplePersistencyProvider(deds, "demo_athena_project")
-
-    webapp = MWA.MitzuWebApp(
-        persistency_provider=pp,
-        app=app,
-    )
-    webapp.init_app()
-    logging.info(f"Finished initialization")
-    return app
+def read_project_from_s3() -> bytes:
+    logging.info(f"Reading model from {S3_BUCKET}/{MODEL_PATH}")
+    s3 = boto3.resource("s3")
+    bucket = s3.Bucket(S3_BUCKET)
+    obj = bucket.Object(MODEL_PATH)
+    return obj.get()["Body"].read()
 
 
-app = create_app()
+def create_persistency_provider():
+    access_token = os.getenv("AWS_ACCESS_KEY_ID")
+    if access_token:
+        project_binary = read_project_from_s3()
+        deds = M.DiscoveredEventDataSource.load_from_project_binary(project_binary)
+        return SimplePersistencyProvider(deds, "demo_athena_project")
+    else:
+        # Only for local testing
+        print("Local testing Persistency Provider")
+        return P.PathPersistencyProvider("demo")
+
+
+provider = create_persistency_provider()
+app = create_app(provider)
 
 
 def handler(event, context):

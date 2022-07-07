@@ -21,8 +21,10 @@ ALL_SEGMENTS = "all_segments"
 
 
 class AllSegmentsContainer(html.Div):
-    def __init__(self, dataset_model: M.DatasetModel, metric_type: str):
-        container = ComplexSegmentCard(dataset_model, 0, metric_type)
+    def __init__(
+        self, discovered_datasource: M.DiscoveredEventDataSource, metric_type: str
+    ):
+        container = ComplexSegmentCard(discovered_datasource, 0, metric_type)
         super().__init__(
             id=ALL_SEGMENTS,
             children=[container],
@@ -33,7 +35,7 @@ class AllSegmentsContainer(html.Div):
     def fix(
         cls,
         complex_seg_children: List[bc.Component],
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
         metric_type: str,
     ) -> List[bc.Component]:
         fixed_complex_seg_children = []
@@ -48,7 +50,7 @@ class AllSegmentsContainer(html.Div):
             if i >= limit:
                 break
             fixed_seg_child = ComplexSegmentCard.fix(
-                seg_child, dataset_model, i, metric_type
+                seg_child, discovered_datasource, i, metric_type
             )
             fixed_complex_seg_children.append(fixed_seg_child)
 
@@ -60,7 +62,9 @@ class AllSegmentsContainer(html.Div):
 
         if len(res_children) < limit:
             res_children.append(
-                ComplexSegmentCard(dataset_model, len(res_children), metric_type)
+                ComplexSegmentCard(
+                    discovered_datasource, len(res_children), metric_type
+                )
             )
         return res_children
 
@@ -68,14 +72,14 @@ class AllSegmentsContainer(html.Div):
     def get_segments(
         cls,
         all_seg_children: List[bc.Component],
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
         metric_type: str,
     ) -> List[M.Segment]:
         res = []
-        all_seg_children = cls.fix(all_seg_children, dataset_model, metric_type)
+        all_seg_children = cls.fix(all_seg_children, discovered_datasource, metric_type)
         for segment in all_seg_children:
 
-            segment = ComplexSegmentCard.get_segment(segment, dataset_model)
+            segment = ComplexSegmentCard.get_segment(segment, discovered_datasource)
             if segment is not None:
                 res.append(segment)
 
@@ -107,7 +111,7 @@ class AllSegmentsContainer(html.Div):
             complex_seg_children: List[bc.Component] = [
                 deserialize_component(child) for child in children
             ]
-            dm = webapp.get_dataset_model()
+            dm = webapp.get_discovered_datasource()
             if dm is None:
                 return []
 

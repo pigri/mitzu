@@ -15,7 +15,7 @@ from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.helper import (
     deserialize_component,
     find_component,
-    find_property_class,
+    find_event_field_def,
 )
 
 GRAPH = "graph"
@@ -23,7 +23,6 @@ GRAPH_CONTAINER = "graph_container"
 GRAPH_CONTAINER_HEADER = "graph_container_header"
 GRAPH_CONTAINER_AUTOFREFRESH = "graph_auto_refresh"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
-GRAPH_REFRESH_INTERVAL = "graph_refresh_interval"
 
 
 class GraphContainer(dbc.Card):
@@ -31,19 +30,47 @@ class GraphContainer(dbc.Card):
         super().__init__(
             children=[
                 dbc.CardHeader(
-                    id=GRAPH_CONTAINER_HEADER,
-                    className=GRAPH_CONTAINER_HEADER,
                     children=[
                         dbc.Button(
-                            children=[
-                                html.I(className="bi bi-arrow-clockwise"),
-                                "Refresh",
-                            ],
+                            children=[html.B(className="bi bi-arrow-clockwise")],
                             size="sm",
+                            color="primary",
                             className=GRAPH_REFRESH_BUTTON,
                             id=GRAPH_REFRESH_BUTTON,
+                            style={"margin-right": "10px"},
+                        ),
+                        dbc.ButtonGroup(
+                            [
+                                dbc.Button(
+                                    html.B(className="bi bi-bar-chart-line"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-graph-up"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-bezier2"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                    disabled=True,
+                                ),
+                                dbc.Button(
+                                    html.B(className="bi bi-grid-3x3-gap-fill"),
+                                    size="sm",
+                                    outline=True,
+                                    color="info",
+                                    disabled=True,
+                                ),
+                            ],
                         ),
                     ],
+                    id=GRAPH_CONTAINER_HEADER,
                 ),
                 dbc.CardBody(
                     children=[
@@ -64,12 +91,6 @@ class GraphContainer(dbc.Card):
                         )
                     ],
                 ),
-                dcc.Interval(
-                    id=GRAPH_REFRESH_INTERVAL,
-                    interval=750,
-                    disabled=True,
-                    n_intervals=0,
-                ),
             ],
         )
 
@@ -78,11 +99,11 @@ class GraphContainer(dbc.Card):
         cls,
         all_seg_children: List[ComplexSegmentCard],
         mc_children: List[bc.Component],
-        dataset_model: M.DatasetModel,
+        discovered_datasource: M.DiscoveredEventDataSource,
         metric_type: str,
     ) -> Optional[M.Metric]:
         segments = AS.AllSegmentsContainer.get_segments(
-            all_seg_children, dataset_model, metric_type
+            all_seg_children, discovered_datasource, metric_type
         )
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         for seg in segments:
@@ -109,7 +130,7 @@ class GraphContainer(dbc.Card):
         )
         group_by = None
         if group_by_path is not None:
-            group_by = find_property_class(group_by_path, dataset_model)
+            group_by = find_event_field_def(group_by_path, discovered_datasource)
 
         if len(segments) > 1 and isinstance(metric, M.Conversion):
             conv_window = M.TimeWindow(
@@ -133,28 +154,20 @@ class GraphContainer(dbc.Card):
 
     @classmethod
     def create_graph(cls, metric: Optional[M.Metric]) -> dcc.Graph:
+        fig = metric.get_figure() if metric is not None else {}
+
         return dcc.Graph(
             id=GRAPH,
-            figure=metric.get_figure() if metric is not None else {},
+            figure=fig,
             config={"displayModeBar": False},
         )
 
     @classmethod
     def create_callbacks(cls, webapp: WA.MitzuWebApp):
         @webapp.app.callback(
-            Output(GRAPH_REFRESH_INTERVAL, "disabled"),
-            Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
-            prevent_initial_call=True,
-        )
-        def autorefresh_callback(value: bool) -> bool:
-            print(f"Auto refresh {value}")
-            return not value
-
-        @webapp.app.callback(
             Output(GRAPH_CONTAINER, "children"),
             [
                 Input(GRAPH_REFRESH_BUTTON, "n_clicks"),
-                Input(GRAPH_REFRESH_INTERVAL, "n_intervals"),
                 Input(WA.MITZU_LOCATION, "pathname"),
             ],
             [
@@ -166,7 +179,6 @@ class GraphContainer(dbc.Card):
         )
         def input_changed(
             n_clicks: int,
-            n_intervals: int,
             pathname: str,
             metric_type: str,
             all_segments: List[Dict],
@@ -179,7 +191,7 @@ class GraphContainer(dbc.Card):
             metric_configs_children: List[bc.Component] = [
                 deserialize_component(child) for child in metric_configs
             ]
-            dm = webapp.get_dataset_model()
+            dm = webapp.get_discovered_datasource()
             if dm is None:
                 return []
 

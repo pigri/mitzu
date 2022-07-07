@@ -1,13 +1,13 @@
 import os
 import pickle
-from typing import Any, List, Protocol
+from typing import Any, List, Optional, Protocol
 
 
 class PersistencyProvider(Protocol):
     def list_keys(self, path: str) -> List[str]:
         pass
 
-    def get_item(self, key: str) -> Any:
+    def get_item(self, key: str) -> Optional[Any]:
         pass
 
     def delete_item(self, key: str) -> None:
@@ -20,7 +20,7 @@ class PersistencyProvider(Protocol):
 class PathPersistencyProvider(PersistencyProvider):
     def __init__(self, base_path: str):
         if base_path.endswith("/"):
-            raise Exception("Base path shouldn't end with /")
+            base_path = base_path[:-1]
         self.base_path = base_path
 
     def _get_path(self, path: str) -> str:
@@ -29,7 +29,7 @@ class PathPersistencyProvider(PersistencyProvider):
     def list_keys(self, path: str) -> List[str]:
         return os.listdir(self._get_path(path))
 
-    def get_item(self, key: str) -> Any:
+    def get_item(self, key: str) -> Optional[Any]:
         key = self._get_path(key)
         with open(key, "rb") as f:
             return pickle.load(f)

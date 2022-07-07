@@ -37,6 +37,6 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
 
         if not curr_path_project_name:
             return "Select project"
-        return curr_path_project_name
+        return value_to_label(curr_path_project_name)
 
     return res

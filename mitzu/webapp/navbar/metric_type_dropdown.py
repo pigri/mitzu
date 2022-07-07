@@ -36,6 +36,7 @@ def create_metric_type_dropdown(webapp: WA.MitzuWebApp):
                     className=METRIC_TYPE_DROPDOWN_OPTION,
                 ),
                 "value": val,
+                "disabled": val not in [SEGMENTATION, CONVERSION],
             }
             for val, css_class in TYPES.items()
         ],
