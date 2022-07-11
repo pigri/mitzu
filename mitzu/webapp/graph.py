@@ -6,6 +6,7 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.all_segments as AS
+import mitzu.webapp.complex_segment as CS
 import mitzu.webapp.metrics_config as MC
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.webapp as WA
@@ -15,6 +16,7 @@ from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.helper import (
     deserialize_component,
     find_component,
+    find_components,
     find_event_field_def,
 )
 
@@ -125,9 +127,9 @@ class GraphContainer(dbc.Card):
 
         dates = find_component(MC.DATE_RANGE_INPUT, mc_children)
 
-        group_by_path = (
-            all_seg_children[0].children[2].children[0].children[1].children[0].value
-        )
+        group_by_path = find_components(
+            CS.COMPLEX_SEGMENT_GROUP_BY, all_seg_children[0]
+        )[0].value
         group_by = None
         if group_by_path is not None:
             group_by = find_event_field_def(group_by_path, discovered_datasource)

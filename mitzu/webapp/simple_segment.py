@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 from uuid import uuid4
 
+import dash_bootstrap_components as dbc
 import mitzu.model as M
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import MATCH, Input, Output, State
@@ -62,6 +63,7 @@ def create_property_dropdown(
             "type": PROPERTY_NAME_DROPDOWN,
             "index": index,
         },
+        style={"width": "180px"},
     )
 
 
@@ -88,6 +90,7 @@ def create_value_input(
             "type": PROPERTY_VALUE_INPUT,
             "index": index,
         },
+        style={"width": "180px"},
     )
 
 
@@ -102,6 +105,7 @@ def create_property_operator_dropdown(index: str) -> dcc.Dropdown:
             "type": PROPERTY_OPERATOR_DROPDOWN,
             "index": index,
         },
+        style={"width": "70px"},
     )
 
 
@@ -113,7 +117,7 @@ def collect_values(values: List[str]) -> List[Any]:
     ]
 
 
-class SimpleSegmentDiv(html.Div):
+class SimpleSegmentDiv(dbc.InputGroup):
     def __init__(
         self,
         event_name: str,

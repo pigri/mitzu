@@ -239,7 +239,7 @@ def plot_conversion(metric: M.ConversionMetric):
             textposition="top center",
             textfont_size=9,
             line=dict(width=3.5),
-            mode="lines+text",
+            mode="lines",
             hovertemplate=get_conversion_hover_template(metric),
         )
 
@@ -346,7 +346,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
         fig.update_traces(
             line=dict(width=3.5),
             textfont_size=9,
-            mode="lines+text",
+            mode="lines",
             textposition="top center",
         )
     fig.update_traces(

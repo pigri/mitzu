@@ -16,6 +16,22 @@ Resources:
     Properties:
       BucketName: mitzu-demo
 
+  MitzuAccessPolicy:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyName: AllowParameterAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !GetAtt MitzuDemoBucket.Arn
+                - !Sub "${MitzuDemoBucket.Arn}/*"
+
   MitzuDemoApp:
     Type: AWS::Serverless::Function
     Properties:
@@ -41,16 +57,8 @@ Resources:
             Path: /
             Method: ANY
             RestApiId: !Ref DashApi
-      Policies:
-        - Version: 2012-10-17
-          Statement:
-            Effect: Allow
-            Action:
-              - s3:GetObject
-              - s3:ListBucket
-            Resource:
-              - !GetAtt MitzuDemoBucket.Arn
-              - !Sub "${MitzuDemoBucket.Arn}/*"
+      Role: !GetAtt MitzuAccessPolicy.Arn
+
     Metadata:
       DockerTag: v2
       DockerContext: ./app

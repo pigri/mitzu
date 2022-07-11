@@ -70,5 +70,21 @@ def find_component(
             return among
 
         return find_component(id, getattr(among, "children", []))
-
     return None
+
+
+def find_components(
+    type_id: str, among: Union[bc.Component, List[bc.Component]]
+) -> List[bc.Component]:
+
+    if type(among) == list:
+        res = []
+        for comp in among:
+            res.extend(find_components(type_id, comp))
+        return res
+    elif isinstance(among, bc.Component):
+        if getattr(among, "id", {}).get("type") == type_id:
+            return [among]
+
+        return find_components(type_id, getattr(among, "children", []))
+    return []

@@ -1,32 +1,31 @@
+.main {
+    font-size: 12px !important;
+}
+
 .DateInput_input {
     padding: 4px;
-    font-size: 14px;
 }
 
-.date_range_input {
-    min-width: 350px;
-}
-
-.card-body {
-    padding: 7px;
-}
-
-.Select-menu-outer {
-    min-width: 200px;
-}
 
 .Select-arrow-zone {
     display: None;
 }
 
-.Select-control {
-    border: 1px solid #cccccc33;
-    box-shadow: 0px;
+.complex_segment .card-body {
+    padding: 4px;
+}
+
+
+.complex_segment .Select-control {
+    border: 1px solid #ccccccff;
+    /* border: 0px; */
     background-color: #ffffff00;
 }
 
-.has-value .Select-control {
+.complex_segment .has-value .Select-control {
     border: 1px solid #ccccccff;
+    /* border: 0px; */
+    background-color: #55228822;
 }
 
 

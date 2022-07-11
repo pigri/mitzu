@@ -7,9 +7,10 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
+from click import option
 from dash import dcc, html
 from mitzu.webapp.event_segment import EventSegmentDiv
-from mitzu.webapp.helper import value_to_label
+from mitzu.webapp.helper import find_components, value_to_label
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"
@@ -17,12 +18,9 @@ COMPLEX_SEGMENT_FOOTER = "complex_segment_footer"
 COMPLEX_SEGMENT_GROUP_BY = "complex_segment_group_by"
 
 
-def create_group_by_dropdown(
-    index: str,
-    value: Optional[str],
-    event_names: List[str],
-    discovered_datasource: M.DiscoveredEventDataSource,
-) -> dcc:
+def get_group_by_options(
+    discovered_datasource: M.DiscoveredEventDataSource, event_names: List[str]
+):
     options: List[Dict[str, str]] = []
     events = (
         discovered_datasource.get_all_events()
@@ -43,7 +41,16 @@ def create_group_by_dropdown(
                     {"label": field_name, "value": f"{event_name}.{field_value}"}
                 )
     options.sort(key=lambda v: v["label"])
+    return options
 
+
+def create_group_by_dropdown(
+    index: str,
+    value: Optional[str],
+    event_names: List[str],
+    discovered_datasource: M.DiscoveredEventDataSource,
+) -> dcc:
+    options = get_group_by_options(discovered_datasource, event_names)
     if value not in [v["value"] for v in options]:
         value = None
 
@@ -55,7 +62,8 @@ def create_group_by_dropdown(
         searchable=True,
         multi=False,
         className=COMPLEX_SEGMENT_GROUP_BY,
-        placeholder="Select property",
+        placeholder="Group by ...",
+        style={"width": "100%"},
     )
 
 
@@ -68,29 +76,12 @@ class ComplexSegmentCard(dbc.Card):
     ):
         index = str(uuid4())
         header = dbc.CardHeader(
-            children=[
-                html.B(
-                    "Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}."
-                )
-            ]
+            [html.B("Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}.")]
         )
-        footer = dbc.CardFooter(
+        group_by = html.Div(
+            [create_group_by_dropdown(index, None, [], discovered_datasource)],
             className=COMPLEX_SEGMENT_FOOTER,
-            children=[
-                dbc.Row(
-                    children=[
-                        dbc.Col(html.B("Group by"), width=3),
-                        dbc.Col(
-                            create_group_by_dropdown(
-                                index, None, [], discovered_datasource
-                            ),
-                            width=9,
-                        ),
-                    ],
-                    align="center",
-                    justify="start",
-                )
-            ],
+            style={"padding": "4px"},
         )
         body = dbc.CardBody(
             children=[EventSegmentDiv(discovered_datasource, step, 0)],
@@ -98,7 +89,7 @@ class ComplexSegmentCard(dbc.Card):
         )
         super().__init__(
             id={"type": COMPLEX_SEGMENT, "index": index},
-            children=[header, body, footer],
+            children=[header, body, group_by],
             className=COMPLEX_SEGMENT,
         )
 
@@ -128,23 +119,14 @@ class ComplexSegmentCard(dbc.Card):
         res_props_children: List[bc.Component],
         discovered_datasource: M.DiscoveredEventDataSource,
     ) -> None:
-        group_by = complex_segment.children[2].children[0].children[1].children[0]
+        group_by = find_components(COMPLEX_SEGMENT_GROUP_BY, complex_segment)[0]
         event_names = []
         for evt_seg in res_props_children:
             if evt_seg.children[0].value is not None:
                 event_names.append(evt_seg.children[0].value)
 
-        new_group_by_drop_down = create_group_by_dropdown(
-            complex_segment.id["index"],
-            group_by.value,
-            event_names,
-            discovered_datasource,
-        )
-
-        if new_group_by_drop_down.options != group_by.options:
-            complex_segment.children[2].children[0].children[1].children[
-                0
-            ] = new_group_by_drop_down
+        options = get_group_by_options(discovered_datasource, event_names)
+        group_by.options = options
 
     @classmethod
     def fix(

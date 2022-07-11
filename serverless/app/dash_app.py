@@ -12,7 +12,6 @@ def create_app(persistency_provider: MWA.PersistencyProvider):
         external_stylesheets=[
             dbc.themes.COSMO,
             dbc.icons.BOOTSTRAP,
-            "assets/layout.css",
             "assets/components.css",
         ],
         title="Mitzu",
