@@ -7,6 +7,7 @@ import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.all_segments as AS
 import mitzu.webapp.complex_segment as CS
+import mitzu.webapp.dates_selector as DS
 import mitzu.webapp.metrics_config as MC
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.webapp as WA
@@ -34,42 +35,12 @@ class GraphContainer(dbc.Card):
                 dbc.CardHeader(
                     children=[
                         dbc.Button(
-                            children=[html.B(className="bi bi-arrow-clockwise")],
+                            children=[html.B(className="bi bi-play-fill")],
                             size="sm",
-                            color="primary",
+                            color="info",
                             className=GRAPH_REFRESH_BUTTON,
                             id=GRAPH_REFRESH_BUTTON,
                             style={"margin-right": "10px"},
-                        ),
-                        dbc.ButtonGroup(
-                            [
-                                dbc.Button(
-                                    html.B(className="bi bi-bar-chart-line"),
-                                    size="sm",
-                                    outline=True,
-                                    color="info",
-                                ),
-                                dbc.Button(
-                                    html.B(className="bi bi-graph-up"),
-                                    size="sm",
-                                    outline=True,
-                                    color="info",
-                                ),
-                                dbc.Button(
-                                    html.B(className="bi bi-bezier2"),
-                                    size="sm",
-                                    outline=True,
-                                    color="info",
-                                    disabled=True,
-                                ),
-                                dbc.Button(
-                                    html.B(className="bi bi-grid-3x3-gap-fill"),
-                                    size="sm",
-                                    outline=True,
-                                    color="info",
-                                    disabled=True,
-                                ),
-                            ],
                         ),
                     ],
                     id=GRAPH_CONTAINER_HEADER,
@@ -116,16 +87,16 @@ class GraphContainer(dbc.Card):
         if metric is None:
             return None
 
-        time_group_value = find_component(MC.TIME_GROUP_DROWDOWN, mc_children).value
+        time_group_value = find_component(DS.TIME_GROUP_DROWDOWN, mc_children).value
 
         time_window_interval = find_component(
-            MC.TIME_WINDOW_INTERVAL, mc_children
+            MC.CONVERSION_WINDOW_INTERVAL, mc_children
         ).value
         time_window_interval_steps = find_component(
-            MC.TIME_WINDOW_INTERVAL_STEPS, mc_children
+            MC.CONVERSION_WINDOW_INTERVAL_STEPS, mc_children
         ).value
 
-        dates = find_component(MC.DATE_RANGE_INPUT, mc_children)
+        custom_dates = find_component(DS.CUSTOM_DATE_PICKER, mc_children)
 
         group_by_path = find_components(
             CS.COMPLEX_SEGMENT_GROUP_BY, all_seg_children[0]
@@ -142,15 +113,15 @@ class GraphContainer(dbc.Card):
                 time_group=M.TimeGroup(time_group_value),
                 conv_window=conv_window,
                 group_by=group_by,
-                start_dt=dates.start_date,
-                end_dt=dates.end_date,
+                start_dt=custom_dates.start_date,
+                end_dt=custom_dates.end_date,
             )
         elif isinstance(metric, M.Segment):
             return metric.config(
                 time_group=M.TimeGroup(time_group_value),
                 group_by=group_by,
-                start_dt=dates.start_date,
-                end_dt=dates.end_date,
+                start_dt=custom_dates.start_date,
+                end_dt=custom_dates.end_date,
             )
         raise Exception("Invalid metric type")
 

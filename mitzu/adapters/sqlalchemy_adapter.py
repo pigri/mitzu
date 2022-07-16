@@ -266,7 +266,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             whereclause=(
                 (
                     dt_field
-                    >= self._correct_timestamp(self.source.get_default_start_dt())
+                    >= self._correct_timestamp(
+                        self.source.get_default_discovery_start_dt()
+                    )
                 )
                 & (
                     dt_field

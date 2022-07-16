@@ -6,11 +6,11 @@ from typing import Optional
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.all_segments as AS
+import mitzu.webapp.metrics_config as MC
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
 import mitzu.webapp.navbar.navbar as MN
 from dash import Dash, dcc, html
 from mitzu.webapp.graph import GraphContainer
-from mitzu.webapp.metrics_config import MetricsConfigCard
 from mitzu.webapp.persistence import PersistencyProvider
 
 MAIN = "main"
@@ -63,7 +63,7 @@ class MitzuWebApp:
         all_segments = AS.AllSegmentsContainer(
             self._discovered_datasource.get_value(), MNB.SEGMENTATION
         )
-        metrics_config = MetricsConfigCard()
+        metrics_config = MC.MetricsConfigCard()
         graph = GraphContainer()
 
         self.app.layout = html.Div(
@@ -91,3 +91,4 @@ class MitzuWebApp:
 
         AS.AllSegmentsContainer.create_callbacks(self)
         GraphContainer.create_callbacks(self)
+        MC.create_callbacks(self)

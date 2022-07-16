@@ -10,7 +10,7 @@ def create_app(persistency_provider: MWA.PersistencyProvider):
         __name__,
         compress=False,
         external_stylesheets=[
-            dbc.themes.COSMO,
+            dbc.themes.MINTY,
             dbc.icons.BOOTSTRAP,
             "assets/components.css",
         ],

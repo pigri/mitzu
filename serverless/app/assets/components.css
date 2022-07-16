@@ -1,13 +1,42 @@
-.main {
-    font-size: 12px !important;
-}
+.main {}
 
 .DateInput_input {
     padding: 4px;
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-body-color);
+    height: 36px;
 }
 
 
-.Select-arrow-zone {
+.DateRangePickerInput .DateInput_input {
+    border: 0px;
+}
+
+.DateRangePickerInput_clearDates_default:hover {
+    background: transparent;
+}
+
+.Select-value-label {
+    color: var(--bs-gray-600) !important;
+}
+
+.DateInput {
+    width: 100px;
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-body-color);
+}
+
+.DateRangePickerInput_clearDates_svg {
+    height: 10px;
+}
+
+.DateRangePickerInput_arrow_svg {
+    height: 16px;
+}
+
+.complex_segment .Select-arrow-zone {
     display: None;
 }
 
@@ -15,23 +44,41 @@
     padding: 4px;
 }
 
+.Select {
+    border-radius: 0px;
+    font: var(--bs-font-sans-serif);
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-body-color);
+}
+
+.Select-control {
+    border-radius: 0px;
+    font: var(--bs-font-sans-serif);
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-body-color);
+}
+
+.Select-menu-outer {
+    width: 120%;
+    white-space: nowrap;
+}
 
 .complex_segment .Select-control {
     border: 1px solid #ccccccff;
-    /* border: 0px; */
-    background-color: #ffffff00;
 }
 
 .complex_segment .has-value .Select-control {
     border: 1px solid #ccccccff;
-    /* border: 0px; */
-    background-color: #55228822;
 }
+
 
 
 .metric-type-dropdown {
     width: 180px;
     margin-right: 8px;
+    font-size: 12px;
 }
 
 .metric-type-dropdown-option {
@@ -42,4 +89,25 @@
 
 .metric-type-dropdown .Select-menu-outer {
     min-width: 180px;
+}
+
+
+
+
+/* Button Group */
+
+/* restyle radio items */
+.radio-group .form-check {
+    padding-left: 0;
+}
+
+.radio-group .btn-group>.form-check:not(:last-child)>.btn {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.radio-group .btn-group>.form-check:not(:first-child)>.btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -1px;
 }

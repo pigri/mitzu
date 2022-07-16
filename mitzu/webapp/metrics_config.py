@@ -5,14 +5,20 @@ from typing import Any, Dict, List
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-from dash import dcc, html
+import mitzu.webapp.dates_selector as DS
+import mitzu.webapp.webapp as WA
+from dash import dcc
 
 METRICS_CONFIG = "metrics_config"
-TIME_GROUP_DROWDOWN = "timegroup_dropdown"
-TIME_WINDOW = "time_window"
-TIME_WINDOW_INTERVAL = "time_window_interval"
-TIME_WINDOW_INTERVAL_STEPS = "time_window_interval_steps"
+
+CONVERSION_WINDOW = "conversion_window"
+CONVERSION_WINDOW_INTERVAL = "conversion_window_interval"
+CONVERSION_WINDOW_INTERVAL_STEPS = "conversion_window_interval_steps"
 DATE_RANGE_INPUT = "date_range_input"
+INPUT_GROUP_STYLE = {
+    "padding": "0rem 0.75rem",
+    "min-width": "120px",
+}
 
 
 def get_time_group_options(include_total: bool = True) -> List[Dict[str, int]]:
@@ -24,88 +30,53 @@ def get_time_group_options(include_total: bool = True) -> List[Dict[str, int]]:
     return res
 
 
-def create_time_group_dropdown() -> dcc.Dropdown:
-    return html.Div(
-        children=[
-            "Time group:",
-            dcc.Dropdown(
-                id=TIME_GROUP_DROWDOWN,
-                options=get_time_group_options(),
-                value=M.TimeGroup.DAY.value,
-                clearable=False,
-                className=TIME_GROUP_DROWDOWN,
-                multi=False,
-            ),
-        ]
-    )
-
-
 def create_time_window_component() -> bc.Component:
-    return html.Div(
+    return dbc.InputGroup(
+        id=CONVERSION_WINDOW,
         children=[
-            "Conversion window:",
-            html.Div(
-                id=TIME_WINDOW,
-                className=TIME_WINDOW,
-                children=[
-                    dbc.Input(
-                        id=TIME_WINDOW_INTERVAL,
-                        className=TIME_WINDOW_INTERVAL,
-                        type="number",
-                        max=10000,
-                        min=1,
-                        value=1,
-                        size="sm",
-                    ),
-                    dcc.Dropdown(
-                        id=TIME_WINDOW_INTERVAL_STEPS,
-                        className=TIME_WINDOW_INTERVAL_STEPS,
-                        clearable=False,
-                        multi=False,
-                        value=M.TimeGroup.DAY.value,
-                        options=get_time_group_options(False),
-                    ),
-                ],
+            dbc.InputGroupText("Conversion Window:", style=INPUT_GROUP_STYLE),
+            dbc.Input(
+                id=CONVERSION_WINDOW_INTERVAL,
+                className=CONVERSION_WINDOW_INTERVAL,
+                type="number",
+                max=10000,
+                min=1,
+                value=1,
+                size="sm",
+                style={"max-width": "60px"},
             ),
-        ]
-    )
-
-
-def create_start_dt_input():
-    return html.Div(
-        children=[
-            "Custom date range",
-            html.Div(
-                children=[
-                    dcc.DatePickerRange(
-                        clearable=True,
-                        display_format="YYYY-MM-DD",
-                        id=DATE_RANGE_INPUT,
-                        className=DATE_RANGE_INPUT,
-                        start_date=None,
-                        end_date=None,
-                        number_of_months_shown=2,
-                    )
-                ]
+            dcc.Dropdown(
+                id=CONVERSION_WINDOW_INTERVAL_STEPS,
+                className=CONVERSION_WINDOW_INTERVAL_STEPS,
+                clearable=False,
+                multi=False,
+                value=M.TimeGroup.DAY.value,
+                options=get_time_group_options(False),
+                style={"width": "120px", "height": "38px"},
             ),
-        ]
+        ],
     )
 
 
 class MetricsConfigCard(dbc.Card):
     def __init__(self):
         super().__init__(
-            children=[
-                dbc.CardBody(
-                    children=dbc.Row(
-                        children=[
-                            dbc.Col(create_start_dt_input()),
-                            dbc.Col(create_time_group_dropdown()),
-                            dbc.Col(create_time_window_component()),
-                        ]
-                    )
+            dbc.CardBody(
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            DS.create_date_selector(),
+                            xs=12,
+                            md=6,
+                        ),
+                        dbc.Col([create_time_window_component()], xs=12, md=6),
+                    ]
                 )
-            ],
+            ),
             id=METRICS_CONFIG,
             className=METRICS_CONFIG,
         )
+
+
+def create_callbacks(webapp: WA.MitzuWebApp):
+    DS.create_callbacks(webapp)
