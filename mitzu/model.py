@@ -59,6 +59,28 @@ class TimeGroup(Enum):
     def __str__(self) -> str:
         return self.name.lower()
 
+    @staticmethod
+    def group_by_string(tg: TimeGroup) -> str:
+        if tg == TimeGroup.TOTAL:
+            return "Overall"
+        if tg == TimeGroup.SECOND:
+            return "Every Second"
+        if tg == TimeGroup.MINUTE:
+            return "Every Minute"
+        if tg == TimeGroup.HOUR:
+            return "Hourly"
+        if tg == TimeGroup.DAY:
+            return "Daily"
+        if tg == TimeGroup.WEEK:
+            return "Weekly"
+        if tg == TimeGroup.MONTH:
+            return "Monthly"
+        if tg == TimeGroup.QUARTER:
+            return "Quarterly"
+        if tg == TimeGroup.YEAR:
+            return "Yearly"
+        raise Exception("Unkonwn timegroup value exception")
+
 
 class Operator(Enum):
     EQ = auto()
@@ -312,6 +334,7 @@ class EventDataSource:
     default_end_dt: Optional[datetime] = None
     default_property_sample_size: int = 10000
     default_lookback_days: int = 28
+    default_discovery_lookback_days: int = 2
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
         ProtectedState()
     )
@@ -340,6 +363,13 @@ class EventDataSource:
     def get_default_start_dt(self) -> datetime:
         if self.default_start_dt is None:
             return self.get_default_end_dt() - timedelta(self.default_lookback_days)
+        return self.default_start_dt
+
+    def get_default_discovery_start_dt(self) -> datetime:
+        if self.default_start_dt is None:
+            return self.get_default_end_dt() - timedelta(
+                self.default_discovery_lookback_days
+            )
         return self.default_start_dt
 
     def clear_adapter_cache(self):
