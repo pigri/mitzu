@@ -24,13 +24,25 @@ Resources:
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:ListBucket
-              Resource:
-                - !GetAtt MitzuDemoBucket.Arn
-
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt MitzuDemoBucket.Arn
+                  - !Sub ${MitzuDemoBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:*:${AWS::AccountId}:log-group:*:log-stream:*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub arn:aws:logs:*:${AWS::AccountId}:log-group:*
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
