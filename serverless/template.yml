@@ -16,7 +16,7 @@ Resources:
     Properties:
       BucketName: mitzu-demo
 
-  MitzuAccessPolicy:
+  MitzuAccessRole:
     Type: AWS::IAM::Role
     Properties:
       Policies:
@@ -30,7 +30,17 @@ Resources:
                 - s3:ListBucket
               Resource:
                 - !GetAtt MitzuDemoBucket.Arn
-                - !Sub "${MitzuDemoBucket.Arn}/*"
+
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action:
+              - "sts:AssumeRole"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
 
   MitzuDemoApp:
     Type: AWS::Serverless::Function
@@ -57,7 +67,7 @@ Resources:
             Path: /
             Method: ANY
             RestApiId: !Ref DashApi
-      Role: !GetAtt MitzuAccessPolicy.Arn
+      Role: !GetAtt MitzuAccessRole.Arn
 
     Metadata:
       DockerTag: v2
