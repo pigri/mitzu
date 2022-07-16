@@ -59,7 +59,6 @@ def find_event_field_def(
 def find_component(
     id: str, among: Union[bc.Component, List[bc.Component]]
 ) -> bc.Component:
-
     if type(among) == list:
         for comp in among:
             res = find_component(id, comp)
@@ -68,7 +67,6 @@ def find_component(
     elif isinstance(among, bc.Component):
         if getattr(among, "id", None) == id:
             return among
-
         return find_component(id, getattr(among, "children", []))
     return None
 

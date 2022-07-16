@@ -8,9 +8,10 @@ from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, cast
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
@@ -177,7 +178,27 @@ class TimeWindow:
             raise ValueError(f"Invalid argument type for TimeWindow parse: {type(val)}")
 
     def __str__(self) -> str:
-        return f"{self.value} {self.period}"
+        prular = "s" if self.value > 1 else ""
+        return f"{self.value} {self.period}{prular}"
+
+    def to_relative_delta(self) -> relativedelta:
+        if self.period == TimeGroup.SECOND:
+            return relativedelta(seconds=self.value)
+        if self.period == TimeGroup.MINUTE:
+            return relativedelta(minutes=self.value)
+        if self.period == TimeGroup.HOUR:
+            return relativedelta(hours=self.value)
+        if self.period == TimeGroup.DAY:
+            return relativedelta(days=self.value)
+        if self.period == TimeGroup.WEEK:
+            return relativedelta(weeks=self.value)
+        if self.period == TimeGroup.MONTH:
+            return relativedelta(months=self.value)
+        if self.period == TimeGroup.QUARTER:
+            return relativedelta(months=self.value * 4)
+        if self.period == TimeGroup.YEAR:
+            return relativedelta(year=self.value)
+        raise Exception(f"Unsupported relative delta value: {self.period}")
 
 
 T = TypeVar("T")
@@ -330,11 +351,13 @@ class EventDataSource:
     event_data_tables: List[EventDataTable]
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
+
     default_start_dt: Optional[datetime] = None
     default_end_dt: Optional[datetime] = None
     default_property_sample_size: int = 10000
-    default_lookback_days: int = 28
+    default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     default_discovery_lookback_days: int = 2
+
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
         ProtectedState()
     )
@@ -362,7 +385,10 @@ class EventDataSource:
 
     def get_default_start_dt(self) -> datetime:
         if self.default_start_dt is None:
-            return self.get_default_end_dt() - timedelta(self.default_lookback_days)
+            return (
+                self.get_default_end_dt()
+                - self.default_lookback_window.to_relative_delta()
+            )
         return self.default_start_dt
 
     def get_default_discovery_start_dt(self) -> datetime:
@@ -515,7 +541,7 @@ class EventDef:
 # =========================================== Metric definitions ===========================================
 
 DEF_MAX_GROUP_COUNT = 10
-DEF_LOOK_BACK_DAYS = 30
+DEF_LOOK_BACK_DAYS = TimeWindow(30, TimeGroup.DAY)
 DEF_CONV_WINDOW = TimeWindow(1, TimeGroup.DAY)
 DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
 DEF_TIME_GROUP = TimeGroup.DAY
@@ -525,7 +551,7 @@ DEF_TIME_GROUP = TimeGroup.DAY
 class MetricConfig:
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
-    lookback_days: Optional[int] = None
+    lookback_days: Optional[Union[int, TimeWindow]] = None
     time_group: Optional[TimeGroup] = None
     max_group_count: Optional[int] = None
     group_by: Optional[EventFieldDef] = None
@@ -546,10 +572,12 @@ class Metric(ABC):
         return self._config.max_group_count
 
     @property
-    def _lookback_days(self) -> int:
+    def _lookback_days(self) -> TimeWindow:
         if self._config.lookback_days is None:
             return DEF_LOOK_BACK_DAYS
-        return self._config.lookback_days
+        if type(self._config.lookback_days) == int:
+            return TimeWindow(self._config.lookback_days, TimeGroup.DAY)
+        return cast(TimeWindow, self._config.lookback_days)
 
     @property
     def _time_group(self) -> TimeGroup:
@@ -573,7 +601,7 @@ class Metric(ABC):
         eds = self._get_event_datasource()
         if eds.default_start_dt is not None:
             return eds.default_start_dt
-        return self._end_dt - timedelta(days=self._lookback_days)
+        return self._end_dt - self._lookback_days.to_relative_delta()
 
     @property
     def _end_dt(self) -> datetime:
@@ -708,9 +736,10 @@ class Conversion(ConversionMetric):
         time_group: Optional[str | TimeGroup] = None,
         group_by: Optional[EventFieldDef] = None,
         max_group_by_count: Optional[int] = None,
-        lookback_days: Optional[int] = None,
+        lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
     ) -> ConversionMetric | RetentionMetric:
+
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -759,7 +788,7 @@ class Segment(SegmentationMetric):
         time_group: Optional[str | TimeGroup] = None,
         group_by: Optional[EventFieldDef] = None,
         max_group_by_count: Optional[int] = None,
-        lookback_days: Optional[int] = None,
+        lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
     ) -> SegmentationMetric:
         config = MetricConfig(

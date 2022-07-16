@@ -1,24 +1,25 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.webapp as WA
 from dash import ctx, dcc, html
-from dash.dependencies import ALL, Input, Output, State
+from dash.dependencies import Input, Output, State
 from mitzu.webapp.helper import deserialize_component, find_component
 
 DATE_SELECTOR = "date_selector"
 TIME_GROUP_DROWDOWN = "timegroup_dropdown"
-CONVERSION_WINDOW_DROPDOWN = "timewindow_dropdown"
+LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
-CUSTOM_DATE_VALUE = -1
+CUSTOM_DATE_TW_VALUE = -1
 
 CUSTOM_OPTION = {
     "label": html.Span(" Custom", className="bi bi-calendar-range"),
-    "value": CUSTOM_DATE_VALUE,
+    "value": CUSTOM_DATE_TW_VALUE,
 }
 
 TW_MULTIPLIER: Dict[M.TimeGroup, int] = {
@@ -75,7 +76,7 @@ def create_date_selector():
             ),
             dcc.Dropdown(
                 options=[*tw_options, CUSTOM_OPTION],
-                id=CONVERSION_WINDOW_DROPDOWN,
+                id=LOOKBACK_WINDOW_DROPDOWN,
                 value=tw_options[0]["value"],
                 clearable=False,
                 searchable=False,
@@ -97,11 +98,36 @@ def create_date_selector():
     )
 
 
+def get_metric_timegroup(date_selector: bc.Component) -> M.TimeGroup:
+    return M.TimeGroup(find_component(TIME_GROUP_DROWDOWN, date_selector).value)
+
+
+def get_metric_lookback_days(
+    date_selector: bc.Component,
+) -> Optional[M.TimeWindow]:
+    time_window = find_component(LOOKBACK_WINDOW_DROPDOWN, date_selector).value
+    time_group = get_metric_timegroup(date_selector)
+
+    if time_window != CUSTOM_DATE_TW_VALUE:
+        if time_group == M.TimeGroup.TOTAL:
+            return M.TimeWindow(time_window, M.TimeGroup.DAY)
+        return M.TimeWindow(time_window, time_group)
+
+    return None
+
+
+def get_metric_custom_dates(
+    date_selector: bc.Component,
+) -> Tuple[datetime, datetime]:
+    custom_date_picker = find_component(CUSTOM_DATE_PICKER, date_selector)
+    return (custom_date_picker.start_date, custom_date_picker.end_date)
+
+
 def create_callbacks(webapp: WA.MitzuWebApp):
     @webapp.app.callback(
         Output(DATE_SELECTOR, "children"),
         Input(TIME_GROUP_DROWDOWN, "value"),
-        Input(CONVERSION_WINDOW_DROPDOWN, "value"),
+        Input(LOOKBACK_WINDOW_DROPDOWN, "value"),
         State(DATE_SELECTOR, "children"),
     )
     def input_changed(
@@ -115,18 +141,18 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         date_selector = find_component(CUSTOM_DATE_PICKER, children)
         if ctx.triggered_id == TIME_GROUP_DROWDOWN:
             tw_options = create_timewindow_options(M.TimeGroup(time_group_value))
-            tw_dropdown = find_component(CONVERSION_WINDOW_DROPDOWN, children)
+            tw_dropdown = find_component(LOOKBACK_WINDOW_DROPDOWN, children)
             old_tw_dd_value = tw_dropdown.value
             tw_dropdown.options = [*tw_options, CUSTOM_OPTION]
 
-            if old_tw_dd_value == CUSTOM_DATE_VALUE:
-                tw_dropdown.value = CUSTOM_DATE_VALUE
+            if old_tw_dd_value == CUSTOM_DATE_TW_VALUE:
+                tw_dropdown.value = CUSTOM_DATE_TW_VALUE
                 date_selector.style["display"] = "inline"
             else:
                 tw_dropdown.value = tw_options[0]["value"]
                 date_selector.style["display"] = "none"
-        elif ctx.triggered_id == CONVERSION_WINDOW_DROPDOWN:
+        elif ctx.triggered_id == LOOKBACK_WINDOW_DROPDOWN:
             date_selector.style["display"] = (
-                "none" if time_window_value != CUSTOM_DATE_VALUE else "inline"
+                "none" if time_window_value != CUSTOM_DATE_TW_VALUE else "inline"
             )
         return [child.to_plotly_json() for child in children]

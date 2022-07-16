@@ -87,16 +87,19 @@ class GraphContainer(dbc.Card):
         if metric is None:
             return None
 
-        time_group_value = find_component(DS.TIME_GROUP_DROWDOWN, mc_children).value
-
-        time_window_interval = find_component(
+        conv_window_interval = find_component(
             MC.CONVERSION_WINDOW_INTERVAL, mc_children
         ).value
-        time_window_interval_steps = find_component(
+        conv_window_interval_steps = find_component(
             MC.CONVERSION_WINDOW_INTERVAL_STEPS, mc_children
         ).value
 
-        custom_dates = find_component(DS.CUSTOM_DATE_PICKER, mc_children)
+        date_selector = find_component(DS.DATE_SELECTOR, mc_children)
+        time_group = DS.get_metric_timegroup(date_selector)
+        lookback_days = DS.get_metric_lookback_days(date_selector)
+        start_date, end_date = None, None
+        if lookback_days is None:
+            start_date, end_date = DS.get_metric_custom_dates(date_selector)
 
         group_by_path = find_components(
             CS.COMPLEX_SEGMENT_GROUP_BY, all_seg_children[0]
@@ -107,21 +110,23 @@ class GraphContainer(dbc.Card):
 
         if len(segments) > 1 and isinstance(metric, M.Conversion):
             conv_window = M.TimeWindow(
-                time_window_interval, M.TimeGroup(time_window_interval_steps)
+                conv_window_interval, M.TimeGroup(conv_window_interval_steps)
             )
             return metric.config(
-                time_group=M.TimeGroup(time_group_value),
+                time_group=M.TimeGroup(time_group),
                 conv_window=conv_window,
                 group_by=group_by,
-                start_dt=custom_dates.start_date,
-                end_dt=custom_dates.end_date,
+                lookback_days=lookback_days,
+                start_dt=start_date,
+                end_dt=end_date,
             )
         elif isinstance(metric, M.Segment):
             return metric.config(
-                time_group=M.TimeGroup(time_group_value),
+                time_group=M.TimeGroup(time_group),
                 group_by=group_by,
-                start_dt=custom_dates.start_date,
-                end_dt=custom_dates.end_date,
+                lookback_days=lookback_days,
+                start_dt=start_date,
+                end_dt=end_date,
             )
         raise Exception("Invalid metric type")
 

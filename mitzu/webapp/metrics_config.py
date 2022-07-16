@@ -14,11 +14,6 @@ METRICS_CONFIG = "metrics_config"
 CONVERSION_WINDOW = "conversion_window"
 CONVERSION_WINDOW_INTERVAL = "conversion_window_interval"
 CONVERSION_WINDOW_INTERVAL_STEPS = "conversion_window_interval_steps"
-DATE_RANGE_INPUT = "date_range_input"
-INPUT_GROUP_STYLE = {
-    "padding": "0rem 0.75rem",
-    "min-width": "120px",
-}
 
 
 def get_time_group_options(include_total: bool = True) -> List[Dict[str, int]]:
@@ -34,7 +29,7 @@ def create_time_window_component() -> bc.Component:
     return dbc.InputGroup(
         id=CONVERSION_WINDOW,
         children=[
-            dbc.InputGroupText("Conversion Window:", style=INPUT_GROUP_STYLE),
+            dbc.InputGroupText("Conversion Window:"),
             dbc.Input(
                 id=CONVERSION_WINDOW_INTERVAL,
                 className=CONVERSION_WINDOW_INTERVAL,
@@ -61,18 +56,20 @@ def create_time_window_component() -> bc.Component:
 class MetricsConfigCard(dbc.Card):
     def __init__(self):
         super().__init__(
-            dbc.CardBody(
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            DS.create_date_selector(),
-                            xs=12,
-                            md=6,
-                        ),
-                        dbc.Col([create_time_window_component()], xs=12, md=6),
-                    ]
+            children=[
+                dbc.CardBody(
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                DS.create_date_selector(),
+                                xs=12,
+                                md=6,
+                            ),
+                            dbc.Col([create_time_window_component()], xs=12, md=6),
+                        ]
+                    )
                 )
-            ),
+            ],
             id=METRICS_CONFIG,
             className=METRICS_CONFIG,
         )

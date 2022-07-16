@@ -21,7 +21,7 @@ def format_date(metric: M.Metric, dt: datetime, adjust_rounding: int = 0) -> str
 def get_timeframe_str(metric: M.Metric) -> str:
     if metric._config.start_dt is None:
         if metric._config.end_dt is None:
-            return f"latest {metric._lookback_days} days"
+            return f"latest {metric._lookback_days}"
         else:
             return f"last <b>{metric._lookback_days}</b> days before <b>{format_date(metric,metric._end_dt,1)}</b>"
     else:

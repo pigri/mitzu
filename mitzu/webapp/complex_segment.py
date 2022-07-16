@@ -7,7 +7,6 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
-from click import option
 from dash import dcc, html
 from mitzu.webapp.event_segment import EventSegmentDiv
 from mitzu.webapp.helper import find_components, value_to_label
