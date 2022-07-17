@@ -72,7 +72,10 @@ class MitzuWebApp:
                 navbar,
                 dbc.Container(
                     children=[
-                        dbc.Row(children=[dbc.Col(html.Div(metrics_config))]),
+                        dbc.Row(
+                            children=[dbc.Col(html.Div(metrics_config))],
+                            className="g-1 mb-1",
+                        ),
                         dbc.Row(
                             children=[
                                 dbc.Col(all_segments, lg=4, xs=12, xl=3),
@@ -80,6 +83,7 @@ class MitzuWebApp:
                             ],
                             justify="start",
                             align="top",
+                            className="g-1",
                         ),
                     ],
                     fluid=True,

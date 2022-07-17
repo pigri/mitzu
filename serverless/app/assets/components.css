@@ -4,7 +4,7 @@
     padding: 4px;
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
     height: 36px;
 }
 
@@ -18,14 +18,14 @@
 }
 
 .Select-value-label {
-    color: var(--bs-gray-600) !important;
+    color: var(--bs-gray-dark);
 }
 
 .DateInput {
     width: 100px;
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .DateRangePickerInput_clearDates_svg {
@@ -49,7 +49,7 @@
     font: var(--bs-font-sans-serif);
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .Select-control {
@@ -57,11 +57,12 @@
     font: var(--bs-font-sans-serif);
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .complex_segment .Select-control {
     font-size: 12px;
+    color: var(--bs-gray-dark);
 }
 
 
@@ -69,14 +70,15 @@
     min-width: 400px;
     white-space: nowrap;
     font-size: 12px;
+    color: var(--bs-gray-dark);
 }
 
 .complex_segment .Select-control {
-    border: 1px solid #ccccccff;
+    border: 0px solid #ccccccff;
 }
 
 .complex_segment .has-value .Select-control {
-    border: 1px solid #ccccccff;
+    border: 0px solid #ccccccff;
 }
 
 

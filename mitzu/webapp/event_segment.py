@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import mitzu.model as M
 from dash import dcc, html
-from mitzu.webapp.helper import value_to_label
+from mitzu.webapp.helper import find_first_component, value_to_label
 from mitzu.webapp.simple_segment import SimpleSegmentDiv
 
 EVENT_SEGMENT = "event_segment"
@@ -103,19 +103,21 @@ class EventSegmentDiv(html.Div):
         event_segment: html.Div,
         discovered_datasource: M.DiscoveredEventDataSource,
     ) -> Optional[M.Segment]:
-        children = event_segment.children
-        event_name = children[0].value
-        simple_seg_children = children[1].children
-        if (
-            len(simple_seg_children) == 1
-            and simple_seg_children[0].children[0].value is None
-        ):
+
+        event_name_dd = find_first_component(
+            EVENT_NAME_DROPDOWN, event_segment.children
+        )
+        ssc_children = find_first_component(
+            SIMPLE_SEGMENT_CONTAINER, event_segment
+        ).children
+
+        if len(ssc_children) == 1 and ssc_children[0].children[0].value is None:
             return M.SimpleSegment(
-                _left=discovered_datasource.get_all_events()[event_name]
+                _left=discovered_datasource.get_all_events()[event_name_dd.value]
             )
 
         res_segment = None
-        for seg_child in simple_seg_children:
+        for seg_child in ssc_children:
             simple_seg = SimpleSegmentDiv.get_simple_segment(
                 seg_child, discovered_datasource
             )

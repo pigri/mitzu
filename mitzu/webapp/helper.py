@@ -56,18 +56,23 @@ def find_event_field_def(
     return None
 
 
-def find_component(
-    id: str, among: Union[bc.Component, List[bc.Component]]
+def find_first_component(
+    id_or_type_id: str, among: Union[bc.Component, List[bc.Component]]
 ) -> bc.Component:
     if type(among) == list:
         for comp in among:
-            res = find_component(id, comp)
+            res = find_first_component(id_or_type_id, comp)
             if res is not None:
                 return res
     elif isinstance(among, bc.Component):
-        if getattr(among, "id", None) == id:
+        id_type = type(getattr(among, "id", None))
+        if (
+            id_type == dict
+            and getattr(among, "id", {}).get("type", None) == id_or_type_id
+        ) or (id_type == str and getattr(among, "id", None) == id_or_type_id):
             return among
-        return find_component(id, getattr(among, "children", []))
+
+        return find_first_component(id_or_type_id, getattr(among, "children", []))
     return None
 
 

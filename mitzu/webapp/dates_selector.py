@@ -9,7 +9,7 @@ import mitzu.model as M
 import mitzu.webapp.webapp as WA
 from dash import ctx, dcc, html
 from dash.dependencies import Input, Output, State
-from mitzu.webapp.helper import deserialize_component, find_component
+from mitzu.webapp.helper import deserialize_component, find_first_component
 
 DATE_SELECTOR = "date_selector"
 TIME_GROUP_DROWDOWN = "timegroup_dropdown"
@@ -99,13 +99,13 @@ def create_date_selector():
 
 
 def get_metric_timegroup(date_selector: bc.Component) -> M.TimeGroup:
-    return M.TimeGroup(find_component(TIME_GROUP_DROWDOWN, date_selector).value)
+    return M.TimeGroup(find_first_component(TIME_GROUP_DROWDOWN, date_selector).value)
 
 
 def get_metric_lookback_days(
     date_selector: bc.Component,
 ) -> Optional[M.TimeWindow]:
-    time_window = find_component(LOOKBACK_WINDOW_DROPDOWN, date_selector).value
+    time_window = find_first_component(LOOKBACK_WINDOW_DROPDOWN, date_selector).value
     time_group = get_metric_timegroup(date_selector)
 
     if time_window != CUSTOM_DATE_TW_VALUE:
@@ -119,7 +119,7 @@ def get_metric_lookback_days(
 def get_metric_custom_dates(
     date_selector: bc.Component,
 ) -> Tuple[datetime, datetime]:
-    custom_date_picker = find_component(CUSTOM_DATE_PICKER, date_selector)
+    custom_date_picker = find_first_component(CUSTOM_DATE_PICKER, date_selector)
     return (custom_date_picker.start_date, custom_date_picker.end_date)
 
 
@@ -138,10 +138,10 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         children: List[bc.Component] = [
             deserialize_component(child) for child in all_children
         ]
-        date_selector = find_component(CUSTOM_DATE_PICKER, children)
+        date_selector = find_first_component(CUSTOM_DATE_PICKER, children)
         if ctx.triggered_id == TIME_GROUP_DROWDOWN:
             tw_options = create_timewindow_options(M.TimeGroup(time_group_value))
-            tw_dropdown = find_component(LOOKBACK_WINDOW_DROPDOWN, children)
+            tw_dropdown = find_first_component(LOOKBACK_WINDOW_DROPDOWN, children)
             old_tw_dd_value = tw_dropdown.value
             tw_dropdown.options = [*tw_options, CUSTOM_OPTION]
 
