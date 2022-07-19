@@ -29,11 +29,11 @@ def creat_event_name_dropdown(
     )
     evt_names.sort(key=lambda v: v["label"])
     if step == 0 and event_segment_index == 0:
-        placeholder = "+ Event"
+        placeholder = "Select Event"
     elif step > 0 and event_segment_index == 0:
-        placeholder = "+ Then"
+        placeholder = "Then"
     else:
-        placeholder = "+ Or Event"
+        placeholder = "Or Event"
 
     return dcc.Dropdown(
         options=evt_names,

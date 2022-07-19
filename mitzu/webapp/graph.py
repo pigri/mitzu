@@ -119,6 +119,7 @@ class GraphContainer(dbc.Card):
                 lookback_days=lookback_days,
                 start_dt=start_date,
                 end_dt=end_date,
+                custom_title="",
             )
         elif isinstance(metric, M.Segment):
             return metric.config(
@@ -127,6 +128,7 @@ class GraphContainer(dbc.Card):
                 lookback_days=lookback_days,
                 start_dt=start_date,
                 end_dt=end_date,
+                custom_title="",
             )
         raise Exception("Invalid metric type")
 

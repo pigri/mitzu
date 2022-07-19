@@ -174,7 +174,7 @@ def get_group_label(metric: M.Metric) -> str:
 def plot_conversion(metric: M.ConversionMetric):
     pdf = metric.get_df()
     pdf = fix_na_cols(pdf, metric)
-    px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
+    px.defaults.color_discrete_sequence = px.colors.qualitative.Safe
     pdf, group_count = filter_top_conversion_groups(pdf, metric)
     pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].astype(str)
     pdf[GA.CVR_COL] = round(pdf[GA.CVR_COL], 2)
@@ -204,7 +204,7 @@ def plot_conversion(metric: M.ConversionMetric):
                 STEP_COL: "Steps",
                 GA.CVR_COL: "Conversion",
                 GA.USER_COUNT_COL: "Unique User Count",
-                GA.GROUP_COL: get_group_label(metric),
+                GA.GROUP_COL: "",  # get_group_label(metric),
             },
         )
         fig.update_traces(
@@ -232,7 +232,7 @@ def plot_conversion(metric: M.ConversionMetric):
             labels={
                 GA.DATETIME_COL: "",
                 GA.CVR_COL: "Conversion",
-                GA.GROUP_COL: get_group_label(metric),
+                GA.GROUP_COL: "",  # get_group_label(metric),
             },
         )
         fig.update_traces(
@@ -244,7 +244,11 @@ def plot_conversion(metric: M.ConversionMetric):
         )
 
     fig.update_layout(yaxis_ticksuffix="%")
-    title = T.get_conversion_title(metric)
+    if metric._config.custom_title is not None:
+        title = metric._config.custom_title
+    else:
+        title = T.get_conversion_title(metric)
+
     fig.update_yaxes(
         rangemode="tozero",
         showline=True,
@@ -279,6 +283,7 @@ def plot_conversion(metric: M.ConversionMetric):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode=get_hover_mode(metric, group_count),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left"),
     )
     return fig
 
@@ -287,7 +292,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
     pdf = metric.get_df()
     pdf = fix_na_cols(pdf, metric)
 
-    px.defaults.color_discrete_sequence = px.colors.qualitative.Pastel
+    px.defaults.color_discrete_sequence = px.colors.qualitative.Safe
 
     pdf, group_count = filter_top_segmentation_groups(pdf, metric)
     pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].astype(str)
@@ -310,7 +315,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
             custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
             labels={
                 x_title: x_title_label,
-                GA.GROUP_COL: get_group_label(metric),
+                GA.GROUP_COL: "",  # get_group_label(metric),
                 GA.USER_COUNT_COL: "Unique User Count",
             },
         )
@@ -339,7 +344,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
                 custom_data=[GA.EVENT_COUNT_COL, GA.GROUP_COL],
                 labels={
                     GA.DATETIME_COL: "",
-                    GA.GROUP_COL: get_group_label(metric),
+                    GA.GROUP_COL: "",  # get_group_label(metric),
                     GA.USER_COUNT_COL: "Unique User Count",
                 },
             )
@@ -367,7 +372,11 @@ def plot_segmentation(metric: M.SegmentationMetric):
         fixedrange=True,
         showgrid=False,
     )
-    title = T.get_segmentation_title(metric)
+    if metric._config.custom_title is not None:
+        title = metric._config.custom_title
+    else:
+        title = T.get_segmentation_title(metric)
+
     fig.update_layout(
         title={
             "text": title,
@@ -387,6 +396,7 @@ def plot_segmentation(metric: M.SegmentationMetric):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode=get_hover_mode(metric, group_count),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left"),
     )
 
     return fig

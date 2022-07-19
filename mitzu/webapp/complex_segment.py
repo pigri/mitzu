@@ -28,7 +28,7 @@ def get_group_by_options(
     )
     for event_name in event_names:
         for field in events[event_name]._fields:
-            field_name = value_to_label(field._get_name()).replace(".", "/")
+            field_name = value_to_label(field._get_name()).split(".")[-1]
             field_value = field._get_name()
             should_break = False
             for op in options:
@@ -61,7 +61,7 @@ def create_group_by_dropdown(
         searchable=True,
         multi=False,
         className=COMPLEX_SEGMENT_GROUP_BY,
-        placeholder="- Group By",
+        placeholder="Group By",
         style={"width": "100%"},
     )
 
@@ -74,9 +74,6 @@ class ComplexSegmentCard(dbc.Card):
         metric_type: str,
     ):
         index = str(uuid4())
-        # header = dbc.CardHeader(
-        #     [html.B("Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}.")]
-        # )
         group_by = html.Div(
             [create_group_by_dropdown(index, None, [], discovered_datasource)],
             className=COMPLEX_SEGMENT_FOOTER,
@@ -135,9 +132,6 @@ class ComplexSegmentCard(dbc.Card):
         step: int,
         metric_type: str,
     ) -> ComplexSegmentCard:
-        # complex_segment.children[0].children[0].children = (
-        #     "Events" if metric_type == MNB.SEGMENTATION else f"Step {step+1}."
-        # )
         res_props_children = []
         event_segments = find_components(ES.EVENT_SEGMENT, complex_segment)
 
