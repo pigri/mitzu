@@ -7,7 +7,6 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.event_segment as ES
-import mitzu.webapp.navbar.metric_type_dropdown as MNB
 from dash import dcc, html
 from mitzu.webapp.helper import find_components, value_to_label
 
@@ -61,7 +60,7 @@ def create_group_by_dropdown(
         searchable=True,
         multi=False,
         className=COMPLEX_SEGMENT_GROUP_BY,
-        placeholder="Group By",
+        placeholder="- Group By",
         style={"width": "100%"},
     )
 
@@ -77,15 +76,18 @@ class ComplexSegmentCard(dbc.Card):
         group_by = html.Div(
             [create_group_by_dropdown(index, None, [], discovered_datasource)],
             className=COMPLEX_SEGMENT_FOOTER,
-            style={"padding": "4px"},
         )
-        body = dbc.CardBody(
+        header = dbc.CardHeader(
+            "Events" if metric_type == "segmentation" else f"{step+1}. Step",
+            style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
+        )
+        body = html.Div(
             children=[ES.EventSegmentDiv(discovered_datasource, step, 0)],
             className=COMPLEX_SEGMENT_BODY,
         )
         super().__init__(
             id={"type": COMPLEX_SEGMENT, "index": index},
-            children=[body, group_by],
+            children=[header, body, group_by],
             className=COMPLEX_SEGMENT,
         )
 
@@ -144,6 +146,8 @@ class ComplexSegmentCard(dbc.Card):
         )
 
         cls.fix_group_by_dd(complex_segment, res_props_children, discovered_datasource)
-
-        complex_segment.children[0].children = res_props_children
+        complex_segment.children[0].children = (
+            "Events" if metric_type == "segmentation" else f"{step+1}. Step"
+        )
+        complex_segment.children[1].children = res_props_children
         return complex_segment

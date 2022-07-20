@@ -78,8 +78,8 @@ class MitzuWebApp:
                         ),
                         dbc.Row(
                             children=[
-                                dbc.Col(all_segments, lg=4, xs=12, xl=3),
-                                dbc.Col(graph, lg=8, xs=12, xl=9),
+                                dbc.Col(all_segments, lg=4, md=12, xl=3),
+                                dbc.Col(graph, lg=8, md=12, xl=9),
                             ],
                             justify="start",
                             align="top",
