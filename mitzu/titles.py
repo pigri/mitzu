@@ -86,8 +86,7 @@ def get_time_group_text(time_group: M.TimeGroup) -> str:
 
 
 def get_segmentation_title(metric: M.SegmentationMetric):
-    if metric._custom_title:
-        return metric._custom_title
+
     segment_str = fix_title_text(get_segment_title_text(metric._segment))
     tg = get_time_group_text(metric._time_group).title()
     lines = [
@@ -101,8 +100,7 @@ def get_segmentation_title(metric: M.SegmentationMetric):
 
 
 def get_conversion_title(metric: M.ConversionMetric) -> str:
-    if metric._custom_title:
-        return metric._custom_title
+
     events = " then did ".join(
         [
             f"{fix_title_text(get_segment_title_text(seg), 100)}"

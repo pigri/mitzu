@@ -16,9 +16,9 @@ from dash.dependencies import Input, Output, State
 from mitzu.webapp.complex_segment import ComplexSegmentCard
 from mitzu.webapp.helper import (
     deserialize_component,
-    find_component,
     find_components,
     find_event_field_def,
+    find_first_component,
 )
 
 GRAPH = "graph"
@@ -87,14 +87,14 @@ class GraphContainer(dbc.Card):
         if metric is None:
             return None
 
-        conv_window_interval = find_component(
+        conv_window_interval = find_first_component(
             MC.CONVERSION_WINDOW_INTERVAL, mc_children
         ).value
-        conv_window_interval_steps = find_component(
+        conv_window_interval_steps = find_first_component(
             MC.CONVERSION_WINDOW_INTERVAL_STEPS, mc_children
         ).value
 
-        date_selector = find_component(DS.DATE_SELECTOR, mc_children)
+        date_selector = find_first_component(DS.DATE_SELECTOR, mc_children)
         time_group = DS.get_metric_timegroup(date_selector)
         lookback_days = DS.get_metric_lookback_days(date_selector)
         start_date, end_date = None, None
@@ -119,6 +119,7 @@ class GraphContainer(dbc.Card):
                 lookback_days=lookback_days,
                 start_dt=start_date,
                 end_dt=end_date,
+                custom_title="",
             )
         elif isinstance(metric, M.Segment):
             return metric.config(
@@ -127,6 +128,7 @@ class GraphContainer(dbc.Card):
                 lookback_days=lookback_days,
                 start_dt=start_date,
                 end_dt=end_date,
+                custom_title="",
             )
         raise Exception("Invalid metric type")
 

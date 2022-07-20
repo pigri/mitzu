@@ -46,11 +46,11 @@ def create_property_dropdown(
     simple_segment_index: int,
 ) -> dcc.Dropdown:
     event = discovered_datasource.get_all_events()[event_name]
-    placeholder = "> Where" if simple_segment_index == 0 else "> And"
+    placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
     fields_names = [f._get_name() for f in event._fields.keys()]
     fields_names.sort()
     options = [
-        {"label": value_to_label(f).replace(".", "/"), "value": f"{event_name}.{f}"}
+        {"label": value_to_label(f).split(".")[-1], "value": f"{event_name}.{f}"}
         for f in fields_names
     ]
     return dcc.Dropdown(
@@ -63,7 +63,6 @@ def create_property_dropdown(
             "type": PROPERTY_NAME_DROPDOWN,
             "index": index,
         },
-        style={"width": "180px"},
     )
 
 
@@ -90,7 +89,7 @@ def create_value_input(
             "type": PROPERTY_VALUE_INPUT,
             "index": index,
         },
-        style={"width": "180px"},
+        style={"width": "100%"},
     )
 
 
@@ -106,7 +105,6 @@ def create_property_operator_dropdown(index: str) -> dcc.Dropdown:
             "type": PROPERTY_OPERATOR_DROPDOWN,
             "index": index,
         },
-        style={"width": "70px"},
     )
 
 
@@ -118,7 +116,7 @@ def collect_values(values: List[str]) -> List[Any]:
     ]
 
 
-class SimpleSegmentDiv(dbc.InputGroup):
+class SimpleSegmentDiv(html.Div):
     def __init__(
         self,
         event_name: str,
@@ -209,9 +207,9 @@ class SimpleSegmentDiv(dbc.InputGroup):
     @classmethod
     def fix(
         cls,
-        simple_segment: html.Div,
+        simple_segment: dbc.InputGroup,
         discovered_datasource: M.DiscoveredEventDataSource,
-    ) -> html.Div:
+    ) -> dbc.InputGroup:
         children = simple_segment.children
         prop_dd: dcc.Dropdown = children[0]
         index = prop_dd.id.get("index")

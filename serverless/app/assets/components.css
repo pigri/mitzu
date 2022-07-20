@@ -1,10 +1,12 @@
-.main {}
+.main {
+    min-width: 450px
+}
 
 .DateInput_input {
     padding: 4px;
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
     height: 36px;
 }
 
@@ -17,15 +19,13 @@
     background: transparent;
 }
 
-.Select-value-label {
-    color: var(--bs-gray-600) !important;
-}
+
 
 .DateInput {
     width: 100px;
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .DateRangePickerInput_clearDates_svg {
@@ -36,12 +36,16 @@
     height: 16px;
 }
 
-.complex_segment .Select-arrow-zone {
-    display: None;
-}
-
 .complex_segment .card-body {
     padding: 4px;
+}
+
+.Select-value-label {
+    color: var(--bs-gray-dark);
+}
+
+.complex_segment .Select-arrow-zone {
+    display: None;
 }
 
 .Select {
@@ -49,7 +53,7 @@
     font: var(--bs-font-sans-serif);
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .Select-control {
@@ -57,29 +61,66 @@
     font: var(--bs-font-sans-serif);
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
-    color: var(--bs-body-color);
+    color: var(--bs-gray-dark);
 }
 
 .complex_segment .Select-control {
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--bs-gray-dark);
+    border: 0px;
+    background-color: transparent;
 }
-
 
 .complex_segment .Select-menu-outer {
     min-width: 400px;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: 13px;
+    color: var(--bs-gray-dark);
 }
 
-.complex_segment .Select-control {
-    border: 1px solid #ccccccff;
+.complex_segment .Select-placeholder {
+    font-size: 13px;
+    font-weight: normal;
+    color: var(--bs-gray-dark);
+    background-color: transparent;
 }
 
-.complex_segment .has-value .Select-control {
-    border: 1px solid #ccccccff;
+.complex_segment {
+    border: solid 1px rgba(150, 150, 256, 0.5);
+    margin-bottom: 3px;
+}
+
+.complex_segment .event_name_dropdown .Select-control {
+    background: rgba(39, 128, 227, 0.1);
+}
+
+.complex_segment .simple_segment {
+    width: 100%;
+    display: flex;
+    background: rgba(150, 150, 256, 0.1);
+}
+
+.complex_segment .event_name_dropdown .Select-placeholder {
+    background: rgba(256, 256, 256);
+}
+
+.complex_segment .complex_segment_group_by .Select-placeholder {
+    background: rgba(256, 256, 256);
+}
+
+.complex_segment .complex_segment_group_by .Select-control {
+    background: rgba(63, 182, 24, 0.1);
 }
 
 
+.property_operator_dropdown {
+    min-width: 70px;
+}
+
+.property_name_dropdown {
+    min-width: 150px;
+}
 
 .metric-type-dropdown {
     width: 180px;

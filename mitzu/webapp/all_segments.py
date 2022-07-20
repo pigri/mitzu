@@ -4,18 +4,14 @@ from typing import Any, Dict, List
 
 import dash.development.base_component as bc
 import mitzu.model as M
+import mitzu.webapp.complex_segment as CS
+import mitzu.webapp.event_segment as ES
 import mitzu.webapp.navbar.metric_type_dropdown as MNB
+import mitzu.webapp.simple_segment as SS
 import mitzu.webapp.webapp as WA
 from dash import html
 from dash.dependencies import ALL, Input, Output, State
-from mitzu.webapp.complex_segment import ComplexSegmentCard
-from mitzu.webapp.event_segment import EVENT_NAME_DROPDOWN
-from mitzu.webapp.helper import deserialize_component
-from mitzu.webapp.simple_segment import (
-    PROPERTY_NAME_DROPDOWN,
-    PROPERTY_OPERATOR_DROPDOWN,
-    SimpleSegmentDiv,
-)
+from mitzu.webapp.helper import deserialize_component, find_components
 
 ALL_SEGMENTS = "all_segments"
 
@@ -24,7 +20,7 @@ class AllSegmentsContainer(html.Div):
     def __init__(
         self, discovered_datasource: M.DiscoveredEventDataSource, metric_type: str
     ):
-        container = ComplexSegmentCard(discovered_datasource, 0, metric_type)
+        container = CS.ComplexSegmentCard(discovered_datasource, 0, metric_type)
         super().__init__(
             id=ALL_SEGMENTS,
             children=[container],
@@ -49,20 +45,21 @@ class AllSegmentsContainer(html.Div):
         for i, seg_child in enumerate(complex_seg_children):
             if i >= limit:
                 break
-            fixed_seg_child = ComplexSegmentCard.fix(
+            fixed_seg_child = CS.ComplexSegmentCard.fix(
                 seg_child, discovered_datasource, i, metric_type
             )
             fixed_complex_seg_children.append(fixed_seg_child)
 
-        res_children: List[ComplexSegmentCard] = []
+        res_children: List[CS.ComplexSegmentCard] = []
         for complex_seg in fixed_complex_seg_children:
-            event_name_value = complex_seg.children[1].children[0].children[0].value
+            event_name_dd = find_components(ES.EVENT_NAME_DROPDOWN, complex_seg)[0]
+            event_name_value = event_name_dd.value
             if event_name_value is not None:
                 res_children.append(complex_seg)
 
         if len(res_children) < limit:
             res_children.append(
-                ComplexSegmentCard(
+                CS.ComplexSegmentCard(
                     discovered_datasource, len(res_children), metric_type
                 )
             )
@@ -78,8 +75,7 @@ class AllSegmentsContainer(html.Div):
         res = []
         all_seg_children = cls.fix(all_seg_children, discovered_datasource, metric_type)
         for segment in all_seg_children:
-
-            segment = ComplexSegmentCard.get_segment(segment, discovered_datasource)
+            segment = CS.ComplexSegmentCard.get_segment(segment, discovered_datasource)
             if segment is not None:
                 res.append(segment)
 
@@ -90,9 +86,9 @@ class AllSegmentsContainer(html.Div):
         @webapp.app.callback(
             Output(ALL_SEGMENTS, "children"),
             [
-                Input({"type": EVENT_NAME_DROPDOWN, "index": ALL}, "value"),
-                Input({"type": PROPERTY_NAME_DROPDOWN, "index": ALL}, "value"),
-                Input({"type": PROPERTY_OPERATOR_DROPDOWN, "index": ALL}, "value"),
+                Input({"type": ES.EVENT_NAME_DROPDOWN, "index": ALL}, "value"),
+                Input({"type": SS.PROPERTY_NAME_DROPDOWN, "index": ALL}, "value"),
+                Input({"type": SS.PROPERTY_OPERATOR_DROPDOWN, "index": ALL}, "value"),
                 Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
                 Input(WA.MITZU_LOCATION, "pathname"),
             ],
@@ -118,4 +114,4 @@ class AllSegmentsContainer(html.Div):
             res_children = cls.fix(complex_seg_children, dm, metric_type)
             return [child.to_plotly_json() for child in res_children]
 
-        SimpleSegmentDiv.create_callbacks(webapp.app)
+        SS.SimpleSegmentDiv.create_callbacks(webapp.app)
