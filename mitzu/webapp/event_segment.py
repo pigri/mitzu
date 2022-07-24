@@ -14,9 +14,9 @@ SIMPLE_SEGMENT_CONTAINER = "simple_segment_container"
 
 
 def creat_event_name_dropdown(
-    index,
+    type_index: str,
     discovered_datasource: M.DiscoveredEventDataSource,
-    step: int,
+    funnel_step: int,
     event_segment_index: int,
 ) -> dcc.Dropdown:
     evt_names = (
@@ -28,9 +28,9 @@ def creat_event_name_dropdown(
         else []
     )
     evt_names.sort(key=lambda v: v["label"])
-    if step == 0 and event_segment_index == 0:
+    if funnel_step == 0 and event_segment_index == 0:
         placeholder = "+ Select Event"
-    elif step > 0 and event_segment_index == 0:
+    elif funnel_step > 0 and event_segment_index == 0:
         placeholder = "+ Then"
     else:
         placeholder = "+ Or Event"
@@ -43,7 +43,7 @@ def creat_event_name_dropdown(
         placeholder=placeholder,
         id={
             "type": EVENT_NAME_DROPDOWN,
-            "index": index,
+            "index": type_index,
         },
     )
 
@@ -57,15 +57,16 @@ class EventSegmentDiv(html.Div):
         self,
         discovered_datasource: M.DiscoveredEventDataSource,
         step: int,
-        event_segment_index: int,
+        complex_segment: M.ComplexSegment,
+        complex_segment_index: int,
     ):
-        index = str(uuid4())
+        type_index = str(hash(complex_segment))
         event_dd = creat_event_name_dropdown(
-            index, discovered_datasource, step, event_segment_index
+            type_index, discovered_datasource, step, complex_segment_index
         )
-        container = create_container(index)
+        container = create_container(type_index)
         super().__init__(
-            id={"type": EVENT_SEGMENT, "index": index},
+            id={"type": EVENT_SEGMENT, "index": type_index},
             children=[event_dd, container],
             className=EVENT_SEGMENT,
         )
@@ -73,10 +74,10 @@ class EventSegmentDiv(html.Div):
     @classmethod
     def fix(
         cls,
-        event_segment: html.Div,
+        event_segment_div: html.Div,
         discovered_datasource: M.DiscoveredEventDataSource,
     ) -> html.Div:
-        children = event_segment.children
+        children = event_segment_div.children
         evt_name_dd = children[0]
         props = children[1]
 
@@ -95,7 +96,7 @@ class EventSegmentDiv(html.Div):
             )
             props.children = res_props_children
 
-        return event_segment
+        return event_segment_div
 
     @classmethod
     def get_segment(

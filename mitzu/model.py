@@ -822,6 +822,9 @@ class ComplexSegment(Segment):
     def __repr__(self) -> str:
         return super().__repr__()
 
+    def __hash__(self) -> int:
+        return hash(f"{hash(self._left)}{self._operator}{hash(self._right)}")
+
 
 @dataclass(init=False, frozen=True)
 class SimpleSegment(Segment):
@@ -842,3 +845,6 @@ class SimpleSegment(Segment):
 
     def __repr__(self) -> str:
         return super().__repr__()
+
+    def __hash__(self) -> int:
+        return hash(f"{self._left}{self._operator}{self._right}")
