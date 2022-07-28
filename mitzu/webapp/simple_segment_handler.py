@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
-from uuid import uuid4
+from dataclasses import dataclass
+from typing import Any, Iterable, List, Optional, Tuple
 
-import dash_bootstrap_components as dbc
 import mitzu.model as M
-from dash import Dash, ctx, dcc, html
+from dash import Dash, dcc, html
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
 from mitzu.webapp.helper import (
@@ -35,16 +34,22 @@ OPERATOR_MAPPING = {
 }
 
 NULL_OPERATORS = ["present", "missing"]
-MULTI_OPTION_OPERATORS = ["is", "is not"]
+MULTI_OPTION_OPERATORS = [M.Operator.ANY_OF, M.Operator.NONE_OF]
+BOOL_OPERATORS = [M.Operator.IS_NOT_NULL, M.Operator.IS_NULL]
 CUSTOM_VAL_PREFIX = "$EQ$_"
 
 
 def create_property_dropdown(
-    event_name: str,
-    index: str,
+    simple_segment: M.SimpleSegment,
     discovered_datasource: M.DiscoveredEventDataSource,
     simple_segment_index: int,
+    type_index: str,
 ) -> dcc.Dropdown:
+    event_name = simple_segment._left._event_name
+    field_name: Optional[str] = None
+    if type(simple_segment._left) == M.EventFieldDef:
+        field_name = simple_segment._left._field._get_name()
+
     event = discovered_datasource.get_all_events()[event_name]
     placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
     fields_names = [f._get_name() for f in event._fields.keys()]
@@ -53,110 +58,119 @@ def create_property_dropdown(
         {"label": value_to_label(f).split(".")[-1], "value": f"{event_name}.{f}"}
         for f in fields_names
     ]
+
     return dcc.Dropdown(
         options=options,
-        value=None,
+        value=None if field_name is None else f"{event_name}.{field_name}",
         multi=False,
         placeholder=placeholder,
         className=PROPERTY_NAME_DROPDOWN,
         id={
             "type": PROPERTY_NAME_DROPDOWN,
-            "index": index,
+            "index": type_index,
         },
     )
 
 
 def create_value_input(
-    index: str,
-    path: str,
+    simple_segment: M.SimpleSegment,
     discovered_datasource: M.DiscoveredEventDataSource,
-    multi: bool = True,
+    type_index: str,
 ) -> dcc.Dropdown:
-    enums = get_enums(path, discovered_datasource)
-    options = [{"label": enum, "value": enum} for enum in enums]
+    multi = simple_segment._operator in MULTI_OPTION_OPERATORS
+    if type(simple_segment._left) == M.EventFieldDef:
+        path = f"{simple_segment._left._event_name}.{simple_segment._left._field._get_name()}"
+        enums = get_enums(path, discovered_datasource)
+    else:
+        enums = []
+
+    options = [{"label": str(enum), "value": enum} for enum in enums]
     options.sort(key=lambda v: v["label"])
-    options_str = (", ".join(enums))[0:20]
-    if len(options_str) == 20:
-        options_str = options_str + "..."
+
+    options_str = (", ".join([str(e) for e in enums]))[0:20] + "..."
+
+    value = simple_segment._right
+    if value is not None and type(value) == Tuple:
+        value = list(value)
+    if multi and value is None:
+        value = []
+
     return dcc.Dropdown(
         options=options,
-        value=[] if multi else None,
+        value=value,
         multi=multi,
         clearable=False,
         placeholder=options_str,
         className=PROPERTY_VALUE_INPUT,
         id={
             "type": PROPERTY_VALUE_INPUT,
-            "index": index,
+            "index": type_index,
         },
         style={"width": "100%"},
     )
 
 
-def create_property_operator_dropdown(index: str) -> dcc.Dropdown:
+def create_property_operator_dropdown(
+    simple_segment: M.SimpleSegment, type_index: str
+) -> dcc.Dropdown:
     return dcc.Dropdown(
         options=[k for k in OPERATOR_MAPPING.values()],
-        value="is",
+        value=(
+            OPERATOR_MAPPING[M.Operator.ANY_OF]
+            if simple_segment._operator is None
+            else OPERATOR_MAPPING[simple_segment._operator]
+        ),
         multi=False,
         searchable=False,
         clearable=False,
         className=PROPERTY_OPERATOR_DROPDOWN,
         id={
             "type": PROPERTY_OPERATOR_DROPDOWN,
-            "index": index,
+            "index": type_index,
         },
     )
 
 
-def collect_values(values: List[str]) -> List[Any]:
-    prefix_length = len(CUSTOM_VAL_PREFIX)
-    return [
-        val[prefix_length:] if val.startswith(CUSTOM_VAL_PREFIX) else val
-        for val in values
-    ]
+def fix_custom_value(val: Any):
+    if type(val) == str and val.startswith(CUSTOM_VAL_PREFIX):
+        prefix_length = len(CUSTOM_VAL_PREFIX)
+        return val[prefix_length:]
+    else:
+        return val
 
 
-class SimpleSegmentDiv(html.Div):
-    def __init__(
-        self,
-        simple_segment: M.SimpleSegment,
-        discovered_datasource: M.DiscoveredEventDataSource,
-        simple_segment_index: int,
-    ):
-        event_name = simple_segment._left._event_name
-        index = f"{event_name}{simple_segment._operator}{simple_segment._right}"
+def collect_values(values: Any) -> List[Any]:
+    if isinstance(values, Iterable):
+        return [fix_custom_value(val) for val in values]
+    else:
+        return []
 
-        prop_dd = create_property_dropdown(
-            event_name, index, discovered_datasource, simple_segment_index
-        )
-        super().__init__(
-            id={"type": SIMPLE_SEGMENT, "index": index},
-            children=[prop_dd],
-            className=SIMPLE_SEGMENT,
-        )
 
-    @classmethod
-    def get_simple_segment(
-        cls,
-        simple_segment: html.Div,
-        discovered_datasource: M.DiscoveredEventDataSource,
-    ) -> Optional[M.Segment]:
-        children = simple_segment.children
-        if len(children) == 1:
-            return None
+@dataclass
+class SimpleSegmentHandler:
+
+    discovered_datasource: M.DiscoveredEventDataSource
+    component: html.Div
+
+    def to_simple_segment(self) -> Optional[M.SimpleSegment]:
+        children = self.component.children
         property_path: str = children[0].value
-        property_operator: str = children[1].value
-        event_field_def = find_event_field_def(property_path, discovered_datasource)
-        if event_field_def is None:
-            raise Exception("Invalid state, event field definition is null")
+        if property_path is None:
+            return None
+        event_field_def = find_event_field_def(
+            property_path, self.discovered_datasource
+        )
+        if len(children) == 1:
+            return M.SimpleSegment(event_field_def, M.Operator.ANY_OF, None)
 
+        property_operator: str = children[1].value
         if property_operator == OPERATOR_MAPPING[M.Operator.IS_NULL]:
-            return M.SimpleSegment(event_field_def, M.Operator.IS_NULL)
+            return M.SimpleSegment(event_field_def, M.Operator.IS_NULL, None)
         elif property_operator == OPERATOR_MAPPING[M.Operator.IS_NOT_NULL]:
-            return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL)
+            return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL, None)
 
         if children[2].value is None:
-            return None
+            return M.SimpleSegment(event_field_def, M.Operator.ANY_OF, None)
 
         if property_operator == OPERATOR_MAPPING[M.Operator.ANY_OF]:
             return M.SimpleSegment(
@@ -173,9 +187,47 @@ class SimpleSegmentDiv(html.Div):
         else:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
-                    return M.SimpleSegment(event_field_def, op, children[2].value)
+                    return M.SimpleSegment(
+                        event_field_def, op, fix_custom_value(children[2].value)
+                    )
 
             raise ValueError(f"Not supported Operator { property_operator }")
+
+    @classmethod
+    def from_component(
+        cls, component: html.Div, discovered_datasource: M.DiscoveredEventDataSource
+    ) -> SimpleSegmentHandler:
+        return SimpleSegmentHandler(discovered_datasource, component)
+
+    @classmethod
+    def from_simple_segment(
+        cls,
+        simple_segment: M.SimpleSegment,
+        discovered_datasource: M.DiscoveredEventDataSource,
+        parent_type_index: str,
+        simple_segment_index: int,
+    ) -> SimpleSegmentHandler:
+        type_index = f"{parent_type_index}-{simple_segment_index}"
+        prop_dd = create_property_dropdown(
+            simple_segment, discovered_datasource, simple_segment_index, type_index
+        )
+        children = [prop_dd]
+        if simple_segment._operator is not None:
+            operator_dd = create_property_operator_dropdown(simple_segment, type_index)
+            children.append(operator_dd)
+            if simple_segment._operator not in BOOL_OPERATORS:
+                value_input = create_value_input(
+                    simple_segment, discovered_datasource, type_index
+                )
+                children.append(value_input)
+
+        component = html.Div(
+            id={"type": SIMPLE_SEGMENT, "index": type_index},
+            children=children,
+            className=SIMPLE_SEGMENT,
+        )
+
+        return SimpleSegmentHandler(discovered_datasource, component)
 
     @classmethod
     def create_callbacks(cls, app: Dash):
@@ -205,48 +257,3 @@ class SimpleSegmentDiv(html.Div):
                     }
                 )
             return options
-
-    @classmethod
-    def fix(
-        cls,
-        simple_segment_div: html.Div,
-        discovered_datasource: M.DiscoveredEventDataSource,
-    ) -> dbc.InputGroup:
-        children = simple_segment_div.children
-        prop_dd: dcc.Dropdown = children[0]
-        index = prop_dd.id.get("index")
-
-        trg_id = ctx.triggered_id
-        if type(trg_id) == str:
-            source_index = None
-            source_type = trg_id
-        else:
-            source_type = trg_id.get("type")
-            source_index = trg_id.get("index")
-
-        if index == source_index and PROPERTY_NAME_DROPDOWN == source_type:
-            children = [prop_dd]
-        if index == source_index and PROPERTY_OPERATOR_DROPDOWN == source_type:
-            children = [prop_dd, children[1]]
-
-        if prop_dd.value is not None and len(children) == 1:
-            # Add Operator Dropdown
-            children.append(create_property_operator_dropdown(index))
-        elif prop_dd.value is None and len(children) > 1:
-            # Add Operator Dropdown Remove if no Event Name selected
-            children = [prop_dd]
-
-        if len(children) == 3 and children[1].value in NULL_OPERATORS:
-            children = [prop_dd, children[1]]
-        elif len(children) == 2 and children[1].value not in NULL_OPERATORS:
-            children.append(
-                create_value_input(
-                    index=index,
-                    path=prop_dd.value,
-                    discovered_datasource=discovered_datasource,
-                    multi=children[1].value in MULTI_OPTION_OPERATORS,
-                )
-            )
-
-        simple_segment_div.children = children
-        return simple_segment_div

@@ -44,7 +44,7 @@ def get_enums(
 
 def find_event_field_def(
     path: str, discovered_datasource: M.DiscoveredEventDataSource
-) -> Optional[M.EventFieldDef]:
+) -> M.EventFieldDef:
     path_parts = path.split(".")
     event_name = path_parts[0]
     event_def = discovered_datasource.get_all_events()[event_name]
@@ -53,7 +53,7 @@ def find_event_field_def(
     for field, event_field_def in event_def._fields.items():
         if field._get_name() == field_name:
             return event_field_def
-    return None
+    raise Exception(f"Invalid property path: {path}")
 
 
 def find_first_component(
@@ -91,3 +91,16 @@ def find_components(
 
         return find_components(type_id, getattr(among, "children", []))
     return []
+
+
+def get_event_names(segment: Optional[M.Segment]) -> List[str]:
+    if segment is None:
+        return []
+    if isinstance(segment, M.SimpleSegment):
+        if segment._left is None:
+            return []
+        return [segment._left._event_name]
+    elif isinstance(segment, M.ComplexSegment):
+        return get_event_names(segment._left) + get_event_names(segment._right)
+    else:
+        raise Exception(f"Unsupported Segment Type: {type(segment)}")

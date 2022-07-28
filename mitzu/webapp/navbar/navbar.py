@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc
-import mitzu.webapp.navbar.metric_type_dropdown as MTD
+import mitzu.webapp.navbar.metric_type_handler as MNB
 import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
-from dash import Input, Output, State, html
+from dash import html
 
 LOGO = "/assets/logo.png"
-
-
-NAVBAR_COLLAPSE = "navbar-collapse"
-NAVBAR_TOGGLER = "navbar-toggler"
 
 
 def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
@@ -29,7 +25,11 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                 )
                             ),
                             dbc.Col(PD.create_project_dropdown(webapp)),
-                            dbc.Col(MTD.create_metric_type_dropdown(webapp)),
+                            dbc.Col(
+                                MNB.MetricTypeHandler.from_metric_type(
+                                    MNB.MetricType.SEGMENTATION
+                                ).component
+                            ),
                         ]
                     ),
                 ),
@@ -66,16 +66,4 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
         ),
         sticky="top",
     )
-
-    # add callback for toggling the collapse on small screens
-    @webapp.app.callback(
-        Output(NAVBAR_COLLAPSE, "is_open"),
-        [Input(NAVBAR_TOGGLER, "n_clicks")],
-        [State(NAVBAR_COLLAPSE, "is_open")],
-    )
-    def toggle_navbar_collapse(n, is_open):
-        if n:
-            return not is_open
-        return is_open
-
     return res

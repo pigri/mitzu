@@ -15,6 +15,7 @@ def create_app(persistency_provider: MWA.PersistencyProvider):
             "assets/components.css",
         ],
         title="Mitzu",
+        update_title=None,
         suppress_callback_exceptions=True,
     )
 

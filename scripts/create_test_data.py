@@ -145,9 +145,9 @@ if __name__ == "__main__":
         ISO_FORMAT
     )
 
-    web_events_df.to_json(
+    web_events_df.to_dict(
         f"./web_events_{WEB_EVENT_COUNT}.json", orient="records", lines=True
     )
-    sub_events_df.to_json(
+    sub_events_df.to_dict(
         f"./sub_events_{SUB_EVENT_COUNT}.json", orient="records", lines=True
     )

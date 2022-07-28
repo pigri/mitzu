@@ -158,3 +158,9 @@
     border-bottom-left-radius: 0;
     margin-left: -1px;
 }
+
+.graph_container {
+    min-height: 500px;
+    text-align: center;
+    vertical-align: middle;
+}

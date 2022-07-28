@@ -400,6 +400,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if op == M.Operator.NOT_LIKE:
             return SA.not_(ref.like(segment._right))
         if op == M.Operator.ANY_OF:
+            if segment._right is None:
+                return SA.literal(True)
             return ref.in_(segment._right)
         if op == M.Operator.NONE_OF:
             return SA.not_(ref.in_(segment._right))

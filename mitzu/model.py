@@ -115,7 +115,7 @@ class Operator(Enum):
         if self == Operator.NONE_OF:
             return "none of"
         if self == Operator.LIKE:
-            return "not like"
+            return "like"
         if self == Operator.NOT_LIKE:
             return "not like"
         if self == Operator.IS_NULL:
@@ -551,7 +551,7 @@ DEF_TIME_GROUP = TimeGroup.DAY
 class MetricConfig:
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
-    lookback_days: Optional[Union[int, TimeWindow]] = None
+    lookback_days: Optional[TimeWindow] = None
     time_group: Optional[TimeGroup] = None
     max_group_count: Optional[int] = None
     group_by: Optional[EventFieldDef] = None
@@ -739,7 +739,12 @@ class Conversion(ConversionMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
     ) -> ConversionMetric | RetentionMetric:
-
+        if type(lookback_days) == int:
+            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
+        elif type(lookback_days) == TimeWindow:
+            lbd = lookback_days
+        else:
+            lbd = None
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -747,7 +752,7 @@ class Conversion(ConversionMetric):
             group_by=group_by,
             max_group_count=max_group_by_count,
             custom_title=custom_title,
-            lookback_days=lookback_days,
+            lookback_days=lbd,
         )
         if ret_window is not None:
             ret_res = RetentionMetric(
@@ -791,6 +796,12 @@ class Segment(SegmentationMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
     ) -> SegmentationMetric:
+        if type(lookback_days) == int:
+            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
+        elif type(lookback_days) == TimeWindow:
+            lbd = lookback_days
+        else:
+            lbd = None
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -798,7 +809,7 @@ class Segment(SegmentationMetric):
             group_by=group_by,
             max_group_count=max_group_by_count,
             custom_title=custom_title,
-            lookback_days=lookback_days,
+            lookback_days=lbd,
         )
 
         return SegmentationMetric(segment=self, config=config)
@@ -847,4 +858,9 @@ class SimpleSegment(Segment):
         return super().__repr__()
 
     def __hash__(self) -> int:
-        return hash(f"{self._left}{self._operator}{self._right}")
+        event_property_name = (
+            self._left._event_name
+            if type(self._left) != EventFieldDef
+            else f"{self._left._event_name}.{self._left._field._get_name()}"
+        )
+        return hash(f"{event_property_name}{self._operator}{self._right}")

@@ -1,12 +1,17 @@
 from mitzu.datasource_discovery import EventDatasourceDiscovery
 from mitzu.model import EventDataSource, Metric
-from mitzu.serialization import from_json, to_json
+from mitzu.serialization import (
+    from_compressed_string,
+    from_dict,
+    to_compressed_string,
+    to_dict,
+)
 from tests.samples.sources import get_simple_csv
 
 
 def verify(metric: Metric, source: EventDataSource):
-    metric_json = to_json(metric)
-    metric2 = from_json(metric_json, source)
+    metric_json = to_dict(metric)
+    metric2 = from_dict(metric_json, source)
     compared_df = metric2.get_df().compare(metric.get_df(), align_axis=0)
     assert compared_df.shape[0] == 0
 
@@ -25,7 +30,7 @@ def test_definition_to_json():
         group_by=m.view.category_id,
     )
 
-    res_dict = to_json(res)
+    res_dict = to_dict(res)
     assert res_dict == {
         "seg": {
             "l": {"l": {"en": "view", "f": "category_id"}, "op": "NEQ"},
@@ -51,7 +56,7 @@ def test_definition_to_json():
         custom_title="test_title",
     )
 
-    res_dict = to_json(res)
+    res_dict = to_dict(res)
     assert res_dict == {
         "conv": {
             "segs": [
@@ -77,3 +82,24 @@ def test_definition_to_json():
     verify(m.view >> m.cart, eds)
     verify(m.view.config(start_dt="2021-01-01", end_dt="2021-10-01"), eds)
     verify((m.view >> m.cart).config(start_dt="2021-01-01", end_dt="2021-10-01"), eds)
+
+
+def test_compression():
+    eds = get_simple_csv()
+    discovery = EventDatasourceDiscovery(eds)
+    dd1 = discovery.discover_datasource()
+    m = dd1.create_notebook_class_model()
+
+    # Test Segmentation
+    res = (m.view.category_id.is_not_null | m.cart).config(
+        start_dt="2020-01-01",
+        end_dt="2021-01-01",
+        time_group="total",
+        group_by=m.view.category_id,
+    )
+
+    compressed = to_compressed_string(res)
+
+    re_compress = to_compressed_string(from_compressed_string(compressed, eds))
+
+    assert compressed == re_compress
