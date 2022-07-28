@@ -64,6 +64,7 @@ def create_property_dropdown(
         value=None if field_name is None else f"{event_name}.{field_name}",
         multi=False,
         placeholder=placeholder,
+        searchable=True,
         className=PROPERTY_NAME_DROPDOWN,
         id={
             "type": PROPERTY_NAME_DROPDOWN,
@@ -100,6 +101,7 @@ def create_value_input(
         value=value,
         multi=multi,
         clearable=False,
+        searchable=True,
         placeholder=options_str,
         className=PROPERTY_VALUE_INPUT,
         id={
