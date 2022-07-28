@@ -119,11 +119,13 @@ def collect_values(values: List[str]) -> List[Any]:
 class SimpleSegmentDiv(html.Div):
     def __init__(
         self,
-        event_name: str,
+        simple_segment: M.SimpleSegment,
         discovered_datasource: M.DiscoveredEventDataSource,
         simple_segment_index: int,
     ):
-        index = str(uuid4())
+        event_name = simple_segment._left._event_name
+        index = f"{event_name}{simple_segment._operator}{simple_segment._right}"
+
         prop_dd = create_property_dropdown(
             event_name, index, discovered_datasource, simple_segment_index
         )
@@ -207,10 +209,10 @@ class SimpleSegmentDiv(html.Div):
     @classmethod
     def fix(
         cls,
-        simple_segment: dbc.InputGroup,
+        simple_segment_div: html.Div,
         discovered_datasource: M.DiscoveredEventDataSource,
     ) -> dbc.InputGroup:
-        children = simple_segment.children
+        children = simple_segment_div.children
         prop_dd: dcc.Dropdown = children[0]
         index = prop_dd.id.get("index")
 
@@ -246,5 +248,5 @@ class SimpleSegmentDiv(html.Div):
                 )
             )
 
-        simple_segment.children = children
-        return simple_segment
+        simple_segment_div.children = children
+        return simple_segment_div

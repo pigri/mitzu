@@ -69,8 +69,9 @@ class ComplexSegmentCard(dbc.Card):
     def __init__(
         self,
         discovered_datasource: M.DiscoveredEventDataSource,
-        step: int,
+        funnel_step: int,
         metric_type: str,
+        complex_segment: M.ComplexSegment,
     ):
         index = str(uuid4())
         group_by = html.Div(
@@ -78,11 +79,11 @@ class ComplexSegmentCard(dbc.Card):
             className=COMPLEX_SEGMENT_FOOTER,
         )
         header = dbc.CardHeader(
-            "Events" if metric_type == "segmentation" else f"{step+1}. Step",
+            "Events" if metric_type == "segmentation" else f"{funnel_step+1}. Step",
             style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
         )
         body = html.Div(
-            children=[ES.EventSegmentDiv(discovered_datasource, step, 0)],
+            children=[ES.EventSegmentDiv(discovered_datasource, funnel_step, 0)],
             className=COMPLEX_SEGMENT_BODY,
         )
         super().__init__(
@@ -90,27 +91,6 @@ class ComplexSegmentCard(dbc.Card):
             children=[header, body, group_by],
             className=COMPLEX_SEGMENT,
         )
-
-    @classmethod
-    def get_segment(
-        cls,
-        complex_segment: dbc.Card,
-        discovered_datasource: M.DiscoveredEventDataSource,
-    ) -> Optional[M.Segment]:
-        res_segment = None
-        event_segment_divs = find_components(ES.EVENT_SEGMENT, complex_segment)
-        for event_segment_div in event_segment_divs:
-            event_segment = ES.EventSegmentDiv.get_segment(
-                event_segment_div, discovered_datasource
-            )
-            if event_segment is None:
-                continue
-            if res_segment is None:
-                res_segment = event_segment
-            else:
-                res_segment = res_segment | event_segment
-
-        return res_segment
 
     def fix_group_by_dd(
         complex_segment: dbc.Card,
@@ -129,13 +109,13 @@ class ComplexSegmentCard(dbc.Card):
     @classmethod
     def fix(
         cls,
-        complex_segment: dbc.Card,
+        complex_segment_comp: dbc.Card,
         discovered_datasource: M.DiscoveredEventDataSource,
         step: int,
         metric_type: str,
     ) -> ComplexSegmentCard:
         res_props_children = []
-        event_segments = find_components(ES.EVENT_SEGMENT, complex_segment)
+        event_segments = find_components(ES.EVENT_SEGMENT, complex_segment_comp)
 
         for event_segment in event_segments:
             if event_segment.children[0].value is not None:
@@ -145,9 +125,11 @@ class ComplexSegmentCard(dbc.Card):
             ES.EventSegmentDiv(discovered_datasource, step, len(res_props_children))
         )
 
-        cls.fix_group_by_dd(complex_segment, res_props_children, discovered_datasource)
-        complex_segment.children[0].children = (
+        cls.fix_group_by_dd(
+            complex_segment_comp, res_props_children, discovered_datasource
+        )
+        complex_segment_comp.children[0].children = (
             "Events" if metric_type == "segmentation" else f"{step+1}. Step"
         )
-        complex_segment.children[1].children = res_props_children
-        return complex_segment
+        complex_segment_comp.children[1].children = res_props_children
+        return complex_segment_comp
