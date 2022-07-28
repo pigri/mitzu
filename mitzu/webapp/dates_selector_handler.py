@@ -188,7 +188,10 @@ class DateSelectorHandler:
                 else:
                     tw_val = TW_MULTIPLIER[time_group]
 
-            return M.TimeWindow(tw_val, time_group)
+            return M.TimeWindow(
+                tw_val,
+                time_group if time_group != M.TimeGroup.TOTAL else M.TimeGroup.DAY,
+            )
 
         return None
 
