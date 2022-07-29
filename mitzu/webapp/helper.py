@@ -47,7 +47,7 @@ def find_event_field_def(
 ) -> M.EventFieldDef:
     path_parts = path.split(".")
     event_name = path_parts[0]
-    event_def = discovered_datasource.get_all_events()[event_name]
+    event_def = discovered_datasource.get_event_def(event_name)
     field_name = ".".join(path_parts[1:])
 
     for field, event_field_def in event_def._fields.items():

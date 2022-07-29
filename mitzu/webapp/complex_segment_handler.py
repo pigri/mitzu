@@ -20,13 +20,8 @@ def get_group_by_options(
     discovered_datasource: M.DiscoveredEventDataSource, event_names: List[str]
 ):
     options: List[Dict[str, str]] = []
-    events = (
-        discovered_datasource.get_all_events()
-        if discovered_datasource is not None
-        else {}
-    )
     for event_name in event_names:
-        for field in events[event_name]._fields:
+        for field in discovered_datasource.get_event_def(event_name)._fields:
             field_name = value_to_label(field._get_name()).split(".")[-1]
             field_value = field._get_name()
             should_break = False

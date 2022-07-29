@@ -95,7 +95,11 @@ def create_simple_segs_container(
         children.append(comp)
 
     event_name = event_simple_segments[0]._left._event_name
-    event_def = discovered_datasource.get_all_events()[event_name]
+    event_def = discovered_datasource.get_event_def(event_name)
+    if event_def is None:
+        raise Exception(
+            f"Invalid state, {event_name} is not possible to find in discovered datasource."
+        )
     children.append(
         SS.SimpleSegmentHandler.from_simple_segment(
             M.SimpleSegment(event_def),
@@ -162,18 +166,18 @@ class EventSegmentHandler:
 
         if ssc is None:
             if event_name_dd.value is not None:
+                print(2)
                 return M.SimpleSegment(
-                    _left=self.discovered_datasource.get_all_events()[
-                        event_name_dd.value
-                    ]
+                    _left=self.discovered_datasource.get_event_def(event_name_dd.value)
                 )
             else:
                 return None
 
         ssc_children = ssc.children
         if len(ssc_children) == 1 and ssc_children[0].children[0].value is None:
+            print(3)
             return M.SimpleSegment(
-                _left=self.discovered_datasource.get_all_events()[event_name_dd.value]
+                _left=self.discovered_datasource.get_event_def(event_name_dd.value)
             )
 
         res_segment = None
@@ -182,6 +186,7 @@ class EventSegmentHandler:
                 component=seg_child, discovered_datasource=self.discovered_datasource
             )
             simple_seg = simple_seg_handler.to_simple_segment()
+
             if simple_seg is None:
                 continue
             if simple_seg._left._event_name != event_name_dd.value:
@@ -192,8 +197,8 @@ class EventSegmentHandler:
             else:
                 res_segment = res_segment & simple_seg
         if res_segment is None and event_name_dd.value is not None:
+            print(4)
             return M.SimpleSegment(
-                _left=self.discovered_datasource.get_all_events()[event_name_dd.value]
+                _left=self.discovered_datasource.get_event_def(event_name_dd.value)
             )
-
         return res_segment

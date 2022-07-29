@@ -43,6 +43,9 @@ notebook:
 dash: 
 	$(POETRY) run python serverless/app/test_app.py
 
+dash_profile: 
+	$(POETRY) run python serverless/app/test_app.py --profile
+
 build: check
 	$(POETRY) build
 

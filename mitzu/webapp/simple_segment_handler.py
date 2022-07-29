@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import traceback
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import mitzu.model as M
 from dash import Dash, dcc, html
@@ -15,6 +16,7 @@ from mitzu.webapp.helper import (
 )
 
 SIMPLE_SEGMENT = "simple_segment"
+SIMPLE_SEGMENT_WITH_VALUE = "simple_segment_with_value"
 PROPERTY_NAME_DROPDOWN = "property_name_dropdown"
 PROPERTY_OPERATOR_DROPDOWN = "property_operator_dropdown"
 PROPERTY_VALUE_INPUT = "property_value_input"
@@ -50,7 +52,7 @@ def create_property_dropdown(
     if type(simple_segment._left) == M.EventFieldDef:
         field_name = simple_segment._left._field._get_name()
 
-    event = discovered_datasource.get_all_events()[event_name]
+    event = discovered_datasource.get_event_def(event_name)
     placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
     fields_names = [f._get_name() for f in event._fields.keys()]
     fields_names.sort()
@@ -87,6 +89,11 @@ def create_value_input(
 
     options = [{"label": str(enum), "value": enum} for enum in enums]
     options.sort(key=lambda v: v["label"])
+
+    if simple_segment._right is not None and simple_segment._right not in enums:
+        options.insert(
+            0, {"label": str(simple_segment._right), "value": simple_segment._right}
+        )
 
     options_str = (", ".join([str(e) for e in enums]))[0:20] + "..."
 
@@ -171,27 +178,26 @@ class SimpleSegmentHandler:
         elif property_operator == OPERATOR_MAPPING[M.Operator.IS_NOT_NULL]:
             return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL, None)
 
-        if children[2].value is None:
-            return M.SimpleSegment(event_field_def, M.Operator.ANY_OF, None)
+        value = children[2].value if len(children) == 3 else None
 
         if property_operator == OPERATOR_MAPPING[M.Operator.ANY_OF]:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.ANY_OF,
-                tuple(collect_values(children[2].value)),
+                tuple(collect_values(value)),
             )
         elif property_operator == OPERATOR_MAPPING[M.Operator.NONE_OF]:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.NONE_OF,
-                tuple(collect_values(children[2].value)),
+                tuple(collect_values(value)),
             )
         else:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
-                    return M.SimpleSegment(
-                        event_field_def, op, fix_custom_value(children[2].value)
-                    )
+                    fixed_val = fix_custom_value(value)
+                    print(fixed_val)
+                    return M.SimpleSegment(event_field_def, op, fixed_val)
 
             raise ValueError(f"Not supported Operator { property_operator }")
 
@@ -226,7 +232,12 @@ class SimpleSegmentHandler:
         component = html.Div(
             id={"type": SIMPLE_SEGMENT, "index": type_index},
             children=children,
-            className=SIMPLE_SEGMENT,
+            className=(
+                SIMPLE_SEGMENT
+                if simple_segment._left is None
+                or isinstance(simple_segment._left, M.EventDef)
+                else SIMPLE_SEGMENT_WITH_VALUE
+            ),
         )
 
         return SimpleSegmentHandler(discovered_datasource, component)
@@ -242,9 +253,9 @@ class SimpleSegmentHandler:
         def update_options(search_value, children) -> List[str]:
             if search_value is None or search_value == "" or len(children) != 3:
                 raise PreventUpdate
-            dropdown = deserialize_component(children[2])
-            options = dropdown.options
-            values = dropdown.value
+            value_dropdown = deserialize_component(children[2])
+            options = value_dropdown.options
+            values = value_dropdown.value
             options = [
                 o
                 for o in options
@@ -252,10 +263,11 @@ class SimpleSegmentHandler:
                 or (values is not None and o.get("value", "") in values)
             ]
             if search_value not in [o["label"] for o in options]:
-                options.append(
+                options.insert(
+                    0,
                     {
                         "label": search_value,
                         "value": f"{CUSTOM_VAL_PREFIX}{search_value}",
-                    }
+                    },
                 )
             return options

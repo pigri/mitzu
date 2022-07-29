@@ -20,7 +20,6 @@
 }
 
 
-
 .DateInput {
     width: 100px;
     font-size: var(--bs-body-font-size);
@@ -37,7 +36,8 @@
 }
 
 .complex_segment .card-body {
-    padding: 4px;
+    padding: 0px;
+    border-radius: 5px;
 }
 
 .Select-value-label {
@@ -55,6 +55,7 @@
     font-weight: var(--bs-body-font-weight);
     color: var(--bs-gray-dark);
 }
+
 
 .Select-control {
     border-radius: 0px;
@@ -87,32 +88,34 @@
 }
 
 .complex_segment {
-    border: solid 1px rgba(150, 150, 256, 0.5);
-    margin-bottom: 3px;
+    margin-bottom: 5px;
 }
 
-.complex_segment .event_name_dropdown .Select-control {
-    background: rgba(39, 128, 227, 0.1);
+
+.complex_segment .event_name_dropdown.has-value {
+    background: rgba(39, 128, 227, 0.2);
 }
 
 .complex_segment .simple_segment {
     width: 100%;
     display: flex;
-    background: rgba(150, 150, 256, 0.1);
+    padding-left: 10px;
 }
 
-.complex_segment .event_name_dropdown .Select-placeholder {
-    background: rgba(256, 256, 256);
+.complex_segment .simple_segment_with_value {
+    width: 100%;
+    display: flex;
+    padding-left: 10px;
+    background: rgba(150, 150, 256, 0.2);
 }
 
-.complex_segment .complex_segment_group_by .Select-placeholder {
-    background: rgba(256, 256, 256);
-}
-
-.complex_segment .complex_segment_group_by .Select-control {
+.complex_segment .complex_segment_group_by.has-value {
     background: rgba(63, 182, 24, 0.1);
 }
 
+.complex_segment_footer {
+    border-top: 1px var(--bs-gray-300) solid;
+}
 
 .property_operator_dropdown {
     min-width: 70px;
@@ -138,29 +141,13 @@
     min-width: 180px;
 }
 
-
-
-
 /* Button Group */
 
-/* restyle radio items */
-.radio-group .form-check {
-    padding-left: 0;
-}
-
-.radio-group .btn-group>.form-check:not(:last-child)>.btn {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.radio-group .btn-group>.form-check:not(:first-child)>.btn {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    margin-left: -1px;
-}
 
 .graph_container {
     min-height: 500px;
     text-align: center;
     vertical-align: middle;
+    line-height: 500px;
+    user-select: none;
 }

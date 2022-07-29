@@ -383,6 +383,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         left = cast(M.EventFieldDef, segment._left)
         ref = self.get_field_reference(left._field, sa_table=table)
         op = segment._operator
+        if op == M.Operator.IS_NULL:
+            return ref is None
+        if op == M.Operator.IS_NOT_NULL:
+            return ref is not None
+
+        if segment._right is None:
+            return SA.literal(True)
+
         if op == M.Operator.EQ:
             return ref == segment._right
         if op == M.Operator.NEQ:
@@ -405,10 +413,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return ref.in_(segment._right)
         if op == M.Operator.NONE_OF:
             return SA.not_(ref.in_(segment._right))
-        if op == M.Operator.IS_NULL:
-            return ref is None
-        if op == M.Operator.IS_NOT_NULL:
-            return ref is not None
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
     def _get_segment_sub_query(self, segment: M.Segment) -> SegmentSubQuery:

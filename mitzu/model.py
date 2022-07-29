@@ -442,6 +442,15 @@ class DiscoveredEventDataSource:
     def create_notebook_class_model(self) -> DatasetModel:
         return ML.ModelLoader().create_datasource_class_model(self)
 
+    def get_event_def(self, event_name) -> EventDef:
+        for val in self.definitions.values():
+            res = val.get(event_name)
+            if res is not None:
+                return res
+        raise Exception(
+            f"Invalid state, {event_name} is not present in Discovered Datasource."
+        )
+
     def get_all_events(self) -> Dict[str, EventDef]:
         res: Dict[str, EventDef] = {}
         for val in self.definitions.values():
