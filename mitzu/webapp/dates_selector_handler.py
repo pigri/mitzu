@@ -14,6 +14,7 @@ TIME_GROUP_DROWDOWN = "timegroup_dropdown"
 LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
 CUSTOM_DATE_TW_VALUE = -1
+DEF_OPTIONS_COUNT = 5
 
 CUSTOM_OPTION = {
     "label": html.Span(" Custom", className="bi bi-calendar-range"),
@@ -41,7 +42,7 @@ def get_time_group_options(exclude: List[M.TimeGroup]) -> List[Dict[str, Any]]:
 
 
 def create_timewindow_options(
-    tg: M.TimeGroup, options_count: int = 4
+    tg: M.TimeGroup, options_count: int = DEF_OPTIONS_COUNT
 ) -> List[Dict[str, Any]]:
     if tg == M.TimeGroup.TOTAL:
         tg = M.TimeGroup.DAY

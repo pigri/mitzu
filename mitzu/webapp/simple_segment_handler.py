@@ -147,11 +147,13 @@ def fix_custom_value(val: Any):
         return val
 
 
-def collect_values(values: Any) -> List[Any]:
-    if isinstance(values, Iterable):
-        return [fix_custom_value(val) for val in values]
+def collect_values(value: Any) -> Optional[Tuple[Any, ...]]:
+    if value is None:
+        return None
+    if isinstance(value, Iterable):
+        return tuple([fix_custom_value(val) for val in value])
     else:
-        return []
+        return tuple(value)
 
 
 @dataclass
@@ -183,19 +185,18 @@ class SimpleSegmentHandler:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.ANY_OF,
-                tuple(collect_values(value)),
+                collect_values(value),
             )
         elif property_operator == OPERATOR_MAPPING[M.Operator.NONE_OF]:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.NONE_OF,
-                tuple(collect_values(value)),
+                collect_values(value),
             )
         else:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
                     fixed_val = fix_custom_value(value)
-                    print(fixed_val)
                     return M.SimpleSegment(event_field_def, op, fixed_val)
 
             raise ValueError(f"Not supported Operator { property_operator }")

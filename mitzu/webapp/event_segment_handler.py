@@ -166,7 +166,6 @@ class EventSegmentHandler:
 
         if ssc is None:
             if event_name_dd.value is not None:
-                print(2)
                 return M.SimpleSegment(
                     _left=self.discovered_datasource.get_event_def(event_name_dd.value)
                 )
@@ -175,7 +174,6 @@ class EventSegmentHandler:
 
         ssc_children = ssc.children
         if len(ssc_children) == 1 and ssc_children[0].children[0].value is None:
-            print(3)
             return M.SimpleSegment(
                 _left=self.discovered_datasource.get_event_def(event_name_dd.value)
             )
@@ -197,7 +195,6 @@ class EventSegmentHandler:
             else:
                 res_segment = res_segment & simple_seg
         if res_segment is None and event_name_dd.value is not None:
-            print(4)
             return M.SimpleSegment(
                 _left=self.discovered_datasource.get_event_def(event_name_dd.value)
             )
