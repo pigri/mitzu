@@ -129,9 +129,6 @@ def create_property_operator_dropdown(
     options: List[str] = []
     if type(simple_segment._left) == M.EventFieldDef:
         data_type = simple_segment._left._field._type
-        print(
-            f"{simple_segment._left._field._get_name()} -> {data_type.name}: {simple_segment._right}"
-        )
         if data_type == M.DataType.BOOL:
             options = [
                 OPERATOR_MAPPING[k]
@@ -236,7 +233,6 @@ class SimpleSegmentHandler:
         else:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
-                    print(f"{data_type} -> {type(value)}{value}")
                     fixed_val = fix_custom_value(value, data_type)
                     return M.SimpleSegment(event_field_def, op, fixed_val)
 
