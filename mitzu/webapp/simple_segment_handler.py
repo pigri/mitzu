@@ -80,35 +80,40 @@ def create_value_input(
     type_index: str,
 ) -> dcc.Dropdown:
     multi = simple_segment._operator in MULTI_OPTION_OPERATORS
+    value = simple_segment._right
+
     if type(simple_segment._left) == M.EventFieldDef:
         path = f"{simple_segment._left._event_name}.{simple_segment._left._field._get_name()}"
         enums = get_enums(path, discovered_datasource)
     else:
         enums = []
 
-    options = [{"label": str(enum), "value": enum} for enum in enums]
+    if value is not None:
+        print(f"{type(value)}: {value}")
+        if type(value) in (list, tuple):
+            enums = [*list(value), *enums]
+        else:
+            enums = [value, *enums]
+
+    options = [{"label": str(e), "value": e} for e in enums]
     options.sort(key=lambda v: v["label"])
 
-    if simple_segment._right is not None and simple_segment._right not in enums:
-        options.insert(
-            0, {"label": str(simple_segment._right), "value": simple_segment._right}
-        )
+    placeholder = (", ".join([str(e) for e in enums]))[0:20] + "..."
 
-    options_str = (", ".join([str(e) for e in enums]))[0:20] + "..."
-
-    value = simple_segment._right
-    if value is not None and type(value) == Tuple:
-        value = list(value)
-    if multi and value is None:
-        value = []
+    comp_value: Any = value
+    if multi:
+        if value is not None and type(value) in (list, tuple):
+            comp_value = list(value)
+        if value is None:
+            comp_value = []
 
     return dcc.Dropdown(
         options=options,
-        value=value,
+        value=comp_value,
         multi=multi,
         clearable=False,
         searchable=True,
-        placeholder=options_str,
+        placeholder=placeholder,
         className=PROPERTY_VALUE_INPUT,
         id={
             "type": PROPERTY_VALUE_INPUT,
@@ -150,10 +155,10 @@ def fix_custom_value(val: Any):
 def collect_values(value: Any) -> Optional[Tuple[Any, ...]]:
     if value is None:
         return None
-    if isinstance(value, Iterable):
+    if type(value) in (list, tuple):
         return tuple([fix_custom_value(val) for val in value])
     else:
-        return tuple(value)
+        return tuple([value])
 
 
 @dataclass
@@ -262,6 +267,7 @@ class SimpleSegmentHandler:
                 if not o.get("value", "").startswith(CUSTOM_VAL_PREFIX)
                 or (values is not None and o.get("value", "") in values)
             ]
+            print(search_value)
             if search_value not in [o["label"] for o in options]:
                 options.insert(
                     0,
