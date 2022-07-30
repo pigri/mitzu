@@ -24,18 +24,15 @@ def find_edt(eds: M.EventDataSource, event_name: str) -> M.EventDataTable:
 def _to_dict(value: Any) -> Any:
     if value is None:
         return None
-    if type(value) == str:
+    if type(value) in (str, float, int, bool):
         return value
     if type(value) == datetime:
         return value.isoformat()
-    if type(value) == int:
-        return value
     if type(value) == list:
         return [_to_dict(v) for v in value]
     if type(value) == tuple:
         return [_to_dict(v) for v in value]
-    if type(value) == bool:
-        return value
+
     if isinstance(value, M.TimeGroup):
         return value.name.lower()
     if isinstance(value, M.TimeWindow):

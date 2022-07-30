@@ -409,5 +409,5 @@ class MitzuWebApp:
                 )
             ):
                 return [create_hint_div("Select the first event ...").to_plotly_json()]
-
+            print(metric.get_sql())
             return [GH.create_graph(metric).to_plotly_json()]

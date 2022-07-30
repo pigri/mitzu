@@ -11,6 +11,7 @@ from enum import Enum, auto
 from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
 
 import pandas as pd
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
 import mitzu.adapters.adapter_factory as factory
@@ -144,6 +145,21 @@ class DataType(Enum):
 
     def is_complex(self) -> bool:
         return self in (DataType.MAP, DataType.STRUCT)
+
+    def from_string(self, string_value: str) -> Any:
+        if self == DataType.BOOL:
+            return bool(string_value)
+        if self == DataType.NUMBER:
+            return float(string_value)
+        if self == DataType.STRING:
+            return string_value
+        if self == DataType.DATETIME:
+            try:
+                return parser.parse(string_value)
+            except parser.ParserError:
+                return string_value
+        else:
+            raise Exception(f"Unsupported parsing for type: {self.name}.")
 
 
 class AttributionMode(Enum):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from lib2to3.pgen2.literals import simple_escapes
 from typing import Any, Iterable, List, Optional, Tuple
 
 import mitzu.model as M
@@ -81,19 +82,18 @@ def create_value_input(
 ) -> dcc.Dropdown:
     multi = simple_segment._operator in MULTI_OPTION_OPERATORS
     value = simple_segment._right
+    left = simple_segment._left
 
-    if type(simple_segment._left) == M.EventFieldDef:
-        path = f"{simple_segment._left._event_name}.{simple_segment._left._field._get_name()}"
+    if type(left) == M.EventFieldDef:
+        path = f"{left._event_name}.{left._field._get_name()}"
         enums = get_enums(path, discovered_datasource)
+        if value is not None:
+            if type(value) in (list, tuple):
+                enums = list(set([*list(value), *enums]))
+            else:
+                enums = [value, *enums]
     else:
         enums = []
-
-    if value is not None:
-        print(f"{type(value)}: {value}")
-        if type(value) in (list, tuple):
-            enums = [*list(value), *enums]
-        else:
-            enums = [value, *enums]
 
     options = [{"label": str(e), "value": e} for e in enums]
     options.sort(key=lambda v: v["label"])
@@ -126,8 +126,41 @@ def create_value_input(
 def create_property_operator_dropdown(
     simple_segment: M.SimpleSegment, type_index: str
 ) -> dcc.Dropdown:
+    options: List[str] = []
+    if type(simple_segment._left) == M.EventFieldDef:
+        data_type = simple_segment._left._field._type
+        print(
+            f"{simple_segment._left._field._get_name()} -> {data_type.name}: {simple_segment._right}"
+        )
+        if data_type == M.DataType.BOOL:
+            options = [
+                OPERATOR_MAPPING[k]
+                for k in [
+                    M.Operator.ANY_OF,
+                    M.Operator.NONE_OF,
+                    M.Operator.IS_NOT_NULL,
+                    M.Operator.IS_NULL,
+                ]
+            ]
+        elif data_type == M.DataType.NUMBER:
+            options = [
+                OPERATOR_MAPPING[k]
+                for k in [
+                    M.Operator.ANY_OF,
+                    M.Operator.NONE_OF,
+                    M.Operator.GT,
+                    M.Operator.GT_EQ,
+                    M.Operator.LT,
+                    M.Operator.LT_EQ,
+                    M.Operator.IS_NOT_NULL,
+                    M.Operator.IS_NULL,
+                ]
+            ]
+        else:
+            options = [k for k in OPERATOR_MAPPING.values()]
+
     return dcc.Dropdown(
-        options=[k for k in OPERATOR_MAPPING.values()],
+        options=options,
         value=(
             OPERATOR_MAPPING[M.Operator.ANY_OF]
             if simple_segment._operator is None
@@ -144,21 +177,22 @@ def create_property_operator_dropdown(
     )
 
 
-def fix_custom_value(val: Any):
-    if type(val) == str and val.startswith(CUSTOM_VAL_PREFIX):
-        prefix_length = len(CUSTOM_VAL_PREFIX)
-        return val[prefix_length:]
-    else:
-        return val
+def fix_custom_value(val: Any, data_type: M.DataType):
+    if type(val) == str:
+        if val.startswith(CUSTOM_VAL_PREFIX):
+            prefix_length = len(CUSTOM_VAL_PREFIX)
+            val = val[prefix_length:]
+        val = data_type.from_string(val)
+    return val
 
 
-def collect_values(value: Any) -> Optional[Tuple[Any, ...]]:
+def collect_values(value: Any, data_type: M.DataType) -> Optional[Tuple[Any, ...]]:
     if value is None:
         return None
     if type(value) in (list, tuple):
-        return tuple([fix_custom_value(val) for val in value])
+        return tuple([fix_custom_value(v, data_type) for v in value])
     else:
-        return tuple([value])
+        return tuple([fix_custom_value(value, data_type)])
 
 
 @dataclass
@@ -185,23 +219,25 @@ class SimpleSegmentHandler:
             return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL, None)
 
         value = children[2].value if len(children) == 3 else None
+        data_type = event_field_def._field._type
 
         if property_operator == OPERATOR_MAPPING[M.Operator.ANY_OF]:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.ANY_OF,
-                collect_values(value),
+                collect_values(value, data_type),
             )
         elif property_operator == OPERATOR_MAPPING[M.Operator.NONE_OF]:
             return M.SimpleSegment(
                 event_field_def,
                 M.Operator.NONE_OF,
-                collect_values(value),
+                collect_values(value, data_type),
             )
         else:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
-                    fixed_val = fix_custom_value(value)
+                    print(f"{data_type} -> {type(value)}{value}")
+                    fixed_val = fix_custom_value(value, data_type)
                     return M.SimpleSegment(event_field_def, op, fixed_val)
 
             raise ValueError(f"Not supported Operator { property_operator }")
@@ -264,10 +300,11 @@ class SimpleSegmentHandler:
             options = [
                 o
                 for o in options
-                if not o.get("value", "").startswith(CUSTOM_VAL_PREFIX)
-                or (values is not None and o.get("value", "") in values)
+                if type(o.get("value", "")) != str
+                or not o.get("value", "").startswith(CUSTOM_VAL_PREFIX)
+                or ((type(values) in (list, tuple) and o.get("value", "") in values))
             ]
-            print(search_value)
+
             if search_value not in [o["label"] for o in options]:
                 options.insert(
                     0,
