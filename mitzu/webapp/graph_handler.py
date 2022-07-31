@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.visualization as VIZ
-import mitzu.webapp.webapp as WA
 import pandas as pd
-from dash import Dash, dcc, html
-from dash.dependencies import ALL, Input, Output, State
+from dash import dcc, html
 from mitzu.serialization import to_dict
 
 GRAPH = "graph"

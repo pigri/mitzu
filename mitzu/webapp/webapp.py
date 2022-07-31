@@ -248,7 +248,7 @@ class MitzuWebApp:
             return None, MNB.MetricType.SEGMENTATION
         try:
             metric = SE.from_compressed_string(query, discovered_datasource.source)
-        except Exception as exc:
+        except Exception:
             metric = None
 
         metric_type = MNB.MetricType.from_metric(metric)

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from lib2to3.pgen2.literals import simple_escapes
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import mitzu.model as M
 from dash import Dash, dcc, html
