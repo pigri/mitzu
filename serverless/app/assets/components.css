@@ -151,3 +151,7 @@
     line-height: 500px;
     user-select: none;
 }
+
+.graph_auto_refresh .form-label {
+    margin-bottom: 0px;
+}

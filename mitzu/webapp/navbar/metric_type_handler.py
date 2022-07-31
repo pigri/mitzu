@@ -74,6 +74,7 @@ class MetricTypeHandler:
             clearable=False,
             value=metric_type.value,
             searchable=False,
+            style={"border-radius": "5px"},
         )
 
         return MetricTypeHandler(metric_type_dropdown)

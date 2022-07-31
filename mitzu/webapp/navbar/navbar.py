@@ -36,21 +36,6 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                 dbc.Row(
                     children=[
                         dbc.Col(
-                            dbc.DropdownMenu(
-                                children=[
-                                    dbc.DropdownMenuItem("Link"),
-                                    dbc.DropdownMenuItem("CSV"),
-                                    dbc.DropdownMenuItem("SQL Query"),
-                                    dbc.DropdownMenuItem("PNG"),
-                                ],
-                                label="Share",
-                                size="sm",
-                                color="primary",
-                                in_navbar=True,
-                                align_end=True,
-                            ),
-                        ),
-                        dbc.Col(
                             dbc.Button(
                                 children=html.I(className="bi bi-gear"),
                                 size="sm",

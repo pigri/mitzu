@@ -19,7 +19,7 @@ import mitzu.webapp.navbar.metric_type_handler as MNB
 import mitzu.webapp.navbar.navbar as MN
 import mitzu.webapp.simple_segment_handler as SS
 import mitzu.webapp.webapp as WA
-from dash import Dash, ctx, dcc, html
+from dash import Dash, ctx, dcc, html, no_update
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.helper import (
     deserialize_component,
@@ -41,7 +41,12 @@ METRIC_TYPE_PATH_INDEX = 2
 GRAPH_CONTAINER = "graph_container"
 GRAPH_CONTAINER_HEADER = "graph_container_header"
 GRAPH_CONTAINER_AUTOFREFRESH = "graph_auto_refresh"
+GRAPH_VIZ_TYPE_DD = "graph_viz_type_dd"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
+
+GRAPH_VAL_CHART = "chart"
+GRAPH_VAL_TABLE = "table"
+GRAPH_VAL_SQL = "sql"
 
 SELECT_PROJECT_DIV = "select_project_div"
 
@@ -54,14 +59,87 @@ def create_graph_container(graph: dcc.Graph):
     graph_container = dbc.Card(
         children=[
             dbc.CardHeader(
+                style={
+                    "display": "flex",
+                    "justify-content": "flex-start",
+                    "align-items": "flex-start",
+                },
                 children=[
-                    dbc.Button(
-                        children=[html.B(className="bi bi-play-fill")],
-                        size="sm",
-                        color="info",
-                        className=GRAPH_REFRESH_BUTTON,
-                        id=GRAPH_REFRESH_BUTTON,
-                        style={"margin-right": "10px"},
+                    dbc.InputGroup(
+                        children=[
+                            dbc.InputGroupText(
+                                dbc.Checkbox(
+                                    id=GRAPH_CONTAINER_AUTOFREFRESH,
+                                    className=GRAPH_CONTAINER_AUTOFREFRESH,
+                                    label="Auto Refresh",
+                                    value=True,
+                                    style={"margin-bottom": "0px"},
+                                ),
+                                style={
+                                    "padding": "2px 10px",
+                                    "height": "36px",
+                                    "line-height": "24px",
+                                },
+                            ),
+                            dcc.Dropdown(
+                                id=GRAPH_VIZ_TYPE_DD,
+                                className=GRAPH_VIZ_TYPE_DD,
+                                clearable=False,
+                                searchable=False,
+                                style={"width": "120px"},
+                                value=GRAPH_VAL_CHART,
+                                options=[
+                                    {
+                                        "label": html.Span(
+                                            [
+                                                html.I(
+                                                    className="bi bi-graph-up",
+                                                    style={"margin-right": "5px"},
+                                                ),
+                                                html.Span("Chart"),
+                                            ]
+                                        ),
+                                        "value": GRAPH_VAL_CHART,
+                                    },
+                                    {
+                                        "label": html.Span(
+                                            [
+                                                html.I(
+                                                    className="bi bi-grid-3x3",
+                                                    style={"margin-right": "5px"},
+                                                ),
+                                                html.Span("Table"),
+                                            ]
+                                        ),
+                                        "value": GRAPH_VAL_TABLE,
+                                    },
+                                    {
+                                        "label": html.Span(
+                                            [
+                                                html.I(
+                                                    className="bi bi-code-slash",
+                                                    style={"margin-right": "5px"},
+                                                ),
+                                                html.Span("SQL"),
+                                            ]
+                                        ),
+                                        "value": GRAPH_VAL_SQL,
+                                    },
+                                ],
+                            ),
+                            dbc.Button(
+                                children=[html.B(className="bi bi-play-fill fs-600")],
+                                size="sm",
+                                color="info",
+                                className=GRAPH_REFRESH_BUTTON,
+                                id=GRAPH_REFRESH_BUTTON,
+                                style={
+                                    "margin-right": "10px",
+                                    "min-height": "0",
+                                    "height": "36px",
+                                },
+                            ),
+                        ],
                     ),
                 ],
                 id=GRAPH_CONTAINER_HEADER,
@@ -130,7 +208,7 @@ class MitzuWebApp:
         metrics_config_card = MC.MetricConfigHandler.from_metric(
             None, self._discovered_datasource.get_value()
         ).component
-        graph = GH.GraphHandler.from_metric(None).component
+        graph = html.Div(className=GRAPH_CONTAINER)
         graph_container = create_graph_container(graph)
 
         self.app.layout = html.Div(
@@ -270,6 +348,7 @@ class MitzuWebApp:
 
     def create_callbacks(self):
         SS.SimpleSegmentHandler.create_callbacks(self.app)
+
         all_input_comps = {
             "all_inputs": {
                 "href": Input(WA.MITZU_LOCATION, "href"),
@@ -369,7 +448,13 @@ class MitzuWebApp:
 
         @self.app.callback(
             output=Output(GRAPH_CONTAINER, "children"),
-            inputs=all_input_comps,
+            inputs={
+                **all_input_comps,
+                "chart_options": {
+                    "auto_refresh": Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
+                    "graph_viz_type": Input(GRAPH_VIZ_TYPE_DD, "value"),
+                },
+            },
             state=dict(
                 metric_segment_divs=State(MS.METRIC_SEGMENTS, "children"),
                 metric_configs=State(MC.METRICS_CONFIG_CONTAINER, "children"),
@@ -378,9 +463,15 @@ class MitzuWebApp:
         )
         def change_graph_container(
             all_inputs: Dict[str, Any],
+            chart_options: Dict[str, Any],
             metric_segment_divs: List[Dict],
             metric_configs: List[Dict],
         ) -> List[Dict]:
+            if not chart_options["auto_refresh"] and ctx.triggered_id not in (
+                GRAPH_REFRESH_BUTTON,
+                GRAPH_VIZ_TYPE_DD,
+            ):
+                return no_update
             parse_result = urlparse(all_inputs["href"])
             discovered_datasource = self.handle_discovered_datasource(parse_result)
 
@@ -408,4 +499,11 @@ class MitzuWebApp:
                 )
             ):
                 return [create_hint_div("Select the first event ...").to_plotly_json()]
-            return [GH.create_graph(metric).to_plotly_json()]
+            viz_type = chart_options["graph_viz_type"]
+            if viz_type == GRAPH_VAL_CHART:
+                return [GH.create_graph(metric).to_plotly_json()]
+            elif viz_type == GRAPH_VAL_TABLE:
+                return [GH.create_table(metric).to_plotly_json()]
+            elif viz_type == GRAPH_VAL_SQL:
+                return [GH.create_sql_area(metric).to_plotly_json()]
+            return []

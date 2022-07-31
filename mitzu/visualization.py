@@ -171,8 +171,11 @@ def get_group_label(metric: M.Metric) -> str:
         return name.title()
 
 
-def plot_conversion(metric: M.ConversionMetric):
-    pdf = metric.get_df()
+def plot_conversion(metric: M.ConversionMetric, cached_df: pd.DataFrame = None):
+    if cached_df is None:
+        pdf = metric.get_df()
+    else:
+        pdf = cached_df
     pdf = fix_na_cols(pdf, metric)
     px.defaults.color_discrete_sequence = px.colors.qualitative.Safe
     pdf, group_count = filter_top_conversion_groups(pdf, metric)
@@ -288,8 +291,11 @@ def plot_conversion(metric: M.ConversionMetric):
     return fig
 
 
-def plot_segmentation(metric: M.SegmentationMetric):
-    pdf = metric.get_df()
+def plot_segmentation(metric: M.SegmentationMetric, cached_df: pd.DataFrame = None):
+    if cached_df is None:
+        pdf = metric.get_df()
+    else:
+        pdf = cached_df
     pdf = fix_na_cols(pdf, metric)
 
     px.defaults.color_discrete_sequence = px.colors.qualitative.Safe
