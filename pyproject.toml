@@ -23,6 +23,7 @@ mysql-connector-python = {version = "~8.0.28", optional=true}
 trino = { version = "~0.313.0", optional=true }
 databricks-sql-connector = { version = "^2.0.2", optional=true}
 aws-wsgi = "^0.2.7"
+orjson = "^3.7.11"
 
 
 [tool.poetry.extras]
