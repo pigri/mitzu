@@ -76,6 +76,7 @@ def create_table(metric: Optional[M.Metric]) -> dbc.Table:
         striped=True,
         bordered=True,
         hover=True,
+        size="sm",
     )
     return html.Div(
         id=GRAPH,
