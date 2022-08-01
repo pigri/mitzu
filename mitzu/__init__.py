@@ -42,12 +42,15 @@ def load_project_from_file(
 def init_project(
     source: EventDataSource,
     persist_as: str = None,
+    persist_folder: str = "./",
     glbs=None,
 ) -> DatasetModel:
 
     if glbs is None:
         glbs = _find_notebook_globals()
     print("Initializing project ...")
-    res = P.init_project(source=source, glbs=glbs, persist_as=persist_as)
+    res = P.init_project(
+        source=source, glbs=glbs, persist_as=persist_as, persist_folder=persist_folder
+    )
     print("Finished project initialization")
     return res

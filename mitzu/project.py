@@ -9,13 +9,14 @@ import mitzu.model as M
 def init_project(
     source: M.EventDataSource,
     persist_as: str = None,
+    persist_folder: str = "./",
     glbs: Optional[Dict] = None,
 ) -> M.DatasetModel:
     warnings.filterwarnings("ignore")
 
     dd = source.discover_datasource()
     if persist_as is not None:
-        dd.save_project(persist_as)
+        dd.save_project(persist_as, folder=persist_folder)
 
     m = dd.create_notebook_class_model()
     if glbs is not None:
