@@ -40,6 +40,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                         "Manage projects",
                                         external_link=True,
                                         href=MANAGE_PROJECTS_LINK,
+                                        target="_blank",
                                         disabled=(MANAGE_PROJECTS_LINK is None),
                                     ),
                                     dbc.DropdownMenuItem(divider=True),
