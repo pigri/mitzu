@@ -9,7 +9,7 @@ CHOOSE_PROJECT_DROPDOWN = "choose-project-dropdown"
 
 
 def create_project_dropdown(webapp: WA.MitzuWebApp):
-    projects = webapp.persistency_provider.list_keys(WA.PATH_PROJECTS)
+    projects = webapp.persistency_provider.list_projects()
     projects = [p.replace(".mitzu", "") for p in projects]
     res = (
         dbc.DropdownMenu(

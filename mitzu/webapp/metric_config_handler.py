@@ -56,7 +56,7 @@ def create_conversion_component(metric: Optional[M.Metric]) -> bc.Component:
                     multi=False,
                     value=tg_value.value,
                     options=get_time_group_options(),
-                    style={"width": "120px", "height": "38px"},
+                    style={"width": "120px"},
                 ),
             ],
         ),

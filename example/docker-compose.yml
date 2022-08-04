@@ -1,0 +1,21 @@
+services:
+
+  mitzu-webapp:
+    image: imeszaros/mitzu-webapp:latest
+    restart: always
+    entrypoint: gunicorn -b 0.0.0.0:80 app:server
+    environment:
+      BASEPATH: /var/task/basepath/
+      MANAGE_PROJECTS_LINK: http://127.0.0.1:8888/lab/tree/work/projects
+    ports:
+      - 8082:80
+    volumes:
+      - ./basepath/:/var/task/basepath/
+
+  jupyter-notebook:
+    image: jupyter/scipy-notebook
+    restart: always
+    ports:
+      - 8888:8888
+    volumes:
+      - ./basepath/:/home/jovyan/work

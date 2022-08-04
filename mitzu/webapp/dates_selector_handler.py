@@ -115,7 +115,7 @@ class DateSelectorHandler:
                     clearable=False,
                     searchable=False,
                     multi=False,
-                    style={"width": "120px", "height": "38px"},
+                    style={"width": "120px"},
                 ),
                 dcc.Dropdown(
                     options=[*tw_options, CUSTOM_OPTION],
@@ -124,7 +124,7 @@ class DateSelectorHandler:
                     clearable=False,
                     searchable=False,
                     multi=False,
-                    style={"width": "120px", "height": "38px"},
+                    style={"width": "120px"},
                 ),
                 dcc.DatePickerRange(
                     clearable=True,

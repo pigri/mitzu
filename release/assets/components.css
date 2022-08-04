@@ -40,6 +40,18 @@
     border-radius: 5px;
 }
 
+.metric_config .Select {
+    height: 39px;
+}
+
+.metrics_config_container .Select-control {
+    height: 39px;
+}
+
+.metrics_config_container .Select-control .Select-value {
+    line-height: 39px;
+}
+
 .Select-value-label {
     color: var(--bs-gray-dark);
 }

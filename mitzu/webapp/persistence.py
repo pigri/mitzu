@@ -1,44 +1,55 @@
 import os
 import pickle
-from typing import Any, List, Optional, Protocol
+from typing import List, Optional, Protocol
+
+import mitzu.model as M
+import s3fs
+
+PROJECTS_SUB_PATH = "projects"
+PROJECT_SUFFIX = ".mitzu"
 
 
 class PersistencyProvider(Protocol):
-    def list_keys(self, path: str) -> List[str]:
+    def list_projects(self) -> List[str]:
         pass
 
-    def get_item(self, key: str) -> Optional[Any]:
-        pass
-
-    def delete_item(self, key: str) -> None:
-        pass
-
-    def upsert_item(self, key: str, item: Any) -> None:
+    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
         pass
 
 
-class PathPersistencyProvider(PersistencyProvider):
+class FileSystemPersistencyProvider(PersistencyProvider):
     def __init__(self, base_path: str):
         if base_path.endswith("/"):
             base_path = base_path[:-1]
         self.base_path = base_path
 
-    def _get_path(self, path: str) -> str:
-        return f"{self.base_path}/{path}"
+    def list_projects(self) -> List[str]:
+        res = os.listdir(f"{self.base_path}/{PROJECTS_SUB_PATH}/")
+        return [r for r in res if r.endswith(".mitzu")]
 
-    def list_keys(self, path: str) -> List[str]:
-        return os.listdir(self._get_path(path))
-
-    def get_item(self, key: str) -> Optional[Any]:
-        key = self._get_path(key)
-        with open(key, "rb") as f:
+    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
+        if key.endswith(PROJECT_SUFFIX):
+            key = key[: len(PROJECT_SUFFIX)]
+        path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"
+        with open(path, "rb") as f:
             return pickle.load(f)
 
-    def delete_item(self, key: str) -> None:
-        key = self._get_path(key)
-        os.remove(key)
 
-    def upsert_item(self, key: str, item: Any) -> None:
-        key = self._get_path(key)
-        with open(key, "wb") as f:
-            return pickle.dump(item, f)
+class S3PersistencyProvider(PersistencyProvider):
+    def __init__(self, base_path: str):
+        if base_path.endswith("/"):
+            base_path = base_path[:-1]
+        self.base_path = base_path
+        self.s3fs = s3fs.S3FileSystem(anon=False)
+
+    def list_projects(self) -> List[str]:
+        res = self.s3fs.listdir(f"{self.base_path}/{PROJECTS_SUB_PATH}/")
+        res = [r["name"].split("/")[-1] for r in res if r["name"].endswith(".mitzu")]
+        return res
+
+    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
+        if key.endswith(PROJECT_SUFFIX):
+            key = key[: len(PROJECT_SUFFIX)]
+        path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"
+        with self.s3fs.open(path, "rb") as f:
+            return pickle.load(f)

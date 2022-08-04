@@ -1,18 +1,24 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
 
+clean:
+	$(POETRY) run pyclean mitzu release tests 
+	rm -rf dist htmlcov
+	rm -rf .pytest_cache
+	rm -rf .mypy_cache
+	rm -rf .ipynb_checkpoints
 
 format: ## formats all python code
-	$(POETRY) run black mitzu tests serverless
+	$(POETRY) run black mitzu tests release
 
 lint: ## lints and checks formatting all python code
-	$(POETRY) run black --check mitzu tests serverless
-	$(POETRY) run flake8 mitzu tests serverless
+	$(POETRY) run black --check mitzu tests release
+	$(POETRY) run flake8 mitzu tests release
 
 autoflake: ## fixes imports, unused variables
-	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/  serverless/
+	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/  release/
 
 mypy:
-	$(POETRY) run mypy mitzu tests serverless --ignore-missing-imports 
+	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
 
 unit_tests:
 	$(POETRY) run pytest -sv tests/unit/
@@ -40,11 +46,12 @@ check: format autoflake mypy lint test_coverage
 notebook: 
 	$(POETRY) run jupyter lab
 
-dash: 
-	$(POETRY) run python serverless/app/test_app.py
+dash: 	
+	cd release && \
+	BASEPATH=../example/basepath/ \
+	MANAGE_PROJECTS_LINK=http://localhost:8081 \
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server
 
-dash_profile: 
-	$(POETRY) run python serverless/app/test_app.py --profile
 
 build: check
 	$(POETRY) build
@@ -62,18 +69,26 @@ publish_no_build:
 	$(POETRY) publish
 
 docker_build:
-	docker image build -t mitzu-demo-app ./serverless/app/
+	docker image build ./release \
+	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
+	-t imeszaros/mitzu-webapp:latest \
+	--build-arg ADDITIONAL_DEPENDENCIES="mitzu==$(shell poetry version -s) databricks-sql-connector==2.0.2 trino==0.313.0"
+	
+docker_build_athena:	
+	docker image build ./release \
+	-t imeszaros/mitzu-webapp-athena:$(shell poetry version -s) \
+	-t imeszaros/mitzu-webapp-athena:latest \
+	--build-arg ADDITIONAL_DEPENDENCIES="mitzu==$(shell poetry version -s) PyAthena==1.11.5"	
 
-sam_local:
-	$(POETRY) install && \
-	cd serverless && \
-	sam build && \
-	sam local start-api && \
-	cd ../
+docker_build_all: docker_build docker_build_athena
+	@echo "Done building all"
 
-deploy_sam:
-	cd serverless && \
-	sam build && \
-	sam deploy && \
-	cd ../
+docker_publish_no_build:
+	docker push imeszaros/mitzu-webapp
+	docker push imeszaros/mitzu-webapp-athena
+
+docker_publish: docker_build_all
+	make docker_publish_no_build
+
+
 

@@ -1,4 +1,0 @@
-mitzu==0.1.43
-PyAthena==1.11.5
-aws-wsgi==0.2.7
-orjson==3.7.11

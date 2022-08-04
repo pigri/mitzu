@@ -32,7 +32,6 @@ PRINTER = pprint.PrettyPrinter(indent=4)
 
 
 MAIN = "main"
-PATH_PROJECTS = "projects"
 PATH_RESULTS = "results"
 MITZU_LOCATION = "mitzu_location"
 MAIN_CONTAINER = "main_container"
@@ -178,7 +177,7 @@ class MitzuWebApp:
     def get_discovered_datasource(self) -> Optional[M.DiscoveredEventDataSource]:
         return self._discovered_datasource.get_value()
 
-    def load_dataset_model(self, path_project_name: str):
+    def _load_dataset_model(self, path_project_name: str):
         if (
             path_project_name == self._current_project
             and self._discovered_datasource.has_value()
@@ -187,11 +186,7 @@ class MitzuWebApp:
         self._current_project = path_project_name
         if path_project_name:
             print(f"Loading project: {path_project_name}")
-            dd: Optional[
-                M.DiscoveredEventDataSource
-            ] = self.persistency_provider.get_item(
-                f"{PATH_PROJECTS}/{path_project_name}.mitzu"
-            )
+            dd = self.persistency_provider.get_project(path_project_name)
             if dd is not None:
                 dd.source._discovered_event_datasource.set_value(dd)
             self._discovered_datasource.set_value(dd)
@@ -318,7 +313,7 @@ class MitzuWebApp:
         self, parse_result: ParseResult
     ) -> Optional[M.DiscoveredEventDataSource]:
         path_project_name = get_path_project_name(parse_result)
-        self.load_dataset_model(path_project_name)
+        self._load_dataset_model(path_project_name)
         return self.get_discovered_datasource()
 
     def handle_metric_changes(

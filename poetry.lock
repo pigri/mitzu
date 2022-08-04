@@ -1,17 +1,64 @@
 [[package]]
-name = "ansi2html"
-version = "1.8.0"
-description = ""
+name = "aiobotocore"
+version = "2.3.4"
+description = "Async client for aws services using botocore and aiohttp"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
+aiohttp = ">=3.3.1"
+aioitertools = ">=0.5.1"
+botocore = ">=1.24.21,<1.24.22"
+wrapt = ">=1.10.10"
 
 [package.extras]
-test = ["pytest-cov", "pytest"]
-docs = ["sphinx-rtd-theme", "setuptools-scm", "sphinx"]
+awscli = ["awscli (>=1.22.76,<1.22.77)"]
+boto3 = ["boto3 (>=1.21.21,<1.21.22)"]
+
+[[package]]
+name = "aiohttp"
+version = "3.8.1"
+description = "Async http client/server framework (asyncio)"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+aiosignal = ">=1.1.2"
+async-timeout = ">=4.0.0a3,<5.0"
+asynctest = {version = "0.13.0", markers = "python_version < \"3.8\""}
+attrs = ">=17.3.0"
+charset-normalizer = ">=2.0,<3.0"
+frozenlist = ">=1.1.1"
+multidict = ">=4.5,<7.0"
+typing-extensions = {version = ">=3.7.4", markers = "python_version < \"3.8\""}
+yarl = ">=1.0,<2.0"
+
+[package.extras]
+speedups = ["aiodns", "brotli", "cchardet"]
+
+[[package]]
+name = "aioitertools"
+version = "0.10.0"
+description = "itertools and builtins for AsyncIO and mixed iterables"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+typing_extensions = {version = ">=4.0", markers = "python_version < \"3.10\""}
+
+[[package]]
+name = "aiosignal"
+version = "1.2.0"
+description = "aiosignal: a list of registered asynchronous callbacks"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+frozenlist = ">=1.1.0"
 
 [[package]]
 name = "anyio"
@@ -43,7 +90,7 @@ python-versions = ">=3.7"
 name = "appnope"
 version = "0.1.3"
 description = "Disable App Nap on macOS >= 10.9"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -80,8 +127,27 @@ dev = ["pytest", "cogapp", "pre-commit", "wheel"]
 tests = ["pytest"]
 
 [[package]]
+name = "async-timeout"
+version = "4.0.2"
+description = "Timeout context manager for asyncio programs"
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+typing-extensions = {version = ">=3.6.5", markers = "python_version < \"3.8\""}
+
+[[package]]
+name = "asynctest"
+version = "0.13.0"
+description = "Enhance the standard unittest package with features for testing asyncio libraries"
+category = "main"
+optional = true
+python-versions = ">=3.5"
+
+[[package]]
 name = "atomicwrites"
-version = "1.4.0"
+version = "1.4.1"
 description = "Atomic file writes."
 category = "dev"
 optional = false
@@ -89,24 +155,24 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "attrs"
-version = "21.4.0"
+version = "22.1.0"
 description = "Classes Without Boilerplate"
-category = "dev"
+category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.5"
 
 [package.extras]
-dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit", "cloudpickle"]
+dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "mypy (>=0.900,!=0.940)", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit", "cloudpickle"]
 docs = ["furo", "sphinx", "zope.interface", "sphinx-notfound-page"]
-tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "cloudpickle"]
-tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "cloudpickle"]
+tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "mypy (>=0.900,!=0.940)", "pytest-mypy-plugins", "zope.interface", "cloudpickle"]
+tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "mypy (>=0.900,!=0.940)", "pytest-mypy-plugins", "cloudpickle"]
 
 [[package]]
 name = "aws-wsgi"
 version = "0.2.7"
 description = "WSGI adapter for AWS API Gateway/Lambda Proxy Integration"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [[package]]
@@ -124,7 +190,7 @@ pytz = ">=2015.7"
 name = "backcall"
 version = "0.2.0"
 description = "Specifications for callback functions passed in to an API"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -183,6 +249,22 @@ css = ["tinycss2 (>=1.1.0,<1.2)"]
 dev = ["build (==0.8.0)", "flake8 (==4.0.1)", "hashin (==0.17.0)", "pip-tools (==6.6.2)", "pytest (==7.1.2)", "Sphinx (==4.3.2)", "tox (==3.25.0)", "twine (==4.0.1)", "wheel (==0.37.1)", "black (==22.3.0)", "mypy (==0.961)"]
 
 [[package]]
+name = "botocore"
+version = "1.24.21"
+description = "Low-level, data-driven core of boto 3."
+category = "main"
+optional = true
+python-versions = ">= 3.6"
+
+[package.dependencies]
+jmespath = ">=0.7.1,<2.0.0"
+python-dateutil = ">=2.1,<3.0.0"
+urllib3 = ">=1.25.4,<1.27"
+
+[package.extras]
+crt = ["awscrt (==0.13.5)"]
+
+[[package]]
 name = "brotli"
 version = "1.0.9"
 description = "Python bindings for the Brotli compression library"
@@ -202,7 +284,7 @@ python-versions = ">=3.6"
 name = "cffi"
 version = "1.15.1"
 description = "Foreign Function Interface for Python calling C code."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -264,7 +346,7 @@ python-versions = "*"
 
 [[package]]
 name = "dash"
-version = "2.5.1"
+version = "2.6.1"
 description = "A Python framework for building reactive web-apps. Developed by Plotly."
 category = "main"
 optional = false
@@ -283,11 +365,11 @@ celery = ["redis (>=3.5.3)", "celery[redis] (>=5.1.2)"]
 ci = ["dash-flow-example (==0.0.5)", "dash-dangerously-set-inner-html", "flake8 (==3.9.2)", "flaky (==3.7.0)", "flask-talisman (==1.0.0)", "mimesis", "mock (==4.0.3)", "numpy", "preconditions", "pylint (==2.13.5)", "pytest-mock", "pytest-sugar (==0.9.4)", "pytest-rerunfailures", "black (==21.6b0)", "isort (==4.3.21)", "orjson (==3.5.4)", "pyarrow (<3)", "pandas (==1.1.5)", "xlrd (<2)", "black (==22.3.0)", "orjson (==3.6.7)", "pyarrow", "openpyxl", "pandas (>=1.4.0)", "xlrd (>=2.0.1)"]
 dev = ["coloredlogs (>=15.0.1)", "fire (>=0.4.0)", "PyYAML (>=5.4.1)"]
 diskcache = ["diskcache (>=5.2.1)", "multiprocess (>=0.70.12)", "psutil (>=5.8.0)"]
-testing = ["beautifulsoup4 (>=4.8.2)", "lxml (>=4.6.2)", "percy (>=2.0.2)", "pytest (>=6.0.2)", "requests[security] (>=2.21.0)", "selenium (>=3.141.0)", "waitress (>=1.4.4)", "cryptography (<3.4)"]
+testing = ["beautifulsoup4 (>=4.8.2)", "lxml (>=4.6.2)", "percy (>=2.0.2)", "pytest (>=6.0.2)", "requests[security] (>=2.21.0)", "selenium (>=3.141.0,<=4.2.0)", "waitress (>=1.4.4)", "cryptography (<3.4)"]
 
 [[package]]
 name = "dash-bootstrap-components"
-version = "1.2.0"
+version = "1.2.1"
 description = "Bootstrap themed components for use in Plotly Dash"
 category = "main"
 optional = false
@@ -340,7 +422,7 @@ thrift = ">=0.13.0"
 name = "debugpy"
 version = "1.6.2"
 description = "An implementation of the Debug Adapter Protocol for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -364,13 +446,13 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 name = "entrypoints"
 version = "0.4"
 description = "Discover and load entry points from installed packages."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
 [[package]]
 name = "faker"
-version = "13.15.0"
+version = "13.15.1"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
@@ -382,7 +464,7 @@ typing-extensions = {version = ">=3.10.0.2", markers = "python_version < \"3.8\"
 
 [[package]]
 name = "fastjsonschema"
-version = "2.15.3"
+version = "2.16.1"
 description = "Fastest Python implementation of JSON schema"
 category = "dev"
 optional = false
@@ -410,7 +492,7 @@ lzo = ["python-lzo"]
 
 [[package]]
 name = "flask"
-version = "2.1.2"
+version = "2.2.1"
 description = "A simple framework for building complex web applications."
 category = "main"
 optional = false
@@ -421,7 +503,7 @@ click = ">=8.0"
 importlib-metadata = {version = ">=3.6.0", markers = "python_version < \"3.10\""}
 itsdangerous = ">=2.0"
 Jinja2 = ">=3.0"
-Werkzeug = ">=2.0"
+Werkzeug = ">=2.2.0"
 
 [package.extras]
 async = ["asgiref (>=3.2)"]
@@ -440,8 +522,16 @@ brotli = "*"
 flask = "*"
 
 [[package]]
+name = "frozenlist"
+version = "1.3.1"
+description = "A list-like structure which implements collections.abc.MutableSequence"
+category = "main"
+optional = true
+python-versions = ">=3.7"
+
+[[package]]
 name = "fsspec"
-version = "2022.5.0"
+version = "2022.7.1"
 description = "File-system specification"
 category = "main"
 optional = false
@@ -482,6 +572,20 @@ python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
 docs = ["sphinx"]
 
 [[package]]
+name = "gunicorn"
+version = "20.1.0"
+description = "WSGI HTTP Server for UNIX"
+category = "dev"
+optional = false
+python-versions = ">=3.5"
+
+[package.extras]
+eventlet = ["eventlet (>=0.24.1)"]
+gevent = ["gevent (>=1.4.0)"]
+setproctitle = ["setproctitle"]
+tornado = ["tornado (>=0.2)"]
+
+[[package]]
 name = "idna"
 version = "3.3"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -508,7 +612,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [[package]]
 name = "importlib-resources"
-version = "5.8.0"
+version = "5.9.0"
 description = "Read resources from Python packages"
 category = "dev"
 optional = false
@@ -518,8 +622,8 @@ python-versions = ">=3.7"
 zipp = {version = ">=3.1.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
-docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
-testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
+docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)", "jaraco.tidelift (>=1.4)"]
+testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
 
 [[package]]
 name = "iniconfig"
@@ -531,9 +635,9 @@ python-versions = "*"
 
 [[package]]
 name = "ipykernel"
-version = "6.15.0"
+version = "6.15.1"
 description = "IPython Kernel for Jupyter"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -557,7 +661,7 @@ test = ["flaky", "ipyparallel", "pre-commit", "pytest-cov", "pytest-timeout", "p
 name = "ipython"
 version = "7.34.0"
 description = "IPython: Productive Interactive Computing"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -624,7 +728,7 @@ python-versions = ">=3.7"
 name = "jedi"
 version = "0.18.1"
 description = "An autocompletion tool for Python that can be used for text editors."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -650,8 +754,16 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jmespath"
+version = "1.0.1"
+description = "JSON Matching Expressions"
+category = "main"
+optional = true
+python-versions = ">=3.7"
+
+[[package]]
 name = "json5"
-version = "0.9.8"
+version = "0.9.9"
 description = "A Python implementation of the JSON5 data format."
 category = "dev"
 optional = false
@@ -662,7 +774,7 @@ dev = ["hypothesis"]
 
 [[package]]
 name = "jsonschema"
-version = "4.6.2"
+version = "4.9.1"
 description = "An implementation of JSON Schema validation for Python"
 category = "dev"
 optional = false
@@ -672,6 +784,7 @@ python-versions = ">=3.7"
 attrs = ">=17.4.0"
 importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 importlib-resources = {version = ">=1.4.0", markers = "python_version < \"3.9\""}
+pkgutil-resolve-name = {version = ">=1.3.10", markers = "python_version < \"3.9\""}
 pyrsistent = ">=0.14.0,<0.17.0 || >0.17.0,<0.17.1 || >0.17.1,<0.17.2 || >0.17.2"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
@@ -699,7 +812,7 @@ qtconsole = "*"
 name = "jupyter-client"
 version = "7.3.4"
 description = "Jupyter protocol implementation and client libraries"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -736,9 +849,9 @@ test = ["pexpect"]
 
 [[package]]
 name = "jupyter-core"
-version = "4.11.0"
+version = "4.11.1"
 description = "Jupyter core package. A base package on which Jupyter projects rely."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -748,27 +861,6 @@ traitlets = "*"
 
 [package.extras]
 test = ["ipykernel", "pre-commit", "pytest", "pytest-cov", "pytest-timeout"]
-
-[[package]]
-name = "jupyter-dash"
-version = "0.4.2"
-description = "Dash support for the Jupyter notebook interface"
-category = "main"
-optional = false
-python-versions = ">=3.5"
-
-[package.dependencies]
-ansi2html = "*"
-dash = "*"
-flask = "*"
-ipykernel = "*"
-ipython = "*"
-nest-asyncio = "*"
-requests = "*"
-retrying = "*"
-
-[package.extras]
-dev = ["jupyter-server-proxy", "notebook (>=6.0)", "jupyterlab (>=2.0)"]
 
 [[package]]
 name = "jupyter-server"
@@ -801,7 +893,7 @@ test = ["coverage", "ipykernel", "pre-commit", "pytest-console-scripts", "pytest
 
 [[package]]
 name = "jupyterlab"
-version = "3.4.3"
+version = "3.4.4"
 description = "JupyterLab computational environment"
 category = "dev"
 optional = false
@@ -813,12 +905,13 @@ jinja2 = ">=2.1"
 jupyter-core = "*"
 jupyter-server = ">=1.16,<2.0"
 jupyterlab-server = ">=2.10,<3.0"
-nbclassic = ">=0.2,<1.0"
+nbclassic = "*"
+notebook = "<7"
 packaging = "*"
 tornado = ">=6.1.0"
 
 [package.extras]
-test = ["check-manifest", "coverage", "jupyterlab-server", "pytest (>=6.0)", "pytest-cov", "pytest-console-scripts", "pytest-check-links (>=0.5)", "requests", "requests-cache", "virtualenv", "pre-commit"]
+test = ["check-manifest", "coverage", "jupyterlab-server", "pre-commit", "pytest (>=6.0)", "pytest-cov", "pytest-console-scripts", "pytest-check-links (>=0.5)", "requests", "requests-cache", "virtualenv"]
 ui-tests = ["build"]
 
 [[package]]
@@ -871,7 +964,7 @@ python-versions = ">=3.7"
 name = "matplotlib-inline"
 version = "0.1.3"
 description = "Inline Matplotlib backend for Jupyter"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5"
 
@@ -885,6 +978,14 @@ description = "The fastest markdown parser in pure Python"
 category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "multidict"
+version = "6.0.2"
+description = "multidict implementation"
+category = "main"
+optional = true
+python-versions = ">=3.7"
 
 [[package]]
 name = "mypy"
@@ -914,23 +1015,23 @@ python-versions = "*"
 
 [[package]]
 name = "mysql-connector-python"
-version = "8.0.29"
+version = "8.0.30"
 description = "MySQL driver written in Python"
 category = "main"
 optional = true
 python-versions = "*"
 
 [package.dependencies]
-protobuf = ">=3.0.0"
+protobuf = ">=3.11.0,<=3.20.1"
 
 [package.extras]
-compression = ["lz4 (>=2.1.6)", "zstandard (>=0.12.0)"]
-dns-srv = ["dnspython (>=1.16.0)"]
-gssapi = ["gssapi (>=1.6.9)"]
+compression = ["lz4 (>=2.1.6,<=3.1.3)", "zstandard (>=0.12.0,<=0.15.2)"]
+dns-srv = ["dnspython (>=1.16.0,<=2.1.0)"]
+gssapi = ["gssapi (>=1.6.9,<=1.7.3)"]
 
 [[package]]
 name = "nbclassic"
-version = "0.4.2"
+version = "0.4.3"
 description = "A web-based notebook environment for interactive computing"
 category = "dev"
 optional = false
@@ -1032,7 +1133,7 @@ test = ["check-manifest", "testpath", "pytest", "pre-commit"]
 name = "nest-asyncio"
 version = "1.5.5"
 description = "Patch asyncio to allow nested event loops"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5"
 
@@ -1093,14 +1194,14 @@ name = "orjson"
 version = "3.7.11"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [[package]]
 name = "packaging"
 version = "21.3"
 description = "Core utilities for Python packages"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -1140,7 +1241,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 name = "parso"
 version = "0.8.3"
 description = "A Python Parser"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -1160,7 +1261,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1171,9 +1272,17 @@ ptyprocess = ">=0.5"
 name = "pickleshare"
 version = "0.7.5"
 description = "Tiny 'shelve'-like database with concurrency support"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "pkgutil-resolve-name"
+version = "1.3.10"
+description = "Resolve a name to an object."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
 
 [[package]]
 name = "platformdirs"
@@ -1229,7 +1338,7 @@ twisted = ["twisted"]
 name = "prompt-toolkit"
 version = "3.0.30"
 description = "Library for building powerful interactive command lines in Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6.2"
 
@@ -1238,8 +1347,8 @@ wcwidth = "*"
 
 [[package]]
 name = "protobuf"
-version = "4.21.2"
-description = ""
+version = "3.20.1"
+description = "Protocol Buffers"
 category = "main"
 optional = true
 python-versions = ">=3.7"
@@ -1248,7 +1357,7 @@ python-versions = ">=3.7"
 name = "psutil"
 version = "5.9.1"
 description = "Cross-platform lib for process and system monitoring in Python."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -1267,7 +1376,7 @@ python-versions = ">=3.6"
 name = "ptyprocess"
 version = "0.7.0"
 description = "Run a subprocess in a pseudo terminal"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1294,7 +1403,7 @@ numpy = ">=1.16.6"
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -1302,7 +1411,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 name = "pygments"
 version = "2.12.0"
 description = "Pygments is a syntax highlighting package written in Python."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -1310,7 +1419,7 @@ python-versions = ">=3.6"
 name = "pyparsing"
 version = "3.0.9"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6.8"
 
@@ -1385,7 +1494,7 @@ python-versions = "*"
 name = "pywin32"
 version = "304"
 description = "Python for Window Extensions"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1401,7 +1510,7 @@ python-versions = ">=3.7"
 name = "pyzmq"
 version = "23.2.0"
 description = "Python bindings for 0MQ"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -1476,15 +1585,21 @@ decorator = ">=3.4.2"
 py = ">=1.4.26,<2.0.0"
 
 [[package]]
-name = "retrying"
-version = "1.3.3"
-description = "Retrying"
+name = "s3fs"
+version = "2022.7.1"
+description = "Convenient Filesystem interface over S3"
 category = "main"
-optional = false
-python-versions = "*"
+optional = true
+python-versions = ">= 3.7"
 
 [package.dependencies]
-six = ">=1.7.0"
+aiobotocore = ">=2.3.4,<2.4.0"
+aiohttp = "*"
+fsspec = "2022.7.1"
+
+[package.extras]
+awscli = ["aiobotocore[awscli] (>=2.3.4,<2.4.0)"]
+boto3 = ["aiobotocore[boto3] (>=2.3.4,<2.4.0)"]
 
 [[package]]
 name = "send2trash"
@@ -1642,7 +1757,7 @@ python-versions = ">=3.7"
 name = "tornado"
 version = "6.2"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">= 3.7"
 
@@ -1650,7 +1765,7 @@ python-versions = ">= 3.7"
 name = "traitlets"
 version = "5.3.0"
 description = ""
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 
@@ -1686,7 +1801,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "types-python-dateutil"
-version = "2.8.18"
+version = "2.8.19"
 description = "Typing stubs for python-dateutil"
 category = "dev"
 optional = false
@@ -1702,7 +1817,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "urllib3"
-version = "1.26.10"
+version = "1.26.11"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 category = "main"
 optional = false
@@ -1717,7 +1832,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 name = "wcwidth"
 version = "0.2.5"
 description = "Measures the displayed width of unicode strings in a terminal"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 
@@ -1744,11 +1859,14 @@ test = ["websockets"]
 
 [[package]]
 name = "werkzeug"
-version = "2.1.2"
+version = "2.2.1"
 description = "The comprehensive WSGI web application library."
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[package.dependencies]
+MarkupSafe = ">=2.1.1"
 
 [package.extras]
 watchdog = ["watchdog"]
@@ -1765,35 +1883,62 @@ python-versions = "*"
 notebook = ">=4.4.1"
 
 [[package]]
+name = "wrapt"
+version = "1.14.1"
+description = "Module for decorators, wrappers and monkey patching."
+category = "main"
+optional = true
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
+
+[[package]]
+name = "yarl"
+version = "1.8.1"
+description = "Yet another URL library"
+category = "main"
+optional = true
+python-versions = ">=3.7"
+
+[package.dependencies]
+idna = ">=2.0"
+multidict = ">=4.0"
+typing-extensions = {version = ">=3.7.4", markers = "python_version < \"3.8\""}
+
+[[package]]
 name = "zipp"
-version = "3.8.0"
+version = "3.8.1"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
-testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
+docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)", "jaraco.tidelift (>=1.4)"]
+testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.3)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
 
 [extras]
 databricks = ["databricks-sql-connector"]
 mysql = ["mysql-connector-python"]
 postgres = ["psycopg2"]
 trino = ["trino"]
+webapp = ["aws-wsgi", "s3fs", "orjson"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1, <4"
-content-hash = "03d2c20b85257d617a7c184ad6bd23fedf549d25b81afce8fb54376f8e1ebe2e"
+content-hash = "64fe7e4164048b1b7b77a121ba7f08a7adac6661a58aa47e7d407fcd6ba77142"
 
 [metadata.files]
-ansi2html = []
+aiobotocore = []
+aiohttp = []
+aioitertools = []
+aiosignal = []
 anyio = []
 apig-wsgi = []
 appnope = []
 argon2-cffi = []
 argon2-cffi-bindings = []
+async-timeout = []
+asynctest = []
 atomicwrites = []
 attrs = []
 aws-wsgi = []
@@ -1802,6 +1947,7 @@ backcall = []
 beautifulsoup4 = []
 black = []
 bleach = []
+botocore = []
 brotli = []
 certifi = []
 cffi = []
@@ -1825,8 +1971,10 @@ fastjsonschema = []
 fastparquet = []
 flask = []
 flask-compress = []
+frozenlist = []
 fsspec = []
 greenlet = []
+gunicorn = []
 idna = []
 importlib-metadata = []
 importlib-resources = []
@@ -1838,13 +1986,13 @@ ipywidgets = []
 itsdangerous = []
 jedi = []
 jinja2 = []
+jmespath = []
 json5 = []
 jsonschema = []
 jupyter = []
 jupyter-client = []
 jupyter-console = []
 jupyter-core = []
-jupyter-dash = []
 jupyter-server = []
 jupyterlab = []
 jupyterlab-pygments = []
@@ -1853,6 +2001,7 @@ jupyterlab-widgets = []
 markupsafe = []
 matplotlib-inline = []
 mistune = []
+multidict = []
 mypy = []
 mypy-extensions = []
 mysql-connector-python = []
@@ -1872,6 +2021,7 @@ parso = []
 pathspec = []
 pexpect = []
 pickleshare = []
+pkgutil-resolve-name = []
 platformdirs = []
 plotly = []
 pluggy = []
@@ -1898,7 +2048,7 @@ qtconsole = []
 qtpy = []
 requests = []
 retry = []
-retrying = []
+s3fs = []
 send2trash = []
 six = []
 sniffio = []
@@ -1923,4 +2073,6 @@ webencodings = []
 websocket-client = []
 werkzeug = []
 widgetsnbextension = []
+wrapt = []
+yarl = []
 zipp = []

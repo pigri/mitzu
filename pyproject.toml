@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.1.44"
+version = "0.1.48"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 
@@ -14,7 +14,6 @@ fastparquet = "~0.8.0"
 retry = "~0.9.2"
 sqlparse = "^0.4.2"
 dash = "^2.5.0"
-jupyter-dash = "^0.4.2"
 dash-bootstrap-components = "^1.2.0"
 
 # extras
@@ -22,8 +21,9 @@ psycopg2 = {version = "~2.9.3", optional=true}
 mysql-connector-python = {version = "~8.0.28", optional=true}
 trino = { version = "~0.313.0", optional=true }
 databricks-sql-connector = { version = "^2.0.2", optional=true}
-aws-wsgi = "^0.2.7"
-orjson = "^3.7.11"
+aws-wsgi = {version="^0.2.7", optional=true}
+orjson = {version="^3.7.11", optional=true}
+s3fs = {version="^2022.7.1", optional=true}
 
 
 [tool.poetry.extras]
@@ -31,7 +31,8 @@ postgres = ["psycopg2"]
 mysql= ["mysql-connector-python"]
 trino= ["trino"]
 databricks = ["databricks-sql-connector"]
-# Athena can't be here there are dependency conflicts, but it can be installed
+webapp = ["aws-wsgi", "s3fs", "orjson"]
+# Athena can't be here there are dependency conflicts, but it can be installed use PyAthena==1.11.5
 
 
 [tool.poetry.dev-dependencies]
@@ -44,6 +45,7 @@ Faker = "^13.7.0"
 jupyterlab = "^3.4.2"
 apig-wsgi = "^2.14.0"
 types-python-dateutil = "^2.8.18"
+gunicorn = "^20.1.0"
 
 
 [build-system]
