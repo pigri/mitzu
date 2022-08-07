@@ -25,6 +25,8 @@
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
     color: var(--bs-gray-dark);
+    height: 37px;
+    line-height: 37px;
 }
 
 .DateRangePickerInput_clearDates_svg {
