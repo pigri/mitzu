@@ -9,6 +9,7 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.serialization as SE
+import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.complex_segment_handler as CS
 import mitzu.webapp.dates_selector_handler as DS
 import mitzu.webapp.event_segment_handler as ES
@@ -168,6 +169,7 @@ class MitzuWebApp:
 
     persistency_provider: PersistencyProvider
     app: Dash
+    authorizer: Optional[AUTH.MitzuAuthorizer]
 
     _discovered_datasource: M.ProtectedState[
         M.DiscoveredEventDataSource
