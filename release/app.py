@@ -5,6 +5,8 @@ import os
 
 import awsgi
 import dash_bootstrap_components as dbc
+import flask
+import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as P
 import mitzu.webapp.webapp as MWA
 from dash import Dash
@@ -14,6 +16,8 @@ MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 
 
 def create_app():
+    server = flask.Flask(__name__)
+
     if MITZU_BASEPATH.startswith("s3://"):
         pers_provider = P.S3PersistencyProvider(MITZU_BASEPATH[5:])
     else:
@@ -22,6 +26,7 @@ def create_app():
     app = Dash(
         __name__,
         compress=False,
+        server=server,
         external_stylesheets=[
             dbc.themes.ZEPHYR,
             dbc.icons.BOOTSTRAP,
@@ -31,8 +36,15 @@ def create_app():
         update_title=None,
         suppress_callback_exceptions=True,
     )
+    authorizer: AUTH.MitzuAuthorizer
+    try:
+        authorizer = AUTH.JWTMitzuAuthorizer.from_env_vars(server=server)
+    except Exception:
+        authorizer = AUTH.GuestMitzuAuthorizer()
 
-    webapp = MWA.MitzuWebApp(pers_provider, app)
+    webapp = MWA.MitzuWebApp(
+        persistency_provider=pers_provider, app=app, authorizer=authorizer
+    )
     webapp.init_app()
     return app
 

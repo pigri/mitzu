@@ -50,7 +50,12 @@ dash:
 	cd release && \
 	BASEPATH=../example/basepath/ \
 	MANAGE_PROJECTS_LINK=http://localhost:8081 \
-	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server
+	JWT_COOKIE=access_token \
+	JWT_AUDIENCE=75tccbt01d3m5v7ef7hrtjj5uu \
+	JWKS_URL="https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_Xqij4gHQA/.well-known/jwks.json" \
+	UNAUTHORIZED_URL="https://auth.mitzu.io/oauth2/authorize?client_id=75tccbt01d3m5v7ef7hrtjj5uu&response_type=code&scope=email+openid&redirect_uri=localhost:8082/" \
+	SIGN_OUT_URL="http://localhost:8082/sign_out" \
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
 
 build: check

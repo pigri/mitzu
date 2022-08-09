@@ -10,9 +10,11 @@ from dash import html
 
 LOGO = "/assets/logo.png"
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
+SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
 
 
 def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
+
     res = dbc.Navbar(
         children=dbc.Container(
             children=[
@@ -44,7 +46,11 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                         disabled=(MANAGE_PROJECTS_LINK is None),
                                     ),
                                     dbc.DropdownMenuItem(divider=True),
-                                    dbc.DropdownMenuItem("Sign out", disabled=True),
+                                    dbc.DropdownMenuItem(
+                                        "Sign out",
+                                        disabled=(SIGN_OUT_URL is None),
+                                        href=SIGN_OUT_URL,
+                                    ),
                                 ],
                                 label="More",
                                 size="sm",
