@@ -171,12 +171,12 @@ class MitzuWebApp:
     app: Dash
     authorizer: Optional[AUTH.MitzuAuthorizer]
 
-    _discovered_datasource: M.ProtectedState[
-        M.DiscoveredEventDataSource
-    ] = M.ProtectedState[M.DiscoveredEventDataSource]()
+    _discovered_datasource: M.ProtectedState[M.DiscoveredProject] = M.ProtectedState[
+        M.DiscoveredProject
+    ]()
     _current_project: Optional[str] = None
 
-    def get_discovered_datasource(self) -> Optional[M.DiscoveredEventDataSource]:
+    def get_discovered_project(self) -> Optional[M.DiscoveredProject]:
         return self._discovered_datasource.get_value()
 
     def _load_dataset_model(self, path_project_name: str):
@@ -190,7 +190,7 @@ class MitzuWebApp:
             print(f"Loading project: {path_project_name}")
             dd = self.persistency_provider.get_project(path_project_name)
             if dd is not None:
-                dd.source._discovered_event_datasource.set_value(dd)
+                dd.project._discovered_project.set_value(dd)
             self._discovered_datasource.set_value(dd)
 
     def init_app(self):
@@ -198,7 +198,7 @@ class MitzuWebApp:
         navbar = MN.create_mitzu_navbar(self)
 
         metric_segments_div = MS.MetricSegmentsHandler.from_metric(
-            discovered_datasource=self._discovered_datasource.get_value(),
+            discovered_project=self._discovered_datasource.get_value(),
             metric=None,
             metric_type=MNB.MetricType.SEGMENTATION,
         ).component
@@ -240,11 +240,11 @@ class MitzuWebApp:
     def get_metric_from_query(
         self, query: str
     ) -> Tuple[Optional[M.Metric], MNB.MetricType]:
-        discovered_datasource = self.get_discovered_datasource()
-        if discovered_datasource is None:
+        discovered_project = self.get_discovered_project()
+        if discovered_project is None:
             return None, MNB.MetricType.SEGMENTATION
         try:
-            metric = SE.from_compressed_string(query, discovered_datasource.source)
+            metric = SE.from_compressed_string(query, discovered_project.project)
         except Exception:
             metric = None
 
@@ -255,14 +255,14 @@ class MitzuWebApp:
         self,
         metric_seg_children: List[bc.Component],
         mc_children: List[bc.Component],
-        discovered_datasource: Optional[M.DiscoveredEventDataSource],
+        discovered_project: Optional[M.DiscoveredProject],
         metric_type: MNB.MetricType,
     ) -> Optional[M.Metric]:
-        if discovered_datasource is None:
+        if discovered_project is None:
             return None
 
         segments = MS.MetricSegmentsHandler.from_component(
-            discovered_datasource, html.Div(children=metric_seg_children)
+            discovered_project, html.Div(children=metric_seg_children)
         ).to_metric_segments()
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         if metric_type == MNB.MetricType.CONVERSION:
@@ -275,7 +275,7 @@ class MitzuWebApp:
             return None
 
         metric_config_comp = MC.MetricConfigHandler.from_component(
-            html.Div(children=mc_children), discovered_datasource
+            html.Div(children=mc_children), discovered_project
         )
         metric_config, conv_tw = metric_config_comp.to_metric_config_and_conv_window()
 
@@ -286,9 +286,7 @@ class MitzuWebApp:
             )
             if len(group_by_paths) == 1:
                 gp = group_by_paths[0].value
-                group_by = (
-                    find_event_field_def(gp, discovered_datasource) if gp else None
-                )
+                group_by = find_event_field_def(gp, discovered_project) if gp else None
 
         if isinstance(metric, M.Conversion):
             return metric.config(
@@ -313,15 +311,15 @@ class MitzuWebApp:
 
     def handle_discovered_datasource(
         self, parse_result: ParseResult
-    ) -> Optional[M.DiscoveredEventDataSource]:
+    ) -> Optional[M.DiscoveredProject]:
         path_project_name = get_path_project_name(parse_result)
         self._load_dataset_model(path_project_name)
-        return self.get_discovered_datasource()
+        return self.get_discovered_project()
 
     def handle_metric_changes(
         self,
         parse_result: ParseResult,
-        discovered_datasource: M.DiscoveredEventDataSource,
+        discovered_project: M.DiscoveredProject,
         metric_seg_divs: List[Dict],
         metric_configs: List[Dict],
         metric_type_value: str,
@@ -338,7 +336,7 @@ class MitzuWebApp:
             metric = self.create_metric_from_compoments(
                 metric_seg_children,
                 metric_configs_children,
-                discovered_datasource,
+                discovered_project,
                 metric_type,
             )
         return metric, metric_type
@@ -398,10 +396,11 @@ class MitzuWebApp:
             metric_segment_divs: List[Dict],
             metric_configs: List[Dict],
         ) -> Tuple[List[html.Div], List[html.Div], str, str]:
-            parse_result = urlparse(all_inputs["href"])
-            discovered_datasource = self.handle_discovered_datasource(parse_result)
 
-            if discovered_datasource is None:
+            parse_result = urlparse(all_inputs["href"])
+            discovered_project = self.handle_discovered_datasource(parse_result)
+
+            if discovered_project is None:
                 def_mc_comp = MC.MetricConfigHandler.from_metric(None, None)
                 def_mc_children = def_mc_comp.component.children
                 return (
@@ -413,7 +412,7 @@ class MitzuWebApp:
 
             metric, metric_type = self.handle_metric_changes(
                 parse_result=parse_result,
-                discovered_datasource=discovered_datasource,
+                discovered_project=discovered_project,
                 metric_seg_divs=metric_segment_divs,
                 metric_configs=metric_configs,
                 metric_type_value=all_inputs["metric_type_value"],
@@ -424,7 +423,7 @@ class MitzuWebApp:
                 url_search = "?m=" + SE.to_compressed_string(metric)
 
             metric_segments = MS.MetricSegmentsHandler.from_metric(
-                discovered_datasource=discovered_datasource,
+                discovered_project=discovered_project,
                 metric=metric,
                 metric_type=metric_type,
             ).component.children
@@ -432,7 +431,7 @@ class MitzuWebApp:
             metric_segment_comps = [seg.to_plotly_json() for seg in metric_segments]
 
             mc_children = MC.MetricConfigHandler.from_metric(
-                metric, discovered_datasource
+                metric, discovered_project
             ).component.children
             metric_config_comps = [c.to_plotly_json() for c in mc_children]
 
@@ -470,16 +469,16 @@ class MitzuWebApp:
             ):
                 return no_update
             parse_result = urlparse(all_inputs["href"])
-            discovered_datasource = self.handle_discovered_datasource(parse_result)
+            discovered_project = self.handle_discovered_datasource(parse_result)
 
-            if discovered_datasource is None:
+            if discovered_project is None:
                 return [
                     create_hint_div("Start by selecting a project ...").to_plotly_json()
                 ]
 
             metric, _ = self.handle_metric_changes(
                 parse_result=parse_result,
-                discovered_datasource=discovered_datasource,
+                discovered_project=discovered_project,
                 metric_seg_divs=metric_segment_divs,
                 metric_configs=metric_configs,
                 metric_type_value=all_inputs["metric_type_value"],

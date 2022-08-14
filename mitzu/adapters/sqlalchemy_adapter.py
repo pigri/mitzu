@@ -7,10 +7,11 @@ from typing import Any, Dict, List, Optional, Union, cast
 import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
+import sqlparse
+
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 import sqlalchemy.sql.sqltypes as SA_T
-import sqlparse
 from sqlalchemy.orm import aliased
 
 
@@ -61,8 +62,8 @@ class SegmentSubQuery:
 
 
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
         self._table = None
         self._engine = None
         self._table_cache: Dict[M.EventDataTable, SA.Table] = {}
@@ -116,7 +117,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise exc
 
     def get_engine(self) -> Any:
-        con = self.source.connection
+        con = self.project.connection
         if self._engine is None:
             if con.url is None:
                 url = self._get_connection_url(con)
@@ -129,9 +130,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if event_data_table not in self._table_cache:
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
+
+            if event_data_table.schema is not None:
+                schema = event_data_table.schema
+            elif self.project.connection.schema is not None:
+                schema = self.project.connection.schema
+            else:
+                schema = None
             self._table_cache[event_data_table] = SA.Table(
                 event_data_table.table_name,
                 metadata_obj,
+                schema=schema,
                 autoload_with=engine,
                 autoload=True,
             )
@@ -239,9 +248,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         url_params_str = "" if con.url_params is None else con.url_params
         if url_params_str != "" and url_params_str[0] != "?":
             url_params_str = "?" + url_params_str
+        catalog_str = "" if con.catalog is None else f"/{con.catalog}"
 
         protocol = con.connection_type.value.lower()
-        return f"{protocol}://{user_name}{password}{host_str}{port_str}{schema_str}{url_params_str}"
+        res = f"{protocol}://{user_name}{password}{host_str}{port_str}{catalog_str}{schema_str}{url_params_str}"
+        return res
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
         return SA.func.array_agg(SA.distinct(field_ref))
@@ -250,12 +261,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return True
 
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
-        dt_field = self.get_field_reference(
-            field=event_data_table.event_time_field, event_data_table=event_data_table
-        )
-        table = self.get_table(event_data_table)
-        event_name_field = self.get_event_name_field(event_data_table, table)
 
+        table = self.get_table(event_data_table).alias("_evt")
+        event_name_field = self.get_event_name_field(event_data_table, table)
+        dt_field = self.get_field_reference(
+            field=event_data_table.event_time_field,
+            event_data_table=event_data_table,
+            sa_table=table,
+        )
         raw_cte: EXP.CTE = SA.select(
             columns=[
                 *table.columns.values(),
@@ -267,12 +280,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 (
                     dt_field
                     >= self._correct_timestamp(
-                        self.source.get_default_discovery_start_dt()
+                        self.project.get_default_discovery_start_dt()
                     )
                 )
                 & (
                     dt_field
-                    <= self._correct_timestamp(self.source.get_default_end_dt())
+                    <= self._correct_timestamp(self.project.get_default_end_dt())
                 )
             ),
         ).cte()
@@ -280,7 +293,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return SA.select(
             columns=raw_cte.columns.values(),
             whereclause=(
-                raw_cte.columns["rn"] < self.source.default_property_sample_size
+                raw_cte.columns["rn"] < self.project.default_property_sample_size
             ),
         ).cte()
 
@@ -319,7 +332,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         SA.func.count(
                             SA.distinct(self.get_field_reference(f, sa_table=cte))
                         )
-                        < self.source.max_enum_cardinality,
+                        < self.project.max_enum_cardinality,
                         self._get_distinct_array_agg_func(
                             self.get_field_reference(f, sa_table=cte)
                         ),
@@ -357,7 +370,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     f: M.EventFieldDef(
                         _event_name=evt,
                         _field=f,
-                        _source=self.source,
+                        _project=self.project,
                         _event_data_table=event_data_table,
                         _enums=values[f._name],
                     )
@@ -367,7 +380,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     # Empty list are the result of field not having any value
                     if values[f._name] is None or len(values[f._name]) > 0
                 },
-                _source=self.source,
+                _project=self.project,
                 _event_data_table=event_data_table,
             )
         return res
@@ -384,9 +397,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         ref = self.get_field_reference(left._field, sa_table=table)
         op = segment._operator
         if op == M.Operator.IS_NULL:
-            return ref is None
+            return ref.is_(None)
         if op == M.Operator.IS_NOT_NULL:
-            return ref is not None
+            return ref.is_not(None)
 
         if segment._right is None:
             return SA.literal(True)
@@ -481,13 +494,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     ) -> bool:
         event_name = group_field._event_name
         field = group_field._field
-        dd: Optional[
-            M.DiscoveredEventDataSource
-        ] = self.source._discovered_event_datasource.get_value()
+        dd: Optional[M.DiscoveredProject] = self.project._discovered_project.get_value()
         if dd is None:
-            raise Exception(
-                "No DiscoveredEventDataSource was provided to SQLAlchemy Adapter."
-            )
+            raise Exception("No DiscoveredProject was provided to SQLAlchemy Adapter.")
         events = dd.definitions.get(ed_table)
         if events is not None:
             event_def = events.get(event_name)

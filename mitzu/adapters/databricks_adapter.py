@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from typing import Any, List, cast
 
-import mitzu.adapters.databricks_sqlalchemy.sqlalchemy.datatype as DA_T
+import mitzu.adapters.sqlalchemy.databricks.sqlalchemy.datatype as DA_T
 import mitzu.model as M
-import sqlalchemy as SA
-from mitzu.adapters.databricks_sqlalchemy import sqlalchemy  # noqa: F401
+from mitzu.adapters.sqlalchemy.databricks import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+
+import sqlalchemy as SA
 
 
 class DatabricksAdapter(SQLAlchemyAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
 
     def get_engine(self) -> Any:
-        con = self.source.connection
+        con = self.project.connection
         if self._engine is None:
             if con.url is None:
                 url = self._get_connection_url(con)
@@ -50,7 +51,7 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             F.flatten(F.collect_set(F.map_keys(cte.columns[name])))
         )
 
-        max_cardinality = self.source.max_map_key_cardinality
+        max_cardinality = self.project.max_map_key_cardinality
         q = SA.select(
             columns=[
                 SA.case(

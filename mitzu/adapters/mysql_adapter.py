@@ -4,17 +4,18 @@ from typing import Any, List
 
 import mitzu.model as M
 import pandas as pd
-import sqlalchemy as SA
-import sqlalchemy.sql.expression as EXP
 from mitzu.adapters.helper import pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+
+import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
 
 NULL_VALUE_KEY = "##NULL##"
 
 
 class MySQLAdapter(SQLAlchemyAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
         return SA.func.json_keys(

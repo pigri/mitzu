@@ -15,7 +15,7 @@ SIMPLE_SEGMENT_CONTAINER = "simple_segment_container"
 
 def creat_event_name_dropdown(
     index,
-    discovered_datasource: M.DiscoveredEventDataSource,
+    discovered_project: M.DiscoveredProject,
     step: int,
     event_segment_index: int,
     segment: Optional[M.Segment],
@@ -23,9 +23,9 @@ def creat_event_name_dropdown(
     options = (
         [
             {"label": value_to_label(v), "value": v}
-            for v in discovered_datasource.get_all_events()
+            for v in discovered_project.get_all_events()
         ]
-        if discovered_datasource is not None
+        if discovered_project is not None
         else []
     )
     options.sort(key=lambda v: v["label"])
@@ -73,7 +73,7 @@ def get_event_simple_segments(segment: M.Segment) -> List[M.SimpleSegment]:
 def create_simple_segs_container(
     type_index: str,
     segment: Optional[M.Segment],
-    discovered_datasource: M.DiscoveredEventDataSource,
+    discovered_project: M.DiscoveredProject,
 ) -> Optional[html.Div]:
     children = []
     if segment is None:
@@ -83,19 +83,19 @@ def create_simple_segs_container(
     if isinstance(segment, M.ComplexSegment):
         for seg_index, ess in enumerate(event_simple_segments):
             comp = SS.SimpleSegmentHandler.from_simple_segment(
-                ess, discovered_datasource, type_index, seg_index
+                ess, discovered_project, type_index, seg_index
             ).component
             children.append(comp)
     elif isinstance(segment, M.SimpleSegment) and isinstance(
         segment._left, M.EventFieldDef
     ):
         comp = SS.SimpleSegmentHandler.from_simple_segment(
-            segment, discovered_datasource, type_index, 0
+            segment, discovered_project, type_index, 0
         ).component
         children.append(comp)
 
     event_name = event_simple_segments[0]._left._event_name
-    event_def = discovered_datasource.get_event_def(event_name)
+    event_def = discovered_project.get_event_def(event_name)
     if event_def is None:
         raise Exception(
             f"Invalid state, {event_name} is not possible to find in discovered datasource."
@@ -103,7 +103,7 @@ def create_simple_segs_container(
     children.append(
         SS.SimpleSegmentHandler.from_simple_segment(
             M.SimpleSegment(event_def),
-            discovered_datasource,
+            discovered_project,
             type_index,
             len(children),
         ).component
@@ -117,32 +117,32 @@ def create_simple_segs_container(
 @dataclass
 class EventSegmentHandler:
 
-    discovered_datasource: M.DiscoveredEventDataSource
+    discovered_project: M.DiscoveredProject
     component: html.Div
 
     @classmethod
     def from_component(
-        cls, component: html.Div, discovered_datasource: M.DiscoveredEventDataSource
+        cls, component: html.Div, discovered_project: M.DiscoveredProject
     ):
         return EventSegmentHandler(
-            component=component, discovered_datasource=discovered_datasource
+            component=component, discovered_project=discovered_project
         )
 
     @classmethod
     def from_segment(
         cls,
         segment: Optional[M.Segment],
-        discovered_datasource: M.DiscoveredEventDataSource,
+        discovered_project: M.DiscoveredProject,
         funnel_step: int,
         event_segment_index: int,
     ) -> EventSegmentHandler:
         type_index = f"{funnel_step}-{event_segment_index}"
         event_dd = creat_event_name_dropdown(
-            type_index, discovered_datasource, funnel_step, event_segment_index, segment
+            type_index, discovered_project, funnel_step, event_segment_index, segment
         )
         children = [event_dd]
         simples_segs_container = create_simple_segs_container(
-            type_index, segment, discovered_datasource
+            type_index, segment, discovered_project
         )
         if simples_segs_container is not None:
             children.append(simples_segs_container)
@@ -153,7 +153,7 @@ class EventSegmentHandler:
             className=EVENT_SEGMENT,
         )
         return EventSegmentHandler(
-            discovered_datasource=discovered_datasource, component=component
+            discovered_project=discovered_project, component=component
         )
 
     def to_segment(self) -> Optional[M.Segment]:
@@ -167,7 +167,7 @@ class EventSegmentHandler:
         if ssc is None:
             if event_name_dd.value is not None:
                 return M.SimpleSegment(
-                    _left=self.discovered_datasource.get_event_def(event_name_dd.value)
+                    _left=self.discovered_project.get_event_def(event_name_dd.value)
                 )
             else:
                 return None
@@ -175,13 +175,13 @@ class EventSegmentHandler:
         ssc_children = ssc.children
         if len(ssc_children) == 1 and ssc_children[0].children[0].value is None:
             return M.SimpleSegment(
-                _left=self.discovered_datasource.get_event_def(event_name_dd.value)
+                _left=self.discovered_project.get_event_def(event_name_dd.value)
             )
 
         res_segment = None
         for seg_child in ssc_children:
             simple_seg_handler = SS.SimpleSegmentHandler.from_component(
-                component=seg_child, discovered_datasource=self.discovered_datasource
+                component=seg_child, discovered_project=self.discovered_project
             )
             simple_seg = simple_seg_handler.to_simple_segment()
 
@@ -196,6 +196,6 @@ class EventSegmentHandler:
                 res_segment = res_segment & simple_seg
         if res_segment is None and event_name_dd.value is not None:
             return M.SimpleSegment(
-                _left=self.discovered_datasource.get_event_def(event_name_dd.value)
+                _left=self.discovered_project.get_event_def(event_name_dd.value)
             )
         return res_segment

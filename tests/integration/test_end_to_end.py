@@ -1,15 +1,15 @@
 from datetime import datetime
 
-from mitzu.datasource_discovery import EventDatasourceDiscovery
-from mitzu.model import ConversionMetric, DiscoveredEventDataSource, Segment
+from mitzu.model import ConversionMetric, DiscoveredProject, Segment
+from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row, assert_sql
 from tests.samples.sources import get_simple_big_data, get_simple_csv
 
 
 def test_simple_big_data_discovery():
-    source = get_simple_big_data()
-    discovery = EventDatasourceDiscovery(source)
-    m = discovery.discover_datasource().create_notebook_class_model()
+    project = get_simple_big_data()
+    discovery = ProjectDiscovery(project)
+    m = discovery.discover_project().create_notebook_class_model()
 
     seg: Segment = m.app_install.config(
         start_dt="2021-01-01", end_dt="2022-01-01", time_group="total"
@@ -22,11 +22,11 @@ def test_simple_big_data_discovery():
 
 def test_discovered_dataset_pickle():
 
-    discovery = EventDatasourceDiscovery(source=get_simple_csv())
-    dd1 = discovery.discover_datasource()
-    dd1.save_project("test_app")
+    discovery = ProjectDiscovery(project=get_simple_csv())
+    dd1 = discovery.discover_project()
+    dd1.save_to_project_file("test_app")
 
-    dd2 = DiscoveredEventDataSource.load_from_project_file("test_app")
+    dd2 = DiscoveredProject.load_from_project_file("test_app")
     m = dd2.create_notebook_class_model()
 
     seg: Segment = m.cart.config(
@@ -37,13 +37,12 @@ def test_discovered_dataset_pickle():
 
 
 def test_simple_csv_segmentation():
-    discovery = EventDatasourceDiscovery(get_simple_csv())
-    m = discovery.discover_datasource().create_notebook_class_model()
+    discovery = ProjectDiscovery(get_simple_csv())
+    m = discovery.discover_project().create_notebook_class_model()
 
     seg: Segment = m.cart.config(
         start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
     )
-    print(seg.get_sql())
     assert_sql(
         """
 with anon_2 as (SELECT simple.user_id as _cte_user_id,
@@ -69,8 +68,8 @@ GROUP BY _datetime, _group""",
 
 def test_simple_csv_funnel():
 
-    discovery = EventDatasourceDiscovery(get_simple_csv())
-    m = discovery.discover_datasource().create_notebook_class_model()
+    discovery = ProjectDiscovery(get_simple_csv())
+    m = discovery.discover_project().create_notebook_class_model()
 
     conv: ConversionMetric = (m.view >> m.cart).config(
         conv_window="1 month",
@@ -121,4 +120,26 @@ GROUP BY _datetime, _group""",
         _event_count_1=2,
         _unique_user_count_2=0,
         _event_count_2=0,
+    )
+
+    sql = m.view.category_id.is_not_null.get_sql()
+    print(sql)
+    assert (
+        """WITH anon_2 AS
+  (SELECT simple.user_id AS _cte_user_id,
+          simple.event_time AS _cte_datetime,
+          NULL AS _cte_group
+   FROM SIMPLE
+   WHERE simple.event_type = 'view'
+     AND simple.category_id IS NOT NULL)
+SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) AS _datetime,
+       NULL AS _group,
+       count(DISTINCT anon_1._cte_user_id) AS _unique_user_count,
+       count(anon_1._cte_user_id) AS _event_count
+FROM anon_2 AS anon_1
+WHERE anon_1._cte_datetime >= '2021-12-02 00:00:00'
+  AND anon_1._cte_datetime <= '2022-01-01 00:00:00'
+GROUP BY _datetime,
+         _group"""
+        == sql
     )

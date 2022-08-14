@@ -70,21 +70,21 @@ def create_conversion_component(metric: Optional[M.Metric]) -> bc.Component:
 class MetricConfigHandler:
 
     component: bc.Component
-    discovered_datasource: Optional[M.DiscoveredEventDataSource]
+    discovered_project: Optional[M.DiscoveredProject]
 
     @classmethod
     def from_component(
         cls,
         component: bc.Component,
-        discovered_datasource: Optional[M.DiscoveredEventDataSource],
+        discovered_project: Optional[M.DiscoveredProject],
     ) -> MetricConfigHandler:
-        return MetricConfigHandler(component, discovered_datasource)
+        return MetricConfigHandler(component, discovered_project)
 
     @classmethod
     def from_metric(
         cls,
         metric: Optional[M.Metric],
-        discovered_datasource: Optional[M.DiscoveredEventDataSource],
+        discovered_project: Optional[M.DiscoveredProject],
     ) -> MetricConfigHandler:
         metric_config = metric._config if metric is not None else None
         conversion_comps = [create_conversion_component(metric)]
@@ -97,7 +97,7 @@ class MetricConfigHandler:
                             dbc.Col(
                                 children=[
                                     DS.DateSelectorHandler.from_metric_config(
-                                        metric_config, discovered_datasource
+                                        metric_config, discovered_project
                                     ).component
                                 ],
                                 xs=12,
@@ -111,7 +111,7 @@ class MetricConfigHandler:
             id=METRICS_CONFIG_CONTAINER,
             className=METRICS_CONFIG_CONTAINER,
         )
-        return MetricConfigHandler(component, discovered_datasource)
+        return MetricConfigHandler(component, discovered_project)
 
     def to_metric_config_and_conv_window(
         self,
@@ -127,7 +127,7 @@ class MetricConfigHandler:
             )
 
         dates_config = DS.DateSelectorHandler.from_component(
-            date_selector, self.discovered_datasource
+            date_selector, self.discovered_project
         ).to_metric_config()
 
         return dates_config, res_tw

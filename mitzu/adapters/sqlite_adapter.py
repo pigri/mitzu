@@ -5,16 +5,17 @@ from typing import Any, List
 import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
-import sqlalchemy as SA
 from mitzu.adapters.helper import dataframe_str_to_datetime
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+
+import sqlalchemy as SA
 
 VALUE_SEPARATOR = "###"
 
 
 class SQLiteAdapter(SQLAlchemyAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
 
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         df = super().get_conversion_df(metric)

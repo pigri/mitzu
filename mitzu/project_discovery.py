@@ -5,9 +5,9 @@ from typing import Dict, List
 import mitzu.model as M
 
 
-class EventDatasourceDiscovery:
-    def __init__(self, source: M.EventDataSource):
-        self.source = source
+class ProjectDiscovery:
+    def __init__(self, project: M.Project):
+        self.project = project
 
     def _get_field_values(
         self,
@@ -15,7 +15,7 @@ class EventDatasourceDiscovery:
         specific_fields: List[M.Field],
         event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        return self.source.adapter.get_field_enums(
+        return self.project.adapter.get_field_enums(
             event_data_table=ed_table,
             fields=specific_fields,
             event_specific=event_specific,
@@ -35,14 +35,14 @@ class EventDatasourceDiscovery:
         return M.EventFieldDef(
             _event_name=spec_event_name,
             _field=gen_evt_field_def._field,
-            _source=gen_evt_field_def._source,
+            _project=gen_evt_field_def._project,
             _event_data_table=gen_evt_field_def._event_data_table,
             _enums=gen_evt_field_def._enums,
         )
 
     def _merge_generic_and_specific_definitions(
         self,
-        source: M.EventDataSource,
+        project: M.Project,
         event_data_table: M.EventDataTable,
         generic: M.EventDef,
         specific: Dict[str, M.EventDef],
@@ -55,7 +55,7 @@ class EventDatasourceDiscovery:
             }
 
             new_def = M.EventDef(
-                _source=source,
+                _project=project,
                 _event_data_table=event_data_table,
                 _event_name=evt_name,
                 _fields={**spec_evt_def._fields, **copied_gen_fields},
@@ -74,12 +74,12 @@ class EventDatasourceDiscovery:
                 res.append(f)
         return res
 
-    def discover_datasource(self) -> M.DiscoveredEventDataSource:
+    def discover_project(self) -> M.DiscoveredProject:
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
-        for ed_table in self.source.event_data_tables:
-            print(f"Discovering {ed_table.table_name}")
-            fields = self.source.adapter.list_fields(event_data_table=ed_table)
+        for ed_table in self.project.event_data_tables:
+            print(f"Discovering {ed_table.get_full_name()}")
+            fields = self.project.adapter.list_fields(event_data_table=ed_table)
             fields = self.flatten_fields(fields)
 
             specific_fields = self._get_specific_fields(ed_table, fields)
@@ -91,15 +91,15 @@ class EventDatasourceDiscovery:
                 ed_table, specific_fields, True
             )
             definitions[ed_table] = self._merge_generic_and_specific_definitions(
-                self.source,
+                self.project,
                 ed_table,
                 generic_field_values,
                 event_specific_field_values,
             )
 
-        dd = M.DiscoveredEventDataSource(
+        dd = M.DiscoveredProject(
             definitions=definitions,
-            source=self.source,
+            project=self.project,
         )
 
         return dd

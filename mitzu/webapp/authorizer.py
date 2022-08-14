@@ -44,30 +44,34 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
     jwt_token: M.ProtectedState[Dict[str, Any]] = M.ProtectedState(None)
     jwt_encoded: M.ProtectedState[str] = M.ProtectedState(None)
 
-    def __post_init__(self):
+    def setup_authorizer(self):
         @self.server.before_request
         def check_cookies():
-            if flask.request.url == self.unauthorized_url:
-                return
+            jwt_encoded = flask.request.cookies.get(self.jwt_cookie)
+            # print(
+            #     f"<<<<< JWT Cookie ({self.jwt_cookie}): {flask.request.cookies.get(self.jwt_cookie)}"
+            # )
+            # print(f"<<<<< Cookies: {flask.request.cookies}")
+            # print(f"<<<<< Code: {flask.request.args.get('code')}")
 
-            if (
+            resp: flask.Response
+            if flask.request.url == self.unauthorized_url:
+                resp = None
+            elif (
                 self.signed_out_url is not None
                 and flask.request.full_path == self.signed_out_url
             ):
-                resp = flask.redirect(code=401, location=self.signed_out_redirect_url)
+                resp = flask.redirect(code=301, location=self.signed_out_redirect_url)
                 resp.set_cookie(self.jwt_cookie, "", expires=0)
-                return resp
-
-            jwt_encoded = flask.request.cookies.get(self.jwt_cookie)
-            if (
+            elif (
                 not jwt_encoded
                 or self.jwt_encoded.has_value()
                 and jwt_encoded != self.jwt_encoded.get_value()
             ):
-                return flask.redirect(code=401, location=self.unauthorized_url)
+                resp = flask.redirect(code=301, location=self.unauthorized_url)
 
-            if jwt_encoded == self.jwt_encoded.get_value():
-                return None
+            elif jwt_encoded == self.jwt_encoded.get_value():
+                resp = None
 
             try:
                 jwks_client = jwt.PyJWKClient(self.jwks_url)
@@ -78,13 +82,21 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                     algorithms=self.jwt_algorithms,
                     audience=self.jwt_audience,
                 )
-                if decoded_token is not None:
+                if decoded_token is None:
+                    resp = flask.redirect(code=301, location=self.unauthorized_url)
+                else:
                     self.jwt_encoded.set_value(jwt_encoded)
                     self.jwt_token.set_value(decoded_token)
-                    return
+                    resp = None
             except Exception as exc:
                 print(exc)
-                return flask.redirect(code=401, location=self.unauthorized_url)
+                resp = flask.redirect(code=301, location=self.unauthorized_url)
+            if resp is not None:
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                resp.headers["Pragma"] = "no-cache"
+                resp.headers["Expires"] = "0"
+                resp.headers["Cache-Control"] = "public, max-age=0"
+            return resp
 
     def get_jwt_token(self) -> Optional[Dict[str, Any]]:
         return self.jwt_token.get_value()
@@ -112,7 +124,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         if jwt_audience is None:
             raise Exception(f"{JWT_AUDIENCE} env var is missing")
 
-        return JWTMitzuAuthorizer(
+        authorizer = JWTMitzuAuthorizer(
             server=server,
             unauthorized_url=unauthorized_url,
             jwt_cookie=jwt_cookie,
@@ -122,3 +134,5 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             signed_out_url=os.getenv(SIGN_OUT_URL),
             signed_out_redirect_url=os.getenv(SIGN_OUT_REDIRECT_URL),
         )
+        authorizer.setup_authorizer()
+        return authorizer

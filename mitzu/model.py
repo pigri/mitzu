@@ -16,9 +16,9 @@ from dateutil.relativedelta import relativedelta
 
 import mitzu.adapters.adapter_factory as factory
 import mitzu.adapters.generic_adapter as GA
-import mitzu.datasource_discovery as D
 import mitzu.helper as helper
 import mitzu.notebook.model_loader as ML
+import mitzu.project_discovery as D
 import mitzu.visualization as VIS
 
 
@@ -48,13 +48,14 @@ class TimeGroup(Enum):
     YEAR = auto()
 
     @classmethod
-    def parse(cls, val: Optional[str | TimeGroup]) -> Optional[TimeGroup]:
-        if val is None:
-            return None
+    def parse(cls, val: Union[str, TimeGroup]) -> TimeGroup:
         if type(val) == TimeGroup:
             return val
         elif type(val) == str:
-            return TimeGroup[val.upper()]
+            val = val.upper()
+            if val.endswith("S"):
+                val = val[:-1]
+            return TimeGroup[val]
         else:
             raise ValueError(f"Invalid argument type for TimeGroup parse: {type(val)}")
 
@@ -170,7 +171,7 @@ class AttributionMode(Enum):
 
 class ConnectionType(Enum):
     FILE = "file"
-    ATHENA = "awsathena+rest"
+    ATHENA = "athena"
     TRINO = "trino"
     POSTGRESQL = "postgresql+psycopg2"
     MYSQL = "mysql+mysqlconnector"
@@ -187,7 +188,7 @@ class TimeWindow:
     def parse(cls, val: str | TimeWindow) -> TimeWindow:
         if type(val) == str:
             vals = val.strip().split(" ")
-            return TimeWindow(value=int(vals[0]), period=TimeGroup[vals[1].upper()])
+            return TimeWindow(value=int(vals[0]), period=TimeGroup.parse(vals[1]))
         elif type(val) == TimeWindow:
             return val
         else:
@@ -288,6 +289,7 @@ class Connection:
     port: Optional[int] = None
     url: Optional[str] = None
     schema: Optional[str] = None
+    catalog: Optional[str] = None
     # Used for connection url parametrization
     url_params: Optional[str] = None
     # Used for adapter configuration
@@ -311,6 +313,8 @@ class EventDataTable:
     table_name: str
     event_time_field: Field
     user_id_field: Field
+    schema: Optional[str] = None
+    catalog: Optional[str] = None
     event_name_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
     ignored_fields: List[str] = default_field([])
@@ -323,8 +327,10 @@ class EventDataTable:
         table_name: str,
         event_time_field: str,
         user_id_field: str,
-        event_name_field: str = None,
-        event_name_alias: str = None,
+        schema: Optional[str] = None,
+        catalog: Optional[str] = None,
+        event_name_field: Optional[str] = None,
+        event_name_alias: Optional[str] = None,
         ignored_fields: List[str] = None,
         event_specific_fields: List[str] = None,
         description: str = None,
@@ -342,6 +348,8 @@ class EventDataTable:
             else None,
             event_time_field=Field(_name=event_time_field, _type=DataType.DATETIME),
             user_id_field=Field(_name=user_id_field, _type=DataType.STRING),
+            schema=schema,
+            catalog=catalog,
         )
 
     def __hash__(self):
@@ -349,6 +357,10 @@ class EventDataTable:
             f"{self.table_name}{self.event_time_field}{self.user_id_field}"
             f"{self.event_name_field}{self.event_name_alias}"
         )
+
+    def get_full_name(self) -> str:
+        schema = "" if self.schema is None else self.schema + "."
+        return f"{schema}{self.table_name}"
 
     def validate(self):
         if self.event_name_alias is not None and self.event_name_field is not None:
@@ -362,13 +374,12 @@ class EventDataTable:
 
 
 @dataclass(frozen=True)
-class EventDataSource:
+class Project:
     connection: Connection
     event_data_tables: List[EventDataTable]
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 300
 
-    default_start_dt: Optional[datetime] = None
     default_end_dt: Optional[datetime] = None
     default_property_sample_size: int = 10000
     default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
@@ -381,9 +392,9 @@ class EventDataSource:
         ProtectedState()
     )
 
-    _discovered_event_datasource: ProtectedState[
-        DiscoveredEventDataSource
-    ] = default_field(ProtectedState())
+    _discovered_project: ProtectedState[DiscoveredProject] = default_field(
+        ProtectedState()
+    )
 
     @property
     def adapter(self) -> GA.GenericDatasetAdapter:
@@ -399,32 +410,22 @@ class EventDataSource:
             return datetime.now()
         return self.default_end_dt
 
-    def get_default_start_dt(self) -> datetime:
-        if self.default_start_dt is None:
-            return (
-                self.get_default_end_dt()
-                - self.default_lookback_window.to_relative_delta()
-            )
-        return self.default_start_dt
-
     def get_default_discovery_start_dt(self) -> datetime:
-        if self.default_start_dt is None:
-            return self.get_default_end_dt() - timedelta(
-                self.default_discovery_lookback_days
-            )
-        return self.default_start_dt
+        return self.get_default_end_dt() - timedelta(
+            days=self.default_discovery_lookback_days
+        )
 
     def clear_adapter_cache(self):
         self._adapter_cache.set_value(None)
 
-    def discover_datasource(self) -> DiscoveredEventDataSource:
-        return D.EventDatasourceDiscovery(source=self).discover_datasource()
+    def discover_project(self) -> DiscoveredProject:
+        return D.ProjectDiscovery(project=self).discover_project()
 
     def validate(self):
         if len(self.event_data_tables) == 0:
             raise Exception(
-                "At least a single EventDataTable needs to be added to the EventDataSource.\n"
-                "EventDataSource(event_data_tables = [ EventDataTable.create(...)])"
+                "At least a single EventDataTable needs to be added to the Project.\n"
+                "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
         for edt in self.event_data_tables:
             edt.validate()
@@ -439,23 +440,23 @@ class DatasetModel:
 
 
 @dataclass(frozen=True, init=False)
-class DiscoveredEventDataSource:
+class DiscoveredProject:
     definitions: Dict[EventDataTable, Dict[str, EventDef]]
-    source: EventDataSource
+    project: Project
 
     def __init__(
         self,
         definitions: Dict[EventDataTable, Dict[str, EventDef]],
-        source: EventDataSource,
+        project: Project,
     ) -> None:
         object.__setattr__(self, "definitions", definitions)
-        object.__setattr__(self, "source", source)
-        source._discovered_event_datasource.set_value(self)
+        object.__setattr__(self, "project", project)
+        project._discovered_project.set_value(self)
 
     def __post_init__(self):
-        self.source.validate()
+        self.project.validate()
 
-    def create_notebook_class_model(self) -> DatasetModel:
+    def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
 
     def get_event_def(self, event_name) -> EventDef:
@@ -474,28 +475,31 @@ class DiscoveredEventDataSource:
         return res
 
     @staticmethod
-    def _get_path(project: str, folder: str = "./", extension="mitzu") -> pathlib.Path:
-        return pathlib.Path(folder, f"{project}.{extension}")
+    def _get_path(
+        project_name: str, folder: str = "./", extension="mitzu"
+    ) -> pathlib.Path:
+        return pathlib.Path(folder, f"{project_name}.{extension}")
 
-    def save_project(self, project: str, folder: str = "./", extension="mitzu"):
-        path = self._get_path(project, folder, extension)
+    def save_to_project_file(
+        self, project_name: str, folder: str = "./", extension="mitzu"
+    ) -> DiscoveredProject:
+        path = self._get_path(project_name, folder, extension)
         with path.open(mode="wb") as file:
             pickle.dump(self, file)
+        return self
 
     @classmethod
     def load_from_project_file(
-        cls, project: str, folder: str = "./", extension="mitzu"
-    ) -> DiscoveredEventDataSource:
-        path = cls._get_path(project, folder, extension)
+        cls, project_name: str, folder: str = "./", extension="mitzu"
+    ) -> DiscoveredProject:
+        path = cls._get_path(project_name, folder, extension)
         with path.open(mode="rb") as file:
             return cls.load_from_project_binary(file.read())
 
     @classmethod
-    def load_from_project_binary(
-        cls, project_binary: bytes
-    ) -> DiscoveredEventDataSource:
-        res: DiscoveredEventDataSource = pickle.loads(project_binary)
-        res.source._discovered_event_datasource.set_value(res)
+    def load_from_project_binary(cls, project_binary: bytes) -> DiscoveredProject:
+        res: DiscoveredProject = pickle.loads(project_binary)
+        res.project._discovered_project.set_value(res)
         return res
 
 
@@ -548,7 +552,7 @@ class Field:
 class EventFieldDef:
     _event_name: str
     _field: Field
-    _source: EventDataSource
+    _project: Project
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
     _enums: Optional[List[Any]] = None
@@ -558,7 +562,7 @@ class EventFieldDef:
 class EventDef:
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
-    _source: EventDataSource
+    _project: Project
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
 
@@ -623,21 +627,18 @@ class Metric(ABC):
     def _start_dt(self) -> datetime:
         if self._config.start_dt is not None:
             return self._config.start_dt
-        eds = self._get_event_datasource()
-        if eds.default_start_dt is not None:
-            return eds.default_start_dt
         return self._end_dt - self._lookback_days.to_relative_delta()
 
     @property
     def _end_dt(self) -> datetime:
         if self._config.end_dt is not None:
             return self._config.end_dt
-        eds = self._get_event_datasource()
+        eds = self._get_project()
         if eds.default_end_dt is not None:
             return eds.default_end_dt
         return datetime.now()
 
-    def _get_event_datasource(self) -> EventDataSource:
+    def _get_project(self) -> Project:
         raise NotImplementedError()
 
     def get_df(self) -> pd.DataFrame:
@@ -673,12 +674,12 @@ class ConversionMetric(Metric):
         self._conv_window = conv_window
 
     def get_df(self) -> pd.DataFrame:
-        source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        return source.adapter.get_conversion_df(self)
+        project = helper.get_segment_project(self._conversion._segments[0])
+        return project.adapter.get_conversion_df(self)
 
     def get_sql(self) -> pd.DataFrame:
-        source = helper.get_segment_event_datasource(self._conversion._segments[0])
-        return source.adapter.get_conversion_sql(self)
+        project = helper.get_segment_project(self._conversion._segments[0])
+        return project.adapter.get_conversion_sql(self)
 
     def get_figure(self):
         return VIS.plot_conversion(self)
@@ -686,11 +687,11 @@ class ConversionMetric(Metric):
     def __repr__(self) -> str:
         return super().__repr__()
 
-    def _get_event_datasource(self) -> EventDataSource:
+    def _get_project(self) -> Project:
         curr: Segment = self._conversion._segments[0]
         while not isinstance(curr, SimpleSegment):
             curr = cast(ComplexSegment, curr)._left
-        return curr._left._source
+        return curr._left._project
 
 
 @dataclass(frozen=True, init=False)
@@ -702,12 +703,12 @@ class SegmentationMetric(Metric):
         object.__setattr__(self, "_segment", segment)
 
     def get_df(self) -> pd.DataFrame:
-        source = helper.get_segment_event_datasource(self._segment)
-        return source.adapter.get_segmentation_df(self)
+        project = helper.get_segment_project(self._segment)
+        return project.adapter.get_segmentation_df(self)
 
     def get_sql(self) -> str:
-        source = helper.get_segment_event_datasource(self._segment)
-        return source.adapter.get_segmentation_sql(self)
+        project = helper.get_segment_project(self._segment)
+        return project.adapter.get_segmentation_sql(self)
 
     def get_figure(self):
         return VIS.plot_segmentation(self)
@@ -715,11 +716,11 @@ class SegmentationMetric(Metric):
     def __repr__(self) -> str:
         return super().__repr__()
 
-    def _get_event_datasource(self) -> EventDataSource:
+    def _get_project(self) -> Project:
         curr: Segment = self._segment
         while not isinstance(curr, SimpleSegment):
             curr = cast(ComplexSegment, curr)._left
-        return curr._left._source
+        return curr._left._project
 
 
 @dataclass(frozen=True, init=False)
@@ -773,7 +774,7 @@ class Conversion(ConversionMetric):
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group),
+            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
             group_by=group_by,
             max_group_count=max_group_by_count,
             custom_title=custom_title,
@@ -830,7 +831,7 @@ class Segment(SegmentationMetric):
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group),
+            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
             group_by=group_by,
             max_group_count=max_group_by_count,
             custom_title=custom_title,

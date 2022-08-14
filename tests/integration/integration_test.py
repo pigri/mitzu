@@ -3,12 +3,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, cast
 
 import mitzu.model as M
 import pandas as pd
 import pytest
-from mitzu import init_project
 from tests.helper import assert_row, ingest_test_file_data
 from tests.samples.sources import get_simple_csv
 
@@ -31,7 +29,6 @@ def def_con(type: M.ConnectionType) -> M.Connection:
         host="localhost",
         secret_resolver=M.ConstSecretResolver("test"),
         user_name="test",
-        schema="test",
     )
 
 
@@ -54,7 +51,8 @@ TEST_CASES = [
             secret_resolver=None,
             user_name="test",
             port=8080,
-            schema="mysql/test",
+            schema="test",
+            catalog="mysql",
         ),
         ingest=False,
     ),
@@ -74,24 +72,24 @@ TEST_CASES = [
 @pytest.mark.parametrize("test_case", TEST_CASES, ids=case_name)
 def test_db_integrations(test_case: TestCase):
     test_source = get_simple_csv()
-    ingested_source = M.EventDataSource(
+    ingested_source = M.Project(
         test_case.connection,
         event_data_tables=test_source.event_data_tables,
-        default_start_dt=datetime(2019, 1, 1),
         default_end_dt=datetime(2022, 1, 1),
+        default_discovery_lookback_days=2000,
     )
 
     if test_case.ingest:
         ingest_test_file_data(
-            source=test_source,
+            project=test_source,
             target_connection=ingested_source.connection,
             transform_dt_col=False,
         )
-    validate_integration(source=ingested_source)
+    validate_integration(project=ingested_source)
 
 
-def validate_integration(source: M.EventDataSource):
-    m = cast(Any, init_project(source=source))
+def validate_integration(project: M.Project):
+    m = project.discover_project().create_notebook_class_model()
 
     df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
     assert 1 == df.shape[0]

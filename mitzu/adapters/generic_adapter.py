@@ -22,8 +22,8 @@ CTE_GROUP_COL = "_cte_group"
 
 
 class GenericDatasetAdapter(ABC):
-    def __init__(self, source: M.EventDataSource):
-        self.source = source
+    def __init__(self, project: M.Project):
+        self.project = project
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         raise NotImplementedError()

@@ -158,14 +158,10 @@ class ModelLoader:
             class_def["any_of"] = _any_of
 
         class_def["is_null"] = M.SimpleSegment(
-            _left=event_field,
-            _operator=M.Operator.EQ,
-            _right=None,
+            _left=event_field, _operator=M.Operator.IS_NULL
         )
         class_def["is_not_null"] = M.SimpleSegment(
-            _left=event_field,
-            _operator=M.Operator.NEQ,
-            _right=None,
+            _left=event_field, _operator=M.Operator.IS_NOT_NULL
         )
 
         return type(
@@ -182,7 +178,7 @@ class ModelLoader:
             res.insert(0, curr._name)
         return res
 
-    def _create_event_instance(self, event: M.EventDef, source: M.EventDataSource):
+    def _create_event_instance(self, event: M.EventDef, project: M.Project):
         fields = event._fields
 
         class_def: Dict[str, Any] = {}
@@ -194,7 +190,7 @@ class ModelLoader:
             class_instance = field_class(
                 _event_name=event._event_name,
                 _field=event_field,
-                _source=source,
+                _project=project,
                 _event_data_table=event_field_def._event_data_table,
             )
 
@@ -217,19 +213,19 @@ class ModelLoader:
 
         return type(f"_{event._event_name}", (M.SimpleSegment,), class_def)(event)
 
-    def _process_schema(self, discovered_dataset: M.DiscoveredEventDataSource):
-        source = discovered_dataset.source
+    def _process_schema(self, discovered_project: M.DiscoveredProject):
+        project = discovered_project.project
         class_def = {}
-        for ed_table in source.event_data_tables:
-            definitions = discovered_dataset.definitions[ed_table]
+        for ed_table in project.event_data_tables:
+            definitions = discovered_project.definitions[ed_table]
             for event_name, event_def in definitions.items():
                 fixed_name = fix_def(event_name)
-                class_def[fixed_name] = self._create_event_instance(event_def, source)
+                class_def[fixed_name] = self._create_event_instance(event_def, project)
 
         return class_def
 
     def create_datasource_class_model(
-        self, defs: M.DiscoveredEventDataSource
+        self, defs: M.DiscoveredProject
     ) -> M.DatasetModel:
         class_def = self._process_schema(defs)
         return cast(

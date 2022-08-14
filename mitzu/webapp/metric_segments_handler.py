@@ -14,13 +14,13 @@ METRIC_SEGMENTS = "metric_segments"
 @dataclass
 class MetricSegmentsHandler:
 
-    discovered_datasource: M.DiscoveredEventDataSource
+    discovered_project: M.DiscoveredProject
     component: html.Div
 
     @classmethod
     def from_metric(
         cls,
-        discovered_datasource: M.DiscoveredEventDataSource,
+        discovered_project: M.DiscoveredProject,
         metric: Optional[M.Metric],
         metric_type: MNB.MetricType,
     ) -> MetricSegmentsHandler:
@@ -43,7 +43,7 @@ class MetricSegmentsHandler:
             csh = CS.ComplexSegmentHandler.from_segment(
                 funnel_step=funnel_step,
                 segment=segment,
-                discovered_datasource=discovered_datasource,
+                discovered_project=discovered_project,
                 metric=metric,
                 metric_type=metric_type,
             )
@@ -52,7 +52,7 @@ class MetricSegmentsHandler:
         if len(fixed_metric_comps) < limit:
             fixed_metric_comps.append(
                 CS.ComplexSegmentHandler.from_segment(
-                    discovered_datasource,
+                    discovered_project,
                     len(fixed_metric_comps),
                     None,
                     None,
@@ -66,14 +66,14 @@ class MetricSegmentsHandler:
                 children=fixed_metric_comps,
                 className=METRIC_SEGMENTS,
             ),
-            discovered_datasource=discovered_datasource,
+            discovered_project=discovered_project,
         )
 
     def to_metric_segments(self) -> List[M.Segment]:
         res = []
         for complex_seg_comp in self.component.children:
             csh = CS.ComplexSegmentHandler.from_component(
-                complex_seg_comp, self.discovered_datasource
+                complex_seg_comp, self.discovered_project
             )
             complex_segment = csh.to_segment()
             if complex_segment is not None:
@@ -82,8 +82,8 @@ class MetricSegmentsHandler:
 
     @classmethod
     def from_component(
-        cls, discovered_datasource: M.DiscoveredEventDataSource, component: html.Div
+        cls, discovered_project: M.DiscoveredProject, component: html.Div
     ) -> MetricSegmentsHandler:
         return MetricSegmentsHandler(
-            discovered_datasource=discovered_datasource, component=component
+            discovered_project=discovered_project, component=component
         )

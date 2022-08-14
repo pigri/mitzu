@@ -13,6 +13,7 @@ from dash import Dash
 
 logging.getLogger().setLevel(logging.INFO)
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
+COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", "False"))
 
 
 def create_app():
@@ -25,7 +26,7 @@ def create_app():
 
     app = Dash(
         __name__,
-        compress=False,
+        compress=COMPRESS_RESPONSES,
         server=server,
         external_stylesheets=[
             dbc.themes.ZEPHYR,
@@ -39,7 +40,8 @@ def create_app():
     authorizer: AUTH.MitzuAuthorizer
     try:
         authorizer = AUTH.JWTMitzuAuthorizer.from_env_vars(server=server)
-    except Exception:
+    except Exception as exc:
+        print(exc)
         authorizer = AUTH.GuestMitzuAuthorizer()
 
     webapp = MWA.MitzuWebApp(

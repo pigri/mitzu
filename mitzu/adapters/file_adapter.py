@@ -12,8 +12,8 @@ VALUE_SEPARATOR = "###"
 
 
 class FileAdapter(SQLiteAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
 
     def _get_connection_url(self, con: M.Connection):
         return "sqlite://"
@@ -21,7 +21,7 @@ class FileAdapter(SQLiteAdapter):
     def get_engine(self) -> Any:
         if self._engine is None:
             self._engine = super().get_engine()
-            for ed_table in self.source.event_data_tables:
+            for ed_table in self.project.event_data_tables:
                 df = self._read_file(ed_table)
                 df.to_sql(
                     name=ed_table.table_name,
@@ -31,9 +31,9 @@ class FileAdapter(SQLiteAdapter):
         return self._engine
 
     def _read_file(self, event_data_table: M.EventDataTable) -> pd.DataFrame:
-        source = self.source
-        extension: str = source.connection.extra_configs["file_type"]
-        path = source.connection.extra_configs["path"]
+        project = self.project
+        extension: str = project.connection.extra_configs["file_type"]
+        path = project.connection.extra_configs["path"]
         table_name = event_data_table.table_name
         file_loc = pathlib.Path(path, f"{table_name}.{extension}")
         if extension.endswith("csv"):

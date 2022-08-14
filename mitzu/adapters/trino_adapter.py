@@ -6,16 +6,17 @@ from typing import Any, List, Union, cast
 import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
-import sqlalchemy as SA
-import sqlalchemy.sql.expression as EXP
-import sqlalchemy_trino.datatype as SA_T
+import trino.sqlalchemy.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 
+import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
+
 
 class TrinoAdapter(SQLAlchemyAdapter):
-    def __init__(self, source: M.EventDataSource):
-        super().__init__(source)
+    def __init__(self, project: M.Project):
+        super().__init__(project)
 
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         df = super().get_conversion_df(metric)
@@ -76,7 +77,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
             F.flatten(F.array_agg(F.distinct(F.map_keys(cte.columns[name]))))
         )
 
-        max_cardinality = self.source.max_map_key_cardinality
+        max_cardinality = self.project.max_map_key_cardinality
         q = SA.select(
             columns=[
                 SA.case(

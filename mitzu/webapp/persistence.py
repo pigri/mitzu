@@ -13,7 +13,7 @@ class PersistencyProvider(Protocol):
     def list_projects(self) -> List[str]:
         pass
 
-    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
+    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         pass
 
 
@@ -27,7 +27,7 @@ class FileSystemPersistencyProvider(PersistencyProvider):
         res = os.listdir(f"{self.base_path}/{PROJECTS_SUB_PATH}/")
         return [r for r in res if r.endswith(".mitzu")]
 
-    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
+    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         if key.endswith(PROJECT_SUFFIX):
             key = key[: len(PROJECT_SUFFIX)]
         path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"
@@ -47,7 +47,7 @@ class S3PersistencyProvider(PersistencyProvider):
         res = [r["name"].split("/")[-1] for r in res if r["name"].endswith(".mitzu")]
         return res
 
-    def get_project(self, key: str) -> Optional[M.DiscoveredEventDataSource]:
+    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         if key.endswith(PROJECT_SUFFIX):
             key = key[: len(PROJECT_SUFFIX)]
         path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"

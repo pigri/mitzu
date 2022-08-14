@@ -42,7 +42,7 @@ CUSTOM_VAL_PREFIX = "$EQ$_"
 
 def create_property_dropdown(
     simple_segment: M.SimpleSegment,
-    discovered_datasource: M.DiscoveredEventDataSource,
+    discovered_project: M.DiscoveredProject,
     simple_segment_index: int,
     type_index: str,
 ) -> dcc.Dropdown:
@@ -51,7 +51,7 @@ def create_property_dropdown(
     if type(simple_segment._left) == M.EventFieldDef:
         field_name = simple_segment._left._field._get_name()
 
-    event = discovered_datasource.get_event_def(event_name)
+    event = discovered_project.get_event_def(event_name)
     placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
     fields_names = [f._get_name() for f in event._fields.keys()]
     fields_names.sort()
@@ -76,7 +76,7 @@ def create_property_dropdown(
 
 def create_value_input(
     simple_segment: M.SimpleSegment,
-    discovered_datasource: M.DiscoveredEventDataSource,
+    discovered_project: M.DiscoveredProject,
     type_index: str,
 ) -> dcc.Dropdown:
     multi = simple_segment._operator in MULTI_OPTION_OPERATORS
@@ -85,7 +85,7 @@ def create_value_input(
 
     if type(left) == M.EventFieldDef:
         path = f"{left._event_name}.{left._field._get_name()}"
-        enums = get_enums(path, discovered_datasource)
+        enums = get_enums(path, discovered_project)
         if value is not None:
             if type(value) in (list, tuple):
                 enums = list(set([*list(value), *enums]))
@@ -194,7 +194,7 @@ def collect_values(value: Any, data_type: M.DataType) -> Optional[Tuple[Any, ...
 @dataclass
 class SimpleSegmentHandler:
 
-    discovered_datasource: M.DiscoveredEventDataSource
+    discovered_project: M.DiscoveredProject
     component: html.Div
 
     def to_simple_segment(self) -> Optional[M.SimpleSegment]:
@@ -202,9 +202,7 @@ class SimpleSegmentHandler:
         property_path: str = children[0].value
         if property_path is None:
             return None
-        event_field_def = find_event_field_def(
-            property_path, self.discovered_datasource
-        )
+        event_field_def = find_event_field_def(property_path, self.discovered_project)
         if len(children) == 1:
             return M.SimpleSegment(event_field_def, M.Operator.ANY_OF, None)
 
@@ -239,21 +237,21 @@ class SimpleSegmentHandler:
 
     @classmethod
     def from_component(
-        cls, component: html.Div, discovered_datasource: M.DiscoveredEventDataSource
+        cls, component: html.Div, discovered_project: M.DiscoveredProject
     ) -> SimpleSegmentHandler:
-        return SimpleSegmentHandler(discovered_datasource, component)
+        return SimpleSegmentHandler(discovered_project, component)
 
     @classmethod
     def from_simple_segment(
         cls,
         simple_segment: M.SimpleSegment,
-        discovered_datasource: M.DiscoveredEventDataSource,
+        discovered_project: M.DiscoveredProject,
         parent_type_index: str,
         simple_segment_index: int,
     ) -> SimpleSegmentHandler:
         type_index = f"{parent_type_index}-{simple_segment_index}"
         prop_dd = create_property_dropdown(
-            simple_segment, discovered_datasource, simple_segment_index, type_index
+            simple_segment, discovered_project, simple_segment_index, type_index
         )
         children = [prop_dd]
         if simple_segment._operator is not None:
@@ -261,7 +259,7 @@ class SimpleSegmentHandler:
             children.append(operator_dd)
             if simple_segment._operator not in BOOL_OPERATORS:
                 value_input = create_value_input(
-                    simple_segment, discovered_datasource, type_index
+                    simple_segment, discovered_project, type_index
                 )
                 children.append(value_input)
 
@@ -276,7 +274,7 @@ class SimpleSegmentHandler:
             ),
         )
 
-        return SimpleSegmentHandler(discovered_datasource, component)
+        return SimpleSegmentHandler(discovered_project, component)
 
     @classmethod
     def create_callbacks(cls, app: Dash):

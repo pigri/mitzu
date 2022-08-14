@@ -6,7 +6,7 @@ import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.file_adapter import FileAdapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from mitzu.model import Connection, EventDataSource, EventDataTable
+from mitzu.model import Connection, EventDataTable, Project
 from retry import retry  # type: ignore
 
 
@@ -59,20 +59,20 @@ def check_table(engine, ed_table: EventDataTable) -> bool:
 
 
 def ingest_test_file_data(
-    source: EventDataSource,
+    project: Project,
     target_connection: Connection,
     transform_dt_col: bool = True,
     dtype: Dict[str, Any] = None,
 ) -> SQLAlchemyAdapter:
-    adapter = cast(FileAdapter, source.adapter)
+    adapter = cast(FileAdapter, project.adapter)
 
-    target_source = EventDataSource(
-        connection=target_connection, event_data_tables=source.event_data_tables
+    target_source = Project(
+        connection=target_connection, event_data_tables=project.event_data_tables
     )
     target_adapter = cast(SQLAlchemyAdapter, target_source.adapter)
     target_engine = target_adapter.get_engine()
 
-    for ed_table in source.event_data_tables:
+    for ed_table in project.event_data_tables:
         ret = check_table(target_engine, ed_table)
         if ret:
             print(f"Table {ed_table.table_name} already exists")

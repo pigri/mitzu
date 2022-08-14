@@ -17,11 +17,11 @@ COMPLEX_SEGMENT_GROUP_BY = "complex_segment_group_by"
 
 
 def get_group_by_options(
-    discovered_datasource: M.DiscoveredEventDataSource, event_names: List[str]
+    discovered_project: M.DiscoveredProject, event_names: List[str]
 ):
     options: List[Dict[str, str]] = []
     for event_name in event_names:
-        for field in discovered_datasource.get_event_def(event_name)._fields:
+        for field in discovered_project.get_event_def(event_name)._fields:
             field_name = value_to_label(field._get_name()).split(".")[-1]
             field_value = field._get_name()
             should_break = False
@@ -41,7 +41,7 @@ def create_group_by_dropdown(
     index: str,
     metric: Optional[M.Metric],
     segment: M.Segment,
-    discovered_datasource: M.DiscoveredEventDataSource,
+    discovered_project: M.DiscoveredProject,
 ) -> dcc:
     event_names = get_event_names(segment)
     group_by_efd = metric._config.group_by if metric is not None else None
@@ -50,7 +50,7 @@ def create_group_by_dropdown(
     if group_by_efd is not None:
         value = f"{group_by_efd._event_name}.{group_by_efd._field._get_name()}"
 
-    options = get_group_by_options(discovered_datasource, event_names)
+    options = get_group_by_options(discovered_project, event_names)
     if value not in [v["value"] for v in options]:
         value = None
 
@@ -85,13 +85,13 @@ def find_all_event_segments(segment: M.Segment) -> List[M.Segment]:
 @dataclass
 class ComplexSegmentHandler:
 
-    discovered_datasource: M.DiscoveredEventDataSource
+    discovered_project: M.DiscoveredProject
     component: dbc.Card
 
     @classmethod
     def from_segment(
         self,
-        discovered_datasource: M.DiscoveredEventDataSource,
+        discovered_project: M.DiscoveredProject,
         funnel_step: int,
         metric: Optional[M.Metric],
         segment: Optional[M.Segment],
@@ -112,12 +112,12 @@ class ComplexSegmentHandler:
             for index, evt_segment in enumerate(event_segments):
                 body_children.append(
                     ES.EventSegmentHandler.from_segment(
-                        evt_segment, discovered_datasource, funnel_step, index
+                        evt_segment, discovered_project, funnel_step, index
                     ).component
                 )
         body_children.append(
             ES.EventSegmentHandler.from_segment(
-                None, discovered_datasource, funnel_step, len(body_children)
+                None, discovered_project, funnel_step, len(body_children)
             ).component
         )
 
@@ -125,7 +125,7 @@ class ComplexSegmentHandler:
             group_by_dd = html.Div(
                 [
                     create_group_by_dropdown(
-                        type_index, metric, segment, discovered_datasource
+                        type_index, metric, segment, discovered_project
                     )
                 ],
                 className=COMPLEX_SEGMENT_FOOTER,
@@ -137,7 +137,7 @@ class ComplexSegmentHandler:
             className=COMPLEX_SEGMENT_BODY,
         )
         return ComplexSegmentHandler(
-            discovered_datasource=discovered_datasource,
+            discovered_project=discovered_project,
             component=dbc.Card(
                 id={"type": COMPLEX_SEGMENT, "index": type_index},
                 children=[header, card_body],
@@ -150,7 +150,7 @@ class ComplexSegmentHandler:
         event_segment_divs = find_components(ES.EVENT_SEGMENT, self.component)
         for event_segment_div in event_segment_divs:
             esh = ES.EventSegmentHandler.from_component(
-                event_segment_div, self.discovered_datasource
+                event_segment_div, self.discovered_project
             )
             event_segment = esh.to_segment()
             if event_segment is None:
@@ -164,8 +164,8 @@ class ComplexSegmentHandler:
 
     @classmethod
     def from_component(
-        cls, component: dbc.Card, discovered_datasource: M.DiscoveredEventDataSource
+        cls, component: dbc.Card, discovered_project: M.DiscoveredProject
     ) -> ComplexSegmentHandler:
         return ComplexSegmentHandler(
-            discovered_datasource=discovered_datasource, component=component
+            discovered_project=discovered_project, component=component
         )

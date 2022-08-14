@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mitzu.adapters.databricks_sqlalchemy.sqlalchemy.error import DatabricksQueryError
+from mitzu.adapters.sqlalchemy.databricks.sqlalchemy.error import DatabricksQueryError
 
 from sqlalchemy.sql import compiler
 

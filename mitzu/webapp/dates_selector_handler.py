@@ -60,13 +60,13 @@ def create_timewindow_options(
 class DateSelectorHandler:
 
     component: html.Div
-    discovered_datasource: Optional[M.DiscoveredEventDataSource]
+    discovered_project: Optional[M.DiscoveredProject]
 
     @classmethod
     def from_metric_config(
         cls,
         metric_config: Optional[M.MetricConfig],
-        discovered_datasource: Optional[M.DiscoveredEventDataSource],
+        discovered_project: Optional[M.DiscoveredProject],
     ) -> DateSelectorHandler:
         tg_val = (
             metric_config.time_group
@@ -144,7 +144,7 @@ class DateSelectorHandler:
             style={"border-radius": "4px"},
         )
         return DateSelectorHandler(
-            component=comp, discovered_datasource=discovered_datasource
+            component=comp, discovered_project=discovered_project
         )
 
     def get_metric_custom_dates(
@@ -154,16 +154,16 @@ class DateSelectorHandler:
         start_dt = custom_date_picker.start_date
         end_dt = custom_date_picker.end_date
 
-        dd = self.discovered_datasource
+        dd = self.discovered_project
 
         def_end_dt = (
-            dd.source.default_end_dt
-            if (dd is not None and dd.source.default_end_dt is not None)
+            dd.project.default_end_dt
+            if (dd is not None and dd.project.default_end_dt is not None)
             else datetime.now()
         )
         def_lookback_window = (
-            dd.source.default_lookback_window.value
-            if (dd is not None and dd.source.default_lookback_window is not None)
+            dd.project.default_lookback_window.value
+            if (dd is not None and dd.project.default_lookback_window is not None)
             else 30
         )
         if lookback_days is None:
@@ -205,9 +205,9 @@ class DateSelectorHandler:
     def from_component(
         cls,
         component: dbc.InputGroup,
-        discovered_datasource: Optional[M.DiscoveredEventDataSource],
+        discovered_project: Optional[M.DiscoveredProject],
     ) -> DateSelectorHandler:
-        return DateSelectorHandler(component, discovered_datasource)
+        return DateSelectorHandler(component, discovered_project)
 
     def to_metric_config(self) -> M.MetricConfig:
         lookback_days = self.get_metric_lookback_days()

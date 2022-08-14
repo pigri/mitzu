@@ -1,56 +1,42 @@
 import inspect
-from typing import Dict, Optional
+from typing import Dict
 
-import mitzu.project as P
 from mitzu.model import (
     Connection,
     ConnectionType,
-    DatasetModel,
-    EventDataSource,
+    DiscoveredProject,
     EventDataTable,
+    Project,
 )
 
 Connection
 ConnectionType
-EventDataSource
+Project
 EventDataTable
+DiscoveredProject
 
 
-def _find_notebook_globals() -> Optional[Dict]:
+def _find_notebook_globals() -> Dict:
     for stk in inspect.stack():
-        parent_globals = stk[0].f_globals
-        if (
-            "init_project" in parent_globals or "load_project"
-        ) and parent_globals != globals():
-            print("Found notebook context")
-            return parent_globals
-    print("Couldn't find notebook context")
-    return None
+        glbs = stk[0].f_globals
+        if ("load_from_project_file" in glbs) and "_find_notebook_globals" not in glbs:
+            return glbs
+    print("Warn: Parent globals not found")
+    return {}
 
 
-def load_project_from_file(
-    project: str, folder: str = "./", extension="mitzu", glbs=None
+def load_from_project_file(
+    project: str, folder: str = "./", extension="mitzu", set_globals: bool = True
 ):
-    if glbs is None:
-        glbs = _find_notebook_globals()
     print("Initializing project ...")
-    res = P.load_project_from_file(project, folder, extension, glbs=glbs)
-    print("Finished project initialization")
-    return res
+    m = DiscoveredProject.load_from_project_file(
+        project, folder, extension
+    ).create_notebook_class_model()
 
-
-def init_project(
-    source: EventDataSource,
-    persist_as: str = None,
-    persist_folder: str = "./",
-    glbs=None,
-) -> DatasetModel:
-
-    if glbs is None:
+    if set_globals:
         glbs = _find_notebook_globals()
-    print("Initializing project ...")
-    res = P.init_project(
-        source=source, glbs=glbs, persist_as=persist_as, persist_folder=persist_folder
-    )
+        m._to_globals(glbs)
+        print("Globals set up")
+
     print("Finished project initialization")
-    return res
+    return m

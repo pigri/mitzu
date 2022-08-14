@@ -11,8 +11,4 @@
 # limitations under the License.
 from sqlalchemy.dialects import registry
 
-registry.register(
-    "databricks",
-    "mitzu.adapters.databricks_sqlalchemy.sqlalchemy.dialect",
-    "DatabricksDialect",
-)
+registry.register("athena", "athena.sqlalchemy.dialect", "AthenaDialect")

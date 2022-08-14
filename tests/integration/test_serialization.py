@@ -1,5 +1,5 @@
-from mitzu.datasource_discovery import EventDatasourceDiscovery
-from mitzu.model import EventDataSource, Metric
+from mitzu.model import Metric, Project
+from mitzu.project_discovery import ProjectDiscovery
 from mitzu.serialization import (
     from_compressed_string,
     from_dict,
@@ -9,17 +9,17 @@ from mitzu.serialization import (
 from tests.samples.sources import get_simple_csv
 
 
-def verify(metric: Metric, source: EventDataSource):
+def verify(metric: Metric, project: Project):
     metric_json = to_dict(metric)
-    metric2 = from_dict(metric_json, source)
+    metric2 = from_dict(metric_json, project)
     compared_df = metric2.get_df().compare(metric.get_df(), align_axis=0)
     assert compared_df.shape[0] == 0
 
 
 def test_definition_to_json():
     eds = get_simple_csv()
-    discovery = EventDatasourceDiscovery(eds)
-    dd1 = discovery.discover_datasource()
+    discovery = ProjectDiscovery(eds)
+    dd1 = discovery.discover_project()
     m = dd1.create_notebook_class_model()
 
     # Test Segmentation
@@ -33,7 +33,7 @@ def test_definition_to_json():
     res_dict = to_dict(res)
     assert res_dict == {
         "seg": {
-            "l": {"l": {"en": "view", "f": "category_id"}, "op": "NEQ"},
+            "l": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
             "bop": "OR",
             "r": {"l": {"en": "cart"}},
         },
@@ -60,7 +60,7 @@ def test_definition_to_json():
     assert res_dict == {
         "conv": {
             "segs": [
-                {"l": {"en": "view", "f": "category_id"}, "op": "NEQ"},
+                {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
                 {"l": {"en": "cart"}},
             ]
         },
@@ -86,8 +86,8 @@ def test_definition_to_json():
 
 def test_compression():
     eds = get_simple_csv()
-    discovery = EventDatasourceDiscovery(eds)
-    dd1 = discovery.discover_datasource()
+    discovery = ProjectDiscovery(eds)
+    dd1 = discovery.discover_project()
     m = dd1.create_notebook_class_model()
 
     # Test Segmentation

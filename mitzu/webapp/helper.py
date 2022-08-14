@@ -32,10 +32,8 @@ def deserialize_component(val: Any) -> bc.Component:
         return val
 
 
-def get_enums(
-    path: str, discovered_datasource: M.DiscoveredEventDataSource
-) -> List[Any]:
-    event_field_def = find_event_field_def(path, discovered_datasource)
+def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:
+    event_field_def = find_event_field_def(path, discovered_project)
     if event_field_def is not None:
         res = event_field_def._enums
         return res if res is not None else []
@@ -43,11 +41,11 @@ def get_enums(
 
 
 def find_event_field_def(
-    path: str, discovered_datasource: M.DiscoveredEventDataSource
+    path: str, discovered_project: M.DiscoveredProject
 ) -> M.EventFieldDef:
     path_parts = path.split(".")
     event_name = path_parts[0]
-    event_def = discovered_datasource.get_event_def(event_name)
+    event_def = discovered_project.get_event_def(event_name)
     field_name = ".".join(path_parts[1:])
 
     for field, event_field_def in event_def._fields.items():
