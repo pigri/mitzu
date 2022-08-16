@@ -13,7 +13,7 @@ from dash import Dash
 
 logging.getLogger().setLevel(logging.INFO)
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
-COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", "False"))
+COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", False))
 
 
 def create_app():
