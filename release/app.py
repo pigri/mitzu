@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import logging
 import os
-from urllib import request
 
 import awsgi
 import dash_bootstrap_components as dbc
@@ -12,7 +10,6 @@ import mitzu.webapp.persistence as P
 import mitzu.webapp.webapp as MWA
 from dash import Dash
 
-logging.getLogger().setLevel(logging.INFO)
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", False))
 URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME", None)
@@ -22,7 +19,6 @@ REQUESTS_PATHNAME_PREFIX = os.getenv("REQUESTS_PATHNAME_PREFIX", None)
 
 def create_app():
     server = flask.Flask(__name__)
-
     if MITZU_BASEPATH.startswith("s3://"):
         pers_provider = P.S3PersistencyProvider(MITZU_BASEPATH[5:])
     else:

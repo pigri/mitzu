@@ -64,7 +64,8 @@ services:
       - trino-network
 
   hive-metastore:
-    image: 'bitsondatadev/hive-metastore:latest'
+    # image: 'bitsondatadev/hive-metastore:latest' # FOR INTEL 
+    image: 'ghcr.io/bitsondatadev/hive-metastore:latest' # FOR M1 Apple
     hostname: hive-metastore
     ports:
       - '9083:9083' # Metastore Thrift
