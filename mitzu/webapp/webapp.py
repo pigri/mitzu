@@ -26,6 +26,7 @@ from mitzu.webapp.helper import (
     deserialize_component,
     find_components,
     find_event_field_def,
+    get_path_project_name,
 )
 from mitzu.webapp.persistence import PersistencyProvider
 
@@ -36,8 +37,6 @@ MAIN = "main"
 PATH_RESULTS = "results"
 MITZU_LOCATION = "mitzu_location"
 MAIN_CONTAINER = "main_container"
-PROJECT_PATH_INDEX = 1
-METRIC_TYPE_PATH_INDEX = 2
 GRAPH_CONTAINER = "graph_container"
 GRAPH_CONTAINER_HEADER = "graph_container_header"
 GRAPH_CONTAINER_AUTOFREFRESH = "graph_auto_refresh"
@@ -157,11 +156,6 @@ def create_graph_container(graph: dcc.Graph):
         ],
     )
     return graph_container
-
-
-def get_path_project_name(url_parse_result: ParseResult) -> str:
-    path_parts = url_parse_result.path.split("/")
-    return path_parts[PROJECT_PATH_INDEX]
 
 
 @dataclass
@@ -313,6 +307,8 @@ class MitzuWebApp:
         self, parse_result: ParseResult
     ) -> Optional[M.DiscoveredProject]:
         path_project_name = get_path_project_name(parse_result)
+        if path_project_name is None:
+            return None
         self._load_dataset_model(path_project_name)
         return self.get_discovered_project()
 

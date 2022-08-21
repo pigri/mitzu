@@ -33,6 +33,7 @@ MANIFEST
 *.manifest
 *.spec
 
+.DS_Store
 
 # Unit test / coverage reports
 htmlcov/

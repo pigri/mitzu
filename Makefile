@@ -49,21 +49,8 @@ notebook:
 
 dash: 	
 	cd release && \
-	LOG_LEVEL=WARN \
-	LOG_HANDLER=stdout \
 	BASEPATH=../examples/webapp-docker/basepath/ \
 	MANAGE_PROJECTS_LINK=http://localhost:8081 \
-	MITZU_WEBAPP_URL="http://localhost:8082/" \
-	OAUTH_JWT_COOKIE=access_token \
-	OAUTH_JWT_AUDIENCE=1bqlja23lfmniv7bm703aid9o0 \
-	OAUTH_REDIRECT_URI="http://localhost:8082/" \
-	OAUTH_CLIENT_ID=1bqlja23lfmniv7bm703aid9o0 \
-	OAUTH_CLIENT_SECRET=$(OUATH_CLIENT_SECRET) \
-	OAUTH_TOKEN_URL="https://signin.mitzu.io/oauth2/token" \
-	OAUTH_JWKS_URL="https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_QkZu6BnVD/.well-known/jwks.json" \
-	UNAUTHORIZED_URL="https://signin.mitzu.io/oauth2/authorize?client_id=1bqlja23lfmniv7bm703aid9o0&response_type=code&scope=email+openid&redirect_uri=http://localhost:8082/" \
-	SIGN_OUT_URL="http://localhost:8082/logout" \
-	SIGN_OUT_REDIRECT_URL="https://signin.mitzu.io/logout" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
 build: check

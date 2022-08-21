@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import os
+from urllib.parse import urlparse
+
 import dash_bootstrap_components as dbc
 import mitzu.webapp.webapp as WA
 from dash import Input, Output
-from mitzu.webapp.helper import value_to_label
+from mitzu.webapp.helper import get_path_project_name, value_to_label
 
+URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME")
 CHOOSE_PROJECT_DROPDOWN = "choose-project-dropdown"
+
+
+def get_project_path(project_name: str) -> str:
+    if URL_BASE_PATHNAME is not None:
+        return f"{URL_BASE_PATHNAME}/{project_name}"
+    return f"/{project_name}"
 
 
 def create_project_dropdown(webapp: WA.MitzuWebApp):
@@ -15,7 +25,7 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
         dbc.DropdownMenu(
             children=[
                 dbc.DropdownMenuItem(
-                    value_to_label(p), href=f"/{p}", external_link=True
+                    value_to_label(p), href=get_project_path(p), external_link=True
                 )
                 for p in projects
             ],
@@ -29,11 +39,12 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
 
     @webapp.app.callback(
         Output(CHOOSE_PROJECT_DROPDOWN, "label"),
-        Input(WA.MITZU_LOCATION, "pathname"),
+        Input(WA.MITZU_LOCATION, "href"),
     )
-    def update(curr_pathname: str):
-        path_parts = curr_pathname.split("/")
-        curr_path_project_name = path_parts[WA.PROJECT_PATH_INDEX]
+    def update(href: str):
+        parse_result = urlparse(href)
+        print(parse_result)
+        curr_path_project_name = get_path_project_name(parse_result)
 
         if not curr_path_project_name:
             return "Select project"

@@ -8,7 +8,8 @@ import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
 from dash import html
 
-LOGO = "/assets/logo.png"
+URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME", "")
+LOGO = f"{URL_BASE_PATHNAME}assets/logo.png"
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
 

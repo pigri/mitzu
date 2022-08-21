@@ -13,8 +13,6 @@ from dash import Dash
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", False))
 URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME", None)
-ROUTES_PATHNAME_PREFIX = os.getenv("ROUTES_PATHNAME_PREFIX", None)
-REQUESTS_PATHNAME_PREFIX = os.getenv("REQUESTS_PATHNAME_PREFIX", None)
 
 
 def create_app():
@@ -34,8 +32,6 @@ def create_app():
             "assets/components.css",
         ],
         url_base_pathname=URL_BASE_PATHNAME,
-        routes_pathname_prefix=ROUTES_PATHNAME_PREFIX,
-        requests_pathname_prefix=REQUESTS_PATHNAME_PREFIX,
         title="Mitzu",
         update_title=None,
         suppress_callback_exceptions=True,
