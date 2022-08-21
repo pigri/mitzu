@@ -35,6 +35,7 @@ docker_test_up:
 	docker-compose -f tests/integration/docker/docker-compose.yml up
 
 trino_setup_test_data:
+	# TBD: Setup Minio, data has to be uploaded to minio
 	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 test_coverage:
