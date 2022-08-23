@@ -306,7 +306,7 @@ class MitzuWebApp:
     def handle_discovered_datasource(
         self, parse_result: ParseResult
     ) -> Optional[M.DiscoveredProject]:
-        path_project_name = get_path_project_name(parse_result)
+        path_project_name = get_path_project_name(parse_result, self.app)
         if path_project_name is None:
             return None
         self._load_dataset_model(path_project_name)
@@ -492,10 +492,17 @@ class MitzuWebApp:
             ):
                 return [create_hint_div("Select the first event ...").to_plotly_json()]
             viz_type = chart_options["graph_viz_type"]
-            if viz_type == GRAPH_VAL_CHART:
-                return [GH.create_graph(metric).to_plotly_json()]
-            elif viz_type == GRAPH_VAL_TABLE:
-                return [GH.create_table(metric).to_plotly_json()]
-            elif viz_type == GRAPH_VAL_SQL:
-                return [GH.create_sql_area(metric).to_plotly_json()]
+            try:
+                if viz_type == GRAPH_VAL_CHART:
+                    return [GH.create_graph(metric).to_plotly_json()]
+                elif viz_type == GRAPH_VAL_TABLE:
+                    return [GH.create_table(metric).to_plotly_json()]
+                elif viz_type == GRAPH_VAL_SQL:
+                    return [GH.create_sql_area(metric).to_plotly_json()]
+            except Exception as exc:
+                return [
+                    html.Div(
+                        str(exc), style={"min-height": "500px", "color": "red"}
+                    ).to_plotly_json()
+                ]
             return []

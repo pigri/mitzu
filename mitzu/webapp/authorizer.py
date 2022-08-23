@@ -14,7 +14,7 @@ import jwt
 import mitzu.model as M
 import requests
 
-LOG_HANDLER = sys.stdout if os.getenv("LOG_HANDLER") == "stdout" else sys.stderr
+LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 
 logger = logging.getLogger()
 logger.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
@@ -111,9 +111,6 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         def authorize_request():
             jwt_encoded = flask.request.cookies.get(self.jwt_cookie)
             code = get_oauth_code()
-            logger.info(f"URL: {flask.request.url}")
-            logger.info(f"Headers: {flask.request.headers}")
-            logger.info(f"Args: {flask.request.values}")
             resp: flask.Response
             if code is not None:
                 logger.info(f"Redirected with code= {code}")

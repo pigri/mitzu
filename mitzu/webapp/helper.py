@@ -1,12 +1,11 @@
-import os
 from typing import Any, List, Optional, Union
 from urllib.parse import ParseResult
 
 import dash.development.base_component as bc
 import mitzu.model as M
+from dash import Dash
 
-URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME", None)
-PROJECT_PATH_INDEX = 1
+PROJECT_PATH_INDEX = 0
 
 
 def value_to_label(value: str) -> str:
@@ -109,12 +108,8 @@ def get_event_names(segment: Optional[M.Segment]) -> List[str]:
         raise Exception(f"Unsupported Segment Type: {type(segment)}")
 
 
-def get_path_project_name(url_parse_result: ParseResult) -> Optional[str]:
+def get_path_project_name(url_parse_result: ParseResult, dash: Dash) -> Optional[str]:
     fixed_path = url_parse_result.path
-    if URL_BASE_PATHNAME is not None:
-        base_len = len(URL_BASE_PATHNAME) - 1
-        fixed_path = fixed_path[base_len:]
+    fixed_path = dash.strip_relative_path(fixed_path)
     path_parts = fixed_path.split("/")
-    if len(path_parts) <= 1:
-        return None
     return path_parts[PROJECT_PATH_INDEX]
