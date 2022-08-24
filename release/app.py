@@ -21,6 +21,7 @@ DASH_SERVER_LOCALLY = bool(os.getenv("DASH_SERVER_LOCALLY", True))
 DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
 DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
 DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/logo.png")
+DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
 
 
 LOG = logging.getLogger()
@@ -62,7 +63,7 @@ def create_app():
         external_stylesheets=[
             dbc.themes.ZEPHYR,
             dbc.icons.BOOTSTRAP,
-            "components.css",
+            DASH_COMPONENTS_CSS,
         ],
         assets_folder=DASH_ASSETS_FOLDER,
         assets_url_path=DASH_ASSETS_URL_PATH,
