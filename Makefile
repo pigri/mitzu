@@ -52,8 +52,7 @@ dash:
 	BASEPATH=../examples/webapp-docker/basepath/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	REQUSTES_PATHNAME_PREFIX="/Prod/" \
-	ROUTES_PATHNAME_PREFIX="/Prod/" \
+	DASH_LOGO_PATH="assets/logo.png" \
 	MANAGE_PROJECTS_LINK=http://localhost:8081 \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 

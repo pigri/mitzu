@@ -164,6 +164,7 @@ class MitzuWebApp:
     persistency_provider: PersistencyProvider
     app: Dash
     authorizer: Optional[AUTH.MitzuAuthorizer]
+    logo_path: Optional[str] = None
 
     _discovered_datasource: M.ProtectedState[M.DiscoveredProject] = M.ProtectedState[
         M.DiscoveredProject

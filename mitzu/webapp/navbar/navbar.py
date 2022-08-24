@@ -8,12 +8,16 @@ import mitzu.webapp.navbar.project_dropdown as PD
 import mitzu.webapp.webapp as WA
 from dash import html
 
-LOGO = "assets/logo.png"
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
 
 
 def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
+
+    if webapp.logo_path is not None:
+        logo_image = [html.Img(src=webapp.logo_path, height="32px", className="logo")]
+    else:
+        logo_image = [html.H2("Mitzu", className="logo")]
 
     res = dbc.Navbar(
         children=dbc.Container(
@@ -23,7 +27,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                         dbc.Col(
                             html.A(
                                 # Use row and col to control vertical alignment of logo / brand
-                                children=[html.Img(src=LOGO, height="32px")],
+                                children=logo_image,
                                 href="/",
                                 style={"textDecoration": "none"},
                             )

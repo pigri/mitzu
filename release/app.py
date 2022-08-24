@@ -15,9 +15,13 @@ from dash import Dash
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", False))
 LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
-ROUTES_PATHNAME_PREFIX = os.getenv("ROUTES_PATHNAME_PREFIX")
-REQUEST_PATHNAME_PREFIX = os.getenv("REQUEST_PATHNAME_PREFIX")
-URL_BASE_PATHNAME = os.getenv("URL_BASE_PATHNAME", None)
+DASH_ASSETS_FOLDER = os.getenv("DASH_ASSETS_FOLDER", "assets")
+DASH_ASSETS_URL_PATH = os.getenv("DASH_ASSETS_URL_PATH", "assets")
+DASH_SERVER_LOCALLY = bool(os.getenv("DASH_SERVER_LOCALLY", True))
+DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
+DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
+DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/logo.png")
+
 
 LOG = logging.getLogger()
 LOG.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
@@ -58,15 +62,17 @@ def create_app():
         external_stylesheets=[
             dbc.themes.ZEPHYR,
             dbc.icons.BOOTSTRAP,
-            "assets/components.css",
+            "components.css",
         ],
-        url_base_pathname=URL_BASE_PATHNAME,
-        requests_pathname_prefix=REQUEST_PATHNAME_PREFIX,
-        routes_pathname_prefix=ROUTES_PATHNAME_PREFIX,
-        title="Mitzu",
+        assets_folder=DASH_ASSETS_FOLDER,
+        assets_url_path=DASH_ASSETS_URL_PATH,
+        serve_locally=DASH_SERVER_LOCALLY,
+        title=DASH_TITLE,
         update_title=None,
         suppress_callback_exceptions=True,
     )
+    app._favicon = DASH_FAVICON_PATH
+
     authorizer: AUTH.MitzuAuthorizer
     unauthorized_url = os.getenv(AUTH.UNAUTHORIZED_URL)
     if unauthorized_url:
@@ -80,7 +86,10 @@ def create_app():
         authorizer = AUTH.GuestMitzuAuthorizer()
 
     webapp = MWA.MitzuWebApp(
-        persistency_provider=pers_provider, app=app, authorizer=authorizer
+        persistency_provider=pers_provider,
+        app=app,
+        authorizer=authorizer,
+        logo_path=DASH_LOGO_PATH,
     )
     webapp.init_app()
     return app
