@@ -1,11 +1,19 @@
+import logging
+import os
+import sys
 from typing import Any, List, Optional, Union
 from urllib.parse import ParseResult
 
 import dash.development.base_component as bc
 import mitzu.model as M
-from dash import Dash
+from dash import Dash, html
 
 PROJECT_PATH_INDEX = 0
+LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
+
+LOGGER = logging.getLogger()
+LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
+LOGGER.addHandler(logging.StreamHandler(LOG_HANDLER))
 
 
 def value_to_label(value: str) -> str:
@@ -110,6 +118,22 @@ def get_event_names(segment: Optional[M.Segment]) -> List[str]:
 
 def get_path_project_name(url_parse_result: ParseResult, dash: Dash) -> Optional[str]:
     fixed_path = url_parse_result.path
+    if not fixed_path.startswith("/"):
+        fixed_path = f"/{fixed_path}"
     fixed_path = dash.strip_relative_path(fixed_path)
     path_parts = fixed_path.split("/")
     return path_parts[PROJECT_PATH_INDEX]
+
+
+def get_property_name_comp(field_name: str) -> html.Div:
+    parts = field_name.split(".")
+    if len(parts) == 1:
+        return html.Div(field_name, className="property_name")
+    return html.Div(
+        [
+            html.Div(
+                value_to_label(".".join(parts[:-1])), className="property_name_prefix"
+            ),
+            html.Div(value_to_label(parts[-1]), className="property_name"),
+        ],
+    )

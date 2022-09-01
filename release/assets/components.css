@@ -169,3 +169,17 @@
 .graph_auto_refresh .form-label {
     margin-bottom: 0px;
 }
+
+.property_name_prefix {
+    line-height: 12px;
+    font-size: 8px;
+    height: 8px;
+}
+
+.Select-value-label .property_name_prefix {
+    height: 0px;
+}
+
+.property_name {   
+    font-size: 12px;   
+}

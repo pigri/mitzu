@@ -11,7 +11,7 @@ from mitzu.webapp.helper import (
     deserialize_component,
     find_event_field_def,
     get_enums,
-    value_to_label,
+    get_property_name_comp,
 )
 
 SIMPLE_SEGMENT = "simple_segment"
@@ -56,7 +56,7 @@ def create_property_dropdown(
     fields_names = [f._get_name() for f in event._fields.keys()]
     fields_names.sort()
     options = [
-        {"label": value_to_label(f).split(".")[-1], "value": f"{event_name}.{f}"}
+        {"label": get_property_name_comp(f), "value": f"{event_name}.{f}"}
         for f in fields_names
     ]
 

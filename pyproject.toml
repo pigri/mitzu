@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.2.20"
+version = "0.2.24"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 
@@ -24,7 +24,7 @@ databricks-sql-connector = { version = "^2.0.2", optional=true}
 PyAthena = { version="^2.13.0", optional=true}
 
 # Webapp Extras
-aws-wsgi = {version="^0.2.7", optional=true}
+serverless-wsgi = {version="^3.0.1",  optional=true}
 orjson = {version="^3.7.11", optional=true}
 s3fs = {version="^2022.7.1", optional=true}
 PyJWT = { version="^2.4.0", extras=["crypto"], optional=true}
@@ -36,7 +36,7 @@ mysql = ["mysql-connector-python"]
 trinodwh = ["trino"]
 databricks = ["databricks-sql-connector"]
 athena = ["PyAthena"]
-webapp = ["aws-wsgi", "s3fs", "orjson", "PyJWT"]
+webapp = ["serverless-wsgi", "s3fs", "orjson", "PyJWT"]
 
 
 

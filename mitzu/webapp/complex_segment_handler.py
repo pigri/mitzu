@@ -8,7 +8,7 @@ import mitzu.model as M
 import mitzu.webapp.event_segment_handler as ES
 import mitzu.webapp.navbar.metric_type_handler as MNB
 from dash import dcc, html
-from mitzu.webapp.helper import find_components, get_event_names, value_to_label
+from mitzu.webapp.helper import find_components, get_event_names, get_property_name_comp
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"
@@ -22,18 +22,21 @@ def get_group_by_options(
     options: List[Dict[str, str]] = []
     for event_name in event_names:
         for field in discovered_project.get_event_def(event_name)._fields:
-            field_name = value_to_label(field._get_name()).split(".")[-1]
             field_value = field._get_name()
             should_break = False
+            final_field_value = f"{event_name}.{field_value}"
             for op in options:
-                if op["label"] == field_name:
+                if ".".join(op["value"].split(".")[1:]) == field_value:
                     should_break = True
                     break
             if not should_break:
                 options.append(
-                    {"label": field_name, "value": f"{event_name}.{field_value}"}
+                    {
+                        "label": get_property_name_comp(field._get_name()),
+                        "value": final_field_value,
+                    }
                 )
-    options.sort(key=lambda v: v["label"])
+    options.sort(key=lambda v: ".".join(v["value"].split(".")[1:]))
     return options
 
 

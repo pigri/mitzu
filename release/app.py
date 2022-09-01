@@ -4,17 +4,16 @@ import logging
 import os
 import sys
 
-import awsgi
 import dash_bootstrap_components as dbc
 import flask
 import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as P
 import mitzu.webapp.webapp as MWA
+import serverless_wsgi
 from dash import Dash
+from mitzu.webapp.helper import LOGGER
 
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
-COMPRESS_RESPONSES = bool(os.getenv("COMPRESS_RESPONSES", False))
-LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 DASH_ASSETS_FOLDER = os.getenv("DASH_ASSETS_FOLDER", "assets")
 DASH_ASSETS_URL_PATH = os.getenv("DASH_ASSETS_URL_PATH", "assets")
 DASH_SERVER_LOCALLY = bool(os.getenv("DASH_SERVER_LOCALLY", True))
@@ -22,26 +21,24 @@ DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
 DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
 DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/logo.png")
 DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
-
-
-LOG = logging.getLogger()
-LOG.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
-LOG.addHandler(logging.StreamHandler(LOG_HANDLER))
+DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
+LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 
 
 def setup_logger(server: flask.Flask):
 
-    if LOG.getEffectiveLevel() >= logging.DEBUG:
-        LOG.debug("Logging Enabled")
+    if LOGGER.getEffectiveLevel() >= logging.DEBUG:
+        LOGGER.debug("Logging Enabled")
 
         @server.after_request
         def log_response(resp: flask.Response) -> flask.Response:
             try:
-                LOG.debug(f"REQ URL: {flask.request.url}")
-                LOG.debug(f"REQ Headers: {flask.request.headers}")
-                LOG.debug(f"RESP StatusCode: {resp.status_code}")
-                LOG.debug(f"RESP Headers: {resp.headers}")
-                LOG.debug(f"RESP Content: {resp.get_json()}")
+                LOGGER.debug(f"REQ URL: {flask.request.url}")
+                LOGGER.debug(f"REQ PATH: {flask.request.path}")
+                LOGGER.debug(f"REQ Headers: {flask.request.headers}")
+                LOGGER.debug(f"RESP StatusCode: {resp.status_code}")
+                LOGGER.debug(f"RESP Headers: {resp.headers}")
+                LOGGER.debug(f"RESP Content: {resp.get_json()}")
             except Exception as exc:
                 print(exc)
             return resp
@@ -58,7 +55,7 @@ def create_app():
 
     app = Dash(
         __name__,
-        compress=COMPRESS_RESPONSES,
+        compress=DASH_COMPRESS_RESPONSES,
         server=server,
         external_stylesheets=[
             dbc.themes.ZEPHYR,
@@ -78,10 +75,10 @@ def create_app():
     unauthorized_url = os.getenv(AUTH.UNAUTHORIZED_URL)
     if unauthorized_url:
         try:
-            LOG.info("Setting up OAuth")
+            LOGGER.info("Setting up OAuth")
             authorizer = AUTH.JWTMitzuAuthorizer.from_env_vars(server=server)
         except Exception as exc:
-            LOG.error(exc)
+            LOGGER.error(exc)
             authorizer = AUTH.GuestMitzuAuthorizer()
     else:
         authorizer = AUTH.GuestMitzuAuthorizer()
@@ -101,11 +98,8 @@ server = app.server
 
 
 def handler(event, context):
-    base64_types = [
-        "image/*",
-        "image/x-icon",
-        "image/png",
-        "image/vnd.microsoft.icon",
-        "image/ico",
-    ]
-    return awsgi.response(server, event, context, base64_types)
+    try:
+        return serverless_wsgi.handle_request(server, event, context)
+    except Exception as exc:
+        LOGGER.error(f"Failed Lambda Request: {event} -> {exc}")
+        raise exc
