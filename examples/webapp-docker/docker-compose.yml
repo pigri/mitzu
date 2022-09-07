@@ -7,7 +7,7 @@ services:
     environment:
       BASEPATH: /var/task/basepath/
       MANAGE_PROJECTS_LINK: http://127.0.0.1:8888/lab/tree/work/projects
-      MITZU_WEBAPP_URL: http://localhost:8082/
+      HOME_URL: http://localhost:8082/
       OAUTH_JWT_COOKIE: access_token
       OAUTH_JWT_AUDIENCE: 5ksa8so5q08si2na2k959k9bd6
       OAUTH_REDIRECT_URI: http://localhost:8082/redirect/

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.2.24"
+version = "0.2.28"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 

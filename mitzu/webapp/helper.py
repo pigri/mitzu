@@ -128,7 +128,7 @@ def get_path_project_name(url_parse_result: ParseResult, dash: Dash) -> Optional
 def get_property_name_comp(field_name: str) -> html.Div:
     parts = field_name.split(".")
     if len(parts) == 1:
-        return html.Div(field_name, className="property_name")
+        return html.Div(value_to_label(field_name), className="property_name")
     return html.Div(
         [
             html.Div(

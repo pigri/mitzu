@@ -52,9 +52,29 @@ dash:
 	BASEPATH=../examples/webapp-docker/basepath/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	DASH_REQUESTS_PATHNAME_PREFIX="/Prod/" \
-	DASH_ROUTES_PATHNAME_PREFIX="/Prod/" \
-	MANAGE_PROJECTS_LINK=http://localhost:8081 \
+	MANAGE_PROJECTS_LINK="http://localhost:8081" \
+	HOME_URL="http://localhost:8082/" \
+	NOT_FOUND_URL="http://localhost:8082/not_found" \
+	SIGN_OUT_URL="http://localhost:8082/logout" \
+	OAUTH_SIGN_IN_URL="https://signin.mitzu.io/oauth2/authorize?client_id=1bqlja23lfmniv7bm703aid9o0&response_type=code&scope=email+openid&redirect_uri=http://localhost:8082/" \
+	OAUTH_JWT_COOKIE=access_token \
+	OAUTH_JWT_AUDIENCE=1bqlja23lfmniv7bm703aid9o0 \
+	OAUTH_REDIRECT_URI="http://localhost:8082/" \
+	OAUTH_CLIENT_ID=1bqlja23lfmniv7bm703aid9o0 \
+	OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET}" \
+	OAUTH_TOKEN_URL="https://signin.mitzu.io/oauth2/token" \
+	OAUTH_AUTHORIZED_EMAIL_REG="." \
+	OAUTH_JWKS_URL="https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_QkZu6BnVD/.well-known/jwks.json" \
+	OAUTH_SIGN_OUT_REDIRECT_URL="https://signin.mitzu.io/logout" \
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
+
+dash_simple: 	
+	cd release && \
+	BASEPATH=../examples/webapp-docker/basepath/ \
+	LOG_LEVEL=INFO \
+	LOG_HANDLER=stdout \
+	MANAGE_PROJECTS_LINK="http://localhost:8081" \
+	HOME_URL="http://localhost:8082/" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
 build: check

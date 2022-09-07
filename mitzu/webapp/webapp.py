@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pprint
+import traceback
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlparse
@@ -20,9 +21,10 @@ import mitzu.webapp.navbar.metric_type_handler as MNB
 import mitzu.webapp.navbar.navbar as MN
 import mitzu.webapp.simple_segment_handler as SS
 import mitzu.webapp.webapp as WA
-from dash import Dash, ctx, dcc, html, no_update
+from dash import Dash, ctx, dcc, html
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.helper import (
+    LOGGER,
     deserialize_component,
     find_components,
     find_event_field_def,
@@ -39,8 +41,6 @@ MITZU_LOCATION = "mitzu_location"
 MAIN_CONTAINER = "main_container"
 GRAPH_CONTAINER = "graph_container"
 GRAPH_CONTAINER_HEADER = "graph_container_header"
-GRAPH_CONTAINER_AUTOFREFRESH = "graph_auto_refresh"
-GRAPH_VIZ_TYPE_DD = "graph_viz_type_dd"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
 
 GRAPH_VAL_CHART = "chart"
@@ -48,6 +48,7 @@ GRAPH_VAL_TABLE = "table"
 GRAPH_VAL_SQL = "sql"
 
 SELECT_PROJECT_DIV = "select_project_div"
+GRAPH_TOOLBAR_BUTTON_HEIGHT = "30px"
 
 
 def create_hint_div(text: str) -> html.Div:
@@ -66,76 +67,51 @@ def create_graph_container(graph: dcc.Graph):
                 children=[
                     dbc.InputGroup(
                         children=[
-                            dbc.InputGroupText(
-                                dbc.Checkbox(
-                                    id=GRAPH_CONTAINER_AUTOFREFRESH,
-                                    className=GRAPH_CONTAINER_AUTOFREFRESH,
-                                    label="Auto Refresh",
-                                    value=True,
-                                    style={"margin-bottom": "0px"},
-                                ),
-                                style={
-                                    "padding": "2px 10px",
-                                    "height": "36px",
-                                    "line-height": "24px",
-                                },
-                            ),
-                            dcc.Dropdown(
-                                id=GRAPH_VIZ_TYPE_DD,
-                                className=GRAPH_VIZ_TYPE_DD,
-                                clearable=False,
-                                searchable=False,
-                                style={"width": "120px"},
-                                value=GRAPH_VAL_CHART,
-                                options=[
-                                    {
-                                        "label": html.Span(
-                                            [
-                                                html.I(
-                                                    className="bi bi-graph-up",
-                                                    style={"margin-right": "5px"},
-                                                ),
-                                                html.Span("Chart"),
-                                            ]
-                                        ),
-                                        "value": GRAPH_VAL_CHART,
-                                    },
-                                    {
-                                        "label": html.Span(
-                                            [
-                                                html.I(
-                                                    className="bi bi-grid-3x3",
-                                                    style={"margin-right": "5px"},
-                                                ),
-                                                html.Span("Table"),
-                                            ]
-                                        ),
-                                        "value": GRAPH_VAL_TABLE,
-                                    },
-                                    {
-                                        "label": html.Span(
-                                            [
-                                                html.I(
-                                                    className="bi bi-code-slash",
-                                                    style={"margin-right": "5px"},
-                                                ),
-                                                html.Span("SQL"),
-                                            ]
-                                        ),
-                                        "value": GRAPH_VAL_SQL,
-                                    },
-                                ],
-                            ),
                             dbc.Button(
-                                children=[html.B(className="bi bi-play-fill fs-600")],
+                                children=[html.B(className="bi bi-arrow-clockwise")],
                                 size="sm",
-                                color="info",
+                                color="primary",
                                 className=GRAPH_REFRESH_BUTTON,
                                 id=GRAPH_REFRESH_BUTTON,
                                 style={
-                                    "margin-right": "10px",
-                                    "min-height": "0",
-                                    "height": "36px",
+                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                                },
+                            ),
+                            dbc.Button(
+                                children=[html.B(className="bi bi-graph-up")],
+                                size="sm",
+                                color="info",
+                                className=GRAPH_REFRESH_BUTTON,
+                                id=GRAPH_VAL_CHART,
+                                outline=False,
+                                style={
+                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                                },
+                            ),
+                            dbc.Button(
+                                children=[
+                                    html.B(
+                                        className="bi bi-grid-3x3",
+                                    )
+                                ],
+                                size="sm",
+                                color="info",
+                                className=GRAPH_REFRESH_BUTTON,
+                                id=GRAPH_VAL_TABLE,
+                                outline=True,
+                                style={
+                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                                },
+                            ),
+                            dbc.Button(
+                                children=[html.Span("sql")],
+                                size="sm",
+                                color="info",
+                                className=GRAPH_REFRESH_BUTTON,
+                                outline=True,
+                                id=GRAPH_VAL_SQL,
+                                style={
+                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
                                 },
                             ),
                         ],
@@ -165,6 +141,7 @@ class MitzuWebApp:
     app: Dash
     authorizer: Optional[AUTH.MitzuAuthorizer]
     logo_path: Optional[str] = None
+    viz_type: str = GRAPH_VAL_CHART
 
     _discovered_datasource: M.ProtectedState[M.DiscoveredProject] = M.ProtectedState[
         M.DiscoveredProject
@@ -440,12 +417,18 @@ class MitzuWebApp:
             )
 
         @self.app.callback(
-            output=Output(GRAPH_CONTAINER, "children"),
+            output=[
+                Output(GRAPH_CONTAINER, "children"),
+                Output(GRAPH_VAL_CHART, "outline"),
+                Output(GRAPH_VAL_TABLE, "outline"),
+                Output(GRAPH_VAL_SQL, "outline"),
+            ],
             inputs={
                 **all_input_comps,
                 "chart_options": {
-                    "auto_refresh": Input(GRAPH_CONTAINER_AUTOFREFRESH, "value"),
-                    "graph_viz_type": Input(GRAPH_VIZ_TYPE_DD, "value"),
+                    "graph_viz_table": Input(GRAPH_VAL_TABLE, "n_clicks"),
+                    "graph_viz_chart": Input(GRAPH_VAL_CHART, "n_clicks"),
+                    "graph_viz_sql": Input(GRAPH_VAL_SQL, "n_clicks"),
                 },
             },
             state=dict(
@@ -459,19 +442,26 @@ class MitzuWebApp:
             chart_options: Dict[str, Any],
             metric_segment_divs: List[Dict],
             metric_configs: List[Dict],
-        ) -> List[Dict]:
-            if not chart_options["auto_refresh"] and ctx.triggered_id not in (
-                GRAPH_REFRESH_BUTTON,
-                GRAPH_VIZ_TYPE_DD,
-            ):
-                return no_update
+        ) -> Tuple[List[Dict], bool, bool, bool]:
             parse_result = urlparse(all_inputs["href"])
             discovered_project = self.handle_discovered_datasource(parse_result)
+            if ctx.triggered_id in [GRAPH_VAL_CHART, GRAPH_VAL_SQL, GRAPH_VAL_TABLE]:
+                self.viz_type = ctx.triggered_id
+            viz_types = (
+                self.viz_type != GRAPH_VAL_CHART,
+                self.viz_type != GRAPH_VAL_TABLE,
+                self.viz_type != GRAPH_VAL_SQL,
+            )
 
             if discovered_project is None:
-                return [
-                    create_hint_div("Start by selecting a project ...").to_plotly_json()
-                ]
+                return (
+                    [
+                        create_hint_div(
+                            "Start by selecting a project ..."
+                        ).to_plotly_json()
+                    ],
+                    *viz_types,
+                )
 
             metric, _ = self.handle_metric_changes(
                 parse_result=parse_result,
@@ -491,19 +481,39 @@ class MitzuWebApp:
                     and len(metric._conversion._segments) == 0
                 )
             ):
-                return [create_hint_div("Select the first event ...").to_plotly_json()]
-            viz_type = chart_options["graph_viz_type"]
+                return (
+                    [create_hint_div("Select the first event ...").to_plotly_json()],
+                    *viz_types,
+                )
+
             try:
-                if viz_type == GRAPH_VAL_CHART:
-                    return [GH.create_graph(metric).to_plotly_json()]
-                elif viz_type == GRAPH_VAL_TABLE:
-                    return [GH.create_table(metric).to_plotly_json()]
-                elif viz_type == GRAPH_VAL_SQL:
-                    return [GH.create_sql_area(metric).to_plotly_json()]
+                if self.viz_type == GRAPH_VAL_CHART:
+                    return (
+                        [GH.create_graph(metric).to_plotly_json()],
+                        *viz_types,
+                    )
+                elif self.viz_type == GRAPH_VAL_TABLE:
+                    return (
+                        [GH.create_table(metric).to_plotly_json()],
+                        *viz_types,
+                    )
+                elif self.viz_type == GRAPH_VAL_SQL:
+                    return (
+                        [GH.create_sql_area(metric).to_plotly_json()],
+                        *viz_types,
+                    )
             except Exception as exc:
-                return [
-                    html.Div(
-                        str(exc), style={"min-height": "500px", "color": "red"}
-                    ).to_plotly_json()
-                ]
-            return []
+                traceback.print_exc()
+                LOGGER.error(exc)
+                return (
+                    [
+                        html.Div(
+                            str(exc), style={"min-height": "500px", "color": "red"}
+                        ).to_plotly_json()
+                    ],
+                    *viz_types,
+                )
+            return (
+                [],
+                *viz_types,
+            )

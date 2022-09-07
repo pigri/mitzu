@@ -65,7 +65,7 @@ def create_group_by_dropdown(
         searchable=True,
         multi=False,
         className=COMPLEX_SEGMENT_GROUP_BY,
-        placeholder="+ Group By",
+        placeholder="+ Break Down",
         style={"width": "100%"},
     )
 

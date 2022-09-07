@@ -13,15 +13,17 @@ import serverless_wsgi
 from dash import Dash
 from mitzu.webapp.helper import LOGGER
 
+OAUTH_SIGN_IN_URL = os.getenv("OAUTH_SIGN_IN_URL")
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 DASH_ASSETS_FOLDER = os.getenv("DASH_ASSETS_FOLDER", "assets")
 DASH_ASSETS_URL_PATH = os.getenv("DASH_ASSETS_URL_PATH", "assets")
-DASH_SERVER_LOCALLY = bool(os.getenv("DASH_SERVER_LOCALLY", True))
+DASH_SERVE_LOCALLY = bool(os.getenv("DASH_SERVE_LOCALLY", True))
 DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
 DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
 DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/logo.png")
 DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
 DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
+
 LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 
 
@@ -64,22 +66,15 @@ def create_app():
         ],
         assets_folder=DASH_ASSETS_FOLDER,
         assets_url_path=DASH_ASSETS_URL_PATH,
-        serve_locally=DASH_SERVER_LOCALLY,
+        serve_locally=DASH_SERVE_LOCALLY,
         title=DASH_TITLE,
         update_title=None,
-        suppress_callback_exceptions=True,
+        # suppress_callback_exceptions=True,
     )
     app._favicon = DASH_FAVICON_PATH
 
-    authorizer: AUTH.MitzuAuthorizer
-    unauthorized_url = os.getenv(AUTH.UNAUTHORIZED_URL)
-    if unauthorized_url:
-        try:
-            LOGGER.info("Setting up OAuth")
-            authorizer = AUTH.JWTMitzuAuthorizer.from_env_vars(server=server)
-        except Exception as exc:
-            LOGGER.error(exc)
-            authorizer = AUTH.GuestMitzuAuthorizer()
+    if OAUTH_SIGN_IN_URL is not None:
+        authorizer = AUTH.JWTMitzuAuthorizer.from_env_vars(server=server)
     else:
         authorizer = AUTH.GuestMitzuAuthorizer()
 

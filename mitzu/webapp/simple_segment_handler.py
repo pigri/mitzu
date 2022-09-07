@@ -231,6 +231,8 @@ class SimpleSegmentHandler:
             for op, op_str in OPERATOR_MAPPING.items():
                 if op_str == property_operator:
                     fixed_val = fix_custom_value(value, data_type)
+                    if fixed_val == []:
+                        fixed_val = None
                     return M.SimpleSegment(event_field_def, op, fixed_val)
 
             raise ValueError(f"Not supported Operator { property_operator }")
