@@ -1,32 +1,13 @@
 services:
-
   mitzu-webapp:
     image: imeszaros/mitzu-webapp:latest
     restart: always
     entrypoint: gunicorn -b 0.0.0.0:80 app:server
     environment:
-      BASEPATH: /var/task/basepath/
-      MANAGE_PROJECTS_LINK: http://127.0.0.1:8888/lab/tree/work/projects
+      BASEPATH: /var/task/basepath/      
       HOME_URL: http://localhost:8082/
-      OAUTH_JWT_COOKIE: access_token
-      OAUTH_JWT_AUDIENCE: 5ksa8so5q08si2na2k959k9bd6
-      OAUTH_REDIRECT_URI: http://localhost:8082/redirect/
-      OAUTH_CLIENT_ID: 5ksa8so5q08si2na2k959k9bd6
-      OAUTH_CLIENT_SECRET: ${OUATH_CLIENT_SECRET}
-      OAUTH_TOKEN_URL: https://auth.mitzu.io/oauth2/token
-      OAUTH_JWKS_URL: https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_Xqij4gHQA/.well-known/jwks.json
-      UNAUTHORIZED_URL: https://auth.mitzu.io/oauth2/authorize?client_id=5ksa8so5q08si2na2k959k9bd6&response_type=code&scope=email+openid&redirect_uri=http://localhost:8082/redirect/
-      SIGN_OUT_URL: http://localhost:8082/sign_out
-      SIGN_OUT_REDIRECT_URL: https://auth.mitzu.io/logout
+      NOT_FOUND_URL: http://localhost:8082/not_found      
     ports:
       - 8082:80
     volumes:
-      - ./basepath/:/var/task/basepath/
-
-  jupyter-notebook:
-    image: jupyter/scipy-notebook
-    restart: always
-    ports:
-      - 8888:8888
-    volumes:
-      - ./basepath/:/home/jovyan/work
+      - ./mitzu/:/var/task/basepath/
