@@ -69,7 +69,7 @@ def create_app():
         serve_locally=DASH_SERVE_LOCALLY,
         title=DASH_TITLE,
         update_title=None,
-        # suppress_callback_exceptions=True,
+        suppress_callback_exceptions=True,
     )
     app._favicon = DASH_FAVICON_PATH
 
