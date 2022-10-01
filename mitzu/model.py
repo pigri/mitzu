@@ -85,6 +85,55 @@ class TimeGroup(Enum):
         raise Exception("Unkonwn timegroup value exception")
 
 
+class AggType(Enum):
+
+    COUNT_UNIQUE_USERS = auto()
+    COUNT_EVENTS = auto()
+    CONVERSION = auto()
+    PERCENTILE_TIME_TO_CONV = auto()
+    AVERAGE_TIME_TO_CONV = auto()
+
+    def to_agg_str(self, agg_param: Any = None) -> str:
+        if self == AggType.CONVERSION:
+            return "conversion"
+        if self == AggType.COUNT_EVENTS:
+            return "event_count"
+        if self == AggType.COUNT_UNIQUE_USERS:
+            return "user_count"
+        if self == AggType.AVERAGE_TIME_TO_CONV:
+            return "ttc_avg"
+        if self == AggType.PERCENTILE_TIME_TO_CONV:
+            if agg_param is None:
+                raise ValueError(
+                    "For percentile time to convert aggregation agg_param is required"
+                )
+            return f"ttc_p{agg_param:.0f}"
+        raise ValueError(f"{self} is not supported for to str")
+
+    @staticmethod
+    def parse_agg_str(val: str) -> Tuple[AggType, Any]:
+        val = val.lower()
+        if val == "event_count":
+            return (AggType.COUNT_EVENTS, None)
+        if val == "user_count":
+            return (AggType.COUNT_UNIQUE_USERS, None)
+        if val.startswith("ttc_p") and val[5:].isnumeric():
+            param = int(val[5:])
+            if 0 < param > 100:
+                raise ValueError("Percentile value must be an integer between 0 and 99")
+            return (AggType.PERCENTILE_TIME_TO_CONV, param)
+        if val == "ttc_median":
+            return (AggType.PERCENTILE_TIME_TO_CONV, 50)
+        if val == "ttc_avg":
+            return (AggType.AVERAGE_TIME_TO_CONV, None)
+        if val == "conversion":
+            return (AggType.CONVERSION, None)
+        raise ValueError(
+            f"Unsupported AggType: {val}\n"
+            "supported['event_count', 'user_count', 'ttc_median', 'ttc_p90', 'ttc_p95', 'ttc_avg']"
+        )
+
+
 class Operator(Enum):
     EQ = auto()
     NEQ = auto()
@@ -585,6 +634,8 @@ class MetricConfig:
     max_group_count: Optional[int] = None
     group_by: Optional[EventFieldDef] = None
     custom_title: Optional[str] = None
+    agg_type: Optional[AggType] = None
+    agg_param: Optional[Any] = None
 
 
 @dataclass(init=False, frozen=True)
@@ -628,6 +679,26 @@ class Metric(ABC):
         if self._config.start_dt is not None:
             return self._config.start_dt
         return self._end_dt - self._lookback_days.to_relative_delta()
+
+    @property
+    def _agg_type(self) -> AggType:
+        if self._config.agg_type is not None:
+            return self._config.agg_type
+        if isinstance(self, ConversionMetric):
+            return AggType.CONVERSION
+        if isinstance(self, SegmentationMetric):
+            return AggType.COUNT_UNIQUE_USERS
+        raise NotImplementedError(
+            f"_agg_type property is not implemented for {type(self)}"
+        )
+
+    @property
+    def _agg_param(self) -> Any:
+        if self._config.agg_param is not None:
+            return self._config.agg_param
+        if self._agg_type == AggType.PERCENTILE_TIME_TO_CONV:
+            return 50
+        return None
 
     @property
     def _end_dt(self) -> datetime:
@@ -764,6 +835,7 @@ class Conversion(ConversionMetric):
         max_group_by_count: Optional[int] = None,
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
+        aggregation: Optional[str] = None,
     ) -> ConversionMetric | RetentionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -771,6 +843,10 @@ class Conversion(ConversionMetric):
             lbd = lookback_days
         else:
             lbd = None
+        if aggregation is not None:
+            agg_type, agg_param = AggType.parse_agg_str(aggregation)
+        else:
+            agg_type, agg_param = AggType.CONVERSION, None
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -779,6 +855,8 @@ class Conversion(ConversionMetric):
             max_group_count=max_group_by_count,
             custom_title=custom_title,
             lookback_days=lbd,
+            agg_type=agg_type,
+            agg_param=agg_param,
         )
         if ret_window is not None:
             ret_res = RetentionMetric(
@@ -821,6 +899,7 @@ class Segment(SegmentationMetric):
         max_group_by_count: Optional[int] = None,
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
+        aggregation: Optional[str] = None,
     ) -> SegmentationMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -828,6 +907,10 @@ class Segment(SegmentationMetric):
             lbd = lookback_days
         else:
             lbd = None
+        if aggregation is not None:
+            agg_type, agg_param = AggType.parse_agg_str(aggregation)
+        else:
+            agg_type, agg_param = AggType.COUNT_UNIQUE_USERS, None
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -836,6 +919,8 @@ class Segment(SegmentationMetric):
             max_group_count=max_group_by_count,
             custom_title=custom_title,
             lookback_days=lbd,
+            agg_type=agg_type,
+            agg_param=agg_param,
         )
 
         return SegmentationMetric(segment=self, config=config)

@@ -21,12 +21,16 @@ class TrinoAdapter(SQLAlchemyAdapter):
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         df = super().get_conversion_df(metric)
         df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
-        df[GA.CVR_COL] = df[GA.CVR_COL].astype(float)
+        for index in range(1, len(metric._conversion._segments) + 1):
+            df[f"{GA.AGG_VALUE_COL}_{index}"] = df[
+                f"{GA.AGG_VALUE_COL}_{index}"
+            ].astype(float)
         return df
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         df = super().get_segmentation_df(metric)
         df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        df[GA.AGG_VALUE_COL] = df[GA.AGG_VALUE_COL].astype(float)
         return df
 
     def execute_query(self, query: Any) -> pd.DataFrame:
@@ -145,3 +149,23 @@ class TrinoAdapter(SQLAlchemyAdapter):
             timewindow.value,
             field_ref,
         )
+
+    def _get_conv_aggregation(
+        self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
+    ) -> Any:
+        if metric._agg_type == M.AggType.PERCENTILE_TIME_TO_CONV:
+            if metric._agg_param is None or 0 < metric._agg_param > 100:
+                raise ValueError(
+                    "Conversion percentile parameter must be between 0 and 100"
+                )
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.approx_percentile(
+                SA.func.date_diff("second", t1, t2), metric._agg_param / 100.0
+            )
+        if metric._agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.avg(SA.func.date_diff("second", t1, t2))
+        else:
+            return super()._get_conv_aggregation(metric, cte, first_cte)

@@ -28,6 +28,7 @@ def test_definition_to_json():
         end_dt="2021-01-01",
         time_group="total",
         group_by=m.view.category_id,
+        aggregation="user_count",
     )
 
     res_dict = to_dict(res)
@@ -42,6 +43,7 @@ def test_definition_to_json():
             "edt": "2021-01-01T00:00:00",
             "tg": "total",
             "gb": {"en": "view", "f": "category_id"},
+            "at": "user_count",
         },
     }
     verify(res, eds)
@@ -54,6 +56,7 @@ def test_definition_to_json():
         conv_window="1 week",
         group_by=m.view.category_id,
         custom_title="test_title",
+        aggregation="conversion",
     )
 
     res_dict = to_dict(res)
@@ -71,17 +74,47 @@ def test_definition_to_json():
             "tg": "week",
             "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
+            "at": "conversion",
         },
     }
 
     verify(res, eds)
-
     # Test Simple Definitions
     verify(m.view, eds)
     verify(m.view | m.cart, eds)
     verify(m.view >> m.cart, eds)
     verify(m.view.config(start_dt="2021-01-01", end_dt="2021-10-01"), eds)
     verify((m.view >> m.cart).config(start_dt="2021-01-01", end_dt="2021-10-01"), eds)
+
+    # Test Conversion
+    res = (m.view.category_id.is_not_null >> m.cart).config(
+        start_dt="2020-01-01",
+        end_dt="2021-01-01",
+        time_group="week",
+        conv_window="1 week",
+        group_by=m.view.category_id,
+        custom_title="test_title",
+        aggregation="ttc_p75",
+    )
+
+    res_dict = to_dict(res)
+    assert res_dict == {
+        "conv": {
+            "segs": [
+                {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
+                {"l": {"en": "cart"}},
+            ]
+        },
+        "cw": "1 week",
+        "co": {
+            "sdt": "2020-01-01T00:00:00",
+            "edt": "2021-01-01T00:00:00",
+            "tg": "week",
+            "gb": {"en": "view", "f": "category_id"},
+            "ct": "test_title",
+            "at": "ttc_p75",
+        },
+    }
 
 
 def test_compression():

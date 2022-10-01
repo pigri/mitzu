@@ -49,7 +49,7 @@ notebook:
 
 dash: 	
 	cd release && \
-	BASEPATH=../examples/webapp-docker/basepath/ \
+	BASEPATH=../examples/webapp-docker/mitzu/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
@@ -70,7 +70,7 @@ dash:
 
 dash_simple: 	
 	cd release && \
-	BASEPATH=../examples/webapp-docker/basepath/ \
+	BASEPATH=../examples/webapp-docker/mitzu/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \

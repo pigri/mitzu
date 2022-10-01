@@ -568,6 +568,36 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             evt_time_col <= self._correct_timestamp(end_date)
         )
 
+    def _get_seg_aggregation(self, metric: M.Metric, cte: EXP.CTE) -> Any:
+        at = metric._agg_type
+        if at == M.AggType.COUNT_EVENTS:
+            return SA.func.count(cte.columns.get(GA.CTE_USER_ID_ALIAS_COL))
+        elif at == M.AggType.COUNT_UNIQUE_USERS:
+            return SA.func.count(cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct())
+        else:
+            raise ValueError(
+                f"Aggregation type {at.name} is not supported for segmentation"
+            )
+
+    def _get_conv_aggregation(
+        self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
+    ) -> Any:
+        at = metric._agg_type
+        if at == M.AggType.CONVERSION:
+            return (
+                SA.func.count(cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct())
+                * 100.0
+                / SA.func.count(
+                    first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                )
+            )
+        elif at == M.AggType.PERCENTILE_TIME_TO_CONV:
+            raise NotImplementedError(
+                "Sql Alchemy adapter doesn't support percentile calculation"
+            )
+        else:
+            raise ValueError(f"Aggregation type {at} is not supported for conversion")
+
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         sub_query = self._get_segment_sub_query(metric._segment)
         cte: EXP.CTE = aliased(
@@ -593,12 +623,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             columns=[
                 evt_time_group.label(GA.DATETIME_COL),
                 group_by.label(GA.GROUP_COL),
-                SA.func.count(
-                    cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
-                ).label(GA.USER_COUNT_COL),
-                SA.func.count(cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
-                    GA.EVENT_COUNT_COL
-                ),
+                self._get_seg_aggregation(metric, cte).label(GA.AGG_VALUE_COL),
             ],
             whereclause=(self._get_timewindow_where_clause(cte, metric)),
             group_by=(
@@ -643,11 +668,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             steps.append(curr_cte)
             other_selects.extend(
                 [
-                    SA.func.count(curr_used_id_col.distinct()).label(
-                        fix_col_index(i + 2, GA.USER_COUNT_COL)
-                    ),
-                    SA.func.count(curr_used_id_col).label(
-                        fix_col_index(i + 2, GA.EVENT_COUNT_COL)
+                    SA.func.count(
+                        curr_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                    ).label(fix_col_index(i + 2, GA.USER_COUNT_COL)),
+                    self._get_conv_aggregation(metric, curr_cte, first_cte).label(
+                        fix_col_index(i + 2, GA.AGG_VALUE_COL)
                     ),
                 ]
             )
@@ -673,22 +698,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         columns = [
             first_evt_time_group.label(GA.DATETIME_COL),
             first_group_by.label(GA.GROUP_COL),
-            (
-                SA.func.count(
-                    steps[len(steps) - 1]
-                    .columns.get(GA.CTE_USER_ID_ALIAS_COL)
-                    .distinct()
-                )
-                * 100.0
-                / SA.func.count(
-                    first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
-                )
-            ).label(GA.CVR_COL),
             SA.func.count(
                 first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
             ).label(fix_col_index(1, GA.USER_COUNT_COL)),
-            SA.func.count(first_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)).label(
-                fix_col_index(1, GA.EVENT_COUNT_COL)
+            self._get_conv_aggregation(metric, first_cte, first_cte).label(
+                fix_col_index(1, GA.AGG_VALUE_COL)
             ),
         ]
         columns.extend(other_selects)

@@ -40,7 +40,7 @@ def _to_dict(value: Any) -> Any:
     if isinstance(value, M.Field):
         return value._get_name()
     if isinstance(value, M.MetricConfig):
-        return {
+        res = {
             "sdt": _to_dict(value.start_dt),
             "edt": _to_dict(value.end_dt),
             "lbd": _to_dict(value.lookback_days),
@@ -49,6 +49,9 @@ def _to_dict(value: Any) -> Any:
             "gb": _to_dict(value.group_by),
             "ct": _to_dict(value.custom_title),
         }
+        if value.agg_type is not None:
+            res["at"] = value.agg_type.to_agg_str(value.agg_param)
+        return res
     if isinstance(value, M.EventDef):
         return {"en": value._event_name}
     if isinstance(value, M.EventFieldDef):
@@ -75,7 +78,6 @@ def _to_dict(value: Any) -> Any:
         }
     if isinstance(value, M.SegmentationMetric):
         return {"seg": _to_dict(value._segment), "co": _to_dict(value._config)}
-
     raise ValueError("Unsupported value type: {}".format(type(value)))
 
 
@@ -123,6 +125,10 @@ def _from_dict(
             f"Can't deserialize metric from {value} 'conv' or 'seg' expected at {path}"
         )
     if type_hint == M.MetricConfig:
+        if "at" in value:
+            at, ap = _from_dict(value.get("at"), project, M.AggType, path + ".at")
+        else:
+            at, ap = None, None
         return M.MetricConfig(
             start_dt=_from_dict(value.get("sdt"), project, datetime, path + ".sdt"),
             end_dt=_from_dict(value.get("edt"), project, datetime, path + ".edt"),
@@ -135,6 +141,8 @@ def _from_dict(
                 value.get("gb"), project, M.EventFieldDef, path + ".gb"
             ),
             custom_title=_from_dict(value.get("ct"), project, str, path + ".ct"),
+            agg_type=at,
+            agg_param=ap,
         )
     if type_hint == M.ConversionMetric:
         return M.ConversionMetric(
@@ -222,6 +230,8 @@ def _from_dict(
         raise Exception(f"Couldn't find {value} among {event_name} fields.")
     if type_hint == M.TimeGroup:
         return M.TimeGroup.parse(value)
+    if type_hint == M.AggType:
+        return M.AggType.parse_agg_str(value)
     if type_hint == M.TimeWindow:
         return M.TimeWindow.parse(value)
     if type_hint == datetime:

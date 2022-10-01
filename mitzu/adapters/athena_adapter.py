@@ -12,7 +12,7 @@ from mitzu.adapters.sqlalchemy.athena import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 
 import sqlalchemy as SA
-from sqlalchemy.sql.expression import CTE
+import sqlalchemy.sql.expression as EXP
 
 
 class AthenaAdapter(SQLAlchemyAdapter):
@@ -41,7 +41,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
         timeformat = dt.strftime("%Y-%m-%d %H:%M:%S")
         return SA.text(f"timestamp '{timeformat}'")
 
-    def _get_timewindow_where_clause(self, cte: CTE, metric: M.Metric) -> Any:
+    def _get_timewindow_where_clause(self, cte: EXP.CTE, metric: M.Metric) -> Any:
         start_date = metric._start_dt.replace(microsecond=0)
         end_date = metric._end_dt.replace(microsecond=0)
 
@@ -124,3 +124,23 @@ class AthenaAdapter(SQLAlchemyAdapter):
             timewindow.value,
             field_ref,
         )
+
+    def _get_conv_aggregation(
+        self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
+    ) -> Any:
+        if metric._agg_type == M.AggType.PERCENTILE_TIME_TO_CONV:
+            if metric._agg_param is None or 0 < metric._agg_param > 100:
+                raise ValueError(
+                    "Conversion percentile parameter must be between 0 and 100"
+                )
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.approx_percentile(
+                SA.func.date_diff("second", t1, t2), metric._agg_param / 100.0
+            )
+        if metric._agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.avg(SA.func.date_diff("second", t1, t2))
+        else:
+            return super()._get_conv_aggregation(metric, cte, first_cte)

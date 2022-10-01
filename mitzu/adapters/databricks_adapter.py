@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Any, List, cast
 
+import mitzu.adapters.generic_adapter as GA
 import mitzu.adapters.sqlalchemy.databricks.sqlalchemy.datatype as DA_T
 import mitzu.model as M
 from mitzu.adapters.sqlalchemy.databricks import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
 import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
+import sqlalchemy.sql.sqltypes as SA_T
 
 
 class DatabricksAdapter(SQLAlchemyAdapter):
@@ -94,3 +97,23 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             )
         else:
             return M.Field(_name=name, _type=self.map_type(sa_type))
+
+    def _get_conv_aggregation(
+        self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
+    ) -> Any:
+        if metric._agg_type == M.AggType.PERCENTILE_TIME_TO_CONV:
+            if metric._agg_param is None or 0 < metric._agg_param > 100:
+                raise ValueError(
+                    "Conversion percentile parameter must be between 0 and 100"
+                )
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.percentile_approx(
+                SA.cast(t2 - t1, SA_T.BIGINT), metric._agg_param / 100.0, 100
+            )
+        if metric._agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            return SA.func.avg(SA.cast(t2 - t1, SA_T.BIGINT))
+        else:
+            return super()._get_conv_aggregation(metric, cte, first_cte)

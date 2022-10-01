@@ -55,78 +55,80 @@ def create_hint_div(text: str) -> html.Div:
     return html.Div(children=text, className=GRAPH_CONTAINER)
 
 
-def create_graph_container(graph: dcc.Graph):
-    graph_container = dbc.Card(
-        children=[
-            dbc.CardHeader(
-                style={
-                    "display": "flex",
-                    "justify-content": "flex-start",
-                    "align-items": "flex-start",
-                },
+def create_graph_container_toolbar():
+    return dbc.Row(
+        dbc.Col(
+            dbc.InputGroup(
                 children=[
-                    dbc.InputGroup(
+                    dbc.Button(
+                        children=[html.B(className="bi bi-arrow-clockwise")],
+                        size="sm",
+                        color="primary",
+                        className=GRAPH_REFRESH_BUTTON,
+                        id=GRAPH_REFRESH_BUTTON,
+                        style={
+                            "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                        },
+                    ),
+                    dbc.Button(
+                        children=[html.B(className="bi bi-graph-up")],
+                        size="sm",
+                        color="info",
+                        className=GRAPH_REFRESH_BUTTON,
+                        id=GRAPH_VAL_CHART,
+                        outline=False,
+                        style={
+                            "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                        },
+                    ),
+                    dbc.Button(
                         children=[
-                            dbc.Button(
-                                children=[html.B(className="bi bi-arrow-clockwise")],
-                                size="sm",
-                                color="primary",
-                                className=GRAPH_REFRESH_BUTTON,
-                                id=GRAPH_REFRESH_BUTTON,
-                                style={
-                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
-                                },
-                            ),
-                            dbc.Button(
-                                children=[html.B(className="bi bi-graph-up")],
-                                size="sm",
-                                color="info",
-                                className=GRAPH_REFRESH_BUTTON,
-                                id=GRAPH_VAL_CHART,
-                                outline=False,
-                                style={
-                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
-                                },
-                            ),
-                            dbc.Button(
-                                children=[
-                                    html.B(
-                                        className="bi bi-grid-3x3",
-                                    )
-                                ],
-                                size="sm",
-                                color="info",
-                                className=GRAPH_REFRESH_BUTTON,
-                                id=GRAPH_VAL_TABLE,
-                                outline=True,
-                                style={
-                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
-                                },
-                            ),
-                            dbc.Button(
-                                children=[html.Span("sql")],
-                                size="sm",
-                                color="info",
-                                className=GRAPH_REFRESH_BUTTON,
-                                outline=True,
-                                id=GRAPH_VAL_SQL,
-                                style={
-                                    "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
-                                },
-                            ),
+                            html.B(
+                                className="bi bi-grid-3x3",
+                            )
                         ],
+                        size="sm",
+                        color="info",
+                        className=GRAPH_REFRESH_BUTTON,
+                        id=GRAPH_VAL_TABLE,
+                        outline=True,
+                        style={
+                            "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                        },
+                    ),
+                    dbc.Button(
+                        children=[html.Span("sql")],
+                        size="sm",
+                        color="info",
+                        className=GRAPH_REFRESH_BUTTON,
+                        outline=True,
+                        id=GRAPH_VAL_SQL,
+                        style={
+                            "height": GRAPH_TOOLBAR_BUTTON_HEIGHT,
+                        },
                     ),
                 ],
-                id=GRAPH_CONTAINER_HEADER,
-            ),
+            )
+        )
+    )
+
+
+def create_graph_container(graph: dcc.Graph, webapp: MitzuWebApp):
+    metrics_config_card = MC.MetricConfigHandler.from_metric(
+        None, webapp._discovered_datasource.get_value()
+    ).component
+    toolbar = create_graph_container_toolbar()
+    graph_container = dbc.Card(
+        children=[
             dbc.CardBody(
                 children=[
+                    html.Div([metrics_config_card, toolbar]),
                     dcc.Loading(
                         className=GRAPH_CONTAINER,
                         id=GRAPH_CONTAINER,
                         type="dot",
                         children=[graph],
-                    )
+                    ),
                 ],
             ),
         ],
@@ -174,12 +176,9 @@ class MitzuWebApp:
             metric=None,
             metric_type=MNB.MetricType.SEGMENTATION,
         ).component
-        metrics_config_card = MC.MetricConfigHandler.from_metric(
-            None, self._discovered_datasource.get_value()
-        ).component
-        graph = html.Div(className=GRAPH_CONTAINER)
-        graph_container = create_graph_container(graph)
 
+        graph = html.Div(className=GRAPH_CONTAINER)
+        graph_container = create_graph_container(graph, self)
         self.app.layout = html.Div(
             children=[
                 loc,
@@ -187,13 +186,9 @@ class MitzuWebApp:
                 dbc.Container(
                     children=[
                         dbc.Row(
-                            children=[dbc.Col(metrics_config_card)],
-                            className="g-1 mb-1",
-                        ),
-                        dbc.Row(
                             children=[
-                                dbc.Col(metric_segments_div, lg=4, md=12, xl=3),
-                                dbc.Col(graph_container, lg=8, md=12, xl=9),
+                                dbc.Col(metric_segments_div, lg=4, md=12),
+                                dbc.Col([graph_container], lg=8, md=12),
                             ],
                             justify="start",
                             align="top",
@@ -250,6 +245,12 @@ class MitzuWebApp:
             html.Div(children=mc_children), discovered_project
         )
         metric_config, conv_tw = metric_config_comp.to_metric_config_and_conv_window()
+        if metric_config.agg_type:
+            agg_str = M.AggType.to_agg_str(
+                metric_config.agg_type, metric_config.agg_param
+            )
+        else:
+            agg_str = None
 
         group_by = None
         if len(metric_seg_children) > 0:
@@ -269,6 +270,7 @@ class MitzuWebApp:
                 start_dt=metric_config.start_dt,
                 end_dt=metric_config.end_dt,
                 custom_title="",
+                aggregation=agg_str,
             )
         elif isinstance(metric, M.Segment):
             return metric.config(
@@ -278,6 +280,7 @@ class MitzuWebApp:
                 start_dt=metric_config.start_dt,
                 end_dt=metric_config.end_dt,
                 custom_title="",
+                aggregation=agg_str,
             )
         raise Exception("Invalid metric type")
 
@@ -347,6 +350,7 @@ class MitzuWebApp:
                 "conv_window_interval_value": Input(
                     MC.CONVERSION_WINDOW_INTERVAL, "value"
                 ),
+                "agg_type_dd_value": Input(MC.AGGREGATION_TYPE, "value"),
                 "refresh_n_clicks": Input(GRAPH_REFRESH_BUTTON, "n_clicks"),
             }
         }

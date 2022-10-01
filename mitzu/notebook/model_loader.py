@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Any, Dict, List, cast
 
 import mitzu.model as M
@@ -227,6 +228,8 @@ class ModelLoader:
     def create_datasource_class_model(
         self, defs: M.DiscoveredProject
     ) -> M.DatasetModel:
+
+        warnings.filterwarnings("ignore")
         class_def = self._process_schema(defs)
         return cast(
             M.DatasetModel, type("_dataset_model", (M.DatasetModel,), class_def)()

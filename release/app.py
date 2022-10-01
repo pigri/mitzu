@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import sys
 
@@ -27,33 +26,12 @@ DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
 LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 
 
-def setup_logger(server: flask.Flask):
-
-    if LOGGER.getEffectiveLevel() >= logging.DEBUG:
-        LOGGER.debug("Logging Enabled")
-
-        @server.after_request
-        def log_response(resp: flask.Response) -> flask.Response:
-            try:
-                LOGGER.debug(f"REQ URL: {flask.request.url}")
-                LOGGER.debug(f"REQ PATH: {flask.request.path}")
-                LOGGER.debug(f"REQ Headers: {flask.request.headers}")
-                LOGGER.debug(f"RESP StatusCode: {resp.status_code}")
-                LOGGER.debug(f"RESP Headers: {resp.headers}")
-                LOGGER.debug(f"RESP Content: {resp.get_json()}")
-            except Exception as exc:
-                print(exc)
-            return resp
-
-
 def create_app():
     server = flask.Flask(__name__)
     if MITZU_BASEPATH.startswith("s3://"):
         pers_provider = P.S3PersistencyProvider(MITZU_BASEPATH[5:])
     else:
         pers_provider = P.FileSystemPersistencyProvider(MITZU_BASEPATH)
-
-    setup_logger(server)
 
     app = Dash(
         __name__,

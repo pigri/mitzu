@@ -94,8 +94,23 @@ def test_trino_map_types_discovery():
     assert_row(
         df,
         _datetime=None,
-        _unique_user_count=2871,
-        _event_count=2877,
+        _agg_value=2871,
+        _group="www.superstore.cn",
+    )
+
+    # Group by with Event Specific MAP type
+    df = m.search.config(
+        group_by=m.search.event_properties.url,
+        start_dt="2021-01-01",
+        end_dt="2021-02-01",
+        time_group="total",
+        aggregation="event_count",
+    ).get_df()
+
+    assert_row(
+        df,
+        _datetime=None,
+        _agg_value=2877,
         _group="www.superstore.cn",
     )
 
@@ -110,8 +125,7 @@ def test_trino_map_types_discovery():
     assert_row(
         df,
         _datetime=None,
-        _unique_user_count=4325,
-        _event_count=4368,
+        _agg_value=4325,
         _group=True,
     )
 
@@ -126,8 +140,7 @@ def test_trino_map_types_discovery():
     assert_row(
         df,
         _datetime=None,
-        _unique_user_count=114,
-        _event_count=114,
+        _agg_value=114,
         _group="referral",
     )
 
@@ -146,15 +159,41 @@ def test_trino_map_types_discovery():
     assert_row(
         df,
         _datetime=None,
-        _unique_user_count=4292,
-        _event_count=4330,
+        _agg_value=4292,
         _group=False,
     )
 
     assert_row(
         df,
         _datetime=None,
-        _unique_user_count=417,
-        _event_count=417,
+        _agg_value=417,
         _group=None,
+    )
+
+    # Median conversion type
+    df = (
+        (m.page_visit >> m.add_to_cart)
+        .config(
+            group_by=m.page_visit.event_properties.url,
+            start_dt="2021-01-01",
+            end_dt="2021-02-01",
+            time_group="total",
+            conv_window="7 days",
+            aggregation="ttc_median",
+        )
+        .get_df()
+    )
+    assert_row(
+        df,
+        _datetime=None,
+        _agg_value_1=0,
+        _agg_value_2=356499,
+        _group="www.awestore.com",
+    )
+    assert_row(
+        df,
+        _datetime=None,
+        _agg_value_1=0,
+        _agg_value_2=224622,
+        _group="www.superstore.cn",
     )

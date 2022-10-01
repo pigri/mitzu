@@ -91,13 +91,14 @@ def test_db_integrations(test_case: TestCase):
 def validate_integration(project: M.Project):
     m = project.discover_project().create_notebook_class_model()
 
-    df = m.cart.brand.is_artex.config(start_dt="2020-01-01").get_df()
+    df = m.cart.brand.is_artex.config(
+        start_dt="2020-01-01", aggregation="event_count"
+    ).get_df()
     assert 1 == df.shape[0]
     assert_row(
         df,
         _datetime=datetime(2020, 1, 1),
-        _unique_user_count=1,
-        _event_count=1,
+        _agg_value=1,
         _group=None,
     )
 
@@ -109,6 +110,7 @@ def validate_integration(project: M.Project):
             conv_window="12 day",
             group_by=m.view.brand,
             max_group_by_count=3,
+            aggregation="conversion",
         )
         .get_df()
     )
@@ -117,12 +119,11 @@ def validate_integration(project: M.Project):
     assert_row(
         df,
         _datetime=pd.Timestamp("2020-01-01 00:00:00"),
-        _unique_user_count_1=3,
-        _event_count_1=7,
-        _unique_user_count_2=2,
-        _event_count_2=6,
+        _user_count_1=3,
+        _agg_value_1=100.0,
+        _user_count_2=2,
+        _agg_value_2=66.6667,
         _group="cosmoprofi",
-        _conversion_rate=66.667,
     )
 
     df = (
@@ -141,12 +142,11 @@ def validate_integration(project: M.Project):
     assert_row(
         df,
         _datetime=pd.Timestamp("2019-12-30 00:00:00"),
-        _unique_user_count_1=6,
-        _event_count_1=12,
-        _unique_user_count_2=2,
-        _event_count_2=6,
+        _user_count_1=6,
+        _agg_value_1=100.0,
+        _user_count_2=2,
+        _agg_value_2=33.3333,
         _group="cosmoprofi",
-        _conversion_rate=33.333,
     )
 
     df = (
@@ -165,10 +165,9 @@ def validate_integration(project: M.Project):
     assert_row(
         df,
         _datetime=pd.Timestamp("2019-12-30 00:00:00"),
-        _unique_user_count_1=6,
-        _event_count_1=12,
-        _unique_user_count_2=2,
-        _event_count_2=6,
+        _user_count_1=6,
+        _agg_value_1=100.0,
+        _user_count_2=2,
+        _agg_value_2=33.3333,
         _group="cosmoprofi",
-        _conversion_rate=33.333,
     )

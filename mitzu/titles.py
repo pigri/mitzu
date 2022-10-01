@@ -76,7 +76,7 @@ def get_segment_title_text(segment: M.Segment) -> str:
 
 def get_time_group_text(time_group: M.TimeGroup) -> str:
     if time_group == M.TimeGroup.TOTAL:
-        return "total"
+        return ""
     if time_group == M.TimeGroup.DAY:
         return "daily"
     if time_group == M.TimeGroup.MINUTE:
@@ -86,7 +86,8 @@ def get_time_group_text(time_group: M.TimeGroup) -> str:
 
 
 def get_segmentation_title(metric: M.SegmentationMetric):
-
+    if metric._config.custom_title is not None:
+        return metric._config.custom_title
     segment_str = fix_title_text(get_segment_title_text(metric._segment))
     tg = get_time_group_text(metric._time_group).title()
     lines = [
@@ -100,7 +101,8 @@ def get_segmentation_title(metric: M.SegmentationMetric):
 
 
 def get_conversion_title(metric: M.ConversionMetric) -> str:
-
+    if metric._config.custom_title is not None:
+        return metric._config.custom_title
     events = " then did ".join(
         [
             f"{fix_title_text(get_segment_title_text(seg), 100)}"
@@ -110,10 +112,13 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
 
     tg = get_time_group_text(metric._time_group).title()
 
-    if metric._time_group != M.TimeGroup.TOTAL:
-        agg = "conversion rate of unique users"
-    else:
-        agg = "count and cvr. of unique users"
+    if metric._agg_type == M.AggType.CONVERSION:
+        agg = "conversion rate"
+    elif metric._agg_type == M.AggType.PERCENTILE_TIME_TO_CONV:
+        if metric._agg_param == 50:
+            agg = "median conversion time of users"
+        else:
+            agg = f"P{metric._agg_param:.0f} conversion time of users"
 
     within_str = f"within {metric._conv_window}"
     group_by = get_grouped_by_str(metric)
@@ -126,4 +131,4 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
         timeframe_str,
     ]
 
-    return "<br />".join(lines)
+    return "<br />".join(lines).strip().capitalize()

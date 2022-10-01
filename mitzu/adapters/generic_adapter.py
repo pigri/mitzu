@@ -10,9 +10,8 @@ import pandas as pd
 EVENT_NAME_ALIAS_COL = "_event_name"
 DATETIME_COL = "_datetime"
 GROUP_COL = "_group"
-USER_COUNT_COL = "_unique_user_count"
-EVENT_COUNT_COL = "_event_count"
-CVR_COL = "_conversion_rate"
+AGG_VALUE_COL = "_agg_value"
+USER_COUNT_COL = "_user_count"
 
 
 # CTE Colmns

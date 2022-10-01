@@ -98,50 +98,61 @@ class DateSelectorHandler:
             start_date = metric_config.start_dt
             end_date = metric_config.end_dt
 
-        comp = dbc.InputGroup(
+        comp = html.Div(
             id=DATE_SELECTOR,
             children=[
-                dbc.InputGroupText("Dates:"),
-                dcc.Dropdown(
-                    id=TIME_GROUP_DROWDOWN,
-                    options=get_time_group_options(
-                        exclude=[
-                            M.TimeGroup.SECOND,
-                            M.TimeGroup.MINUTE,
-                            M.TimeGroup.QUARTER,
-                        ]
-                    ),
-                    value=tg_val.value,
-                    clearable=False,
-                    searchable=False,
-                    multi=False,
-                    style={"width": "120px"},
+                dbc.InputGroup(
+                    children=[
+                        dbc.InputGroupText("Period", style={"width": "60px"}),
+                        dcc.Dropdown(
+                            id=TIME_GROUP_DROWDOWN,
+                            options=get_time_group_options(
+                                exclude=[
+                                    M.TimeGroup.SECOND,
+                                    M.TimeGroup.MINUTE,
+                                    M.TimeGroup.QUARTER,
+                                ]
+                            ),
+                            value=tg_val.value,
+                            clearable=False,
+                            searchable=False,
+                            multi=False,
+                            style={
+                                "width": "120px",
+                                "border-radius": "0px 0.25rem 0.25rem 0px",
+                            },
+                        ),
+                    ],
                 ),
-                dcc.Dropdown(
-                    options=[*tw_options, CUSTOM_OPTION],
-                    id=LOOKBACK_WINDOW_DROPDOWN,
-                    value=lookback_days,
-                    clearable=False,
-                    searchable=False,
-                    multi=False,
-                    style={"width": "120px"},
-                ),
-                dcc.DatePickerRange(
-                    clearable=True,
-                    display_format="YYYY-MM-DD",
-                    id=CUSTOM_DATE_PICKER,
-                    className=CUSTOM_DATE_PICKER,
-                    start_date=start_date,
-                    end_date=end_date,
-                    number_of_months_shown=1,
-                    style={
-                        "display": "none"
-                        if lookback_days != CUSTOM_DATE_TW_VALUE
-                        else "inline"
-                    },
+                dbc.InputGroup(
+                    children=[
+                        dbc.InputGroupText("Dates", style={"width": "60px"}),
+                        dcc.Dropdown(
+                            options=[*tw_options, CUSTOM_OPTION],
+                            id=LOOKBACK_WINDOW_DROPDOWN,
+                            value=lookback_days,
+                            clearable=False,
+                            searchable=False,
+                            multi=False,
+                            style={"width": "120px"},
+                        ),
+                        dcc.DatePickerRange(
+                            clearable=True,
+                            display_format="YYYY-MM-DD",
+                            id=CUSTOM_DATE_PICKER,
+                            className=CUSTOM_DATE_PICKER,
+                            start_date=start_date,
+                            end_date=end_date,
+                            number_of_months_shown=1,
+                            style={
+                                "display": "none"
+                                if lookback_days != CUSTOM_DATE_TW_VALUE
+                                else "inline",
+                            },
+                        ),
+                    ],
                 ),
             ],
-            style={"border-radius": "4px"},
         )
         return DateSelectorHandler(
             component=comp, discovered_project=discovered_project

@@ -1,3 +1,9 @@
+:root {
+    --component-height: 30px;
+    --bs-body-font-size: 12px;
+    --bs-body-font-size-small: 8px;
+}
+
 .main {
     min-width: 450px
 }
@@ -7,7 +13,7 @@
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
     color: var(--bs-gray-dark);
-    height: 36px;
+    height: var(--component-height);
 }
 
 
@@ -25,16 +31,24 @@
     font-size: var(--bs-body-font-size);
     font-weight: var(--bs-body-font-weight);
     color: var(--bs-gray-dark);
-    height: 37px;
-    line-height: 37px;
+    line-height: var(--component-height);
+    height: var(--component-height);
 }
 
 .DateRangePickerInput_clearDates_svg {
     height: 10px;
 }
 
+.DateRangePickerInput__showClearDates {
+    padding: 0px;
+}
+
+.DateRangePickerInput_clearDates{
+    margin: 0px;
+}
+
 .DateRangePickerInput_arrow_svg {
-    height: 16px;
+    height: 15px;
 }
 
 .complex_segment .card-body {
@@ -42,45 +56,67 @@
     border-radius: 5px;
 }
 
-.metric_config .Select {
-    height: 39px;
+.Select {
+    line-height: var(--component-height);
+    min-height: var(--component-height);
+    border-radius: 0px;
+    font: var(--bs-font-sans-serif);
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-gray-dark);
 }
 
-.metrics_config_container .Select-control {
-    height: 39px;
+.Select-control {
+    line-height: var(--component-height);
+    height: var(--component-height);
+    border-radius: 0px;
+    font: var(--bs-font-sans-serif);
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    color: var(--bs-gray-dark);
 }
 
-.metrics_config_container .Select-control .Select-value {
-    line-height: 39px;
+
+.Select--single .Select-multi-value-wrapper{
+    line-height: var(--component-height);
+    height: var(--component-height);    
 }
 
 .Select-value-label {
     color: var(--bs-gray-dark);
+    line-height: var(--component-height);
+    height: var(--component-height);
+    font-size: var(--bs-body-font-size);
 }
+
+.Select--multi .Select-value {
+    color: var(--bs-gray-dark);
+    line-height: calc(var(--component-height));    
+    word-wrap: break-word;
+    margin-top: 0px;   
+}
+
+.Select--multi .Select-value-label {
+    padding: 0px 6px;
+    line-height: calc(var(--component-height) );    
+}
+
+.Select--multi .Select-value-icon {
+    padding: 0px 6px;
+    line-height: calc(var(--component-height) - 2px);
+    height: calc(var(--component-height) - 2px);
+    margin-top: 0px;
+}
+
+
 
 .complex_segment .Select-arrow-zone {
     display: None;
 }
 
-.Select {
-    border-radius: 0px;
-    font: var(--bs-font-sans-serif);
-    font-size: var(--bs-body-font-size);
-    font-weight: var(--bs-body-font-weight);
-    color: var(--bs-gray-dark);
-}
-
-
-.Select-control {
-    border-radius: 0px;
-    font: var(--bs-font-sans-serif);
-    font-size: var(--bs-body-font-size);
-    font-weight: var(--bs-body-font-weight);
-    color: var(--bs-gray-dark);
-}
 
 .complex_segment .Select-control {
-    font-size: 13px;
+    font-size: var(--bs-body-font-size);
     font-weight: bold;
     color: var(--bs-gray-dark);
     border: 0px;
@@ -90,12 +126,12 @@
 .complex_segment .Select-menu-outer {
     min-width: 400px;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: var(--bs-body-font-size);
     color: var(--bs-gray-dark);
 }
 
 .complex_segment .Select-placeholder {
-    font-size: 13px;
+    font-size: var(--bs-body-font-size);
     font-weight: normal;
     color: var(--bs-gray-dark);
     background-color: transparent;
@@ -142,7 +178,6 @@
 .metric-type-dropdown {
     width: 180px;
     margin-right: 8px;
-    font-size: 12px;
 }
 
 .metric-type-dropdown-option {
@@ -150,13 +185,6 @@
     align-items: center;
     justify-content: center;
 }
-
-.metric-type-dropdown .Select-menu-outer {
-    min-width: 180px;
-}
-
-/* Button Group */
-
 
 .graph_container {
     min-height: 500px;
@@ -171,37 +199,32 @@
 }
 
 .property_name_prefix {
-    line-height: 12px;
-    font-size: 8px;
-    height: 8px;
+    line-height: var(--bs-body-font-size);
+    font-size: var(--bs-body-font-size-small);
+    height: var(--bs-body-font-size-small);
     font-weight: normal !important;
 }
 
 .Select-value-label .property_name_prefix {
-    height: 0px;
+    height: 3px;
 }
 
 .property_name {   
-    font-size: 12px;   
+    font-size: var(--bs-body-font-size);
 }
 
-
-.metric-type-dropdown {
-    line-height: 30px;
-    height: 30px;
+.input-group .btn {
+    z-index: 0 ;
+    height: var(--component-height);
+    line-height: var(--component-height);
+    padding: 0px var(--bs-body-font-size-small);
 }
 
-.metric-type-dropdown-option {
-    line-height: 30px;
-    height: 30px;
+.input-group-text {
+    padding: 0px var(--bs-body-font-size-small);
+    font-size: var(--bs-body-font-size);
 }
 
-.metric-type-dropdown .Select-control{
-    line-height: 30px;
-    height: 30px;
-}
-
-.metric-type-dropdown .Select-multi-value-wrapper{
-    line-height: 30px;
-    height: 30px;
+.metrics_config_container .input-group {
+    margin-bottom: 3px;
 }
