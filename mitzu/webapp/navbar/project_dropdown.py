@@ -14,14 +14,24 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
     projects = webapp.persistency_provider.list_projects()
     projects = [p.replace(".mitzu", "") for p in projects]
 
+    if len(projects) > 0:
+        dropdown_items = [
+            dbc.DropdownMenuItem(
+                value_to_label(p), href=webapp.app.get_relative_path(f"/{p}")
+            )
+            for p in projects
+        ]
+    else:
+        dropdown_items = [
+            dbc.DropdownMenuItem(
+                "Could not find any projects",
+                disabled=True
+            )
+        ]
+
     res = (
         dbc.DropdownMenu(
-            children=[
-                dbc.DropdownMenuItem(
-                    value_to_label(p), href=webapp.app.get_relative_path(f"/{p}")
-                )
-                for p in projects
-            ],
+            children=dropdown_items,
             id=CHOOSE_PROJECT_DROPDOWN,
             in_navbar=True,
             label="Select project",
