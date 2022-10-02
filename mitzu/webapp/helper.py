@@ -28,11 +28,11 @@ def deserialize_component(val: Any) -> bc.Component:
         props = val["props"]
         children_dicts = props.get("children", [])
 
-        if type(children_dicts) == list:
+        if type(children_dicts) == list and len(children_dicts) > 0:
             props["children"] = [
                 deserialize_component(child) for child in children_dicts
             ]
-        elif type(children_dicts) == dict:
+        elif type(children_dicts) == dict and len(children_dicts) > 0:
             props["children"] = [deserialize_component(children_dicts)]
 
         module = __import__(namespace)

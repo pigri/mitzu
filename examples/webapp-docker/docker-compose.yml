@@ -5,9 +5,9 @@ services:
     entrypoint: gunicorn -b 0.0.0.0:80 app:server
     environment:
       BASEPATH: /var/task/basepath/      
-      HOME_URL: http://localhost:8080/
-      NOT_FOUND_URL: http://localhost:8080/not_found      
+      HOME_URL: http://localhost:8082/
+      NOT_FOUND_URL: http://localhost:8082/not_found      
     ports:
-      - 8080:80
+      - 8082:80
     volumes:
       - ./mitzu/:/var/task/basepath/

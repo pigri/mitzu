@@ -53,6 +53,7 @@ dash:
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
+	MITZU_WEBAPP_URL="http://localhost:8082/" \
 	HOME_URL="http://localhost:8082/" \
 	NOT_FOUND_URL="http://localhost:8082/not_found" \
 	SIGN_OUT_URL="http://localhost:8082/logout" \
