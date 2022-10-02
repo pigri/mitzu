@@ -52,7 +52,7 @@ services:
       - trino-network
 
   trino-coordinator:
-    image: 'trinodb/trino:latest'
+    image: 'trinodb/trino:395'
     hostname: trino-coordinator
     ports:
       - '8080:8080'

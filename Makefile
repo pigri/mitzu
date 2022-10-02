@@ -11,7 +11,7 @@ format: ## formats all python code
 	$(POETRY) run black mitzu tests release
 
 lint: ## lints and checks formatting all python code
-	$(POETRY) run black --check mitzu tests release
+	$(POETRY) run black --exclude .dbs --check mitzu tests release
 	$(POETRY) run flake8 mitzu tests release
 
 autoflake: ## fixes imports, unused variables
@@ -36,13 +36,19 @@ docker_test_up:
 
 trino_setup_test_data:
 	# TBD: Setup Minio, data has to be uploaded to minio
-	docker container exec -it docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
+	docker container exec docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 test_coverage:
-	$(POETRY) run  pytest --cov=mitzu --cov-report=html tests/
+	$(POETRY) run pytest --cov=mitzu --cov-report=html tests/
 
 check: format autoflake mypy lint test_coverage
 	@ECHO 'done'
+
+test_coverage_ci:
+	$(POETRY) run pytest --cov=mitzu --cov-report=xml tests/
+
+check_ci: autoflake mypy lint test_coverage_ci
+	@echo 'done'
 
 notebook: 
 	$(POETRY) run jupyter lab

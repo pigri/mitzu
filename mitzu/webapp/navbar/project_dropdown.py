@@ -23,10 +23,7 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
         ]
     else:
         dropdown_items = [
-            dbc.DropdownMenuItem(
-                "Could not find any projects",
-                disabled=True
-            )
+            dbc.DropdownMenuItem("Could not find any projects", disabled=True)
         ]
 
     res = (
