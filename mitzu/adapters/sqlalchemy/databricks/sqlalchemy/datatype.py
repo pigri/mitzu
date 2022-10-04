@@ -170,6 +170,13 @@ def parse_sqltype(type_str: str) -> TypeEngine:
     elif type_name == "struct":
         attr_types: List[Tuple[str, SQLType]] = []
         for attr in aware_split(type_opts):
+            #  FIX for a databricks bug, where it sometimes returns the COMMENT in types
+            if ":" not in attr:
+                continue
+            if " comment " in attr:
+                comment_pos = attr.find(" comment ")
+                attr = attr[0:comment_pos]
+
             attr_name, attr_type_str = aware_split(
                 attr.strip(), delimiter=":", maxsplit=1
             )
