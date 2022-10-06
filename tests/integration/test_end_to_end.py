@@ -56,20 +56,25 @@ def test_simple_csv_segmentation():
     seg: Segment = m.cart.config(
         start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
     )
+    print(seg.get_sql())
     assert_sql(
         """
-with anon_2 as (SELECT simple.user_id as _cte_user_id,
-                       simple.event_time as _cte_datetime,
-                       null as _cte_group
-                FROM   simple
-                WHERE  simple.event_type = 'cart')
-SELECT null as _datetime,
-       null as _group,
-       count(distinct anon_1._cte_user_id) as _agg_value       
-FROM   anon_2 as anon_1
-WHERE  anon_1._cte_datetime >= '2020-01-01 00:00:00'
-   and anon_1._cte_datetime <= '2021-01-01 00:00:00'
-GROUP BY _datetime, _group""",
+WITH anon_2 AS
+  (SELECT simple.user_id AS _cte_user_id,
+          simple.event_time AS _cte_datetime,
+          NULL AS _cte_group
+   FROM SIMPLE
+   WHERE simple.event_type = 'cart'
+     AND date(simple.event_time) >= date('2020-01-01')
+     AND date(simple.event_time) <= date('2021-01-01'))
+SELECT NULL AS _datetime,
+       NULL AS _group,
+       count(DISTINCT anon_1._cte_user_id) AS _agg_value
+FROM anon_2 AS anon_1
+WHERE anon_1._cte_datetime >= '2020-01-01 00:00:00'
+  AND anon_1._cte_datetime <= '2021-01-01 00:00:00'
+GROUP BY _datetime,
+         _group""",
         seg.get_sql(),
     )
 
@@ -92,7 +97,6 @@ def test_simple_csv_funnel():
     )
 
     conv.print_sql()
-
     assert_sql(
         """
 WITH anon_1 AS
@@ -100,13 +104,17 @@ WITH anon_1 AS
           simple.event_time AS _cte_datetime,
           simple.category_id AS _cte_group
    FROM SIMPLE
-   WHERE simple.event_type = 'view'),
+   WHERE simple.event_type = 'view'
+     AND date(simple.event_time) >= date('2020-01-01')
+     AND date(simple.event_time) <= date('2021-02-01')),
      anon_2 AS
   (SELECT simple.user_id AS _cte_user_id,
           simple.event_time AS _cte_datetime,
           NULL AS _cte_group
    FROM SIMPLE
-   WHERE simple.event_type = 'cart')
+   WHERE simple.event_type = 'cart'
+     AND date(simple.event_time) >= date('2020-01-01')
+     AND date(simple.event_time) <= date('2021-02-01'))
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) AS _datetime,
        anon_1._cte_group AS _group,
        count(DISTINCT anon_1._cte_user_id) AS _user_count_1,
@@ -145,6 +153,8 @@ GROUP BY _datetime,
           NULL AS _cte_group
    FROM SIMPLE
    WHERE simple.event_type = 'view'
+     AND date(simple.event_time) >= date('2021-12-02')
+     AND date(simple.event_time) <= date('2022-01-01')
      AND simple.category_id IS NOT NULL)
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) AS _datetime,
        NULL AS _group,

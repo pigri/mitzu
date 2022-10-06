@@ -102,6 +102,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
+            # print(format_query(query))
             result = engine.execute(query)
             columns = result.keys()
             fetched = result.fetchall()
@@ -261,7 +262,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return True
 
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
-
         table = self.get_table(event_data_table).alias("_evt")
         event_name_field = self.get_event_name_field(event_data_table, table)
         dt_field = self.get_field_reference(
@@ -269,6 +269,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             event_data_table=event_data_table,
             sa_table=table,
         )
+        date_partition_filter = self._get_date_partition_filter(
+            event_data_table,
+            table,
+            self.project.get_default_discovery_start_dt(),
+            self.project.get_default_end_dt(),
+        )
+
         raw_cte: EXP.CTE = SA.select(
             columns=[
                 *table.columns.values(),
@@ -287,6 +294,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     dt_field
                     <= self._correct_timestamp(self.project.get_default_end_dt())
                 )
+                & date_partition_filter
             ),
         ).cte()
 
@@ -430,12 +438,41 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return SA.not_(ref.in_(segment._right))
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
-    def _get_segment_sub_query(self, segment: M.Segment) -> SegmentSubQuery:
+    def _get_date_partition_filter(
+        self,
+        edt: M.EventDataTable,
+        table: SA.Table,
+        start_dt: datetime,
+        end_dt: datetime,
+    ):
+        if edt.date_partition_field is not None:
+            dt_part = SA.func.date(
+                self.get_field_reference(edt.date_partition_field, edt, table)
+            )
+            return (dt_part >= SA.func.date(start_dt.date())) & (
+                dt_part <= SA.func.date(end_dt.date())
+            )
+        else:
+            return SA.literal(True)
+
+    def _get_segment_sub_query(
+        self, segment: M.Segment, metric: M.Metric
+    ) -> SegmentSubQuery:
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
             left = s._left
-            table = self.get_table(left._event_data_table)
-            evt_name_col = self.get_event_name_field(left._event_data_table)
+            edt = left._event_data_table
+            table = self.get_table(edt)
+            evt_name_col = self.get_event_name_field(edt)
+            end_dt_partition = (
+                metric._end_dt + metric._conv_window.to_relative_delta()
+                if isinstance(metric, M.ConversionMetric)
+                else metric._end_dt
+            )
+            date_partition_filter = self._get_date_partition_filter(
+                edt, table, metric._start_dt, end_dt_partition
+            )
+
             event_name_filter = (
                 (evt_name_col == left._event_name)
                 if left._event_name != M.ANY_EVENT_NAME
@@ -446,7 +483,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     event_name=left._event_name,
                     event_data_table=left._event_data_table,
                     table_ref=table,
-                    where_clause=event_name_filter,
+                    where_clause=(event_name_filter & date_partition_filter),
                 )
             else:
                 return SegmentSubQuery(
@@ -454,14 +491,15 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     event_data_table=left._event_data_table,
                     table_ref=table,
                     where_clause=(
-                        (event_name_filter)
+                        event_name_filter
+                        & date_partition_filter
                         & self._get_simple_segment_condition(table, segment)
                     ),
                 )
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
-            l_query = self._get_segment_sub_query(c._left)
-            r_query = self._get_segment_sub_query(c._right)
+            l_query = self._get_segment_sub_query(c._left, metric)
+            r_query = self._get_segment_sub_query(c._right, metric)
             if c._operator == M.BinaryOperator.AND:
                 if l_query.event_data_table != r_query.event_data_table:
                     raise Exception(
@@ -599,7 +637,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise ValueError(f"Aggregation type {at} is not supported for conversion")
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
-        sub_query = self._get_segment_sub_query(metric._segment)
+        sub_query = self._get_segment_sub_query(metric._segment, metric)
         cte: EXP.CTE = aliased(
             self._get_segment_sub_query_cte(sub_query, metric._group_by)
         )
@@ -636,7 +674,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
         first_segment = metric._conversion._segments[0]
         first_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(first_segment), metric._group_by
+            self._get_segment_sub_query(first_segment, metric), metric._group_by
         )
         first_group_by = (
             first_cte.columns.get(GA.CTE_GROUP_COL)
@@ -661,7 +699,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         for i, seg in enumerate(other_segments):
             prev_table = steps[i]
             prev_cols = prev_table.columns
-            curr_cte = self._get_segment_sub_query_cte(self._get_segment_sub_query(seg))
+            curr_cte = self._get_segment_sub_query_cte(
+                self._get_segment_sub_query(seg, metric)
+            )
             curr_cols = curr_cte.columns
             curr_used_id_col = curr_cols.get(GA.CTE_USER_ID_ALIAS_COL)
 

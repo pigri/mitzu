@@ -14,6 +14,7 @@ def get_simple_csv() -> Project:
                 event_name_field="event_type",
                 user_id_field="user_id",
                 event_time_field="event_time",
+                date_partition_field="event_time",
             )
         ],
         max_enum_cardinality=300,

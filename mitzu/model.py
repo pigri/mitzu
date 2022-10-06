@@ -366,6 +366,7 @@ class EventDataTable:
     catalog: Optional[str] = None
     event_name_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
+    date_partition_field: Optional[Field] = None
     ignored_fields: List[str] = default_field([])
     event_specific_fields: List[str] = default_field([])
     description: Optional[str] = None
@@ -382,6 +383,7 @@ class EventDataTable:
         event_name_alias: Optional[str] = None,
         ignored_fields: List[str] = None,
         event_specific_fields: List[str] = None,
+        date_partition_field: Optional[str] = None,
         description: str = None,
     ):
         return EventDataTable(
@@ -394,6 +396,11 @@ class EventDataTable:
             ),
             event_name_field=Field(_name=event_name_field, _type=DataType.STRING)
             if event_name_field is not None
+            else None,
+            date_partition_field=Field(
+                _name=date_partition_field, _type=DataType.DATETIME
+            )
+            if date_partition_field is not None
             else None,
             event_time_field=Field(_name=event_time_field, _type=DataType.DATETIME),
             user_id_field=Field(_name=user_id_field, _type=DataType.STRING),
