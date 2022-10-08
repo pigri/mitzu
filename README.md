@@ -9,7 +9,7 @@
 </h2>
 </br>
 
-![webapp example](https://github.com/mitzu-io/mitzu/blob/main/resources/hero.gif?raw=True)
+![webapp example](https://raw.githubusercontent.com/mitzu-io/mitzu/main/resources/hero.gif)
 
 </br>
 
@@ -47,7 +47,7 @@ Mitzu integrates with most modern data lake and warehouse solutions:
 
 
 In this section we will describe how to start with `Mitzu` on your local machine. Skip this section if you rather see `Mitzu` in a prepared notebook or webapp. Otherwise get ready and fire up your own data-science [notebook](https://jupyter.org/). 
-![Notebook exmaple](https://github.com/mitzu-io/mitzu/blob/main/resources/mitzu_in_notebook.gif?raw=True)
+![Notebook exmaple](https://raw.githubusercontent.com/mitzu-io/mitzu/main/resources/mitzu_in_notebook.gif)
 
 ----
 
@@ -72,7 +72,7 @@ The following command visualizes the `count of unique users` over time who did `
 m.page_visit
 ```
 
-![segmentation metric](https://github.com/mitzu-io/mitzu/blob/main/resources/segmentation.png?raw=True)
+![segmentation metric](https://raw.githubusercontent.com/mitzu-io/mitzu/main/resources/segmentation.png)
 
 In the example above `m.page_visit` refers to a `user event segment` for which the notebook representation is a `segmentation chart`. 
 If this sounds unfamiliar, don't worry! Later we will explain you everything.
