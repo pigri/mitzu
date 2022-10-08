@@ -3,6 +3,11 @@ name = "mitzu"
 version = "0.2.34"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://mitzu.io"
+repository = "https://github.com/mitzu-io/mitzu"
+documentation = "https://mitzu.io/documentation/"
 
 [tool.poetry.dependencies]
 python = ">=3.7.1, <3.11"
