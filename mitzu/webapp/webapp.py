@@ -20,7 +20,6 @@ import mitzu.webapp.metric_segments_handler as MS
 import mitzu.webapp.navbar.metric_type_handler as MNB
 import mitzu.webapp.navbar.navbar as MN
 import mitzu.webapp.simple_segment_handler as SS
-import mitzu.webapp.webapp as WA
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.helper import (
@@ -303,7 +302,7 @@ class MitzuWebApp:
     ) -> Tuple[Optional[M.Metric], MNB.MetricType]:
         metric: Optional[M.Metric] = None
         metric_type = MNB.MetricType.SEGMENTATION
-        if ctx.triggered_id == WA.MITZU_LOCATION:
+        if ctx.triggered_id == MITZU_LOCATION:
             query = parse_result.query[2:]
             metric, metric_type = self.get_metric_from_query(query)
         else:
@@ -323,7 +322,7 @@ class MitzuWebApp:
 
         all_input_comps = {
             "all_inputs": {
-                "href": Input(WA.MITZU_LOCATION, "href"),
+                "href": Input(MITZU_LOCATION, "href"),
                 "metric_type_value": Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
                 "event_name_dd_value": Input(
                     {"type": ES.EVENT_NAME_DROPDOWN, "index": ALL}, "value"
@@ -359,7 +358,7 @@ class MitzuWebApp:
             output=[
                 Output(MS.METRIC_SEGMENTS, "children"),
                 Output(MC.METRICS_CONFIG_CONTAINER, "children"),
-                Output(WA.MITZU_LOCATION, "search"),
+                Output(MITZU_LOCATION, "search"),
                 Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             ],
             inputs=all_input_comps,

@@ -10,6 +10,8 @@ from dash import html
 
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
+LOGO = "navbar_logo"
+MORE_DD = "navbar_more_dropdown"
 
 
 def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
@@ -28,6 +30,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                             html.A(
                                 # Use row and col to control vertical alignment of logo / brand
                                 children=logo_image,
+                                id=LOGO,
                                 href="/",
                                 style={"textDecoration": "none"},
                             )
@@ -56,6 +59,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                         href=SIGN_OUT_URL,
                                     ),
                                 ],
+                                id=MORE_DD,
                                 label="More",
                                 size="sm",
                                 color="dark",
@@ -69,6 +73,5 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
             ],
             fluid=True,
         ),
-        sticky="top",
     )
     return res

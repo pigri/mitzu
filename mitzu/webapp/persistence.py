@@ -18,38 +18,40 @@ class PersistencyProvider(Protocol):
 
 
 class FileSystemPersistencyProvider(PersistencyProvider):
-    def __init__(self, base_path: str):
+    def __init__(self, base_path: str = "./", projects_path: str = PROJECTS_SUB_PATH):
         if base_path.endswith("/"):
             base_path = base_path[:-1]
         self.base_path = base_path
+        self.projects_path = projects_path
 
     def list_projects(self) -> List[str]:
-        res = os.listdir(f"{self.base_path}/{PROJECTS_SUB_PATH}/")
+        res = os.listdir(f"{self.base_path}/{self.projects_path}/")
         return [r for r in res if r.endswith(".mitzu")]
 
     def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         if key.endswith(PROJECT_SUFFIX):
             key = key[: len(PROJECT_SUFFIX)]
-        path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"
+        path = f"{self.base_path}/{self.projects_path}/{key}{PROJECT_SUFFIX}"
         with open(path, "rb") as f:
             return pickle.load(f)
 
 
 class S3PersistencyProvider(PersistencyProvider):
-    def __init__(self, base_path: str):
+    def __init__(self, base_path: str, projects_path: str = PROJECTS_SUB_PATH):
         if base_path.endswith("/"):
             base_path = base_path[:-1]
         self.base_path = base_path
+        self.projects_path = projects_path
         self.s3fs = s3fs.S3FileSystem(anon=False)
 
     def list_projects(self) -> List[str]:
-        res = self.s3fs.listdir(f"{self.base_path}/{PROJECTS_SUB_PATH}/")
+        res = self.s3fs.listdir(f"{self.base_path}/{self.projects_path}/")
         res = [r["name"].split("/")[-1] for r in res if r["name"].endswith(".mitzu")]
         return res
 
     def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         if key.endswith(PROJECT_SUFFIX):
             key = key[: len(PROJECT_SUFFIX)]
-        path = f"{self.base_path}/{PROJECTS_SUB_PATH}/{key}{PROJECT_SUFFIX}"
+        path = f"{self.base_path}/{self.projects_path}/{key}{PROJECT_SUFFIX}"
         with self.s3fs.open(path, "rb") as f:
             return pickle.load(f)

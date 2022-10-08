@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.2.33"
+version = "0.2.34"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 
@@ -28,6 +28,7 @@ serverless-wsgi = {version="^3.0.1",  optional=true}
 orjson = {version="^3.7.11", optional=true}
 s3fs = {version="^2022.7.1", optional=true}
 PyJWT = { version="^2.4.0", extras=["crypto"], optional=true}
+jupyter-dash = "^0.4.2"
 
 
 [tool.poetry.extras]
