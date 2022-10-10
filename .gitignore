@@ -81,3 +81,5 @@ tests/integration/docker/minio/data/.minio.sys/*
 serverless/.aws-sam/*
 .mutmut-cache
 
+
+!**/**/trino_test_project.mitzu
