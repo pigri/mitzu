@@ -15,7 +15,7 @@ jobs:
         uses: abatilo/actions-poetry@v2
       - name: Install poetry dependencies
         run: |
-          poetry install -E trinodwh -E mysql -E postgres
+          make init
       - name: Start docker images
         uses: isbang/compose-action@v1.2.0
         with:
@@ -33,7 +33,7 @@ jobs:
           curl http://localhost:8080/v1/info 2>/dev/null | jq
       - name: Setup trino test data
         run: |
-          make trino_setup_test_data
+          make setup_test_data
       - name: Check
         run: |
           make check_ci

@@ -1,4 +1,5 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
+CREATE_TEST_DATA_CMD = docker container exec docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 clean:
 	$(POETRY) run pyclean mitzu release tests 
@@ -6,6 +7,10 @@ clean:
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
 	rm -rf .ipynb_checkpoints
+
+init:
+	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres
+
 
 format: ## formats all python code
 	$(POETRY) run black mitzu tests release
@@ -20,7 +25,7 @@ autoflake: ## fixes imports, unused variables
 mypy:
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
 
-unit_tests:
+test_units:
 	$(POETRY) run pytest -sv tests/unit/
 
 test_integrations:
@@ -34,10 +39,10 @@ docker_test_down:
 docker_test_up:	
 	docker-compose -f tests/integration/docker/docker-compose.yml up
 
-trino_setup_test_data:
+setup_test_data:
 	# TBD: Setup Minio, data has to be uploaded to minio
-	docker container exec docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
-
+	for i in {1..12}; do $(CREATE_TEST_DATA_CMD) && break || sleep 5; done
+	
 test_coverage:
 	$(POETRY) run pytest --cov=mitzu --cov-report=html tests/
 

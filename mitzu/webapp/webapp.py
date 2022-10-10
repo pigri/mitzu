@@ -160,7 +160,7 @@ class MitzuWebApp:
             return
         self._current_project = path_project_name
         if path_project_name:
-            print(f"Loading project: {path_project_name}")
+            LOGGER.info(f"Loading project: {path_project_name}")
             dd = self.persistency_provider.get_project(path_project_name)
             if dd is not None:
                 dd.project._discovered_project.set_value(dd)

@@ -102,7 +102,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
-            # print(format_query(query))
             result = engine.execute(query)
             columns = result.keys()
             fetched = result.fetchall()
