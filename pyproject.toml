@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.2.37"
+version = "0.2.38"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 license = "MIT"
@@ -21,6 +21,7 @@ sqlparse = "^0.4.2"
 dash = "^2.5.0"
 dash-bootstrap-components = "^1.2.0"
 numpy = "~1.22.0"
+protobuf = ">=3.20.2"
 
 # Adapter extras
 psycopg2 = {version = "~2.9.3", optional=true}

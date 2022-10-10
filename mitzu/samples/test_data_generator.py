@@ -4,9 +4,6 @@ from typing import Dict
 from uuid import uuid4
 
 import pandas as pd
-from faker import Faker
-
-fake = Faker()
 
 country_codes = [
     "cn",
@@ -49,7 +46,6 @@ def random_user() -> Dict:
 
 web_event_names = [
     "page_visit",
-    "search",
     "add_to_cart",
     "checkout",
     "purchase",
@@ -73,17 +69,13 @@ def random_web_event(user: Dict) -> Dict:
         if random.randrange(0, 6) >= abs(event_time.weekday() - 3):
             break
 
-    search_term = None
     cart_size = None
-    if event_name == "search":
-        search_term = fake.paragraph(nb_sentences=1)
     if event_name == "add_to_cart":
         cart_size = random.randrange(1, 8) * random.randrange(1, 8)
     purchase_event = event_name in ("add_to_cart", "checkout", "purchase")
 
     evt_props = {
         "url": random.choice(urls),
-        "search_term": search_term,
         "items_hash": (
             f"item_{random.randrange(1000, 10000)}" if purchase_event else None
         ),
