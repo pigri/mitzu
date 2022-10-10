@@ -47,3 +47,7 @@ make mypy lint
 ```bash
 make format autoflake
 ```
+
+### Setting up webapp locally
+
+For this the best is following the example [here](examples/webapp-docker/README.md)

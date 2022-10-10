@@ -191,14 +191,15 @@ Similarly you can access the results in the form of a [Pandas](https://pandas.py
 
 ## Usage In Notebooks
 
-- [Example notebook](https://deepnote.com/mitzu-example) 
+- [Example notebook](https://deepnote.com/@istvan-meszaros/Mitzu-Introduction-af037f5a-2184-494d-9362-6f4c69b5eedc) 
+- [Documentation](https://mitzu.io/documentation/notebook) 
 
 ## Webapp
 
 Mitzu can run as a standalone webapp or embedded inside a notebook.
 
 - [Example webapp](https://app.mitzu.io)
-- [Webapp documentation](https://mitzu.io/webapp)
+- [Webapp documentation](https://mitzu.io/documentation/webapp)
 
 ## Connect Your Own Data
 
