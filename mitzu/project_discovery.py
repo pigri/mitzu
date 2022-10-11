@@ -5,6 +5,10 @@ from typing import Dict, List
 import mitzu.model as M
 
 
+class ProjectDiscoveryError(Exception):
+    pass
+
+
 class ProjectDiscovery:
     def __init__(self, project: M.Project):
         self.project = project
@@ -86,14 +90,19 @@ class ProjectDiscovery:
             generic_fields = [c for c in fields if c not in specific_fields]
             generic_field_values = self._get_field_values(
                 ed_table, generic_fields, False
-            )[M.ANY_EVENT_NAME]
+            )
+            if M.ANY_EVENT_NAME not in generic_field_values.keys():
+                raise ProjectDiscoveryError(
+                    f"Can't find any data to determine the generic field values in table '{ed_table.table_name}'"
+                )
+            any_event_field_values = generic_field_values[M.ANY_EVENT_NAME]
             event_specific_field_values = self._get_field_values(
                 ed_table, specific_fields, True
             )
             definitions[ed_table] = self._merge_generic_and_specific_definitions(
                 self.project,
                 ed_table,
-                generic_field_values,
+                any_event_field_values,
                 event_specific_field_values,
             )
 

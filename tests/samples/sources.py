@@ -53,3 +53,26 @@ def get_simple_big_data() -> Project:
             },
         ),
     )
+
+
+def get_project_without_records() -> Project:
+    return Project(
+        event_data_tables=[
+            EventDataTable.create(
+                table_name="simple",
+                event_name_field="event_type",
+                user_id_field="user_id",
+                event_time_field="event_time",
+                date_partition_field="event_time",
+            )
+        ],
+        max_enum_cardinality=300,
+        max_map_key_cardinality=300,
+        connection=Connection(
+            connection_type=ConnectionType.FILE,
+            extra_configs={
+                "file_type": "csv",
+                "path": WD + "/",
+            },
+        ),
+    )

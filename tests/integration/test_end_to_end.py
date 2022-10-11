@@ -1,9 +1,14 @@
 from datetime import datetime
+import pytest
 
 from mitzu.model import ConversionMetric, DiscoveredProject, Segment
-from mitzu.project_discovery import ProjectDiscovery
+from mitzu.project_discovery import ProjectDiscovery, ProjectDiscoveryError
 from tests.helper import assert_row, assert_sql
-from tests.samples.sources import get_simple_big_data, get_simple_csv
+from tests.samples.sources import (
+    get_simple_big_data,
+    get_simple_csv,
+    get_project_without_records,
+)
 
 
 def test_simple_big_data_discovery():
@@ -31,6 +36,15 @@ def test_simple_big_data_discovery():
     print(df)
     assert 1 == df.shape[0]
     assert_row(df, _agg_value=4706, _datetime=None)
+
+
+def test_data_discovery_without_data():
+    project = get_project_without_records()
+    discovery = ProjectDiscovery(project)
+    with pytest.raises(ProjectDiscoveryError) as e_info:
+        discovery.discover_project()
+
+    assert "'simple'" in str(e_info.value)
 
 
 def test_discovered_dataset_pickle():
