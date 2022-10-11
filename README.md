@@ -205,8 +205,9 @@ Mitzu can run as a standalone webapp or embedded inside a notebook.
 
 Mitzu is be able to connect to your data warehouse or data lake.
 To get started with your own data integration please read our handy 
-[integration documentation](https://mitzu.io/documentation/integrate).
+[docs](/DOCS.md)
 
 ## Contribution Guide
 
 Please read our [Contribution Guide](/CONTRIBUTION.md)
+

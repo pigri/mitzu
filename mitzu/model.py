@@ -408,6 +408,61 @@ class EventDataTable:
             catalog=catalog,
         )
 
+    @classmethod
+    def single_event_table(
+        cls,
+        table_name: str,
+        event_time_field: str,
+        user_id_field: str,
+        schema: Optional[str] = None,
+        catalog: Optional[str] = None,
+        event_name_alias: Optional[str] = None,
+        ignored_fields: List[str] = None,
+        date_partition_field: Optional[str] = None,
+        description: str = None,
+    ):
+        return EventDataTable.create(
+            table_name=table_name,
+            event_name_alias=event_name_alias,
+            description=description,
+            ignored_fields=ignored_fields,
+            event_specific_fields=None,
+            event_name_field=None,
+            date_partition_field=date_partition_field,
+            event_time_field=event_time_field,
+            user_id_field=user_id_field,
+            schema=schema,
+            catalog=catalog,
+        )
+
+    @classmethod
+    def multi_event_table(
+        cls,
+        table_name: str,
+        event_time_field: str,
+        user_id_field: str,
+        schema: Optional[str] = None,
+        catalog: Optional[str] = None,
+        event_name_field: Optional[str] = None,
+        ignored_fields: List[str] = None,
+        event_specific_fields: List[str] = None,
+        date_partition_field: Optional[str] = None,
+        description: str = None,
+    ):
+        return EventDataTable.create(
+            table_name=table_name,
+            event_name_alias=None,
+            description=description,
+            ignored_fields=ignored_fields,
+            event_specific_fields=event_specific_fields,
+            event_name_field=event_name_field,
+            date_partition_field=date_partition_field,
+            event_time_field=event_time_field,
+            user_id_field=user_id_field,
+            schema=schema,
+            catalog=catalog,
+        )
+
     def __hash__(self):
         return hash(
             f"{self.table_name}{self.event_time_field}{self.user_id_field}"

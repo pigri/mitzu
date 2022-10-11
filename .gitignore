@@ -82,4 +82,4 @@ serverless/.aws-sam/*
 .mutmut-cache
 
 
-!**/**/trino_test_project.mitzu
+!**/**/trino_test_project.*
