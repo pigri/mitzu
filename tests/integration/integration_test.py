@@ -13,12 +13,12 @@ from tests.samples.sources import get_simple_csv
 WD = os.path.dirname(os.path.abspath(__file__)) + "/../samples/"
 
 
-def case_name(tc: TestCase):
+def case_name(tc: IntegrationTestCase):
     return f"{tc.connection.connection_type.name} {tc.connection.schema}"
 
 
 @dataclass(frozen=True)
-class TestCase:
+class IntegrationTestCase:
     connection: M.Connection
     ingest: bool = True
 
@@ -33,7 +33,7 @@ def def_con(type: M.ConnectionType) -> M.Connection:
 
 
 TEST_CASES = [
-    TestCase(
+    IntegrationTestCase(
         M.Connection(
             connection_type=M.ConnectionType.MYSQL,
             host="localhost",
@@ -43,8 +43,8 @@ TEST_CASES = [
             schema="test",
         ),
     ),
-    TestCase(def_con(M.ConnectionType.POSTGRESQL)),
-    TestCase(
+    IntegrationTestCase(def_con(M.ConnectionType.POSTGRESQL)),
+    IntegrationTestCase(
         M.Connection(
             connection_type=M.ConnectionType.TRINO,
             host="localhost",
@@ -56,7 +56,7 @@ TEST_CASES = [
         ),
         ingest=False,
     ),
-    TestCase(
+    IntegrationTestCase(
         M.Connection(
             connection_type=M.ConnectionType.FILE,
             extra_configs={
@@ -70,7 +70,7 @@ TEST_CASES = [
 
 
 @pytest.mark.parametrize("test_case", TEST_CASES, ids=case_name)
-def test_db_integrations(test_case: TestCase):
+def test_db_integrations(test_case: IntegrationTestCase):
     test_source = get_simple_csv()
     ingested_source = M.Project(
         test_case.connection,

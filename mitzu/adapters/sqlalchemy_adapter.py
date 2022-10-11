@@ -345,7 +345,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         ),
                     ),
                     else_=SA.literal(None),
-                ).label(f._name)
+                ).label(f._get_name())
                 for f in fields
             ],
         )
@@ -364,12 +364,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         res = {}
         for evt, values in enums.items():
             for f in fields:
+                field_name = f._get_name()
                 if (
-                    values[f._name] is not None
-                    and len(values[f._name]) == 1
-                    and values[f._name][0] is None
+                    values[field_name] is not None
+                    and len(values[field_name]) == 1
+                    and values[field_name][0] is None
                 ):
-                    values[f._name] = []
+                    values[field_name] = []
 
             res[evt] = M.EventDef(
                 _event_name=evt,
@@ -379,13 +380,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         _field=f,
                         _project=self.project,
                         _event_data_table=event_data_table,
-                        _enums=values[f._name],
+                        _enums=values[f._get_name()],
                     )
                     for f in fields
                     # We return NONE if the cardinality is above the max_enum_cardinality for a field.
                     # This is Needed as the NULL type will be accepted for every case-when as a return statement.
                     # Empty list are the result of field not having any value
-                    if values[f._name] is None or len(values[f._name]) > 0
+                    if values[f._get_name()] is None or len(values[f._get_name()]) > 0
                 },
                 _project=self.project,
                 _event_data_table=event_data_table,
