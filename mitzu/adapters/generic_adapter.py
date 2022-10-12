@@ -20,6 +20,11 @@ CTE_DATETIME_COL = "_cte_datetime"
 CTE_GROUP_COL = "_cte_group"
 
 
+class CloseConnectionException(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
 class GenericDatasetAdapter(ABC):
     def __init__(self, project: M.Project):
         self.project = project
@@ -62,4 +67,7 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def test_connection(self):
+        raise NotImplementedError()
+
+    def stop_current_execution(self):
         raise NotImplementedError()

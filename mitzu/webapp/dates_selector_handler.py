@@ -10,7 +10,7 @@ from dash import dcc, html
 from mitzu.webapp.helper import find_first_component
 
 DATE_SELECTOR = "date_selector"
-TIME_GROUP_DROWDOWN = "timegroup_dropdown"
+TIME_GROUP_DROPDOWN = "timegroup_dropdown"
 LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
 CUSTOM_DATE_TW_VALUE = -1
@@ -105,7 +105,7 @@ class DateSelectorHandler:
                     children=[
                         dbc.InputGroupText("Period", style={"width": "60px"}),
                         dcc.Dropdown(
-                            id=TIME_GROUP_DROWDOWN,
+                            id=TIME_GROUP_DROPDOWN,
                             options=get_time_group_options(
                                 exclude=[
                                     M.TimeGroup.SECOND,
@@ -209,7 +209,7 @@ class DateSelectorHandler:
 
     def get_metric_timegroup(self) -> M.TimeGroup:
         return M.TimeGroup(
-            find_first_component(TIME_GROUP_DROWDOWN, self.component).value
+            find_first_component(TIME_GROUP_DROPDOWN, self.component).value
         )
 
     @classmethod

@@ -52,8 +52,8 @@ def get_time_group_options() -> List[Dict[str, int]]:
     return res
 
 
-def get_agg_type_options(metrics: Optional[M.Metric]) -> List[Dict[str, str]]:
-    if isinstance(metrics, M.ConversionMetric):
+def get_agg_type_options(metric: Optional[M.Metric]) -> List[Dict[str, str]]:
+    if isinstance(metric, M.ConversionMetric):
         res: List[Dict[str, Any]] = [
             {
                 "label": agg_type_to_str(M.AggType.CONVERSION),
@@ -75,7 +75,7 @@ def get_agg_type_options(metrics: Optional[M.Metric]) -> List[Dict[str, str]]:
         )
 
         return res
-    elif isinstance(metrics, M.SegmentationMetric):
+    else:
         return [
             {
                 "label": agg_type_to_str(M.AggType.COUNT_UNIQUE_USERS),
@@ -86,7 +86,6 @@ def get_agg_type_options(metrics: Optional[M.Metric]) -> List[Dict[str, str]]:
                 "value": M.AggType.COUNT_EVENTS.to_agg_str(),
             },
         ]
-    return []
 
 
 def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
@@ -115,55 +114,58 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         tw_value = 1
         tg_value = M.TimeGroup.DAY
 
-    return html.Div(
+    aggregation_comp = dbc.InputGroup(
         children=[
-            dbc.InputGroup(
-                id=CONVERSION_WINDOW,
-                children=[
-                    dbc.InputGroupText("Within", style={"width": "100px"}),
-                    dbc.Input(
-                        id=CONVERSION_WINDOW_INTERVAL,
-                        className=CONVERSION_WINDOW_INTERVAL,
-                        type="number",
-                        max=10000,
-                        min=1,
-                        value=tw_value,
-                        size="sm",
-                        style={"max-width": "60px"},
-                    ),
-                    dcc.Dropdown(
-                        id=CONVERSION_WINDOW_INTERVAL_STEPS,
-                        className=CONVERSION_WINDOW_INTERVAL_STEPS,
-                        clearable=False,
-                        multi=False,
-                        value=tg_value.value,
-                        options=get_time_group_options(),
-                        style={
-                            "width": "121px",
-                            "border-radius": "0px 0.25rem 0.25rem 0px",
-                        },
-                    ),
-                ],
-            ),
-            dbc.InputGroup(
-                children=[
-                    dbc.InputGroupText("Aggregation", style={"width": "100px"}),
-                    dcc.Dropdown(
-                        id=AGGREGATION_TYPE,
-                        className=AGGREGATION_TYPE,
-                        clearable=False,
-                        multi=False,
-                        value=M.AggType.to_agg_str(agg_type, agg_param),
-                        options=get_agg_type_options(metric),
-                        style={
-                            "width": "180px",
-                            "border-radius": "0px 0.25rem 0.25rem 0px",
-                        },
-                    ),
-                ],
+            dbc.InputGroupText("Aggregation", style={"width": "100px"}),
+            dcc.Dropdown(
+                id=AGGREGATION_TYPE,
+                className=AGGREGATION_TYPE,
+                clearable=False,
+                multi=False,
+                value=M.AggType.to_agg_str(agg_type, agg_param),
+                options=get_agg_type_options(metric),
+                style={
+                    "width": "180px",
+                    "border-radius": "0px 0.25rem 0.25rem 0px",
+                },
             ),
         ],
     )
+    conv_window = dbc.InputGroup(
+        id=CONVERSION_WINDOW,
+        children=[
+            dbc.InputGroupText("Within", style={"width": "100px"}),
+            dbc.Input(
+                id=CONVERSION_WINDOW_INTERVAL,
+                className=CONVERSION_WINDOW_INTERVAL,
+                type="number",
+                max=10000,
+                min=1,
+                value=tw_value,
+                size="sm",
+                style={"max-width": "60px"},
+            ),
+            dcc.Dropdown(
+                id=CONVERSION_WINDOW_INTERVAL_STEPS,
+                className=CONVERSION_WINDOW_INTERVAL_STEPS,
+                clearable=False,
+                multi=False,
+                value=tg_value.value,
+                options=get_time_group_options(),
+                style={
+                    "width": "121px",
+                    "border-radius": "0px 0.25rem 0.25rem 0px",
+                },
+            ),
+        ],
+        style={
+            "visibility": "visible"
+            if isinstance(metric, M.ConversionMetric)
+            else "hidden"
+        },
+    )
+
+    return html.Div(children=[aggregation_comp, conv_window])
 
 
 @dataclass

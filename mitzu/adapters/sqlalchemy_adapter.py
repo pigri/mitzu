@@ -67,6 +67,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self._table = None
         self._engine = None
         self._table_cache: Dict[M.EventDataTable, SA.Table] = {}
+        self._connection: SA.engine.Connection = None
 
     def get_event_name_field(
         self,
@@ -102,9 +103,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
-            result = engine.execute(query)
-            columns = result.keys()
-            fetched = result.fetchall()
+            conn = engine.connect()
+            self._connection = conn
+            cursor_result = conn.execute(query)
+            columns = cursor_result.keys()
+            fetched = cursor_result.fetchall()
             if len(fetched) > 0:
                 pdf = pd.DataFrame(fetched)
                 pdf.columns = columns
@@ -115,8 +118,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             print("Failed Query:")
             print(format_query(query))
             raise exc
+        finally:
+            self._connection = None
 
-    def get_engine(self) -> Any:
+    def get_engine(self) -> SA.engine.Engine:
         con = self.project.connection
         if self._engine is None:
             if con.url is None:
@@ -760,3 +765,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self.execute_query(
             SA.select(columns=[SA.literal(True).label("test_connection")])
         )
+
+    def stop_current_execution(self):
+
+        if self._connection is not None:
+            print("Stopping transaction")
+
+            self._connection.connection.close()

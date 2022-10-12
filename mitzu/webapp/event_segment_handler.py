@@ -13,7 +13,7 @@ EVENT_NAME_DROPDOWN = "event_name_dropdown"
 SIMPLE_SEGMENT_CONTAINER = "simple_segment_container"
 
 
-def creat_event_name_dropdown(
+def create_event_name_dropdown(
     index,
     discovered_project: M.DiscoveredProject,
     step: int,
@@ -70,7 +70,7 @@ def get_event_simple_segments(segment: M.Segment) -> List[M.SimpleSegment]:
         raise Exception(f"Unsupported Segment Type: {type(segment)}")
 
 
-def create_simple_segs_container(
+def create_simple_segments_container(
     type_index: str,
     segment: Optional[M.Segment],
     discovered_project: M.DiscoveredProject,
@@ -137,11 +137,11 @@ class EventSegmentHandler:
         event_segment_index: int,
     ) -> EventSegmentHandler:
         type_index = f"{funnel_step}-{event_segment_index}"
-        event_dd = creat_event_name_dropdown(
+        event_dd = create_event_name_dropdown(
             type_index, discovered_project, funnel_step, event_segment_index, segment
         )
         children = [event_dd]
-        simples_segs_container = create_simple_segs_container(
+        simples_segs_container = create_simple_segments_container(
             type_index, segment, discovered_project
         )
         if simples_segs_container is not None:

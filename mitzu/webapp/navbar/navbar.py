@@ -10,17 +10,13 @@ from dash import html
 
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
+DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/logo.png")
 LOGO = "navbar_logo"
 MORE_DD = "navbar_more_dropdown"
 
 
 def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
-
-    if webapp.logo_path is not None:
-        logo_image = [html.Img(src=webapp.logo_path, height="32px", className="logo")]
-    else:
-        logo_image = [html.H2("Mitzu", className="logo")]
-
+    logo_image = [html.Img(src=DASH_LOGO_PATH, height="32px", className="logo")]
     res = dbc.Navbar(
         children=dbc.Container(
             children=[
@@ -28,7 +24,6 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                     children=[
                         dbc.Col(
                             html.A(
-                                # Use row and col to control vertical alignment of logo / brand
                                 children=logo_image,
                                 id=LOGO,
                                 href="/",

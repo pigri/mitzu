@@ -19,6 +19,7 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.helper as helper
 import mitzu.notebook.model_loader as ML
 import mitzu.project_discovery as D
+import mitzu.titles as TI
 import mitzu.visualization as VIS
 
 
@@ -766,18 +767,21 @@ class Metric(ABC):
     def _end_dt(self) -> datetime:
         if self._config.end_dt is not None:
             return self._config.end_dt
-        eds = self._get_project()
+        eds = self.get_project()
         if eds.default_end_dt is not None:
             return eds.default_end_dt
         return datetime.now()
 
-    def _get_project(self) -> Project:
+    def get_project(self) -> Project:
         raise NotImplementedError()
 
     def get_df(self) -> pd.DataFrame:
         raise NotImplementedError()
 
     def get_sql(self) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def get_title(self) -> str:
         raise NotImplementedError()
 
     def print_sql(self):
@@ -820,11 +824,14 @@ class ConversionMetric(Metric):
     def __repr__(self) -> str:
         return super().__repr__()
 
-    def _get_project(self) -> Project:
+    def get_project(self) -> Project:
         curr: Segment = self._conversion._segments[0]
         while not isinstance(curr, SimpleSegment):
             curr = cast(ComplexSegment, curr)._left
         return curr._left._project
+
+    def get_title(self) -> str:
+        return TI.get_conversion_title(self)
 
 
 @dataclass(frozen=True, init=False)
@@ -849,11 +856,14 @@ class SegmentationMetric(Metric):
     def __repr__(self) -> str:
         return super().__repr__()
 
-    def _get_project(self) -> Project:
+    def get_project(self) -> Project:
         curr: Segment = self._segment
         while not isinstance(curr, SimpleSegment):
             curr = cast(ComplexSegment, curr)._left
         return curr._left._project
+
+    def get_title(self) -> str:
+        return TI.get_segmentation_title(self)
 
 
 @dataclass(frozen=True, init=False)

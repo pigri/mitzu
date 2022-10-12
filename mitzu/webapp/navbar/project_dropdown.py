@@ -26,15 +26,13 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
             dbc.DropdownMenuItem("Could not find any projects", disabled=True)
         ]
 
-    res = (
-        dbc.DropdownMenu(
-            children=dropdown_items,
-            id=CHOOSE_PROJECT_DROPDOWN,
-            in_navbar=True,
-            label="Select project",
-            size="sm",
-            color="primary",
-        ),
+    res = dbc.DropdownMenu(
+        children=dropdown_items,
+        id=CHOOSE_PROJECT_DROPDOWN,
+        in_navbar=True,
+        label="Select project",
+        size="sm",
+        color="primary",
     )
 
     @webapp.app.callback(

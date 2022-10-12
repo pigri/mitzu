@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from typing import Any, List, Optional, Union
 from urllib.parse import ParseResult
 
@@ -9,11 +8,9 @@ import mitzu.model as M
 from dash import Dash, html
 
 PROJECT_PATH_INDEX = 0
-LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
-LOGGER.addHandler(logging.StreamHandler(LOG_HANDLER))
 
 
 def value_to_label(value: str) -> str:

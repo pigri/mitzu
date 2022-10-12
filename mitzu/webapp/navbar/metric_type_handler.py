@@ -16,8 +16,8 @@ class MetricType(Enum):
     SEGMENTATION = "segmentation"
     CONVERSION = "conversion"
     RETENTION = "retention"
-    TIME_TO_CONVERT = "time_to_convert"
     JOURNEY = "journey"
+    REVENUE = "revenue"
 
     @classmethod
     def from_metric(cls, metric: Optional[M.Metric]) -> MetricType:
@@ -31,7 +31,7 @@ TYPES: Dict[MetricType, str] = {
     MetricType.SEGMENTATION: "bi bi-graph-up",
     MetricType.CONVERSION: "bi bi-filter-square",
     MetricType.RETENTION: "bi bi-arrow-clockwise",
-    MetricType.TIME_TO_CONVERT: "bi bi-clock-history",
+    MetricType.REVENUE: "bi bi-currency-exchange",
     MetricType.JOURNEY: "bi bi-bezier2",
 }
 

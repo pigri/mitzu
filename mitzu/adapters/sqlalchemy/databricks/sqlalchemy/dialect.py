@@ -235,6 +235,10 @@ class DatabricksDialect(DefaultDialect):
     ):
         cursor.execute(statement, parameters)
 
+    def do_close(self, dbapi_connection) -> None:
+        print("DO CLOSE")
+        return super().do_close(dbapi_connection)
+
     def do_rollback(self, dbapi_connection: db_client.Connection):
         pass
 

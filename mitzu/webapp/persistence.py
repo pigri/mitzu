@@ -33,7 +33,10 @@ class FileSystemPersistencyProvider(PersistencyProvider):
             key = key[: len(PROJECT_SUFFIX)]
         path = f"{self.base_path}/{self.projects_path}/{key}{PROJECT_SUFFIX}"
         with open(path, "rb") as f:
-            return pickle.load(f)
+            res: M.DiscoveredProject = pickle.load(f)
+            res.project._discovered_project.set_value(res)
+            return res
+        return None
 
 
 class S3PersistencyProvider(PersistencyProvider):
@@ -54,4 +57,7 @@ class S3PersistencyProvider(PersistencyProvider):
             key = key[: len(PROJECT_SUFFIX)]
         path = f"{self.base_path}/{self.projects_path}/{key}{PROJECT_SUFFIX}"
         with self.s3fs.open(path, "rb") as f:
-            return pickle.load(f)
+            res: M.DiscoveredProject = pickle.load(f)
+            res.project._discovered_project.set_value(res)
+            return res
+        return res

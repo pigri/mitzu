@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from urllib import parse
 
@@ -82,8 +82,12 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
     signed_out_redirect_url: Optional[str] = None
     authorized_email_reg: Optional[str] = None
 
-    jwt_token: M.ProtectedState[Dict[str, Any]] = M.ProtectedState(None)
-    jwt_encoded: M.ProtectedState[str] = M.ProtectedState(None)
+    jwt_token: M.ProtectedState[Dict[str, Any]] = field(
+        default_factory=lambda: M.ProtectedState(None)
+    )
+    jwt_encoded: M.ProtectedState[str] = field(
+        default_factory=lambda: M.ProtectedState(None)
+    )
 
     def handle_code_redirect(self):
         code = get_oauth_code()
@@ -108,8 +112,8 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             return flask.Response(status=resp.status_code, response=resp.content)
 
         cookie_val = f"{resp.json()['id_token']}"
-        redir_url = flask.request.cookies.get(REDIRECT_TO, self.app_url)
-        final_resp = flask.redirect(code=301, location=redir_url)
+        redirect_url = flask.request.cookies.get(REDIRECT_TO, self.app_url)
+        final_resp = flask.redirect(code=301, location=redirect_url)
         final_resp.set_cookie(self.jwt_cookie, cookie_val)
         final_resp.set_cookie(REDIRECT_TO, "", expires=0)
         logger.info(f"Setting cookie resp: {cookie_val}")
@@ -199,7 +203,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
             return resp
 
-    def get_404_page(sefl) -> str:
+    def get_404_page(self) -> str:
         return "404 Not Found"
 
     def get_jwt_token(self) -> Optional[Dict[str, Any]]:
