@@ -49,7 +49,7 @@ Test your connnection with, the following command.
 This select should be executed on your cluster
 
 ```python
-project.adapter.execute_query("SELECT 1;")
+project.get_adapter().execute_query("SELECT 1;")
 ```
 
 ### Step 4:

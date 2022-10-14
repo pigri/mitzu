@@ -20,7 +20,7 @@ lint: ## lints and checks formatting all python code
 	$(POETRY) run flake8 mitzu tests release
 
 autoflake: ## fixes imports, unused variables
-	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/  release/
+	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
 
 mypy:
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
@@ -59,7 +59,7 @@ notebook:
 	$(POETRY) run jupyter lab
 
 dash: 	
-	cd release && \
+	cd release/app/ && \
 	BASEPATH=../examples/webapp-docker/mitzu/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
@@ -81,8 +81,8 @@ dash:
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
 dash_simple: 	
-	cd release && \
-	BASEPATH=../examples/webapp-docker/mitzu/ \
+	cd release/app/ && \
+	BASEPATH=../../examples/webapp-docker/mitzu/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
@@ -104,12 +104,24 @@ publish: bump_version build
 publish_no_build:
 	$(POETRY) publish
 
-docker_build:
+docker_build:	
 	docker image build ./release --platform=linux/amd64 \
 	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
 	-t imeszaros/mitzu-webapp:latest \
-	--build-arg ADDITIONAL_DEPENDENCIES="mitzu==$(shell poetry version -s) databricks-sql-connector==2.0.2 trino==0.313.0 PyAthena==2.13.0"
-	
+	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena]==$(shell poetry version -s)" --no-cache
+
+docker_build_local:
+	cp -r ./dist/ ./release/dist/
+	poetry export -E trinodwh -E postgresql -E webapp -E databricks --without-hashes --format=requirements.txt > release/requirements.txt
+	docker image build ./release \
+	--platform=linux/amd64 \
+	--build-arg MITZU_VERSION=$(shell poetry version -s) \
+	--build-arg DIST_PATH=$(shell pwd)/dist/ \
+	--no-cache -f ./release/LocalDockerfile \
+	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
+	-t imeszaros/mitzu-webapp:latest
+
+
 docker_publish_no_build:
 	docker push imeszaros/mitzu-webapp	
 

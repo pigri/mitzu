@@ -22,11 +22,6 @@ import mitzu.project_discovery as D
 import mitzu.titles as TI
 import mitzu.visualization as VIS
 
-
-def default_field(obj, repr: bool = True):
-    return field(repr=repr, default_factory=lambda: copy(obj))
-
-
 ANY_EVENT_NAME = "any_event"
 
 
@@ -272,18 +267,17 @@ T = TypeVar("T")
 
 
 @dataclass
-class ProtectedState(Generic[T]):
-    _value: Optional[T] = None
+class State(Generic[T]):
+    _val: Optional[T] = None
 
     def get_value(self) -> Optional[T]:
-        return self._value
+        return self._val
 
     def set_value(self, value: Optional[T]):
-        self._value = value
+        self._val = value
 
-    def has_value(self) -> bool:
-        return self._value is not None
 
+class ProtectedState(State[T]):
     def __getstate__(self):
         """Override so pickle doesn't store state"""
         return None
@@ -343,13 +337,13 @@ class Connection:
     # Used for connection url parametrization
     url_params: Optional[str] = None
     # Used for adapter configuration
-    extra_configs: Dict[str, Any] = default_field({})
-    _secret: ProtectedState[str] = default_field(ProtectedState())
+    extra_configs: Dict[str, Any] = field(default_factory=dict)
+    _secret: ProtectedState[str] = field(default_factory=ProtectedState)
     secret_resolver: Optional[SecretResolver] = None
 
     @property
     def password(self):
-        if not self._secret.has_value():
+        if self._secret.get_value() is None:
             if self.secret_resolver is not None:
                 secret = self.secret_resolver.resolve_secret()
                 self._secret.set_value(secret)
@@ -368,8 +362,8 @@ class EventDataTable:
     event_name_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
     date_partition_field: Optional[Field] = None
-    ignored_fields: List[str] = default_field([])
-    event_specific_fields: List[str] = default_field([])
+    ignored_fields: List[str] = field(default_factory=lambda: [])
+    event_specific_fields: List[str] = field(default_factory=lambda: [])
     description: Optional[str] = None
 
     @classmethod
@@ -496,26 +490,22 @@ class Project:
     default_property_sample_size: int = 10000
     default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     default_discovery_lookback_days: int = 2
-
-    _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = default_field(
-        ProtectedState()
-    )
-    _last_event_times: ProtectedState[Dict[str, datetime]] = default_field(
-        ProtectedState()
+    _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
+        default_factory=lambda: ProtectedState()
     )
 
-    _discovered_project: ProtectedState[DiscoveredProject] = default_field(
-        ProtectedState()
+    _discovered_project: State[DiscoveredProject] = field(
+        default_factory=lambda: State()
     )
 
-    @property
-    def adapter(self) -> GA.GenericDatasetAdapter:
-        if not self._adapter_cache.has_value():
-            self._adapter_cache.set_value(factory.create_adapter(self))
-        res = self._adapter_cache.get_value()
-        if res is None:
-            raise Exception("Adapter wasn't set for the datasource")
-        return res
+    def get_adapter(self) -> GA.GenericDatasetAdapter:
+        val = self._adapter_cache.get_value()
+        if val is None:
+            adp = factory.create_adapter(self)
+            self._adapter_cache.set_value(adp)
+            return adp
+        else:
+            return val
 
     def get_default_end_dt(self) -> datetime:
         if self.default_end_dt is None:
@@ -526,9 +516,6 @@ class Project:
         return self.get_default_end_dt() - timedelta(
             days=self.default_discovery_lookback_days
         )
-
-    def clear_adapter_cache(self):
-        self._adapter_cache.set_value(None)
 
     def discover_project(self) -> DiscoveredProject:
         return D.ProjectDiscovery(project=self).discover_project()
@@ -812,11 +799,11 @@ class ConversionMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         project = helper.get_segment_project(self._conversion._segments[0])
-        return project.adapter.get_conversion_df(self)
+        return project.get_adapter().get_conversion_df(self)
 
     def get_sql(self) -> pd.DataFrame:
         project = helper.get_segment_project(self._conversion._segments[0])
-        return project.adapter.get_conversion_sql(self)
+        return project.get_adapter().get_conversion_sql(self)
 
     def get_figure(self):
         return VIS.plot_conversion(self)
@@ -844,11 +831,11 @@ class SegmentationMetric(Metric):
 
     def get_df(self) -> pd.DataFrame:
         project = helper.get_segment_project(self._segment)
-        return project.adapter.get_segmentation_df(self)
+        return project.get_adapter().get_segmentation_df(self)
 
     def get_sql(self) -> str:
         project = helper.get_segment_project(self._segment)
-        return project.adapter.get_segmentation_sql(self)
+        return project.get_adapter().get_segmentation_sql(self)
 
     def get_figure(self):
         return VIS.plot_segmentation(self)

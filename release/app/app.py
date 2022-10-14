@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import sys
+from uuid import uuid4
 
 import dash_bootstrap_components as dbc
 import flask
@@ -22,27 +22,25 @@ DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
 DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
 DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
 DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
-
-LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
 REDIS_URL = os.getenv("REDIS_URL")
+DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
+LAUNCH_UID = uuid4()
 
 
 def get_callback_manager() -> BaseLongCallbackManager:
+
     if REDIS_URL is not None:
-        # Use Redis & Celery if REDIS_URL set as an env variable
         from celery import Celery
 
-        celery_app = Celery(
-            __name__, broker=os.environ["REDIS_URL"], backend=os.environ["REDIS_URL"]
-        )
-        return CeleryManager(celery_app)
-
+        celery_app = Celery(__name__, broker=REDIS_URL, backend=REDIS_URL)
+        LOGGER.info(f"Setting up Celery and Redis Cache: {REDIS_URL}")
+        return CeleryManager(celery_app, cache_by=[lambda: LAUNCH_UID], expire=600)
     else:
-        # Diskcache for non-production apps when developing locally
         import diskcache
 
-        cache = diskcache.Cache("./cache")
-        return DiskcacheManager(cache)
+        LOGGER.info(f"Setting up diskcache: {DISK_CACHE_PATH}")
+        cache = diskcache.Cache(DISK_CACHE_PATH)
+        return DiskcacheManager(cache, cache_by=[lambda: LAUNCH_UID], expire=600)
 
 
 def create_app():

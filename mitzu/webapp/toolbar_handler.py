@@ -11,8 +11,6 @@ from dash import Input, Output, ctx, html
 CHART_BUTTON = "chart_button"
 TABLE_BUTTON = "table_button"
 SQL_BUTTON = "sql_button"
-SHARE_BUTTON = "share_button"
-COPY_BUTTON = "copy_button"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
 CANCEL_BUTTON = "cancel_button"
 
@@ -41,30 +39,6 @@ class ToolbarHandler:
                     id=TOOLBAR_LEFT,
                     class_name=TOOLBAR_LEFT,
                     children=[
-                        dbc.Button(
-                            children=[
-                                html.B(
-                                    className="bi bi-clipboard2-check",
-                                ),
-                            ],
-                            size="sm",
-                            outline=False,
-                            id=COPY_BUTTON,
-                            color="info",
-                            style={"margin-right": "8px"},
-                        ),
-                        dbc.Button(
-                            children=[
-                                html.B(
-                                    className="bi bi-share",
-                                ),
-                            ],
-                            size="sm",
-                            outline=False,
-                            id=SHARE_BUTTON,
-                            color="info",
-                            style={"margin-right": "8px"},
-                        ),
                         dbc.Button(
                             children=[html.B(className="bi bi-arrow-clockwise")],
                             size="sm",

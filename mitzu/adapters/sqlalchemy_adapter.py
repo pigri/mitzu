@@ -61,13 +61,13 @@ class SegmentSubQuery:
         return self
 
 
+@dataclass
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def __init__(self, project: M.Project):
         super().__init__(project)
-        self._table = None
-        self._engine = None
-        self._table_cache: Dict[M.EventDataTable, SA.Table] = {}
+        self._table_cache: Dict[str, SA.Table] = {}
         self._connection: SA.engine.Connection = None
+        self._engine: SA.engine.Engine = None
 
     def get_event_name_field(
         self,
@@ -132,7 +132,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return self._engine
 
     def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
-        if event_data_table not in self._table_cache:
+        full_name = event_data_table.get_full_name()
+        if full_name not in self._table_cache:
+            # print(f"Table {full_name} not in Cache")
             engine = self.get_engine()
             metadata_obj = SA.MetaData()
 
@@ -142,14 +144,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 schema = self.project.connection.schema
             else:
                 schema = None
-            self._table_cache[event_data_table] = SA.Table(
+            self._table_cache[full_name] = SA.Table(
                 event_data_table.table_name,
                 metadata_obj,
                 schema=schema,
                 autoload_with=engine,
                 autoload=True,
             )
-        return self._table_cache[event_data_table]
+        return self._table_cache[full_name]
 
     def get_field_reference(
         self,

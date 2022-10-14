@@ -84,4 +84,6 @@ serverless/.aws-sam/*
 
 !**/**/trino_test_project.*
 
-release/cache/
+release/app/cache/
+release/requirements.txt
+cache/

@@ -15,7 +15,7 @@ class ProjectDiscovery:
         specific_fields: List[M.Field],
         event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        return self.project.adapter.get_field_enums(
+        return self.project.get_adapter().get_field_enums(
             event_data_table=ed_table,
             fields=specific_fields,
             event_specific=event_specific,
@@ -79,7 +79,7 @@ class ProjectDiscovery:
 
         for ed_table in self.project.event_data_tables:
             print(f"Discovering {ed_table.get_full_name()}")
-            fields = self.project.adapter.list_fields(event_data_table=ed_table)
+            fields = self.project.get_adapter().list_fields(event_data_table=ed_table)
             fields = self.flatten_fields(fields)
 
             specific_fields = self._get_specific_fields(ed_table, fields)

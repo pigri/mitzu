@@ -82,12 +82,8 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
     signed_out_redirect_url: Optional[str] = None
     authorized_email_reg: Optional[str] = None
 
-    jwt_token: M.ProtectedState[Dict[str, Any]] = field(
-        default_factory=lambda: M.ProtectedState(None)
-    )
-    jwt_encoded: M.ProtectedState[str] = field(
-        default_factory=lambda: M.ProtectedState(None)
-    )
+    jwt_token: M.State[Dict[str, Any]] = field(default_factory=lambda: M.State())
+    jwt_encoded: M.State[str] = field(default_factory=lambda: M.State())
 
     def handle_code_redirect(self):
         code = get_oauth_code()

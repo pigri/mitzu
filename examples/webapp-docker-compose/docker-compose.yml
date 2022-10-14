@@ -21,6 +21,8 @@ services:
       OAUTH_SIGN_OUT_REDIRECT_URL: https://auth.mitzu.io/logout
     ports:
       - 8082:80
+    depends_on:
+      - cache
     volumes:
       - ./basepath/:/var/task/basepath/
 
@@ -31,4 +33,3 @@ services:
       - 8888:8888
     volumes:
       - ./basepath/:/home/jovyan/work
-

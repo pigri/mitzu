@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -37,7 +38,7 @@ MARKDOWN = """```sql
 
 GRAPH_CONTAINER = "graph_container"
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
-GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 250)
+GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 200)
 
 
 @dataclass
@@ -65,6 +66,7 @@ class GraphHandler:
                 table_button_color=State(TH.TABLE_BUTTON, "color"),
                 sql_button_color=State(TH.SQL_BUTTON, "color"),
             ),
+            interval=GRAPH_POLL_INTERVAL_MS,
             prevent_initial_call=True,
             background=True,
             running=[
@@ -120,6 +122,7 @@ class GraphHandler:
                     return self.create_graph(metric)
 
             except Exception as exc:
+                traceback.print_exc()
                 return html.Div(
                     f"Something has gone wrong. Details {exc}",
                     id=GRAPH,

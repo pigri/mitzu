@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.2.39"
+version = "0.2.43"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 license = "MIT"
@@ -18,8 +18,7 @@ pyarrow = "~7.0.0"
 fastparquet = "~0.8.0"
 retry = "~0.9.2"
 sqlparse = "^0.4.2"
-numpy = "~1.22.0"
-protobuf = ">=3.20.2"
+
 
 
 # Adapter extras
@@ -37,6 +36,8 @@ serverless-wsgi = {version="^3.0.1",  optional=true}
 orjson = {version="^3.7.11", optional=true}
 s3fs = {version="^2022.7.1", optional=true}
 PyJWT = { version="^2.4.0", extras=["crypto"], optional=true}
+gunicorn = {version= "^20.1.0", optional=true}
+
 
 
 [tool.poetry.extras]
@@ -45,13 +46,12 @@ mysql = ["mysql-connector-python"]
 trinodwh = ["trino"]
 databricks = ["databricks-sql-connector"]
 athena = ["PyAthena"]
-webapp = ["serverless-wsgi", "s3fs", "orjson", "PyJWT", "dash-bootstrap-components", "dash", "jupyter-dash"]
+webapp = ["serverless-wsgi", "s3fs", "orjson", "PyJWT", "dash-bootstrap-components", "dash", "jupyter-dash", "gunicorn"]
 
 
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.920"
-jupyter = "^1.0.0"
 pytest = "^6.2.5"
 black = "^22.1.0"
 pytest-cov = "^3.0.0"
@@ -59,7 +59,6 @@ Faker = "^13.7.0"
 jupyterlab = "^3.4.2"
 apig-wsgi = "^2.14.0"
 types-python-dateutil = "^2.8.18"
-gunicorn = "^20.1.0"
 flake8 = "^5.0.4"
 autoflake = "^1.4"
 types-requests = "^2.28.8"

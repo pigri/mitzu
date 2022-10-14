@@ -64,12 +64,12 @@ def ingest_test_file_data(
     transform_dt_col: bool = True,
     dtype: Dict[str, Any] = None,
 ) -> SQLAlchemyAdapter:
-    adapter = cast(FileAdapter, project.adapter)
+    adapter = cast(FileAdapter, project.get_adapter())
 
     target_source = Project(
         connection=target_connection, event_data_tables=project.event_data_tables
     )
-    target_adapter = cast(SQLAlchemyAdapter, target_source.adapter)
+    target_adapter = cast(SQLAlchemyAdapter, target_source.get_adapter())
     target_engine = target_adapter.get_engine()
 
     for ed_table in project.event_data_tables:

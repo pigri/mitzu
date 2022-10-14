@@ -36,7 +36,6 @@ class FileSystemPersistencyProvider(PersistencyProvider):
             res: M.DiscoveredProject = pickle.load(f)
             res.project._discovered_project.set_value(res)
             return res
-        return None
 
 
 class S3PersistencyProvider(PersistencyProvider):
