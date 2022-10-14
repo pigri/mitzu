@@ -24,6 +24,7 @@ DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
 DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
 REDIS_URL = os.getenv("REDIS_URL")
 DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
+CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", "600"))
 LAUNCH_UID = uuid4()
 
 
@@ -34,13 +35,17 @@ def get_callback_manager() -> BaseLongCallbackManager:
 
         celery_app = Celery(__name__, broker=REDIS_URL, backend=REDIS_URL)
         LOGGER.info(f"Setting up Celery and Redis Cache: {REDIS_URL}")
-        return CeleryManager(celery_app, cache_by=[lambda: LAUNCH_UID], expire=600)
+        return CeleryManager(
+            celery_app, cache_by=[lambda: LAUNCH_UID], expire=CACHE_EXPIRATION
+        )
     else:
         import diskcache
 
         LOGGER.info(f"Setting up diskcache: {DISK_CACHE_PATH}")
         cache = diskcache.Cache(DISK_CACHE_PATH)
-        return DiskcacheManager(cache, cache_by=[lambda: LAUNCH_UID], expire=600)
+        return DiskcacheManager(
+            cache, cache_by=[lambda: LAUNCH_UID], expire=CACHE_EXPIRATION
+        )
 
 
 def create_app():
