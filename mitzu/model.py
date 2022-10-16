@@ -555,12 +555,12 @@ class Project:
                 "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
         try:
-            self.adapter.test_connection()
+            self.get_adapter().test_connection()
         except Exception as e:
             raise InvalidProjectError(f"Connection failed: {str(e)}") from e
 
         for edt in self.event_data_tables:
-            edt.validate(self.adapter)
+            edt.validate(self.get_adapter())
 
 
 class DatasetModel:
