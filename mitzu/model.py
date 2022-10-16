@@ -514,6 +514,10 @@ class EventDataTable:
                 )
 
 
+class InvalidProjectError(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class Project:
     connection: Connection
@@ -557,7 +561,7 @@ class Project:
 
     def validate(self):
         if len(self.event_data_tables) == 0:
-            raise Exception(
+            raise InvalidProjectError(
                 "At least a single EventDataTable needs to be added to the Project.\n"
                 "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
