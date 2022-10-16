@@ -352,6 +352,10 @@ class Connection:
         return self._secret.get_value()
 
 
+class InvalidEventDataTableError(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class EventDataTable:
     table_name: str
@@ -468,15 +472,46 @@ class EventDataTable:
         schema = "" if self.schema is None else self.schema + "."
         return f"{schema}{self.table_name}"
 
-    def validate(self):
+    def validate(self, adapter: GA.GenericDatasetAdapter):
         if self.event_name_alias is not None and self.event_name_field is not None:
-            raise Exception(
+            raise InvalidEventDataTableError(
                 f"For {self.table_name} both event_name_alias and event_name_field can't be defined in the same time."
             )
         if self.event_name_alias is None and self.event_name_field is None:
-            raise Exception(
+            raise InvalidEventDataTableError(
                 f"For {self.table_name} define the event_name_alias or the event_name_field property."
             )
+
+        available_fields = adapter.list_fields(self)
+        if len(available_fields) == 0:
+            raise InvalidEventDataTableError(
+                f"No fields in event data table '{self.table_name}'"
+            )
+
+        for field_to_validate in [
+            self.event_name_field,
+            self.event_time_field,
+            self.user_id_field,
+            self.date_partition_field,
+        ]:
+            if field_to_validate is None:
+                continue
+
+            missing_field = True
+            for available_field in available_fields:
+                if available_field._name == field_to_validate._name:
+                    missing_field = False
+
+                    if field_to_validate._type != available_field._type:
+                        raise InvalidEventDataTableError(
+                            f"'{field_to_validate._name}' field in event data table '{self.table_name}' "
+                            + "must be a {field_to_validate._type.name} field"
+                        )
+
+            if missing_field:
+                raise InvalidEventDataTableError(
+                    f"Event data table '{self.table_name}' does not have '{field_to_validate._name}' field"
+                )
 
 
 @dataclass(frozen=True)
@@ -527,7 +562,7 @@ class Project:
                 "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
         for edt in self.event_data_tables:
-            edt.validate()
+            edt.validate(self.adapter)
 
 
 class DatasetModel:
