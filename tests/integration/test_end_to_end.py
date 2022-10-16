@@ -3,34 +3,9 @@ from datetime import datetime
 from mitzu.model import ConversionMetric, DiscoveredProject, Segment
 from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row, assert_sql
-from tests.samples.sources import get_simple_big_data, get_simple_csv
-
-
-def test_simple_big_data_discovery():
-    project = get_simple_big_data()
-    discovery = ProjectDiscovery(project)
-    m = discovery.discover_project().create_notebook_class_model()
-
-    seg: Segment = m.app_install.config(
-        start_dt="2021-01-01",
-        end_dt="2022-01-01",
-        time_group="total",
-    )
-    df = seg.get_df()
-    print(df)
-    assert 1 == df.shape[0]
-    assert_row(df, _agg_value=2254, _datetime=None)
-
-    seg: Segment = m.app_install.config(
-        start_dt="2021-01-01",
-        end_dt="2022-01-01",
-        time_group="total",
-        aggregation="event_count",
-    )
-    df = seg.get_df()
-    print(df)
-    assert 1 == df.shape[0]
-    assert_row(df, _agg_value=4706, _datetime=None)
+from tests.samples.sources import (
+    get_simple_csv,
+)
 
 
 def test_discovered_dataset_pickle():

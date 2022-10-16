@@ -352,6 +352,10 @@ class Connection:
         return self._secret.get_value()
 
 
+class InvalidEventDataTableError(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class EventDataTable:
     table_name: str
@@ -468,15 +472,39 @@ class EventDataTable:
         schema = "" if self.schema is None else self.schema + "."
         return f"{schema}{self.table_name}"
 
-    def validate(self):
+    def validate(self, adapter: GA.GenericDatasetAdapter):
         if self.event_name_alias is not None and self.event_name_field is not None:
-            raise Exception(
+            raise InvalidEventDataTableError(
                 f"For {self.table_name} both event_name_alias and event_name_field can't be defined in the same time."
             )
         if self.event_name_alias is None and self.event_name_field is None:
-            raise Exception(
+            raise InvalidEventDataTableError(
                 f"For {self.table_name} define the event_name_alias or the event_name_field property."
             )
+
+        available_fields = [f._get_name() for f in adapter.list_fields(self)]
+        if len(available_fields) == 0:
+            raise InvalidEventDataTableError(
+                f"No fields in event data table '{self.table_name}'"
+            )
+
+        for field_to_validate in [
+            self.event_name_field,
+            self.event_time_field,
+            self.user_id_field,
+            self.date_partition_field,
+        ]:
+            if field_to_validate is None:
+                continue
+
+            if field_to_validate._get_name() not in available_fields:
+                raise InvalidEventDataTableError(
+                    f"Event data table '{self.table_name}' does not have '{field_to_validate._get_name()}' field"
+                )
+
+
+class InvalidProjectError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -522,12 +550,17 @@ class Project:
 
     def validate(self):
         if len(self.event_data_tables) == 0:
-            raise Exception(
+            raise InvalidProjectError(
                 "At least a single EventDataTable needs to be added to the Project.\n"
                 "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
+        try:
+            self.get_adapter().test_connection()
+        except Exception as e:
+            raise InvalidProjectError(f"Connection failed: {str(e)}") from e
+
         for edt in self.event_data_tables:
-            edt.validate()
+            edt.validate(self.get_adapter())
 
 
 class DatasetModel:
