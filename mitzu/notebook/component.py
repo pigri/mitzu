@@ -1,6 +1,7 @@
 CSS = """
 :root {
     --component-height: 30px;
+    --bs-body-font-size-large: 18px;
     --bs-body-font-size: 12px;
     --bs-body-font-size-small: 8px;
 }
@@ -133,7 +134,7 @@ CSS = """
 
 .complex_segment .Select-placeholder {
     font-size: var(--bs-body-font-size);
-    font-weight: normal;
+    font-weight:  var(--bs-body-font-weight);
     color: var(--bs-gray-dark);
     background-color: transparent;
 }
@@ -188,22 +189,22 @@ CSS = """
 }
 
 .graph_container {
-    min-height: 400px;
-    text-align: center;
-    vertical-align: middle;
-    line-height: 400px;
-    user-select: none;
+    min-height: 500px;
+    
 }
 
-.graph_auto_refresh .form-label {
-    margin-bottom: 0px;
+.graph_container .graph_message {
+    line-height: 500px;
+    text-align: center;
+    vertical-align: middle;    
 }
+
 
 .property_name_prefix {
     line-height: var(--bs-body-font-size);
     font-size: var(--bs-body-font-size-small);
     height: var(--bs-body-font-size-small);
-    font-weight: normal !important;
+    font-weight:  var(--bs-body-font-weight) !important;
 }
 
 .Select-value-label .property_name_prefix {
@@ -218,7 +219,7 @@ CSS = """
     z-index: 0 ;
     height: var(--component-height);
     line-height: var(--component-height);
-    padding: 0px var(--bs-body-font-size-small);
+    padding: 0px var(--bs-body-font-size-small);    
 }
 
 .input-group-text {
@@ -228,6 +229,28 @@ CSS = """
 
 .metrics_config_container .input-group {
     margin-bottom: 3px;
+}
+
+.toolbar_row {    
+    border-top: 1px solid var(--bs-gray-300);
+    margin-top: var(--bs-body-font-size-small);
+    margin-bottom: var(--bs-body-font-size-small);
+    padding-top: var(--bs-body-font-size-small);
+}
+
+.toolbar_row .btn {
+    font-weight: var(--bs-body-font-weight);
+    font-size: var(--bs-body-font-size);
+}
+
+.toolbar_row .spinner-border {
+    height: var(--bs-body-font-size);
+    width: var(--bs-body-font-size);
+    border-width: 1px;    
+}
+
+.graph_message {
+    font-size: var( --bs-body-font-size-large);
 }
 
 #navbar_more_dropdown {

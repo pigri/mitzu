@@ -6,19 +6,22 @@ from random import random
 from typing import Optional
 
 import dash_bootstrap_components as dbc
+import diskcache
 import flask
 import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as PE
 import mitzu.webapp.webapp as MWA
+from dash import DiskcacheManager
+from dash.long_callback.managers import BaseLongCallbackManager
 from jupyter_dash import JupyterDash
 from mitzu.notebook.component import CSS
-
-LOG_HANDLER = sys.stdout
 
 
 def dashboard(
     mode: str = "inline", port: Optional[int] = None, host: Optional[str] = None
 ):
+    cache = diskcache.Cache("./")
+    callback_manager = DiskcacheManager(cache)
     app = JupyterDash(
         __name__,
         compress=True,
@@ -29,6 +32,7 @@ def dashboard(
         ],
         update_title=None,
         suppress_callback_exceptions=True,
+        long_callback_manager=callback_manager,
     )
 
     @app.server.route("/components.css", methods=["GET"])

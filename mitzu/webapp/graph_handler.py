@@ -39,6 +39,7 @@ MARKDOWN = """```sql
 GRAPH_CONTAINER = "graph_container"
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 200)
+BACKGROUND_CALLBACK = bool(os.getenv("BACKGROUND_CALLBACK", True))
 
 
 @dataclass
@@ -68,7 +69,7 @@ class GraphHandler:
             ),
             interval=GRAPH_POLL_INTERVAL_MS,
             prevent_initial_call=True,
-            background=True,
+            background=BACKGROUND_CALLBACK,
             running=[
                 (
                     Output(TH.GRAPH_REFRESH_BUTTON, "disabled"),

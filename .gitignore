@@ -87,3 +87,4 @@ serverless/.aws-sam/*
 release/app/cache/
 release/requirements.txt
 cache/
+cache.db*
