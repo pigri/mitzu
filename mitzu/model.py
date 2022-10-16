@@ -482,7 +482,7 @@ class EventDataTable:
                 f"For {self.table_name} define the event_name_alias or the event_name_field property."
             )
 
-        available_fields = adapter.list_fields(self)
+        available_fields = [f._get_name() for f in adapter.list_fields(self)]
         if len(available_fields) == 0:
             raise InvalidEventDataTableError(
                 f"No fields in event data table '{self.table_name}'"
@@ -497,20 +497,9 @@ class EventDataTable:
             if field_to_validate is None:
                 continue
 
-            missing_field = True
-            for available_field in available_fields:
-                if available_field._name == field_to_validate._name:
-                    missing_field = False
-
-                    if field_to_validate._type != available_field._type:
-                        raise InvalidEventDataTableError(
-                            f"'{field_to_validate._name}' field in event data table '{self.table_name}' "
-                            + "must be a {field_to_validate._type.name} field"
-                        )
-
-            if missing_field:
+            if field_to_validate._get_name() not in available_fields:
                 raise InvalidEventDataTableError(
-                    f"Event data table '{self.table_name}' does not have '{field_to_validate._name}' field"
+                    f"Event data table '{self.table_name}' does not have '{field_to_validate._get_name()}' field"
                 )
 
 
@@ -565,6 +554,11 @@ class Project:
                 "At least a single EventDataTable needs to be added to the Project.\n"
                 "Project(event_data_tables = [ EventDataTable.create(...)])"
             )
+        try:
+            self.adapter.test_connection()
+        except Exception as e:
+            raise InvalidProjectError(f"Connection failed: {str(e)}") from e
+
         for edt in self.event_data_tables:
             edt.validate(self.adapter)
 

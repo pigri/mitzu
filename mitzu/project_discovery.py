@@ -81,6 +81,8 @@ class ProjectDiscovery:
     def discover_project(self) -> M.DiscoveredProject:
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
+        self.project.validate()
+
         for ed_table in self.project.event_data_tables:
             print(f"Discovering {ed_table.get_full_name()}")
             fields = self.project.get_adapter().list_fields(event_data_table=ed_table)

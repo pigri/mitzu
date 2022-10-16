@@ -61,6 +61,10 @@ class SegmentSubQuery:
         return self
 
 
+class SQLAlchemyAdapterError(Exception):
+    pass
+
+
 @dataclass
 class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def __init__(self, project: M.Project):
@@ -133,9 +137,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
         full_name = event_data_table.get_full_name()
-        if full_name not in self._table_cache:
-            # print(f"Table {full_name} not in Cache")
+
+        try:
             engine = self.get_engine()
+        except Exception as e:
+            raise SQLAlchemyAdapterError(f"Failed to connect to {full_name}") from e
+
+        if full_name not in self._table_cache:
             metadata_obj = SA.MetaData()
 
             if event_data_table.schema is not None:

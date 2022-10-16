@@ -113,37 +113,3 @@ def test_event_data_table_with_missing_field(missing_field_name: str):
         edt.validate(adapter)
 
     assert "does not have 'missing'" in str(error.value)
-
-
-@pytest.mark.parametrize("field_with_wrong_type", FIELD_NAMES_TO_VALIDATE)
-def test_event_data_table_with_wrong_type(field_with_wrong_type: str):
-    adapter = MagicMock()
-    field_names = {
-        "event_name_field": "event_type",
-        "user_id_field": "user_id",
-        "event_time_field": "event_time",
-        "date_partition_field": "event_time",
-    }
-    fields = {
-        "event_name_field": Field("event_type", DataType.STRING),
-        "user_id_field": Field("user_id", DataType.STRING),
-        "event_time_field": Field("event_time", DataType.DATETIME),
-        "date_partition_field": Field("date_partition", DataType.DATETIME),
-    }
-    fields[field_with_wrong_type] = Field(
-        field_names[field_with_wrong_type], DataType.BOOL
-    )
-
-    adapter.list_fields.return_value = fields.values()
-    edt = EventDataTable.create(
-        table_name="simple",
-        **field_names,  # type: ignore
-    )
-
-    with pytest.raises(InvalidEventDataTableError) as error:
-        edt.validate(adapter)
-
-    assert (
-        f"'{field_names[field_with_wrong_type]}' field in event data table 'simple' must be a "
-        in str(error.value)
-    )
