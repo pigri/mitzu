@@ -30,15 +30,15 @@
 # Supported Integrations
 Mitzu integrates with most modern data lake and warehouse solutions:
 
-- [Databricks Spark (SQL)](https://www.databricks.com/product/databricks-sql)
-- [Trino / Starburst](https://trino.io/)
 - [AWS Athena](https://aws.amazon.com/athena/?whats-new-cards.sort-by=item.additionalFields.postDateTime&whats-new-cards.sort-order=desc)
-- [PostgreSQL](https://www.postgresql.org/)
-- [MySQL](https://www.mysql.com/)
+- [Databricks Spark (SQL)](https://www.databricks.com/product/databricks-sql)
 - Files - [SQLite](https://www.sqlite.org/index.html) (csv, parquet, json, etc.)
+- [MySQL](https://www.mysql.com/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Snowflake](https://www.snowflake.com/en/)
+- [Trino / Starburst](https://trino.io/)
 
 ## Coming Soon
-- [Snowflake](https://www.snowflake.com/en/)
 - [Clickhouse](https://clickhouse.com/)
 - [BigQuery](https://cloud.google.com/bigquery/)
 - [Redshift](https://aws.amazon.com/redshift/)
