@@ -34,6 +34,10 @@ def create_adapter(project: M.Project) -> GA.GenericDatasetAdapter:
         from mitzu.adapters.databricks_adapter import DatabricksAdapter
 
         return DatabricksAdapter(project)
+    elif con_type == M.ConnectionType.SNOWFLAKE:
+        from mitzu.adapters.snowflake_adapter import SnowflakeAdapter
+
+        return SnowflakeAdapter(project)
     else:
         from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 
