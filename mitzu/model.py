@@ -222,6 +222,7 @@ class ConnectionType(Enum):
     MYSQL = "mysql+mysqlconnector"
     SQLITE = "sqlite"
     DATABRICKS = "databricks"
+    SNOWFLAKE = "snowflake"
 
 
 @dataclass(frozen=True)

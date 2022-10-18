@@ -31,9 +31,9 @@ import mitzu.model as M
 
 M.Project(
     connection = M.Connection(
-        connection_type = M.ConnectionType.TRINO
-        host = "host"
-        port = 443
+        connection_type = M.ConnectionType.TRINO,
+        host = "host",
+        port = 443,
         user_name = "user_name",
         secret_resolver = ...
         catalog = "catalog",
@@ -51,13 +51,14 @@ M.Project(
 
 In the `Connection` class you need to provide the `connection_type`. Mitzu supports these connections types at the moment:
 
-- FILE
 - ATHENA
-- TRINO
-- POSTGRESQL
+- DATABRICKS
+- FILE
 - MYSQL
+- POSTGRESQL
+- SNOWFLAKE
 - SQLITE
-- DATABRICKS 
+- TRINO
 
 Mitzu establishes the connection to the data warehouse or lake with [SQL Alchemy](https://www.sqlalchemy.org/).
 
