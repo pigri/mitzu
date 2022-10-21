@@ -30,7 +30,7 @@ OAUTH_CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
 OAUTH_CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
 OAUTH_AUTHORIZED_EMAIL_REG = os.getenv("OAUTH_AUTHORIZED_EMAIL_REG")
 OAUTH_JWKS_URL = os.getenv("OAUTH_JWKS_URL")
-HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "_health")
+HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 
 
 def get_oauth_code() -> Optional[str]:
@@ -101,6 +101,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 LOGGER.debug(f"Redirected with code= {code}")
                 resp = self.handle_code_redirect()
             elif flask.request.path == HEALTH_CHECK_PATH:
+                LOGGER.debug("Health check")
                 resp = flask.Response(status=200, response="ok")
             elif flask.request.url == NOT_FOUND_URL:
                 LOGGER.debug(f"Allowing not found url: {flask.request.url}")
