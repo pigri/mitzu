@@ -1,43 +1,36 @@
 from __future__ import annotations
 
 import base64
-import logging
 import os
 import re
-import sys
 from abc import ABC, abstractmethod
+from copy import copy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 from urllib import parse
 
 import flask
 import jwt
-import mitzu.model as M
 import requests
-
-LOG_HANDLER = sys.stderr if os.getenv("LOG_HANDLER") == "stderr" else sys.stdout
-
-logger = logging.getLogger()
-logger.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
-logger.addHandler(logging.StreamHandler(LOG_HANDLER))
+from mitzu.webapp.helper import LOGGER
 
 REDIRECT_TO = "redirect_to"
-HOME_URL = "HOME_URL"
-MITZU_WEBAPP_URL = "MITZU_WEBAPP_URL"
-NOT_FOUND_URL = "NOT_FOUND_URL"
-SIGN_OUT_URL = "SIGN_OUT_URL"
-
-OAUTH_SIGN_OUT_REDIRECT_URL = "OAUTH_SIGN_OUT_REDIRECT_URL"
-OAUTH_SIGN_IN_URL = "OAUTH_SIGN_IN_URL"
-OAUTH_JWT_ALGORITHMS = "OAUTH_JWT_ALGORITHMS"
-OAUTH_JWT_AUDIENCE = "OAUTH_JWT_AUDIENCE"
-OAUTH_JWT_COOKIE = "OAUTH_JWT_COOKIE"
-OAUTH_REDIRECT_URI = "OAUTH_REDIRECT_URI"
-OAUTH_TOKEN_URL = "OAUTH_TOKEN_URL"
-OAUTH_CLIENT_SECRET = "OAUTH_CLIENT_SECRET"
-OAUTH_CLIENT_ID = "OAUTH_CLIENT_ID"
-OAUTH_AUTHORIZED_EMAIL_REG = "OAUTH_AUTHORIZED_EMAIL_REG"
-OAUTH_JWKS_URL = "OAUTH_JWKS_URL"
+HOME_URL = os.getenv("HOME_URL")
+MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL")
+NOT_FOUND_URL = os.getenv("NOT_FOUND_URL")
+SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
+OAUTH_SIGN_OUT_REDIRECT_URL = os.getenv("OAUTH_SIGN_OUT_REDIRECT_URL")
+OAUTH_SIGN_IN_URL = os.getenv("OAUTH_SIGN_IN_URL")
+OAUTH_JWT_ALGORITHMS = os.getenv("OAUTH_JWT_ALGORITHMS", "RS256").split(",")
+OAUTH_JWT_AUDIENCE = os.getenv("OAUTH_JWT_AUDIENCE")
+OAUTH_JWT_COOKIE = os.getenv("OAUTH_JWT_COOKIE", "access_token")
+OAUTH_REDIRECT_URI = os.getenv("OAUTH_REDIRECT_URI")
+OAUTH_TOKEN_URL = os.getenv("OAUTH_TOKEN_URL")
+OAUTH_CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
+OAUTH_CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
+OAUTH_AUTHORIZED_EMAIL_REG = os.getenv("OAUTH_AUTHORIZED_EMAIL_REG")
+OAUTH_JWKS_URL = os.getenv("OAUTH_JWKS_URL")
+HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "_health")
 
 
 def get_oauth_code() -> Optional[str]:
@@ -54,142 +47,126 @@ def get_oauth_code() -> Optional[str]:
 
 class MitzuAuthorizer(ABC):
     @abstractmethod
-    def get_user_email(self) -> Optional[str]:
+    def get_user_email(self, encoded_token: str) -> Optional[str]:
         pass
 
 
 class GuestMitzuAuthorizer(MitzuAuthorizer):
-    def get_user_email(self) -> Optional[str]:
+    def get_user_email(self, _: str) -> Optional[str]:
         return "Guest"
 
 
 @dataclass
 class JWTMitzuAuthorizer(MitzuAuthorizer):
     server: flask.Flask
-    not_found_url: str
-    sign_in_url: str
-    jwt_cookie: str
-    jwt_audience: str
-    jwt_algorithms: List[str]
-    jwks_url: str
-    client_id: str
-    client_secret: str
-    oauth_token_url: str
-    home_url: str
-    app_url: str
-    redirect_uri: str
-    signed_out_url: Optional[str] = None
-    signed_out_redirect_url: Optional[str] = None
-    authorized_email_reg: Optional[str] = None
-
-    jwt_token: M.State[Dict[str, Any]] = field(default_factory=lambda: M.State())
-    jwt_encoded: M.State[str] = field(default_factory=lambda: M.State())
+    tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
 
     def handle_code_redirect(self):
         code = get_oauth_code()
 
-        message = bytes(f"{self.client_id}:{self.client_secret}", "utf-8")
+        message = bytes(f"{OAUTH_CLIENT_ID}:{OAUTH_CLIENT_SECRET}", "utf-8")
         secret_hash = base64.b64encode(message).decode()
         payload = {
             "grant_type": "authorization_code",
-            "client_id": self.client_id,
+            "client_id": OAUTH_CLIENT_ID,
             "code": code,
-            "redirect_uri": self.redirect_uri,
+            "redirect_uri": OAUTH_REDIRECT_URI,
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": f"Basic {secret_hash}",
         }
-        logger.info(f"Payload: {payload}")
-        logger.info(f"Oauth Token URL: {self.oauth_token_url}")
-        resp = requests.post(self.oauth_token_url, params=payload, headers=headers)
+        LOGGER.debug(f"Payload: {payload}")
+        LOGGER.debug(f"Oauth Token URL: {OAUTH_TOKEN_URL}")
+        resp = requests.post(OAUTH_TOKEN_URL, params=payload, headers=headers)
         if resp.status_code != 200:
-            logger.info(f"Failed token resp: {resp.status_code}, {resp.content}")
+            LOGGER.debug(f"Failed token resp: {resp.status_code}, {resp.content}")
             return flask.Response(status=resp.status_code, response=resp.content)
 
         cookie_val = f"{resp.json()['id_token']}"
-        redirect_url = flask.request.cookies.get(REDIRECT_TO, self.app_url)
+        redirect_url = flask.request.cookies.get(REDIRECT_TO, MITZU_WEBAPP_URL)
         final_resp = flask.redirect(code=301, location=redirect_url)
-        final_resp.set_cookie(self.jwt_cookie, cookie_val)
+        final_resp.set_cookie(OAUTH_JWT_COOKIE, cookie_val)
         final_resp.set_cookie(REDIRECT_TO, "", expires=0)
-        logger.info(f"Setting cookie resp: {cookie_val}")
+        LOGGER.debug(f"Setting cookie resp: {cookie_val}")
         return final_resp
 
     def setup_authorizer(self):
         @self.server.before_request
         def authorize_request():
-            jwt_encoded = flask.request.cookies.get(self.jwt_cookie)
+            jwt_encoded = flask.request.cookies.get(OAUTH_JWT_COOKIE)
             code = get_oauth_code()
             resp: flask.Response
             if code is not None:
-                logger.info(f"Redirected with code= {code}")
+                LOGGER.debug(f"Redirected with code= {code}")
                 resp = self.handle_code_redirect()
-            elif flask.request.url == self.not_found_url:
-                logger.info(f"Allowing not found url: {flask.request.url}")
+            elif flask.request.path == HEALTH_CHECK_PATH:
+                resp = flask.Response(status=200, response="ok")
+            elif flask.request.url == NOT_FOUND_URL:
+                LOGGER.debug(f"Allowing not found url: {flask.request.url}")
                 page_404 = flask.render_template("404.html")
-                page_404 = page_404.format(
-                    home_url=self.home_url, sign_out_url=self.signed_out_url
-                )
+                page_404 = page_404.format(home_url=HOME_URL, sign_out_url=SIGN_OUT_URL)
                 resp = flask.Response(status=200, response=page_404)
-            elif (
-                self.signed_out_url is not None
-                and flask.request.url == self.signed_out_url
-            ):
-                logger.info(f"Signed out URL: {self.signed_out_url}")
+            elif SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
+                if jwt_encoded:
+                    self.tokens.pop(jwt_encoded)
+                LOGGER.debug(f"Signed out URL: {SIGN_OUT_URL}")
                 location = (
-                    f"{self.signed_out_redirect_url}?"
+                    f"{OAUTH_SIGN_OUT_REDIRECT_URL}?"
                     "response_type=code&"
-                    f"client_id={self.client_id}&"
-                    f"redirect_uri={self.redirect_uri}&"
+                    f"client_id={OAUTH_CLIENT_ID}&"
+                    f"redirect_uri={OAUTH_CLIENT_SECRET}&"
                     # state=STATE& todo
                     f"scope=email+openid"
                 )
-                logger.info(f"Redirect {location}")
+                LOGGER.debug(f"Redirect {location}")
                 resp = flask.redirect(code=301, location=location)
-                resp.set_cookie(self.jwt_cookie, "", expires=0)
+                resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
             elif not jwt_encoded:
-                logger.info("Unauthorized (missing jwt_token cookie)")
-                resp = flask.redirect(code=301, location=self.sign_in_url)
+                LOGGER.debug("Unauthorized (missing jwt_token cookie)")
+                resp = flask.redirect(code=301, location=OAUTH_SIGN_IN_URL)
                 resp.set_cookie(REDIRECT_TO, flask.request.url)
-            elif jwt_encoded == self.jwt_encoded.get_value():
+            elif jwt_encoded in self.tokens.keys():
                 resp = None
             else:
-                logger.info("Authorization started")
+                LOGGER.debug("Authorization started")
                 try:
-                    jwks_client = jwt.PyJWKClient(self.jwks_url)
+                    jwks_client = jwt.PyJWKClient(OAUTH_JWKS_URL)
                     signing_key = jwks_client.get_signing_key_from_jwt(jwt_encoded)
                     decoded_token = jwt.decode(
                         jwt_encoded,
                         signing_key.key,
-                        algorithms=self.jwt_algorithms,
-                        audience=self.jwt_audience,
+                        algorithms=OAUTH_JWT_ALGORITHMS,
+                        audience=OAUTH_JWT_AUDIENCE,
                     )
 
                     if decoded_token is None:
-                        logger.info("Unauthorized (Invalid jwt token)")
-                        resp = flask.redirect(code=301, location=self.signed_out_url)
+                        LOGGER.debug("Unauthorized (Invalid jwt token)")
+                        resp = flask.redirect(code=301, location=SIGN_OUT_URL)
                     else:
-                        logger.info("Authorization finished (caching)")
-                        self.jwt_encoded.set_value(jwt_encoded)
-                        self.jwt_token.set_value(decoded_token)
-                        logger.info(f"User email: {self.get_user_email()}")
+                        LOGGER.debug("Authorization finished (caching)")
+                        self.tokens[jwt_encoded] = decoded_token
+                        LOGGER.debug(f"User email: {self.get_user_email(jwt_encoded)}")
                         resp = None
                 except Exception as exc:
-                    logger.info(f"Authorization error: {exc}")
-                    resp = flask.redirect(code=301, location=self.signed_out_url)
+                    LOGGER.debug(f"Authorization error: {exc}")
+                    resp = flask.redirect(code=301, location=SIGN_OUT_URL)
 
             if (
-                self.authorized_email_reg is not None
+                OAUTH_AUTHORIZED_EMAIL_REG is not None
                 and resp is None
                 and flask.request.url
                 not in (
-                    self.not_found_url,
-                    self.signed_out_url,
+                    NOT_FOUND_URL,
+                    SIGN_OUT_URL,
                 )
-                and re.search(self.authorized_email_reg, self.get_user_email()) is None
+                and re.search(
+                    OAUTH_AUTHORIZED_EMAIL_REG, self.get_user_email(jwt_encoded)
+                )
+                is None
             ):
-                logger.info(f"Unauthorized email, redirecting to {self.not_found_url}")
-                resp = flask.redirect(code=301, location=self.not_found_url)
+                LOGGER.debug(f"Unauthorized email, redirecting to {NOT_FOUND_URL}")
+                resp = flask.redirect(code=301, location=NOT_FOUND_URL)
 
             if resp is not None:
                 resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -199,81 +176,14 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
             return resp
 
-    def get_404_page(self) -> str:
-        return "404 Not Found"
-
-    def get_jwt_token(self) -> Optional[Dict[str, Any]]:
-        return self.jwt_token.get_value()
-
-    def get_user_email(self) -> Optional[str]:
-        val = self.jwt_token.get_value()
+    def get_user_email(self, encoded_token: str) -> Optional[str]:
+        val = self.tokens.get(encoded_token, {})
         if val is not None:
             return val.get("email")
         return None
 
     @classmethod
     def from_env_vars(cls, server: flask.Flask) -> MitzuAuthorizer:
-        not_found_url = os.getenv(NOT_FOUND_URL)
-        sign_in_url = os.getenv(OAUTH_SIGN_IN_URL)
-        jwt_cookie = os.getenv(OAUTH_JWT_COOKIE)
-        jwks_url = os.getenv(OAUTH_JWKS_URL)
-        jwt_audience = os.getenv(OAUTH_JWT_AUDIENCE)
-        jwt_algorithms = os.getenv(OAUTH_JWT_ALGORITHMS, "RS256").split(",")
-        client_id = os.getenv(OAUTH_CLIENT_ID)
-        client_secret = os.getenv(OAUTH_CLIENT_SECRET)
-        oauth_token_url = os.getenv(OAUTH_TOKEN_URL)
-        redirect_uri = os.getenv(OAUTH_REDIRECT_URI)
-        home_url = os.getenv(HOME_URL)
-        app_url = os.getenv(MITZU_WEBAPP_URL)
-        jwt_cookie = os.getenv(OAUTH_JWT_COOKIE)
-        authorized_email_reg = os.getenv(OAUTH_AUTHORIZED_EMAIL_REG)
-        signed_out_url = os.getenv(SIGN_OUT_URL)
-        signed_out_redirect_url = os.getenv(OAUTH_SIGN_OUT_REDIRECT_URL)
-
-        if not_found_url is None:
-            raise Exception(f"{NOT_FOUND_URL} env var is missing")
-        if sign_in_url is None:
-            raise Exception(f"{OAUTH_SIGN_IN_URL} env var is missing")
-        if jwt_cookie is None:
-            raise Exception(f"{OAUTH_JWT_COOKIE} env var is missing")
-        if jwks_url is None:
-            raise Exception(f"{OAUTH_JWKS_URL} env var is missing")
-        if jwt_audience is None:
-            raise Exception(f"{OAUTH_JWT_AUDIENCE} env var is missing")
-        if client_id is None:
-            raise Exception(f"{OAUTH_CLIENT_ID} env var is missing")
-        if client_secret is None:
-            raise Exception(f"{OAUTH_CLIENT_SECRET} env var is missing")
-        if oauth_token_url is None:
-            raise Exception(f"{OAUTH_TOKEN_URL} env var is missing")
-        if redirect_uri is None:
-            raise Exception(f"{OAUTH_REDIRECT_URI} env var is missing")
-        if home_url is None:
-            raise Exception(f"{HOME_URL} env var is missing")
-        if app_url is None:
-            raise Exception(f"{MITZU_WEBAPP_URL} env var is missing")
-        if signed_out_url is None:
-            raise Exception(f"{SIGN_OUT_URL} env var is missing")
-        if signed_out_redirect_url is None:
-            raise Exception(f"{OAUTH_SIGN_OUT_REDIRECT_URL} env var is missing")
-
-        authorizer = JWTMitzuAuthorizer(
-            server=server,
-            not_found_url=not_found_url,
-            sign_in_url=sign_in_url,
-            jwt_cookie=jwt_cookie,
-            jwt_algorithms=jwt_algorithms,
-            jwt_audience=jwt_audience,
-            jwks_url=jwks_url,
-            client_id=client_id,
-            client_secret=client_secret,
-            oauth_token_url=oauth_token_url,
-            redirect_uri=redirect_uri,
-            home_url=home_url,
-            app_url=app_url,
-            signed_out_url=signed_out_url,
-            signed_out_redirect_url=signed_out_redirect_url,
-            authorized_email_reg=authorized_email_reg,
-        )
+        authorizer = JWTMitzuAuthorizer(server=server)
         authorizer.setup_authorizer()
         return authorizer

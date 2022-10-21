@@ -60,7 +60,7 @@ notebook:
 
 dash: 	
 	cd release/app/ && \
-	BASEPATH=../examples/webapp-docker/mitzu/ \
+	BASEPATH=../../examples/webapp-docker/mitzu/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
@@ -69,7 +69,6 @@ dash:
 	NOT_FOUND_URL="http://localhost:8082/not_found" \
 	SIGN_OUT_URL="http://localhost:8082/logout" \
 	OAUTH_SIGN_IN_URL="https://signin.mitzu.io/oauth2/authorize?client_id=1bqlja23lfmniv7bm703aid9o0&response_type=code&scope=email+openid&redirect_uri=http://localhost:8082/" \
-	OAUTH_JWT_COOKIE=access_token \
 	OAUTH_JWT_AUDIENCE=1bqlja23lfmniv7bm703aid9o0 \
 	OAUTH_REDIRECT_URI="http://localhost:8082/" \
 	OAUTH_CLIENT_ID=1bqlja23lfmniv7bm703aid9o0 \

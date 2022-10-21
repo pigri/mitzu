@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from typing import Any, List, Optional, Union
 from urllib.parse import ParseResult
 
@@ -10,6 +11,7 @@ from dash import Dash, html
 PROJECT_PATH_INDEX = 0
 
 LOGGER = logging.getLogger()
+LOGGER.addHandler(logging.StreamHandler(sys.stdout))
 LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 

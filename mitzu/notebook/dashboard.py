@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from random import random
 from typing import Optional
 
@@ -12,7 +11,6 @@ import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as PE
 import mitzu.webapp.webapp as MWA
 from dash import DiskcacheManager
-from dash.long_callback.managers import BaseLongCallbackManager
 from jupyter_dash import JupyterDash
 from mitzu.notebook.component import CSS
 
