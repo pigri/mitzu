@@ -3,7 +3,7 @@ services:
   mitzu-webapp:
     image: imeszaros/mitzu-webapp:latest
     restart: always
-    entrypoint: gunicorn -b 0.0.0.0:80 app:server
+    entrypoint: gunicorn -b 0.0.0.0:80 --workers=2 app:server 
     environment:
       BASEPATH: /var/task/basepath/
       MANAGE_PROJECTS_LINK: http://127.0.0.1:8888/lab/tree/work/projects

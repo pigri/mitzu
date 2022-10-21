@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlparse
 
-import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.serialization as SE
@@ -21,13 +20,14 @@ import mitzu.webapp.simple_segment_handler as SS
 import mitzu.webapp.toolbar_handler as TH
 import mitzu.webapp.webapp as WA
 from dash import Dash, ctx, dcc, html
-from dash.dependencies import ALL, Input, Output, State
+from dash.dependencies import ALL, Input, Output
 from mitzu.webapp.helper import (
+    CHILDREN,
     LOGGER,
-    deserialize_component,
-    find_components,
+    METRIC_SEGMENTS,
     find_event_field_def,
     get_path_project_name,
+    transform_all_inputs,
 )
 from mitzu.webapp.persistence import PersistencyProvider
 
@@ -35,34 +35,36 @@ MAIN = "main"
 MITZU_LOCATION = "mitzu_location"
 ALL_INPUT_COMPS = {
     "all_inputs": {
-        "href": Input(WA.MITZU_LOCATION, "href"),
-        "metric_type_value": Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
-        "event_name_dd_value": Input(
+        WA.MITZU_LOCATION: Input(WA.MITZU_LOCATION, "href"),
+        MNB.METRIC_TYPE_DROPDOWN: Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
+        ES.EVENT_NAME_DROPDOWN: Input(
             {"type": ES.EVENT_NAME_DROPDOWN, "index": ALL}, "value"
         ),
-        "property_operator_dd_value": Input(
+        SS.PROPERTY_OPERATOR_DROPDOWN: Input(
             {"type": SS.PROPERTY_OPERATOR_DROPDOWN, "index": ALL}, "value"
         ),
-        "property_name_dd_value": Input(
+        SS.PROPERTY_NAME_DROPDOWN: Input(
             {"type": SS.PROPERTY_NAME_DROPDOWN, "index": ALL}, "value"
         ),
-        "property_value_input": Input(
+        SS.PROPERTY_VALUE_INPUT: Input(
             {"type": SS.PROPERTY_VALUE_INPUT, "index": ALL}, "value"
         ),
-        "group_by_dd_value": Input(
+        CS.COMPLEX_SEGMENT_GROUP_BY: Input(
             {"type": CS.COMPLEX_SEGMENT_GROUP_BY, "index": ALL}, "value"
         ),
-        "time_group_dd_value": Input(DS.TIME_GROUP_DROPDOWN, "value"),
-        "custom_start_date_value": Input(DS.CUSTOM_DATE_PICKER, "start_date"),
-        "custom_end_date_value": Input(DS.CUSTOM_DATE_PICKER, "end_date"),
-        "lookback_dd_value": Input(DS.LOOKBACK_WINDOW_DROPDOWN, "value"),
-        "conv_window_tg_dd_value": Input(MC.CONVERSION_WINDOW_INTERVAL_STEPS, "value"),
-        "conv_window_interval_value": Input(MC.CONVERSION_WINDOW_INTERVAL, "value"),
-        "agg_type_dd_value": Input(MC.AGGREGATION_TYPE, "value"),
-        "refresh_n_clicks": Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
-        "chart_button_n_clicks": Input(TH.CHART_BUTTON, "n_clicks"),
-        "table_button_n_clicks": Input(TH.TABLE_BUTTON, "n_clicks"),
-        "sql_button_n_clicks": Input(TH.SQL_BUTTON, "n_clicks"),
+        DS.TIME_GROUP_DROPDOWN: Input(DS.TIME_GROUP_DROPDOWN, "value"),
+        "start_date": Input(DS.CUSTOM_DATE_PICKER, "start_date"),
+        "end_date": Input(DS.CUSTOM_DATE_PICKER, "end_date"),
+        DS.LOOKBACK_WINDOW_DROPDOWN: Input(DS.LOOKBACK_WINDOW_DROPDOWN, "value"),
+        MC.CONVERSION_WINDOW_INTERVAL_STEPS: Input(
+            MC.CONVERSION_WINDOW_INTERVAL_STEPS, "value"
+        ),
+        MC.CONVERSION_WINDOW_INTERVAL: Input(MC.CONVERSION_WINDOW_INTERVAL, "value"),
+        MC.AGGREGATION_TYPE: Input(MC.AGGREGATION_TYPE, "value"),
+        TH.GRAPH_REFRESH_BUTTON: Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
+        TH.CHART_BUTTON: Input(TH.CHART_BUTTON, "n_clicks"),
+        TH.TABLE_BUTTON: Input(TH.TABLE_BUTTON, "n_clicks"),
+        TH.SQL_BUTTON: Input(TH.SQL_BUTTON, "n_clicks"),
     }
 }
 
@@ -82,11 +84,11 @@ class MitzuWebApp:
         loc = dcc.Location(id=MITZU_LOCATION, refresh=False)
         navbar = MN.create_mitzu_navbar(self)
 
-        metric_segments_div = MS.MetricSegmentsHandler.from_metric(
+        metric_segments_div = MS.from_metric(
             discovered_project=None,
             metric=None,
             metric_type=MNB.MetricType.SEGMENTATION,
-        ).component
+        )
 
         graph_container = self.create_graph_container()
         self.app.layout = html.Div(
@@ -127,20 +129,18 @@ class MitzuWebApp:
         return dp
 
     def create_graph_container(self):
-        metrics_config_card = MC.MetricConfigHandler.from_metric(None, None).component
-        graph_handler = GH.GraphHandler.from_webapp(self)
-        graph_handler.create_callbacks()
-        graph = graph_handler.component
-        toolbar_handler = TH.ToolbarHandler.from_webapp(self)
-        toolbar_handler.create_callbacks()
-        toolbar = toolbar_handler.component
+        metrics_config_card = MC.from_metric(None, None)
+        graph_handler = GH.create_graph_container()
+        toolbar_handler = TH.create_toolbar_handler()
+
+        toolbar = toolbar_handler
         graph_container = dbc.Card(
             children=[
                 dbc.CardBody(
                     children=[
                         metrics_config_card,
                         toolbar,
-                        graph,
+                        graph_handler,
                     ],
                 ),
             ],
@@ -163,31 +163,28 @@ class MitzuWebApp:
 
     def create_metric_from_components(
         self,
-        metric_seg_children: List[bc.Component],
-        mc_children: List[bc.Component],
         discovered_project: Optional[M.DiscoveredProject],
         metric_type: MNB.MetricType,
+        all_inputs: Dict[str, Any],
     ) -> Optional[M.Metric]:
         if discovered_project is None:
             return None
 
-        segments = MS.MetricSegmentsHandler.from_component(
-            discovered_project, html.Div(children=metric_seg_children)
-        ).to_metric_segments()
+        segments = MS.from_all_inputs(discovered_project, all_inputs)
+
         metric: Optional[Union[M.Segment, M.Conversion]] = None
         if metric_type == MNB.MetricType.CONVERSION:
             metric = M.Conversion(segments)
         elif metric_type == MNB.MetricType.SEGMENTATION:
-            if len(segments) >= 1:
+            if len(segments) == 1:
                 metric = segments[0]
 
         if metric is None:
             return None
 
-        metric_config_comp = MC.MetricConfigHandler.from_component(
-            html.Div(children=mc_children), discovered_project
+        metric_config, conv_tw = MC.from_all_inputs(
+            discovered_project, all_inputs, metric_type
         )
-        metric_config, conv_tw = metric_config_comp.to_metric_config_and_conv_window()
         if metric_config.agg_type:
             agg_str = M.AggType.to_agg_str(
                 metric_config.agg_type, metric_config.agg_param
@@ -196,13 +193,11 @@ class MitzuWebApp:
             agg_str = None
 
         group_by = None
-        if len(metric_seg_children) > 0:
-            group_by_paths = find_components(
-                CS.COMPLEX_SEGMENT_GROUP_BY, metric_seg_children[0]
-            )
-            if len(group_by_paths) == 1:
-                gp = group_by_paths[0].value
-                group_by = find_event_field_def(gp, discovered_project) if gp else None
+
+        group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
+        if len(group_by_paths) == 1:
+            gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
+            group_by = find_event_field_def(gp, discovered_project) if gp else None
 
         if isinstance(metric, M.Conversion):
             return metric.config(
@@ -231,9 +226,7 @@ class MitzuWebApp:
         self,
         parse_result: ParseResult,
         discovered_project: M.DiscoveredProject,
-        metric_seg_divs: List[Dict],
-        metric_configs: List[Dict],
-        metric_type_value: str,
+        all_inputs: Dict[str, Any],
     ) -> Tuple[Optional[M.Metric], MNB.MetricType]:
         metric: Optional[M.Metric] = None
         metric_type = MNB.MetricType.SEGMENTATION
@@ -242,19 +235,21 @@ class MitzuWebApp:
             query = parse_result.query[2:]
             metric, metric_type = self.get_metric_from_query(query, project_name)
         else:
-            metric_seg_children = [deserialize_component(c) for c in metric_seg_divs]
-            metric_configs_children = [deserialize_component(c) for c in metric_configs]
-            metric_type = MNB.MetricType(metric_type_value)
+            metric_type = MNB.MetricType(all_inputs[MNB.METRIC_TYPE_DROPDOWN])
             metric = self.create_metric_from_components(
-                metric_seg_children,
-                metric_configs_children,
-                discovered_project,
-                metric_type,
+                discovered_project, metric_type, all_inputs
             )
         return metric, metric_type
 
+    def metric_from_all_inputs(
+        self, discovered_project: M.DiscoveredProject, all_inputs: Dict[str, Any]
+    ) -> M.Metric:
+        pass
+
     def create_callbacks(self):
-        SS.SimpleSegmentHandler.create_callbacks(self.app)
+        GH.create_callbacks(self)
+        TH.create_callbacks(self)
+        SS.create_callbacks(self)
 
         @self.app.callback(
             output=[
@@ -264,28 +259,22 @@ class MitzuWebApp:
                 Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             ],
             inputs=ALL_INPUT_COMPS,
-            state=dict(
-                metric_segment_divs=State(MS.METRIC_SEGMENTS, "children"),
-                metric_configs=State(MC.METRICS_CONFIG_CONTAINER, "children"),
-            ),
             prevent_initial_call=True,
         )
         def change_layout(
             all_inputs: Dict[str, Any],
-            metric_segment_divs: List[Dict],
-            metric_configs: List[Dict],
         ) -> Tuple[List[html.Div], List[html.Div], str, str]:
             LOGGER.debug(f"Layout changed caused by: {ctx.triggered_id}")
-            parse_result = urlparse(all_inputs["href"])
+            all_inputs = transform_all_inputs(ctx.inputs_list)
+            parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
             project_name = get_path_project_name(parse_result, self.app)
             discovered_project = self.get_discovered_project(project_name)
 
             if discovered_project is None:
-                def_mc_comp = MC.MetricConfigHandler.from_metric(None, None)
-                def_mc_children = def_mc_comp.component.children
+                def_mc_comp_children = MC.from_metric(None, None).children
                 return (
                     [],
-                    [c.to_plotly_json() for c in def_mc_children],
+                    [c.to_plotly_json() for c in def_mc_comp_children],
                     "?" + parse_result.query[2:],
                     MNB.MetricType.SEGMENTATION.value,
                 )
@@ -293,26 +282,22 @@ class MitzuWebApp:
             metric, metric_type = self.handle_metric_changes(
                 parse_result=parse_result,
                 discovered_project=discovered_project,
-                metric_seg_divs=metric_segment_divs,
-                metric_configs=metric_configs,
-                metric_type_value=all_inputs["metric_type_value"],
+                all_inputs=all_inputs,
             )
 
             url_search = "?"
             if metric is not None:
                 url_search = "?m=" + SE.to_compressed_string(metric)
 
-            metric_segments = MS.MetricSegmentsHandler.from_metric(
+            metric_segments = MS.from_metric(
                 discovered_project=discovered_project,
                 metric=metric,
                 metric_type=metric_type,
-            ).component.children
+            ).children
 
             metric_segment_comps = [seg.to_plotly_json() for seg in metric_segments]
 
-            mc_children = MC.MetricConfigHandler.from_metric(
-                metric, discovered_project
-            ).component.children
+            mc_children = MC.from_metric(metric, discovered_project).children
             metric_config_comps = [c.to_plotly_json() for c in mc_children]
 
             return (

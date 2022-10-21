@@ -61,7 +61,7 @@ notebook:
 dash: 	
 	cd release/app/ && \
 	BASEPATH=../../examples/webapp-docker/mitzu/ \
-	LOG_LEVEL=INFO \
+	LOG_LEVEL=DEBUG \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
 	MITZU_WEBAPP_URL="http://localhost:8082/" \

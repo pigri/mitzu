@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
+import dash.development.base_component as bc
 import mitzu.model as M
 from dash import dcc, html
 from mitzu.webapp.helper import value_to_label
@@ -38,46 +38,30 @@ TYPES: Dict[MetricType, str] = {
 DEF_STYLE = {"font-size": 15, "padding-left": 10}
 
 
-@dataclass
-class MetricTypeHandler:
+def from_metric_type(metric_type: MetricType) -> bc.Component:
+    return dcc.Dropdown(
+        options=[
+            {
+                "label": html.Div(
+                    [
+                        html.I(className=css_class),
+                        html.Div(value_to_label(val.value), style=DEF_STYLE),
+                    ],
+                    className=METRIC_TYPE_DROPDOWN_OPTION,
+                ),
+                "value": val.value,
+                "disabled": val not in [MetricType.SEGMENTATION, MetricType.CONVERSION],
+            }
+            for val, css_class in TYPES.items()
+        ],
+        id=METRIC_TYPE_DROPDOWN,
+        className=METRIC_TYPE_DROPDOWN,
+        clearable=False,
+        value=metric_type.value,
+        searchable=False,
+        style={"border-radius": "5px"},
+    )
 
-    component: dcc.Dropdown
 
-    @classmethod
-    def from_component(cls, component: html.Div) -> MetricTypeHandler:
-        return MetricTypeHandler(component)
-
-    @classmethod
-    def from_metric(cls, metric: Optional[M.Metric]) -> MetricTypeHandler:
-        return cls.from_metric_type(MetricType.from_metric(metric))
-
-    @classmethod
-    def from_metric_type(cls, metric_type: MetricType) -> MetricTypeHandler:
-        metric_type_dropdown = dcc.Dropdown(
-            options=[
-                {
-                    "label": html.Div(
-                        [
-                            html.I(className=css_class),
-                            html.Div(value_to_label(val.value), style=DEF_STYLE),
-                        ],
-                        className=METRIC_TYPE_DROPDOWN_OPTION,
-                    ),
-                    "value": val.value,
-                    "disabled": val
-                    not in [MetricType.SEGMENTATION, MetricType.CONVERSION],
-                }
-                for val, css_class in TYPES.items()
-            ],
-            id=METRIC_TYPE_DROPDOWN,
-            className=METRIC_TYPE_DROPDOWN,
-            clearable=False,
-            value=metric_type.value,
-            searchable=False,
-            style={"border-radius": "5px"},
-        )
-
-        return MetricTypeHandler(metric_type_dropdown)
-
-    def to_metric_type(self) -> MetricType:
-        return MetricType(self.component.value)
+def from_all_inputs(all_inputs: Dict[str, Any]) -> MetricType:
+    return MetricType(all_inputs.get(METRIC_TYPE_DROPDOWN))

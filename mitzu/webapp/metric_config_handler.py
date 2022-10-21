@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from io import UnsupportedOperation
 from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.dates_selector_handler as DS
+import mitzu.webapp.navbar.metric_type_handler as MTH
 from dash import dcc, html
-from mitzu.webapp.helper import find_first_component
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
 
@@ -168,73 +168,59 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
     return html.Div(children=[aggregation_comp, conv_window])
 
 
-@dataclass
-class MetricConfigHandler:
+def from_metric(
+    metric: Optional[M.Metric],
+    discovered_project: Optional[M.DiscoveredProject],
+) -> bc.Component:
+    metric_config = metric._config if metric is not None else None
+    conversion_comps = [create_metric_options_component(metric)]
 
-    component: bc.Component
-    discovered_project: Optional[M.DiscoveredProject]
+    component = dbc.Row(
+        [
+            dbc.Col(
+                children=[DS.from_metric_config(metric_config)],
+                xs=12,
+                md=6,
+            ),
+            dbc.Col(children=conversion_comps, xs=12, md=6),
+        ],
+        id=METRICS_CONFIG_CONTAINER,
+        className=METRICS_CONFIG_CONTAINER,
+    )
 
-    @classmethod
-    def from_component(
-        cls,
-        component: bc.Component,
-        discovered_project: Optional[M.DiscoveredProject],
-    ) -> MetricConfigHandler:
-        return MetricConfigHandler(component, discovered_project)
+    return component
 
-    @classmethod
-    def from_metric(
-        cls,
-        metric: Optional[M.Metric],
-        discovered_project: Optional[M.DiscoveredProject],
-    ) -> MetricConfigHandler:
-        metric_config = metric._config if metric is not None else None
-        conversion_comps = [create_metric_options_component(metric)]
 
-        component = dbc.Row(
-            [
-                dbc.Col(
-                    children=[
-                        DS.DateSelectorHandler.from_metric_config(
-                            metric_config, discovered_project
-                        ).component
-                    ],
-                    xs=12,
-                    md=6,
-                ),
-                dbc.Col(children=conversion_comps, xs=12, md=6),
-            ],
-            id=METRICS_CONFIG_CONTAINER,
-            className=METRICS_CONFIG_CONTAINER,
-        )
+def from_all_inputs(
+    discovered_project: Optional[M.DiscoveredProject],
+    all_inputs: Dict[str, Any],
+    metric_type: MTH.MetricType,
+) -> Tuple[M.MetricConfig, M.TimeWindow]:
+    agg_type_val = all_inputs.get(AGGREGATION_TYPE)
+    if agg_type_val is None:
+        if metric_type == M.MetricType.CONVERSION:
+            agg_type, agg_param = M.AggType.CONVERSION, None
+        elif metric_type == M.MetricType.SEGMENTATION:
+            agg_type, agg_param = M.AggType.COUNT_UNIQUE_USERS, None
+        else:
+            raise UnsupportedOperation(f"Unsupported Metric Type : {metric_type}")
+    else:
+        agg_type, agg_param = M.AggType.parse_agg_str(agg_type_val)
 
-        return MetricConfigHandler(component, discovered_project)
+    res_tw = M.TimeWindow(
+        value=all_inputs.get(CONVERSION_WINDOW_INTERVAL, 1),
+        period=M.TimeGroup(
+            all_inputs.get(CONVERSION_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)
+        ),
+    )
 
-    def to_metric_config_and_conv_window(
-        self,
-    ) -> Tuple[M.MetricConfig, Optional[M.TimeWindow]]:
-        date_selector = find_first_component(DS.DATE_SELECTOR, self.component)
-        c_steps = find_first_component(CONVERSION_WINDOW_INTERVAL_STEPS, self.component)
-        c_interval = find_first_component(CONVERSION_WINDOW_INTERVAL, self.component)
-        agg_type, agg_param = M.AggType.parse_agg_str(
-            find_first_component(AGGREGATION_TYPE, self.component).value
-        )
-        res_tw: Optional[M.TimeWindow] = None
-
-        if c_steps is not None:
-            res_tw = M.TimeWindow(
-                value=c_interval.value, period=M.TimeGroup(c_steps.value)
-            )
-
-        dates_conf = DS.DateSelectorHandler.from_component(
-            date_selector, self.discovered_project
-        ).to_metric_config()
-        res_config = M.MetricConfig(
-            start_dt=dates_conf.start_dt,
-            end_dt=dates_conf.end_dt,
-            lookback_days=dates_conf.lookback_days,
-            time_group=dates_conf.time_group,
-            agg_type=agg_type,
-            agg_param=agg_param,
-        )
-        return res_config, res_tw
+    dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
+    res_config = M.MetricConfig(
+        start_dt=dates_conf.start_dt,
+        end_dt=dates_conf.end_dt,
+        lookback_days=dates_conf.lookback_days,
+        time_group=dates_conf.time_group,
+        agg_type=agg_type,
+        agg_param=agg_param,
+    )
+    return res_config, res_tw

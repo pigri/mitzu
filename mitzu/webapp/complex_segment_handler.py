@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
+import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.event_segment_handler as ES
 import mitzu.webapp.navbar.metric_type_handler as MNB
 from dash import dcc, html
-from mitzu.webapp.helper import find_components, get_event_names, get_property_name_comp
+from mitzu.webapp.helper import CHILDREN, get_event_names, get_property_name_comp
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"
@@ -85,90 +85,66 @@ def find_all_event_segments(segment: M.Segment) -> List[M.Segment]:
     return []
 
 
-@dataclass
-class ComplexSegmentHandler:
+def from_segment(
+    discovered_project: M.DiscoveredProject,
+    funnel_step: int,
+    metric: Optional[M.Metric],
+    segment: Optional[M.Segment],
+    metric_type: MNB.MetricType,
+) -> bc.Component:
+    type_index = str(funnel_step)
+    header = dbc.CardHeader(
+        "Events"
+        if metric_type == MNB.MetricType.SEGMENTATION
+        else f"{funnel_step+1}. Step",
+        style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
+    )
 
-    discovered_project: M.DiscoveredProject
-    component: dbc.Card
+    body_children = []
 
-    @classmethod
-    def from_segment(
-        self,
-        discovered_project: M.DiscoveredProject,
-        funnel_step: int,
-        metric: Optional[M.Metric],
-        segment: Optional[M.Segment],
-        metric_type: MNB.MetricType,
-    ) -> ComplexSegmentHandler:
-        type_index = str(funnel_step)
-        header = dbc.CardHeader(
-            "Events"
-            if metric_type == MNB.MetricType.SEGMENTATION
-            else f"{funnel_step+1}. Step",
-            style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
-        )
-
-        body_children = []
-
-        if segment is not None:
-            event_segments = find_all_event_segments(segment)
-            for index, evt_segment in enumerate(event_segments):
-                body_children.append(
-                    ES.EventSegmentHandler.from_segment(
-                        evt_segment, discovered_project, funnel_step, index
-                    ).component
-                )
-        body_children.append(
-            ES.EventSegmentHandler.from_segment(
-                None, discovered_project, funnel_step, len(body_children)
-            ).component
-        )
-
-        if segment is not None and funnel_step == 0:
-            group_by_dd = html.Div(
-                [
-                    create_group_by_dropdown(
-                        type_index, metric, segment, discovered_project
-                    )
-                ],
-                className=COMPLEX_SEGMENT_FOOTER,
+    if segment is not None:
+        event_segments = find_all_event_segments(segment)
+        for index, evt_segment in enumerate(event_segments):
+            body_children.append(
+                ES.from_segment(evt_segment, discovered_project, funnel_step, index)
             )
-            body_children.append(group_by_dd)
+    body_children.append(
+        ES.from_segment(None, discovered_project, funnel_step, len(body_children))
+    )
 
-        card_body = dbc.CardBody(
-            children=body_children,
-            className=COMPLEX_SEGMENT_BODY,
+    if segment is not None and funnel_step == 0:
+        group_by_dd = html.Div(
+            [create_group_by_dropdown(type_index, metric, segment, discovered_project)],
+            className=COMPLEX_SEGMENT_FOOTER,
         )
-        return ComplexSegmentHandler(
-            discovered_project=discovered_project,
-            component=dbc.Card(
-                id={"type": COMPLEX_SEGMENT, "index": type_index},
-                children=[header, card_body],
-                className=COMPLEX_SEGMENT,
-            ),
-        )
+        body_children.append(group_by_dd)
 
-    def to_segment(self) -> Optional[M.Segment]:
-        res_segment = None
-        event_segment_divs = find_components(ES.EVENT_SEGMENT, self.component)
-        for event_segment_div in event_segment_divs:
-            esh = ES.EventSegmentHandler.from_component(
-                event_segment_div, self.discovered_project
-            )
-            event_segment = esh.to_segment()
-            if event_segment is None:
-                continue
-            if res_segment is None:
-                res_segment = event_segment
-            else:
-                res_segment = res_segment | event_segment
+    card_body = dbc.CardBody(
+        children=body_children,
+        className=COMPLEX_SEGMENT_BODY,
+    )
+    return dbc.Card(
+        id={"type": COMPLEX_SEGMENT, "index": type_index},
+        children=[header, card_body],
+        className=COMPLEX_SEGMENT,
+    )
 
-        return res_segment
 
-    @classmethod
-    def from_component(
-        cls, component: dbc.Card, discovered_project: M.DiscoveredProject
-    ) -> ComplexSegmentHandler:
-        return ComplexSegmentHandler(
-            discovered_project=discovered_project, component=component
-        )
+def from_all_inputs(
+    discovered_project: M.DiscoveredProject,
+    all_inputs: Dict[str, Any],
+    complex_segment: Dict[str, Any],
+) -> Optional[M.Segment]:
+    res_segment: Optional[M.Segment] = None
+    event_segments = complex_segment.get(CHILDREN, {})
+
+    for _, event_segment in event_segments.items():
+        event_segment = ES.from_all_inputs(discovered_project, event_segment)
+        if event_segment is None:
+            continue
+        if res_segment is None:
+            res_segment = event_segment
+        else:
+            res_segment = res_segment | event_segment
+
+    return res_segment

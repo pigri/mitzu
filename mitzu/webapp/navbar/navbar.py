@@ -31,11 +31,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                             )
                         ),
                         dbc.Col(PD.create_project_dropdown(webapp)),
-                        dbc.Col(
-                            MNB.MetricTypeHandler.from_metric_type(
-                                MNB.MetricType.SEGMENTATION
-                            ).component
-                        ),
+                        dbc.Col(MNB.from_metric_type(MNB.MetricType.SEGMENTATION)),
                         dbc.Col(
                             dbc.DropdownMenu(
                                 [

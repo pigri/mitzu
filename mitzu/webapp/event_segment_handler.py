@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
+import dash.development.base_component as bc
 import mitzu.model as M
 import mitzu.webapp.simple_segment_handler as SS
 from dash import dcc, html
-from mitzu.webapp.helper import find_first_component, get_event_names, value_to_label
+from mitzu.webapp.helper import CHILDREN, get_event_names, value_to_label
 
 EVENT_SEGMENT = "event_segment"
 EVENT_NAME_DROPDOWN = "event_name_dropdown"
@@ -79,20 +79,17 @@ def create_simple_segments_container(
     if segment is None:
         return None
     event_simple_segments = get_event_simple_segments(segment)
-
     if isinstance(segment, M.ComplexSegment):
         for seg_index, ess in enumerate(event_simple_segments):
-            comp = SS.SimpleSegmentHandler.from_simple_segment(
-                ess, discovered_project, type_index, seg_index
-            ).component
-            children.append(comp)
+            children.append(
+                SS.from_simple_segment(ess, discovered_project, type_index, seg_index)
+            )
     elif isinstance(segment, M.SimpleSegment) and isinstance(
         segment._left, M.EventFieldDef
     ):
-        comp = SS.SimpleSegmentHandler.from_simple_segment(
-            segment, discovered_project, type_index, 0
-        ).component
-        children.append(comp)
+        children.append(
+            SS.from_simple_segment(segment, discovered_project, type_index, 0)
+        )
 
     event_name = event_simple_segments[0]._left._event_name
     event_def = discovered_project.get_event_def(event_name)
@@ -101,12 +98,12 @@ def create_simple_segments_container(
             f"Invalid state, {event_name} is not possible to find in discovered datasource."
         )
     children.append(
-        SS.SimpleSegmentHandler.from_simple_segment(
+        SS.from_simple_segment(
             M.SimpleSegment(event_def),
             discovered_project,
             type_index,
             len(children),
-        ).component
+        )
     )
 
     return html.Div(
@@ -114,88 +111,59 @@ def create_simple_segments_container(
     )
 
 
-@dataclass
-class EventSegmentHandler:
+def from_segment(
+    segment: Optional[M.Segment],
+    discovered_project: M.DiscoveredProject,
+    funnel_step: int,
+    event_segment_index: int,
+) -> bc.Component:
+    type_index = f"{funnel_step}-{event_segment_index}"
+    event_dd = create_event_name_dropdown(
+        type_index, discovered_project, funnel_step, event_segment_index, segment
+    )
+    children = [event_dd]
+    simples_segs_container = create_simple_segments_container(
+        type_index, segment, discovered_project
+    )
+    if simples_segs_container is not None:
+        children.append(simples_segs_container)
 
-    discovered_project: M.DiscoveredProject
-    component: html.Div
+    component = html.Div(
+        id={"type": EVENT_SEGMENT, "index": type_index},
+        children=children,
+        className=EVENT_SEGMENT,
+    )
+    return component
 
-    @classmethod
-    def from_component(
-        cls, component: html.Div, discovered_project: M.DiscoveredProject
-    ):
-        return EventSegmentHandler(
-            component=component, discovered_project=discovered_project
+
+def from_all_inputs(
+    discovered_project: Optional[M.DiscoveredProject],
+    event_segment: Dict[str, Any],
+) -> Optional[M.Segment]:
+    if discovered_project is None:
+        return None
+    event_name_dd_value = event_segment.get(EVENT_NAME_DROPDOWN)
+    simple_segments = event_segment.get(CHILDREN, {})
+
+    if event_name_dd_value is None:
+        return None
+
+    res_segment: Optional[M.Segment] = None
+    for _, simple_segment in simple_segments.items():
+        simple_seg = SS.from_all_inputs(discovered_project, simple_segment)
+
+        if simple_seg is None:
+            continue
+        if simple_seg._left._event_name != event_name_dd_value:
+            continue
+
+        if res_segment is None:
+            res_segment = simple_seg
+        else:
+            res_segment = res_segment & simple_seg
+
+    if res_segment is None and event_name_dd_value is not None:
+        return M.SimpleSegment(
+            _left=discovered_project.get_event_def(event_name_dd_value)
         )
-
-    @classmethod
-    def from_segment(
-        cls,
-        segment: Optional[M.Segment],
-        discovered_project: M.DiscoveredProject,
-        funnel_step: int,
-        event_segment_index: int,
-    ) -> EventSegmentHandler:
-        type_index = f"{funnel_step}-{event_segment_index}"
-        event_dd = create_event_name_dropdown(
-            type_index, discovered_project, funnel_step, event_segment_index, segment
-        )
-        children = [event_dd]
-        simples_segs_container = create_simple_segments_container(
-            type_index, segment, discovered_project
-        )
-        if simples_segs_container is not None:
-            children.append(simples_segs_container)
-
-        component = html.Div(
-            id={"type": EVENT_SEGMENT, "index": type_index},
-            children=children,
-            className=EVENT_SEGMENT,
-        )
-        return EventSegmentHandler(
-            discovered_project=discovered_project, component=component
-        )
-
-    def to_segment(self) -> Optional[M.Segment]:
-        event_name_dd = find_first_component(
-            EVENT_NAME_DROPDOWN, self.component.children
-        )
-        if event_name_dd.value is None:
-            return None
-        ssc = find_first_component(SIMPLE_SEGMENT_CONTAINER, self.component)
-
-        if ssc is None:
-            if event_name_dd.value is not None:
-                return M.SimpleSegment(
-                    _left=self.discovered_project.get_event_def(event_name_dd.value)
-                )
-            else:
-                return None
-
-        ssc_children = ssc.children
-        if len(ssc_children) == 1 and ssc_children[0].children[0].value is None:
-            return M.SimpleSegment(
-                _left=self.discovered_project.get_event_def(event_name_dd.value)
-            )
-
-        res_segment = None
-        for seg_child in ssc_children:
-            simple_seg_handler = SS.SimpleSegmentHandler.from_component(
-                component=seg_child, discovered_project=self.discovered_project
-            )
-            simple_seg = simple_seg_handler.to_simple_segment()
-
-            if simple_seg is None:
-                continue
-            if simple_seg._left._event_name != event_name_dd.value:
-                continue
-
-            if res_segment is None:
-                res_segment = simple_seg
-            else:
-                res_segment = res_segment & simple_seg
-        if res_segment is None and event_name_dd.value is not None:
-            return M.SimpleSegment(
-                _left=self.discovered_project.get_event_def(event_name_dd.value)
-            )
-        return res_segment
+    return res_segment

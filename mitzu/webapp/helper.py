@@ -1,14 +1,15 @@
 import logging
 import os
 import sys
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from urllib.parse import ParseResult
 
-import dash.development.base_component as bc
 import mitzu.model as M
 from dash import Dash, html
 
 PROJECT_PATH_INDEX = 0
+METRIC_SEGMENTS = "metric_segments"
+CHILDREN = "children"
 
 LOGGER = logging.getLogger()
 LOGGER.addHandler(logging.StreamHandler(sys.stdout))
@@ -17,30 +18,6 @@ LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 def value_to_label(value: str) -> str:
     return value.title().replace("_", " ")
-
-
-def deserialize_component(val: Any) -> bc.Component:
-    if type(val) == dict:
-
-        namespace = val["namespace"]
-        comp_type = val["type"]
-        props = val["props"]
-        children_dicts = props.get("children", [])
-
-        if type(children_dicts) == list and len(children_dicts) > 0:
-            props["children"] = [
-                deserialize_component(child) for child in children_dicts
-            ]
-        elif type(children_dicts) == dict and len(children_dicts) > 0:
-            props["children"] = [deserialize_component(children_dicts)]
-
-        module = __import__(namespace)
-        class_ = getattr(module, comp_type)
-        res = class_(**props)
-
-        return res
-    else:
-        return val
 
 
 def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:
@@ -63,43 +40,6 @@ def find_event_field_def(
         if field._get_name() == field_name:
             return event_field_def
     raise Exception(f"Invalid property path: {path}")
-
-
-def find_first_component(
-    id_or_type_id: str, among: Union[bc.Component, List[bc.Component]]
-) -> bc.Component:
-    if type(among) == list:
-        for comp in among:
-            res = find_first_component(id_or_type_id, comp)
-            if res is not None:
-                return res
-    elif isinstance(among, bc.Component):
-        id_type = type(getattr(among, "id", None))
-        if (
-            id_type == dict
-            and getattr(among, "id", {}).get("type", None) == id_or_type_id
-        ) or (id_type == str and getattr(among, "id", None) == id_or_type_id):
-            return among
-
-        return find_first_component(id_or_type_id, getattr(among, "children", []))
-    return None
-
-
-def find_components(
-    type_id: str, among: Union[bc.Component, List[bc.Component]]
-) -> List[bc.Component]:
-
-    if type(among) == list:
-        res = []
-        for comp in among:
-            res.extend(find_components(type_id, comp))
-        return res
-    elif isinstance(among, bc.Component):
-        if getattr(among, "id", {}).get("type") == type_id:
-            return [among]
-
-        return find_components(type_id, getattr(among, "children", []))
-    return []
 
 
 def get_event_names(segment: Optional[M.Segment]) -> List[str]:
@@ -136,3 +76,30 @@ def get_property_name_comp(field_name: str) -> html.Div:
             html.Div(value_to_label(parts[-1]), className="property_name"),
         ],
     )
+
+
+def transform_all_inputs(all_inputs: List[Any]) -> Dict[str, Any]:
+    res: Dict[str, Any] = {}
+    res[METRIC_SEGMENTS] = {}
+    for ipt in all_inputs:
+        if type(ipt) == list:
+            for sub_input in ipt:
+                if type(sub_input) == dict:
+                    sub_input_id = sub_input["id"]
+                    index = sub_input_id["index"]
+                    input_type = sub_input_id["type"]
+                    curr = res[METRIC_SEGMENTS]
+                    for sub_index in index.split("-"):
+                        sub_index = int(sub_index)
+                        if CHILDREN not in curr:
+                            curr[CHILDREN] = {}
+                        curr = curr[CHILDREN]
+                        if sub_index not in curr:
+                            curr[sub_index] = {}
+                        curr = curr[sub_index]
+                    curr[input_type] = sub_input["value"]
+                else:
+                    raise ValueError(f"Invalid sub-input type: {type(sub_input)}")
+        else:
+            res[ipt["id"]] = ipt.get("value")
+    return res

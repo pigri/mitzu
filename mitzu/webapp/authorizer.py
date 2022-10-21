@@ -108,14 +108,13 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 page_404 = page_404.format(home_url=HOME_URL, sign_out_url=SIGN_OUT_URL)
                 resp = flask.Response(status=200, response=page_404)
             elif SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
-                if jwt_encoded:
-                    self.tokens.pop(jwt_encoded)
+                self.tokens.pop(jwt_encoded)
                 LOGGER.debug(f"Signed out URL: {SIGN_OUT_URL}")
                 location = (
                     f"{OAUTH_SIGN_OUT_REDIRECT_URL}?"
                     "response_type=code&"
                     f"client_id={OAUTH_CLIENT_ID}&"
-                    f"redirect_uri={OAUTH_CLIENT_SECRET}&"
+                    f"redirect_uri={OAUTH_REDIRECT_URI}&"
                     # state=STATE& todo
                     f"scope=email+openid"
                 )
