@@ -25,6 +25,7 @@ DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
 REDIS_URL = os.getenv("REDIS_URL")
 DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", "600"))
+HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 LAUNCH_UID = uuid4()
 
 
@@ -72,6 +73,11 @@ def create_app():
         suppress_callback_exceptions=True,
         long_callback_manager=get_callback_manager(),
     )
+
+    @server.route(HEALTH_CHECK_PATH)
+    def healthcheck():
+        return flask.Response("ok", status=200)
+
     app._favicon = DASH_FAVICON_PATH
 
     if OAUTH_SIGN_IN_URL is not None:

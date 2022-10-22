@@ -102,14 +102,15 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 resp = self.handle_code_redirect()
             elif flask.request.path == HEALTH_CHECK_PATH:
                 LOGGER.debug("Health check")
-                resp = flask.Response(status=200, response="ok")
+                resp = flask.Response("ok", status=200)
             elif flask.request.url == NOT_FOUND_URL:
                 LOGGER.debug(f"Allowing not found url: {flask.request.url}")
                 page_404 = flask.render_template("404.html")
                 page_404 = page_404.format(home_url=HOME_URL, sign_out_url=SIGN_OUT_URL)
                 resp = flask.Response(status=200, response=page_404)
             elif SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
-                self.tokens.pop(jwt_encoded)
+                if jwt_encoded in self.tokens:
+                    self.tokens.pop(jwt_encoded)
                 LOGGER.debug(f"Signed out URL: {SIGN_OUT_URL}")
                 location = (
                     f"{OAUTH_SIGN_OUT_REDIRECT_URL}?"
