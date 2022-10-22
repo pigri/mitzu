@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from multiprocessing import set_start_method
 from uuid import uuid4
 
 import dash_bootstrap_components as dbc
@@ -25,6 +26,9 @@ DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
 REDIS_URL = os.getenv("REDIS_URL")
 DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", "600"))
+MULTIPROCESSING_START_METHOD = os.getenv("MULTIPROCESSING_START_METHOD", "forkserver")
+
+
 HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 LAUNCH_UID = uuid4()
 
@@ -94,6 +98,7 @@ def create_app():
     return app
 
 
+set_start_method(MULTIPROCESSING_START_METHOD)
 app = create_app()
 server = app.server
 
