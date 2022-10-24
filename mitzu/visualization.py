@@ -246,7 +246,9 @@ def plot_conversion(metric: M.ConversionMetric, cached_df: pd.DataFrame = None):
             )
         else:
             pdf[TEXT_COL] = pdf[viz_agg_col].apply(lambda val: f"{val:.1f}%")
-        pdf = pdf.sort_values([STEP_COL, GA.GROUP_COL, GA.USER_COUNT_COL], ascending=[True, True, False])
+        pdf = pdf.sort_values(
+            [STEP_COL, GA.GROUP_COL, GA.USER_COUNT_COL], ascending=[True, True, False]
+        )
         fig = px.bar(
             pdf,
             x=STEP_COL,
