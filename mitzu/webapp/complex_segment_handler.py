@@ -132,7 +132,6 @@ def from_segment(
 
 def from_all_inputs(
     discovered_project: M.DiscoveredProject,
-    all_inputs: Dict[str, Any],
     complex_segment: Dict[str, Any],
 ) -> Optional[M.Segment]:
     res_segment: Optional[M.Segment] = None

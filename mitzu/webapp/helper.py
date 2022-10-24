@@ -78,10 +78,12 @@ def get_property_name_comp(field_name: str) -> html.Div:
     )
 
 
-def transform_all_inputs(all_inputs: List[Any]) -> Dict[str, Any]:
-    res: Dict[str, Any] = {}
+def get_final_all_inputs(
+    all_inputs: Dict[str, Any], ctx_input_list: List[Dict]
+) -> Dict[str, Any]:
+    res: Dict[str, Any] = all_inputs
     res[METRIC_SEGMENTS] = {}
-    for ipt in all_inputs:
+    for ipt in ctx_input_list:
         if type(ipt) == list:
             for sub_input in ipt:
                 if type(sub_input) == dict:
@@ -100,6 +102,5 @@ def transform_all_inputs(all_inputs: List[Any]) -> Dict[str, Any]:
                     curr[input_type] = sub_input["value"]
                 else:
                     raise ValueError(f"Invalid sub-input type: {type(sub_input)}")
-        else:
-            res[ipt["id"]] = ipt.get("value")
+
     return res

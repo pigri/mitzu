@@ -13,7 +13,7 @@ import mitzu.webapp.toolbar_handler as TH
 import mitzu.webapp.webapp as WA
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html
-from mitzu.webapp.helper import get_path_project_name, transform_all_inputs
+from mitzu.webapp.helper import get_final_all_inputs, get_path_project_name
 
 GRAPH = "graph"
 MESSAGE = "graph_message"
@@ -40,7 +40,7 @@ BACKGROUND_CALLBACK = bool(os.getenv("BACKGROUND_CALLBACK", True))
 
 
 def create_graph_container() -> bc.Component:
-    return html.Div(id=GRAPH_CONTAINER, children=[])
+    return html.Div(id=GRAPH_CONTAINER, children=[], className=GRAPH_CONTAINER)
 
 
 def create_callbacks(webapp: WA.MitzuWebApp):
@@ -81,16 +81,17 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         sql_button_color: str,
     ) -> Any:
         try:
-            all_inputs = transform_all_inputs(ctx.inputs_list)
+            all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
             project_name = get_path_project_name(parse_result, webapp.app)
             discovered_project = webapp.get_discovered_project(project_name)
             if discovered_project is None:
                 return html.Div("First select a project", id=GRAPH, className=MESSAGE)
-            metric, _ = webapp.handle_metric_changes(
+            metric, _ = webapp.metric_from_all_inputs(
                 parse_result=parse_result,
                 discovered_project=discovered_project,
                 all_inputs=all_inputs,
+                ctx_triggered_id=ctx.triggered_id,
             )
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)

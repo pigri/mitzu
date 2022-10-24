@@ -68,7 +68,7 @@ def from_all_inputs(
         return res
     complex_segments = all_inputs.get(METRIC_SEGMENTS, {}).get(CHILDREN, {})
     for _, complex_segment in complex_segments.items():
-        csh = CS.from_all_inputs(discovered_project, all_inputs, complex_segment)
+        csh = CS.from_all_inputs(discovered_project, complex_segment)
         if csh is not None:
             res.append(csh)
     return res

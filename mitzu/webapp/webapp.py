@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, parse_qs, quote, unquote, urlparse
 
 import dash_bootstrap_components as dbc
 import mitzu.model as M
@@ -18,7 +18,6 @@ import mitzu.webapp.navbar.metric_type_handler as MNB
 import mitzu.webapp.navbar.navbar as MN
 import mitzu.webapp.simple_segment_handler as SS
 import mitzu.webapp.toolbar_handler as TH
-import mitzu.webapp.webapp as WA
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import ALL, Input, Output
 from mitzu.webapp.helper import (
@@ -26,16 +25,17 @@ from mitzu.webapp.helper import (
     LOGGER,
     METRIC_SEGMENTS,
     find_event_field_def,
+    get_final_all_inputs,
     get_path_project_name,
-    transform_all_inputs,
 )
 from mitzu.webapp.persistence import PersistencyProvider
 
-MAIN = "main"
 MITZU_LOCATION = "mitzu_location"
+
+MAIN = "main"
 ALL_INPUT_COMPS = {
     "all_inputs": {
-        WA.MITZU_LOCATION: Input(WA.MITZU_LOCATION, "href"),
+        MITZU_LOCATION: Input(MITZU_LOCATION, "href"),
         MNB.METRIC_TYPE_DROPDOWN: Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
         ES.EVENT_NAME_DROPDOWN: Input(
             {"type": ES.EVENT_NAME_DROPDOWN, "index": ALL}, "value"
@@ -53,8 +53,8 @@ ALL_INPUT_COMPS = {
             {"type": CS.COMPLEX_SEGMENT_GROUP_BY, "index": ALL}, "value"
         ),
         DS.TIME_GROUP_DROPDOWN: Input(DS.TIME_GROUP_DROPDOWN, "value"),
-        "start_date": Input(DS.CUSTOM_DATE_PICKER, "start_date"),
-        "end_date": Input(DS.CUSTOM_DATE_PICKER, "end_date"),
+        DS.CUSTOM_DATE_PICKER_START_DATE: Input(DS.CUSTOM_DATE_PICKER, "start_date"),
+        DS.CUSTOM_DATE_PICKER_END_DATE: Input(DS.CUSTOM_DATE_PICKER, "end_date"),
         DS.LOOKBACK_WINDOW_DROPDOWN: Input(DS.LOOKBACK_WINDOW_DROPDOWN, "value"),
         MC.CONVERSION_WINDOW_INTERVAL_STEPS: Input(
             MC.CONVERSION_WINDOW_INTERVAL_STEPS, "value"
@@ -155,7 +155,8 @@ class MitzuWebApp:
             return None, MNB.MetricType.SEGMENTATION
         try:
             metric = SE.from_compressed_string(query, discovered_project.project)
-        except Exception:
+        except Exception as exc:
+            LOGGER.exception(f"{query}:\n, {exc}")
             metric = None
 
         metric_type = MNB.MetricType.from_metric(metric)
@@ -193,9 +194,8 @@ class MitzuWebApp:
             agg_str = None
 
         group_by = None
-
         group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
-        if len(group_by_paths) == 1:
+        if len(group_by_paths) >= 1:
             gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
             group_by = find_event_field_def(gp, discovered_project) if gp else None
 
@@ -220,20 +220,27 @@ class MitzuWebApp:
                 custom_title="",
                 aggregation=agg_str,
             )
+
         raise Exception("Invalid metric type")
 
-    def handle_metric_changes(
+    def metric_from_all_inputs(
         self,
         parse_result: ParseResult,
         discovered_project: M.DiscoveredProject,
         all_inputs: Dict[str, Any],
+        ctx_triggered_id: str,
     ) -> Tuple[Optional[M.Metric], MNB.MetricType]:
         metric: Optional[M.Metric] = None
         metric_type = MNB.MetricType.SEGMENTATION
         project_name = get_path_project_name(parse_result, self.app)
-        if ctx.triggered_id == MITZU_LOCATION:
-            query = parse_result.query[2:]
-            metric, metric_type = self.get_metric_from_query(query, project_name)
+        if ctx_triggered_id == MITZU_LOCATION:
+            query = parse_qs(parse_result.query).get("m")
+            if query is None:
+                return None, MNB.MetricType.SEGMENTATION
+
+            metric, metric_type = self.get_metric_from_query(
+                unquote(query[0]), project_name
+            )
         else:
             metric_type = MNB.MetricType(all_inputs[MNB.METRIC_TYPE_DROPDOWN])
             metric = self.create_metric_from_components(
@@ -241,10 +248,46 @@ class MitzuWebApp:
             )
         return metric, metric_type
 
-    def metric_from_all_inputs(
-        self, discovered_project: M.DiscoveredProject, all_inputs: Dict[str, Any]
-    ) -> M.Metric:
-        pass
+    def handle_input_changes(
+        self, all_inputs: Dict[str, Any], ctx_triggered_id: str
+    ) -> Tuple[List[html.Div], List[html.Div], str, str]:
+        parse_result = urlparse(all_inputs[MITZU_LOCATION])
+        project_name = get_path_project_name(parse_result, self.app)
+        discovered_project = self.get_discovered_project(project_name)
+
+        if discovered_project is None:
+            def_mc_comp_children = MC.from_metric(None, None).children
+            return (
+                [],
+                [c.to_plotly_json() for c in def_mc_comp_children],
+                "?" + parse_result.query[2:],
+                MNB.MetricType.SEGMENTATION.value,
+            )
+
+        metric, metric_type = self.metric_from_all_inputs(
+            parse_result=parse_result,
+            discovered_project=discovered_project,
+            all_inputs=all_inputs,
+            ctx_triggered_id=ctx_triggered_id,
+        )
+
+        url_params = "?"
+        if metric is not None:
+            url_params = "?m=" + quote(SE.to_compressed_string(metric))
+
+        metric_segments = MS.from_metric(
+            discovered_project=discovered_project,
+            metric=metric,
+            metric_type=metric_type,
+        ).children
+
+        mc_children = MC.from_metric(metric, discovered_project).children
+        return (
+            metric_segments,
+            mc_children,
+            url_params,
+            metric_type.value,
+        )
 
     def create_callbacks(self):
         GH.create_callbacks(self)
@@ -261,48 +304,11 @@ class MitzuWebApp:
             inputs=ALL_INPUT_COMPS,
             prevent_initial_call=True,
         )
-        def change_layout(
+        def on_inputs_change(
             all_inputs: Dict[str, Any],
         ) -> Tuple[List[html.Div], List[html.Div], str, str]:
-            LOGGER.debug(f"Layout changed caused by: {ctx.triggered_id}")
-            all_inputs = transform_all_inputs(ctx.inputs_list)
-            parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
-            project_name = get_path_project_name(parse_result, self.app)
-            discovered_project = self.get_discovered_project(project_name)
-
-            if discovered_project is None:
-                def_mc_comp_children = MC.from_metric(None, None).children
-                return (
-                    [],
-                    [c.to_plotly_json() for c in def_mc_comp_children],
-                    "?" + parse_result.query[2:],
-                    MNB.MetricType.SEGMENTATION.value,
-                )
-
-            metric, metric_type = self.handle_metric_changes(
-                parse_result=parse_result,
-                discovered_project=discovered_project,
-                all_inputs=all_inputs,
-            )
-
-            url_search = "?"
-            if metric is not None:
-                url_search = "?m=" + SE.to_compressed_string(metric)
-
-            metric_segments = MS.from_metric(
-                discovered_project=discovered_project,
-                metric=metric,
-                metric_type=metric_type,
-            ).children
-
-            metric_segment_comps = [seg.to_plotly_json() for seg in metric_segments]
-
-            mc_children = MC.from_metric(metric, discovered_project).children
-            metric_config_comps = [c.to_plotly_json() for c in mc_children]
-
-            return (
-                metric_segment_comps,
-                metric_config_comps,
-                url_search,
-                metric_type.value,
-            )
+            ctx_triggered_id = ctx.triggered_id
+            LOGGER.debug(f"Inputs changed caused by: {ctx_triggered_id}")
+            all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
+            LOGGER.debug(all_inputs)
+            return self.handle_input_changes(all_inputs, ctx_triggered_id)

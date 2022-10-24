@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 import mitzu.model as M
 from dash import dcc, html
 
-DATE_SELECTOR = "date_selector"
+DATE_SELECTOR_DIV = "date_selector"
 TIME_GROUP_DROPDOWN = "timegroup_dropdown"
 LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
@@ -88,7 +88,7 @@ def from_metric_config(
         end_date = metric_config.end_dt
 
     comp = html.Div(
-        id=DATE_SELECTOR,
+        id=DATE_SELECTOR_DIV,
         children=[
             dbc.InputGroup(
                 children=[
@@ -156,20 +156,19 @@ def get_metric_custom_dates(
     if dd is None:
         return None, None
 
-    def_end_dt = (
-        dd.project.default_end_dt
-        if (dd is not None and dd.project.default_end_dt is not None)
-        else datetime.now()
-    )
-    def_lookback_window = (
-        dd.project.default_lookback_window.value
-        if (dd is not None and dd.project.default_lookback_window is not None)
-        else 30
-    )
-    if lookback_days is None:
+    if lookback_days == CUSTOM_DATE_TW_VALUE:
         if end_dt is None:
-            end_dt = def_end_dt
+            end_dt = (
+                dd.project.default_end_dt
+                if (dd is not None and dd.project.default_end_dt is not None)
+                else datetime.now()
+            )
         if start_dt is None:
+            def_lookback_window = (
+                dd.project.default_lookback_window.value
+                if (dd is not None and dd.project.default_lookback_window is not None)
+                else 30
+            )
             start_dt = end_dt - timedelta(days=def_lookback_window)
     else:
         return (None, None)
@@ -203,6 +202,7 @@ def from_all_inputs(
     discovered_project: Optional[M.DiscoveredProject], all_inputs: Dict[str, Any]
 ) -> M.MetricConfig:
     lookback_days = get_metric_lookback_days(all_inputs)
+
     start_dt, end_dt = get_metric_custom_dates(discovered_project, all_inputs)
     time_group = M.TimeGroup(all_inputs.get(TIME_GROUP_DROPDOWN))
 

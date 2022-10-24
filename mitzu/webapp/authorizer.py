@@ -85,7 +85,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
         cookie_val = f"{resp.json()['id_token']}"
         redirect_url = flask.request.cookies.get(REDIRECT_TO, MITZU_WEBAPP_URL)
-        final_resp = flask.redirect(code=301, location=redirect_url)
+        final_resp = flask.redirect(code=307, location=redirect_url)
         final_resp.set_cookie(OAUTH_JWT_COOKIE, cookie_val)
         final_resp.set_cookie(REDIRECT_TO, "", expires=0)
         LOGGER.debug(f"Setting cookie resp: {cookie_val}")
@@ -121,12 +121,15 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                     f"scope=email+openid"
                 )
                 LOGGER.debug(f"Redirect {location}")
-                resp = flask.redirect(code=301, location=location)
+                resp = flask.redirect(code=307, location=location)
                 resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
             elif not jwt_encoded:
                 LOGGER.debug("Unauthorized (missing jwt_token cookie)")
-                resp = flask.redirect(code=301, location=OAUTH_SIGN_IN_URL)
-                resp.set_cookie(REDIRECT_TO, flask.request.url)
+                resp = flask.redirect(code=307, location=OAUTH_SIGN_IN_URL)
+                clean_url = (
+                    f"{flask.request.base_url}?{flask.request.query_string.decode()}"
+                )
+                resp.set_cookie(REDIRECT_TO, clean_url)
             elif jwt_encoded in self.tokens.keys():
                 resp = None
             else:
@@ -143,7 +146,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
                     if decoded_token is None:
                         LOGGER.debug("Unauthorized (Invalid jwt token)")
-                        resp = flask.redirect(code=301, location=SIGN_OUT_URL)
+                        resp = flask.redirect(code=307, location=SIGN_OUT_URL)
                     else:
                         LOGGER.debug("Authorization finished (caching)")
                         self.tokens[jwt_encoded] = decoded_token
@@ -151,7 +154,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                         resp = None
                 except Exception as exc:
                     LOGGER.debug(f"Authorization error: {exc}")
-                    resp = flask.redirect(code=301, location=SIGN_OUT_URL)
+                    resp = flask.redirect(code=307, location=NOT_FOUND_URL)
 
             if (
                 OAUTH_AUTHORIZED_EMAIL_REG is not None
@@ -167,7 +170,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 is None
             ):
                 LOGGER.debug(f"Unauthorized email, redirecting to {NOT_FOUND_URL}")
-                resp = flask.redirect(code=301, location=NOT_FOUND_URL)
+                resp = flask.redirect(code=307, location=NOT_FOUND_URL)
 
             if resp is not None:
                 resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
