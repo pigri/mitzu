@@ -246,7 +246,9 @@ def plot_conversion(metric: M.ConversionMetric, cached_df: pd.DataFrame = None):
             )
         else:
             pdf[TEXT_COL] = pdf[viz_agg_col].apply(lambda val: f"{val:.1f}%")
-        pdf = pdf.sort_values([STEP_COL, GA.USER_COUNT_COL], ascending=[True, False])
+        pdf = pdf.sort_values(
+            [STEP_COL, GA.GROUP_COL, GA.USER_COUNT_COL], ascending=[True, True, False]
+        )
         fig = px.bar(
             pdf,
             x=STEP_COL,
@@ -279,7 +281,7 @@ def plot_conversion(metric: M.ConversionMetric, cached_df: pd.DataFrame = None):
         else:
             pdf[TEXT_COL] = pdf[viz_agg_col].apply(lambda val: f"{val:.1f}%")
         pdf[GA.DATETIME_COL] = pd.to_datetime(pdf[GA.DATETIME_COL])
-        pdf = pdf.sort_values(by=[GA.DATETIME_COL])
+        pdf = pdf.sort_values(by=[GA.DATETIME_COL, GA.GROUP_COL])
         fig = px.line(
             pdf,
             x=GA.DATETIME_COL,
@@ -328,7 +330,7 @@ def plot_segmentation(metric: M.SegmentationMetric, cached_df: pd.DataFrame = No
         )
         pdf[x_title] = ""
         pdf[TEXT_COL] = pdf[GA.AGG_VALUE_COL]
-        pdf = pdf.sort_values([GA.AGG_VALUE_COL], ascending=[False])
+        pdf = pdf.sort_values([GA.AGG_VALUE_COL, GA.GROUP_COL], ascending=[False, True])
         fig = px.bar(
             pdf,
             x=x_title,
@@ -344,7 +346,7 @@ def plot_segmentation(metric: M.SegmentationMetric, cached_df: pd.DataFrame = No
             },
         )
     else:
-        pdf = pdf.sort_values(by=[GA.DATETIME_COL])
+        pdf = pdf.sort_values(by=[GA.DATETIME_COL, GA.GROUP_COL])
         if metric._group_by is None:
             fig = px.line(
                 pdf,
