@@ -20,6 +20,8 @@ def fix_col_index(index: int, col_name: str):
     return col_name + f"_{index}"
 
 
+COLUMN_NAME_REPLACE_STR = "___"
+
 FieldReference = Union[SA.Column, EXP.Label]
 SAMPLED_SOURCE_CTE_NAME = "sampled_source"
 
@@ -360,11 +362,19 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         ),
                     ),
                     else_=SA.literal(None),
-                ).label(f._get_name())
+                ).label(f._get_name().replace(".", COLUMN_NAME_REPLACE_STR))
                 for f in fields
             ],
         )
         df = self.execute_query(query)
+        df = df.rename(
+            # This is required for complext types, as aliasing with `.`
+            # doesn't work. The `.` comes from the get _get_name()
+            # This issue might appear elsewhere as well
+            columns={
+                k: k.replace(COLUMN_NAME_REPLACE_STR, ".") for k in list(df.columns)
+            }
+        )
         return df.set_index(GA.EVENT_NAME_ALIAS_COL)
 
     def get_field_enums(

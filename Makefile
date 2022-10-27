@@ -101,7 +101,7 @@ publish_no_build:
 	$(POETRY) publish
 
 docker_build:	
-	docker buildx build ./release --platform="linux/amd64,linux/arm64" \
+	docker image build ./release --platform="linux/amd64" \
 	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
 	-t imeszaros/mitzu-webapp:latest \
 	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena]==$(shell poetry version -s)" --no-cache
@@ -109,8 +109,8 @@ docker_build:
 docker_build_local:
 	cp -r ./dist/ ./release/dist/
 	poetry export -E trinodwh -E postgresql -E webapp -E databricks --without-hashes --format=requirements.txt > release/requirements.txt
-	docker buildx build ./release \
-	--platform="linux/amd64,linux/arm64" \
+	docker image build ./release \
+	--platform="linux/amd64" \
 	--build-arg MITZU_VERSION=$(shell poetry version -s) \
 	--build-arg DIST_PATH=$(shell pwd)/dist/ \
 	--no-cache -f ./release/LocalDockerfile \

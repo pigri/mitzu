@@ -17,7 +17,9 @@ def create_sample_project() -> M.DiscoveredProject:
     connection = M.Connection(
         connection_type=M.ConnectionType.SQLITE,
     )
-    project = create_and_ingest_sample_project(connection)
+    project = create_and_ingest_sample_project(
+        connection, event_count=200000, number_of_users=1000
+    )
     return project.discover_project()
 
 
