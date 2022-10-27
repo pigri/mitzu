@@ -72,3 +72,9 @@ def create_and_ingest_sample_project(
         ingest_dataframe(engine, key, df, overwrite_records)
 
     return project
+
+
+if __name__ == "__main__":
+    dfs = create_all_funnels(event_count=500000, user_count=2500)
+    for name, df in dfs.items():
+        df.to_parquet(f"{name}.parquet")
