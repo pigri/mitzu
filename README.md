@@ -86,20 +86,20 @@ If this sounds unfamiliar, don't worry! Later we will explain you everything.
 You can create a `funnel chart` by placing the `>>` operator between two `user event segments`.
 
 ```python
-m.page_visit >> m.purchase
+m.page_visit >> m.checkout
 ```
 
-This will visualize the `conversion rate` of users that first did `page_visit` action and then did `purchase` within a day in the last 30 days.
+This will visualize the `conversion rate` of users that first did `page_visit` action and then did `checkout` within a day in the last 30 days.
 
 ## Filtering
 
 You can apply filters to `user event segment` the following way:
 
 ```python
-m.page_visit.country_code.is_us >> m.purchase
+m.page_visit.user_country_code.is_us >> m.checkout
 
 # You can achieve the same filter with:
-# (m.page_visit.country_code == 'us')
+# (m.page_visit.user_country_code == 'us')
 #
 # you can also apply >, >=, <, <=, !=, operators.
 ```
@@ -108,24 +108,24 @@ With this syntax we have narrowed down our `page visit` `user event segment` to 
 Stacking filters is possible with the `&` (and) and `|` (or) operators.
 
 ```python
-m.page_visit.country_code.is_us & m.page_visit.acquisition_campaign.is_organic
+m.page_visit.user_country_code.is_us & m.page_visit.acquisition_campaign.is_organic
 
 # if using the comparison operators, make sure you put the user event segments in parenthesis.
-# (m.page_visit.country_code == 'us') & (m.page_visit.acquisition_campaign == 'organic')
+# (m.page_visit.user_country_code == 'us') & (m.page_visit.acquisition_campaign == 'organic')
 ```
 
 Apply multi value filtering with the `any_of` or `none_of` functions:
 
 ```python
-m.page_visit.country_code.any_of('us', 'cn', 'de')
+m.page_visit.user_country_code.any_of('us', 'cn', 'de')
 
-# m.page_visit.country_code.none_of('us', 'cn', 'de')
+# m.page_visit.user_country_code.none_of('us', 'cn', 'de')
 ```
 
 Of course you can apply filters on every `user event segment` in a funnel.
 
 ```python
-m.add_to_cart >> (m.checkout.price_shown <= 1000)
+m.add_to_cart >> (m.checkout.cost_usd <= 1000)
 ```
 
 ## Metrics Configuration
@@ -134,9 +134,9 @@ To any funnel or segmentation you can apply the config method. Where you can def
 
 ```python
 m.page_visit.config(
-   start_dt="2022-08-01",
-   end_dt="2022-09-01",
-   group_by=m.page_visit.url,
+   start_dt="2021-08-01",
+   end_dt="2021-09-01",
+   group_by=m.page_visit.domain,
    time_group='total',
 )
 ```
@@ -150,9 +150,9 @@ Funnels have an extra configuration parameter `conv_window`, this has the follow
 
 ```python
 (m.page_visit >> m.checkout).config(
-   start_dt="2022-08-01",
-   end_dt="2022-09-01",
-   group_by=m.page_visit.url,
+   start_dt="2021-08-01",
+   end_dt="2021-09-01",
+   group_by=m.page_visit.domain,
    time_group='total',
    conv_window='1 day',
 )
@@ -166,9 +166,9 @@ This you can do by calling the `.print_sql()` method.
 
 ```python
 (m.page_visit >> m.checkout).config(
-   start_dt="2022-08-01",
-   end_dt="2022-09-01",
-   group_by=m.page_visit.url,
+   start_dt="2021-08-01",
+   end_dt="2021-09-01",
+   group_by=m.page_visit.domain,
    time_group='total',
    conv_window='1 day',
 ).print_sql()
@@ -181,9 +181,9 @@ Similarly you can access the results in the form of a [Pandas](https://pandas.py
 
 ```python
 (m.page_visit >> m.checkout).config(
-   start_dt="2022-08-01",
-   end_dt="2022-09-01",
-   group_by=m.page_visit.url,
+   start_dt="2021-08-01",
+   end_dt="2021-09-01",
+   group_by=m.page_visit.domain,
    time_group='total',
    conv_window='1 day',
 ).get_df()
@@ -197,6 +197,12 @@ Similarly you can access the results in the form of a [Pandas](https://pandas.py
 ## Webapp
 
 Mitzu can run as a standalone webapp or embedded inside a notebook.
+
+Trying out locally:
+
+```bash
+docker run -p 8082:8082 imeszaros/mitzu-webapp
+```
 
 - [Example webapp](https://app.mitzu.io)
 - [Webapp documentation](https://mitzu.io/documentation/webapp)

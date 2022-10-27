@@ -12,7 +12,7 @@ from urllib import parse
 import flask
 import jwt
 import requests
-from mitzu.webapp.helper import LOGGER
+from mitzu.helper import LOGGER
 
 REDIRECT_TO = "redirect_to"
 HOME_URL = os.getenv("HOME_URL")

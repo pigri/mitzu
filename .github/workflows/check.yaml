@@ -19,29 +19,25 @@ jobs:
       - name: Start docker images
         uses: isbang/compose-action@v1.2.0
         with:
-          compose-file: "tests/integration/docker/docker-compose.yml"
+          compose-file: "docker/docker-compose.yml"
       - name: Waiting for trino server
         run: |
-          cat <<"RUBY" | ruby
-          30.times do
-            exit if `curl http://localhost:8080/v1/info 2>/dev/null | jq .starting`.strip == 'false'
-            puts "Trino is not yet ready, waiting 2 seconds then retrying ..."
-            sleep 2
-          end
-          exit!
-          RUBY
-          curl http://localhost:8080/v1/info 2>/dev/null | jq
+          poetry run python3 scripts/wait_for_trino.py
       - name: Setup trino test data
         run: |
-          make setup_test_data
+          make trino_setup_test_data
       - name: Check
         run: |
           make check_ci
+      - name: Check project creation and discovery
+        run: |
+          poetry run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter postgresql
+          poetry run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter mysql
       - name: Dump trino logs
         if: failure()
         run: |
           curl http://localhost:8080/v1/info 2>/dev/null | jq
-          docker logs docker_trino-coordinator_1
+          docker logs docker-trino-coordinator-1
       - name: Collect coverage report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:

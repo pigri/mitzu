@@ -28,7 +28,7 @@ make init
 
 ```bash
 make docker_test_up # start docker for integration tests
-make setup_test_data # create dummy data for integration tests
+make trino_setup_test_data # create dummy data for integration tests
 
 make test_coverage
 
@@ -60,7 +60,7 @@ To run any of these first you need to have a running `data warehouse or data lak
 
 ```bash
 make docker_test_up
-make setup_test_data
+make trino_setup_test_data
 ```
 
 These will create a data lake consisting of `Minio + Hive + Trino`.
@@ -70,7 +70,7 @@ The test project that can attach to the test data lake is at  `./trino_test_proj
 
 Start the webapp with this command:
 ```bash
-make dash_simple
+make serve
 ```
 
 This will start the webapp at http://localhost:8082.

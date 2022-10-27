@@ -8,6 +8,7 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
 import sqlparse
+from mitzu.helper import LOGGER
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
@@ -119,8 +120,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
-            print("Failed Query:")
-            print(format_query(query))
+            LOGGER.error(f"Failed Query:\n{format_query(query)}")
             raise exc
         finally:
             self._connection = None
@@ -325,8 +325,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         fields: List[M.Field],
         event_specific: bool,
     ) -> pd.DataFrame:
-        event_specifig_str = "event specific" if event_specific else "generic"
-        print(f"Discovering {event_specifig_str} field enums")
+        event_specific_str = "event specific" if event_specific else "generic"
+        LOGGER.info(f"Discovering {event_specific_str} field enums")
 
         cte = aliased(
             self._get_dataset_discovery_cte(event_data_table),
@@ -777,8 +777,5 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
     def stop_current_execution(self):
-
         if self._connection is not None:
-            print("Stopping transaction")
-
             self._connection.connection.close()

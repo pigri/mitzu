@@ -9,6 +9,7 @@ from mitzu.adapters.helper import dataframe_str_to_datetime
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 
 import sqlalchemy as SA
+import sqlalchemy.sql.expression as EXP
 
 VALUE_SEPARATOR = "###"
 
@@ -17,16 +18,11 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def __init__(self, project: M.Project):
         super().__init__(project)
 
-    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
-        df = super().get_conversion_df(metric)
-        return dataframe_str_to_datetime(df, GA.DATETIME_COL)
-
-    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
-        df = super().get_segmentation_df(metric)
-        return dataframe_str_to_datetime(df, GA.DATETIME_COL)
-
     def _column_index_support(self):
         return False
+
+    def _get_connection_url(self, con: M.Connection):
+        return "sqlite://"
 
     def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
@@ -79,3 +75,28 @@ class SQLiteAdapter(SQLAlchemyAdapter):
             field_ref,
             SA.text(f"'+{timewindow.value} {timewindow.period.name.lower()}'"),
         )
+
+    def _get_conv_aggregation(
+        self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
+    ) -> Any:
+        if metric._agg_type == M.AggType.PERCENTILE_TIME_TO_CONV:
+            raise NotImplementedError(
+                "Percentile calculation is not supported by SQLite Connections."
+            )
+        if metric._agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
+            t1 = first_cte.columns.get(GA.CTE_DATETIME_COL)
+            t2 = cte.columns.get(GA.CTE_DATETIME_COL)
+            diff = SA.func.round(
+                (SA.func.julianday(t2) - SA.func.julianday(t1)) * 86400
+            )
+            return SA.func.avg(diff)
+        else:
+            return super()._get_conv_aggregation(metric, cte, first_cte)
+
+    def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
+        df = super().get_conversion_df(metric)
+        return dataframe_str_to_datetime(df, GA.DATETIME_COL)
+
+    def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
+        df = super().get_segmentation_df(metric)
+        return dataframe_str_to_datetime(df, GA.DATETIME_COL)

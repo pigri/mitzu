@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import logging
+import os
+import sys
 from datetime import datetime
 from typing import Any, Optional
 
 import mitzu.model as M
+
+LOGGER = logging.getLogger(name="mitzu_logger")
+LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 
 def parse_datetime_input(val: Any, def_val: Optional[datetime]) -> Optional[datetime]:

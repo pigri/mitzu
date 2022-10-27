@@ -1,5 +1,5 @@
 services:
-
+  # This example is a complex one with SSO enabled, that is based on AWS Cognito  
   mitzu-webapp:
     image: imeszaros/mitzu-webapp:latest
     restart: always
@@ -24,7 +24,7 @@ services:
     depends_on:
       - cache
     volumes:
-      - ./basepath/:/var/task/basepath/
+      - ../data/:/var/task/basepath/
 
   jupyter-notebook:
     image: jupyter/scipy-notebook
@@ -32,4 +32,4 @@ services:
     ports:
       - 8888:8888
     volumes:
-      - ./basepath/:/home/jovyan/work
+      - ../data/:/home/jovyan/work

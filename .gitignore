@@ -68,14 +68,8 @@ dmypy.json
 # vscode
 .vscode/
 .dbs/
-tests/integration/docker/ssh/config/*
-!tests/integration/docker/ssh/config/
-!tests/integration/docker/ssh/config/ssh_host_keys/
 
-tests/integration/docker/ssh/config/ssh_host_keys/*
-!tests/integration/docker/ssh/config/ssh_host_keys/sshd_config
-
-tests/integration/docker/minio/data/.minio.sys/*
+docker/minio/data/.minio.sys/*
 
 *.mitzu
 serverless/.aws-sam/*

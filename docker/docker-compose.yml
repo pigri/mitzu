@@ -1,0 +1,102 @@
+services:
+
+  postgres:
+    image: postgres
+    restart: always
+    hostname: postgres
+    environment:
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
+    volumes:
+      - ./.dbs/postgres:/var/lib/postgresql/data
+      - ./postgres_dump.sql.gz:/docker-entrypoint-initdb.d/init.sql.gz
+    networks:
+      - trino-network
+
+  mysql:
+    image: mysql
+    restart: always
+    command: '--max_allowed_packet=536870912'
+    environment:
+      - MYSQL_HOST=localhost
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=test
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=test
+    ports:
+      - '3307:3306'
+    expose:
+      - '3307'
+    volumes:
+      - ./.dbs/mysql:/var/lib/mysql
+      - ./mysql_dump.sql.gz:/docker-entrypoint-initdb.d/init.sql.gz
+    networks:
+      - trino-network
+
+  mariadb:
+    image: 'mariadb:latest'
+    hostname: mariadb
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+      MYSQL_DATABASE: metastore_db
+    networks:
+      - trino-network
+
+  trino-coordinator:
+    image: 'trinodb/trino:397'
+    hostname: trino-coordinator
+    container_name: docker-trino-coordinator-1        
+    ports:
+      - '8080:8080'
+    mem_limit: 1G
+    mem_reservation: 500M
+    volumes:
+      - ./trino/etc:/etc/trino
+    networks:
+      - trino-network
+
+  hive-metastore:
+    # image: 'bitsondatadev/hive-metastore:latest' # FOR INTEL 
+    image: 'ghcr.io/bitsondatadev/hive-metastore:latest' # FOR M1 Apple
+    hostname: hive-metastore
+    ports:
+      - '9083:9083' # Metastore Thrift
+    volumes:
+      - ./conf/metastore-site.xml:/opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml:ro
+    environment:
+      METASTORE_DB_HOSTNAME: mariadb
+    depends_on:
+      - mariadb
+    networks:
+      - trino-network
+
+  minio:
+    image: 'minio/minio:latest'
+    hostname: minio
+    container_name: minio
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - ./minio/data:/data
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    command: server --console-address ":9001" /data
+    networks:
+      - trino-network
+
+networks:
+  trino-network:
+    driver: bridge

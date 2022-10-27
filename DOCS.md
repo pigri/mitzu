@@ -233,3 +233,8 @@ You can find how to use the notebook class model in the [README](README.md)
 ## Revenue
 
 > To Be Done...
+
+
+# Web APP
+
+> Coming Soon

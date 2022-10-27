@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 import mitzu.model as M
+from mitzu.helper import LOGGER
 
 
 class ProjectDiscoveryError(Exception):
@@ -84,7 +85,7 @@ class ProjectDiscovery:
         self.project.validate()
 
         for ed_table in self.project.event_data_tables:
-            print(f"Discovering {ed_table.get_full_name()}")
+            LOGGER.info(f"Discovering {ed_table.get_full_name()}")
             fields = self.project.get_adapter().list_fields(event_data_table=ed_table)
             fields = self.flatten_fields(fields)
 

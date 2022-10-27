@@ -6,6 +6,7 @@ import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.file_adapter import FileAdapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.helper import LOGGER
 from mitzu.model import Connection, EventDataTable, Project
 from retry import retry  # type: ignore
 
@@ -53,7 +54,7 @@ def assert_row(df: pd.DataFrame, **kwargs):
 
 @retry(Exception, delay=5, tries=6)
 def check_table(engine, ed_table: EventDataTable) -> bool:
-    print(f"Trying to connect to {ed_table.table_name}")
+    LOGGER.info(f"Trying to connect to {ed_table.table_name}")
     ins = SA.inspect(engine)
     return ins.dialect.has_table(engine.connect(), ed_table.table_name)
 
@@ -75,10 +76,9 @@ def ingest_test_file_data(
     for ed_table in project.event_data_tables:
         ret = check_table(target_engine, ed_table)
         if ret:
-            print(f"Table {ed_table.table_name} already exists")
             continue
         else:
-            print(f"Ingesting {ed_table.table_name}")
+            LOGGER.info(f"Ingesting {ed_table.table_name}")
         pdf = adapter._read_file(ed_table)
         if transform_dt_col:
             pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(

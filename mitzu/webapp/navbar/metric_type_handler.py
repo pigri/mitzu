@@ -14,7 +14,7 @@ METRIC_TYPE_DROPDOWN_OPTION = "metric-type-dropdown-option"
 
 class MetricType(Enum):
     SEGMENTATION = "segmentation"
-    CONVERSION = "conversion"
+    CONVERSION = "funnel"
     RETENTION = "retention"
     JOURNEY = "journey"
     REVENUE = "revenue"

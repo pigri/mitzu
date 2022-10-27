@@ -3,18 +3,18 @@ from datetime import datetime
 from mitzu.model import ConversionMetric, DiscoveredProject, Segment
 from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row, assert_sql
-from tests.samples.sources import (
-    get_simple_csv,
-)
+from tests.samples.sources import get_simple_csv
 
 
 def test_discovered_dataset_pickle():
 
     discovery = ProjectDiscovery(project=get_simple_csv())
     dd1 = discovery.discover_project()
-    dd1.save_to_project_file("test_app")
+    dd1.save_to_project_file("test_app", folder="./examples/data/projects/")
 
-    dd2 = DiscoveredProject.load_from_project_file("test_app")
+    dd2 = DiscoveredProject.load_from_project_file(
+        "test_app", folder="./examples/data/projects/"
+    )
     m = dd2.create_notebook_class_model()
 
     seg: Segment = m.cart.config(

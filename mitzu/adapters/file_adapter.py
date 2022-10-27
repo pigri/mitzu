@@ -15,9 +15,6 @@ class FileAdapter(SQLiteAdapter):
     def __init__(self, project: M.Project):
         super().__init__(project)
 
-    def _get_connection_url(self, con: M.Connection):
-        return "sqlite://"
-
     def get_engine(self) -> Any:
         if self._engine is None:
             self._engine = super().get_engine()

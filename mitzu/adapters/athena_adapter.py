@@ -10,6 +10,7 @@ import pandas as pd
 from mitzu.adapters.helper import pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy.athena import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+from mitzu.helper import LOGGER
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
@@ -60,7 +61,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
     def _parse_map_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable
     ) -> M.Field:
-        print(f"Discovering map: {name}")
+        LOGGER.info(f"Discovering map: {name}")
         map: DA_T.MAP = cast(DA_T.MAP, sa_type)
         if map.value_type in (DA_T.STRUCT, DA_T.MAP):
             raise Exception(

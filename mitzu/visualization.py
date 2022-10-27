@@ -165,6 +165,7 @@ def fix_conv_times_pdf(
     funnel_length = len(metric._conversion._segments)
     cols = [f"{GA.AGG_VALUE_COL}_{index}" for index in range(1, funnel_length + 1)]
     max_ttc = pdf[cols].max(axis=1).max(axis=0)
+
     for key in cols:
         if 0 <= max_ttc <= TTC_RANGE_1_SEC:
             pdf[key] = pdf[key].round(1)

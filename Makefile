@@ -1,5 +1,4 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
-CREATE_TEST_DATA_CMD = docker container exec docker_trino-coordinator_1 trino --execute="$$(cat tests/integration/docker/trino_hive_init.sql)"
 
 clean:
 	$(POETRY) run pyclean mitzu release tests 
@@ -29,19 +28,19 @@ test_units:
 	$(POETRY) run pytest -sv tests/unit/
 
 test_integrations:
-	docker-compose -f tests/integration/docker/docker-compose.yml up -d --no-recreate
+	docker-compose -f docker/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
 
 docker_test_down:
 	rm -rf tests/.dbs/
-	docker-compose -f tests/integration/docker/docker-compose.yml down
+	docker-compose -f docker/docker-compose.yml down
 
 docker_test_up:	
-	docker-compose -f tests/integration/docker/docker-compose.yml up
+	docker-compose -f docker/docker-compose.yml up
 
-setup_test_data:
-	# TBD: Setup Minio, data has to be uploaded to minio
-	for i in {1..12}; do $(CREATE_TEST_DATA_CMD) && break || sleep 5; done
+trino_setup_test_data:
+	$(POETRY) run python3 scripts/wait_for_trino.py
+	docker container exec docker-trino-coordinator-1 trino --execute="$$(cat docker/trino_hive_init.sql)"
 	
 test_coverage:
 	$(POETRY) run pytest --cov=mitzu --cov-report=html tests/
@@ -58,9 +57,10 @@ check_ci: autoflake mypy lint test_coverage_ci
 notebook: 
 	$(POETRY) run jupyter lab
 
-dash: 	
+# This make command is used for testing the SSO
+dash_trino_sso: 	
 	cd release/app/ && \
-	BASEPATH=../../examples/webapp-docker/mitzu/ \
+	BASEPATH=../../examples/data/ \
 	LOG_LEVEL=DEBUG \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
@@ -79,9 +79,9 @@ dash:
 	OAUTH_SIGN_OUT_REDIRECT_URL="https://signin.mitzu.io/logout" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
-dash_simple: 	
+serve:
 	cd release/app/ && \
-	BASEPATH=../../examples/webapp-docker/mitzu/ \
+	BASEPATH=../../examples/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
@@ -90,9 +90,6 @@ dash_simple:
 
 build: check
 	$(POETRY) build
-
-generate_test_data:
-	$(POETRY) run python scripts/create_test_data.py $(SIZE)
 
 bump_version:
 	$(POETRY) version patch
@@ -104,7 +101,7 @@ publish_no_build:
 	$(POETRY) publish
 
 docker_build:	
-	docker image build ./release --platform=linux/amd64 \
+	docker buildx build ./release --platform="linux/amd64,linux/arm64" \
 	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
 	-t imeszaros/mitzu-webapp:latest \
 	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena]==$(shell poetry version -s)" --no-cache
@@ -112,14 +109,12 @@ docker_build:
 docker_build_local:
 	cp -r ./dist/ ./release/dist/
 	poetry export -E trinodwh -E postgresql -E webapp -E databricks --without-hashes --format=requirements.txt > release/requirements.txt
-	docker image build ./release \
-	--platform=linux/amd64 \
+	docker buildx build ./release \
+	--platform="linux/amd64,linux/arm64" \
 	--build-arg MITZU_VERSION=$(shell poetry version -s) \
 	--build-arg DIST_PATH=$(shell pwd)/dist/ \
 	--no-cache -f ./release/LocalDockerfile \
-	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
-	-t imeszaros/mitzu-webapp:latest
-
+	-t mitzu-webapp
 
 docker_publish_no_build:
 	docker push imeszaros/mitzu-webapp	

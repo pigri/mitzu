@@ -9,6 +9,7 @@ import pandas as pd
 import trino.sqlalchemy.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+from mitzu.helper import LOGGER
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
@@ -69,7 +70,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
         name: str,
         event_data_table: M.EventDataTable,
     ) -> M.Field:
-        print(f"Discovering map: {name}")
+        LOGGER.info(f"Discovering map: {name}")
         map: SA_T.MAP = cast(SA_T.MAP, sa_type)
         if map.value_type in (SA_T.ROW, SA_T.MAP):
             raise Exception(

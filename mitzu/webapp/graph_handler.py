@@ -36,7 +36,6 @@ MARKDOWN = """```sql
 GRAPH_CONTAINER = "graph_container"
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 200)
-BACKGROUND_CALLBACK = bool(os.getenv("BACKGROUND_CALLBACK", True))
 
 
 def create_graph_container() -> bc.Component:
@@ -44,6 +43,10 @@ def create_graph_container() -> bc.Component:
 
 
 def create_callbacks(webapp: WA.MitzuWebApp):
+    background_callback = bool(
+        os.getenv("BACKGROUND_CALLBACK", "true").lower() != "false"
+    )
+
     @webapp.app.callback(
         output=Output(GRAPH_CONTAINER, "children"),
         inputs=WA.ALL_INPUT_COMPS,
@@ -54,7 +57,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         ),
         interval=GRAPH_POLL_INTERVAL_MS,
         prevent_initial_call=True,
-        background=BACKGROUND_CALLBACK,
+        background=background_callback,
         running=[
             (
                 Output(TH.GRAPH_REFRESH_BUTTON, "disabled"),
@@ -80,6 +83,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         table_button_color: str,
         sql_button_color: str,
     ) -> Any:
+
         try:
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
@@ -106,7 +110,10 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         except Exception as exc:
             traceback.print_exc()
             return html.Div(
-                f"Something has gone wrong. Details {exc}",
+                [
+                    html.B("Something has gone wrong. Details:"),
+                    html.Pre(children=str(exc)),
+                ],
                 id=GRAPH,
                 style={"color": "red"},
             )

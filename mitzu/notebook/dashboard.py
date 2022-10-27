@@ -6,13 +6,11 @@ from typing import Optional
 
 import dash_bootstrap_components as dbc
 import diskcache
-import flask
 import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as PE
 import mitzu.webapp.webapp as MWA
 from dash import DiskcacheManager
 from jupyter_dash import JupyterDash
-from mitzu.notebook.component import CSS
 
 
 def dashboard(
@@ -26,18 +24,12 @@ def dashboard(
         external_stylesheets=[
             dbc.themes.ZEPHYR,
             dbc.icons.BOOTSTRAP,
-            "/components.css",
+            "/assets/components.css",
         ],
         update_title=None,
         suppress_callback_exceptions=True,
         long_callback_manager=callback_manager,
     )
-
-    @app.server.route("/components.css", methods=["GET"])
-    def css():
-        resp = flask.Response(CSS)
-        resp.content_type = "text/css"
-        return resp
 
     webapp = MWA.MitzuWebApp(
         persistency_provider=PE.FileSystemPersistencyProvider(projects_path="./"),
@@ -53,6 +45,7 @@ def dashboard(
         os.environ["HOST"] = host
     else:
         os.environ["HOST"] = "0.0.0.0"
+    os.environ["BACKGROUND_CALLBACK"] = "false"
 
     webapp.init_app()
     app.run_server(mode=mode)

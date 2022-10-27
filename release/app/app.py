@@ -12,7 +12,7 @@ import mitzu.webapp.webapp as MWA
 import serverless_wsgi
 from dash import CeleryManager, Dash, DiskcacheManager
 from dash.long_callback.managers import BaseLongCallbackManager
-from mitzu.webapp.helper import LOGGER
+from mitzu.helper import LOGGER
 
 OAUTH_SIGN_IN_URL = os.getenv("OAUTH_SIGN_IN_URL")
 MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")

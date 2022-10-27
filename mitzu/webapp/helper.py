@@ -1,6 +1,3 @@
-import logging
-import os
-import sys
 from typing import Any, Dict, List, Optional
 from urllib.parse import ParseResult
 
@@ -10,10 +7,6 @@ from dash import Dash, html
 PROJECT_PATH_INDEX = 0
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
-
-LOGGER = logging.getLogger()
-LOGGER.addHandler(logging.StreamHandler(sys.stdout))
-LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 
 def value_to_label(value: str) -> str:

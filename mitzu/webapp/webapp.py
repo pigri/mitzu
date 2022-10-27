@@ -20,9 +20,9 @@ import mitzu.webapp.simple_segment_handler as SS
 import mitzu.webapp.toolbar_handler as TH
 from dash import Dash, ctx, dcc, html
 from dash.dependencies import ALL, Input, Output
+from mitzu.helper import LOGGER
 from mitzu.webapp.helper import (
     CHILDREN,
-    LOGGER,
     METRIC_SEGMENTS,
     find_event_field_def,
     get_final_all_inputs,
