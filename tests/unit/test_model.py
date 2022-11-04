@@ -113,3 +113,21 @@ def test_event_data_table_with_missing_field(missing_field_name: str):
         edt.validate(adapter)
 
     assert "does not have 'missing'" in str(error.value)
+
+
+def test_event_data_table_with_uppercase_fields():
+    fields = {
+        "event_name_field": "EVENT_TYPE",
+        "user_id_field": "USER_ID",
+        "event_time_field": "EVENT_TIME",
+        "date_partition_field": "EVENT_TIME",
+    }
+    adapter = MagicMock()
+    adapter.list_fields.return_value = [
+        Field("event_type", DataType.STRING),
+        Field("user_id", DataType.STRING),
+        Field("event_time", DataType.DATETIME),
+    ]
+    edt = EventDataTable.create(table_name="simple", **fields)  # type: ignore
+
+    edt.validate(adapter)

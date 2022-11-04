@@ -1,0 +1,22 @@
+name: Poetry lock
+on:
+  workflow_dispatch:
+
+jobs:
+  poetry:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+      - name: Lock poetry dependencies
+        run: |
+          rm poetry.lock
+          poetry lock
+      - name: Saving poetry lock
+        uses: actions/upload-artifact@v3
+        with:
+          name: poetry.lock
+          path: poetry.lock
+      

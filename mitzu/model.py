@@ -483,7 +483,7 @@ class EventDataTable:
                 f"For {self.table_name} define the event_name_alias or the event_name_field property."
             )
 
-        available_fields = [f._get_name() for f in adapter.list_fields(self)]
+        available_fields = [f._get_name().lower() for f in adapter.list_fields(self)]
         if len(available_fields) == 0:
             raise InvalidEventDataTableError(
                 f"No fields in event data table '{self.table_name}'"
@@ -498,7 +498,7 @@ class EventDataTable:
             if field_to_validate is None:
                 continue
 
-            if field_to_validate._get_name() not in available_fields:
+            if field_to_validate._get_name().lower() not in available_fields:
                 raise InvalidEventDataTableError(
                     f"Event data table '{self.table_name}' does not have '{field_to_validate._get_name()}' field"
                 )
