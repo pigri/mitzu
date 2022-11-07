@@ -9,7 +9,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Install poetry
-        uses: abatilo/actions-poetry@v2
+        uses: snok/install-poetry@v1
       - name: Lock poetry dependencies
         run: |
           rm poetry.lock
@@ -19,4 +19,3 @@ jobs:
         with:
           name: poetry.lock
           path: poetry.lock
-      

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional, Union, cast
 
 import mitzu.adapters.generic_adapter as GA
@@ -110,6 +111,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
+            if LOGGER.isEnabledFor(logging.DEBUG):
+                LOGGER.debug(f"Query:\n{format_query(query)}")
             conn = engine.connect()
             self._connection = conn
             cursor_result = conn.execute(query)
@@ -279,7 +282,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
         table = self.get_table(event_data_table).alias("_evt")
-        event_name_field = self.get_event_name_field(event_data_table, table)
         dt_field = self.get_field_reference(
             field=event_data_table.event_time_field,
             event_data_table=event_data_table,
@@ -295,9 +297,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         raw_cte: EXP.CTE = SA.select(
             columns=[
                 *table.columns.values(),
-                SA.func.row_number()
-                .over(partition_by=event_name_field, order_by=SA.func.random())
-                .label("rn"),
+                (SA.cast(SA.func.random(), SA.Integer) * 367 % 100).label("__sample"),
             ],
             whereclause=(
                 (
@@ -314,11 +314,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             ),
         ).cte()
 
+        sampling_condition = SA.literal(True)
+        if self.project.default_discovery_lookback_days > 0:
+            sampling_condition = (
+                raw_cte.columns["__sample"] <= self.project.default_property_sample_rate
+            )
         return SA.select(
-            columns=raw_cte.columns.values(),
-            whereclause=(
-                raw_cte.columns["rn"] < self.project.default_property_sample_size
-            ),
+            columns=raw_cte.columns.values(), whereclause=sampling_condition
         ).cte()
 
     def _get_column_values_df(

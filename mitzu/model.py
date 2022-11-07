@@ -516,7 +516,7 @@ class Project:
     max_map_key_cardinality: int = 300
 
     default_end_dt: Optional[datetime] = None
-    default_property_sample_size: int = 10000
+    default_property_sample_rate: int = 100
     default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     default_discovery_lookback_days: int = 2
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
