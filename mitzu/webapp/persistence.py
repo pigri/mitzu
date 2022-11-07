@@ -10,7 +10,7 @@ from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
 PROJECTS_SUB_PATH = "projects"
 PROJECT_SUFFIX = ".mitzu"
-SAMPLE_PROJECT_NAME = "sample_project(SQLite)"
+SAMPLE_PROJECT_NAME = "sample_project"
 
 
 def create_sample_project() -> M.DiscoveredProject:

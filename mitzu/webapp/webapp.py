@@ -250,7 +250,7 @@ class MitzuWebApp:
 
     def handle_input_changes(
         self, all_inputs: Dict[str, Any], ctx_triggered_id: str
-    ) -> Tuple[List[html.Div], List[html.Div], str, str]:
+    ) -> Tuple[List[html.Div], List[html.Div], str, str, str]:
         parse_result = urlparse(all_inputs[MITZU_LOCATION])
         project_name = get_path_project_name(parse_result, self.app)
         discovered_project = self.get_discovered_project(project_name)
@@ -261,6 +261,7 @@ class MitzuWebApp:
                 [],
                 [c.to_plotly_json() for c in def_mc_comp_children],
                 "?" + parse_result.query[2:],
+                parse_result.geturl(),
                 MNB.MetricType.SEGMENTATION.value,
             )
 
@@ -272,8 +273,10 @@ class MitzuWebApp:
         )
 
         url_params = "?"
+        url = f"{parse_result.scheme}://{parse_result.netloc}{parse_result.path}"
         if metric is not None:
             url_params = "?m=" + quote(SE.to_compressed_string(metric))
+            url = url + url_params
 
         metric_segments = MS.from_metric(
             discovered_project=discovered_project,
@@ -286,6 +289,7 @@ class MitzuWebApp:
             metric_segments,
             mc_children,
             url_params,
+            url,
             metric_type.value,
         )
 
@@ -299,6 +303,7 @@ class MitzuWebApp:
                 Output(MS.METRIC_SEGMENTS, "children"),
                 Output(MC.METRICS_CONFIG_CONTAINER, "children"),
                 Output(MITZU_LOCATION, "search"),
+                Output(MN.SHARE_BUTTON, "content"),
                 Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             ],
             inputs=ALL_INPUT_COMPS,
@@ -306,7 +311,7 @@ class MitzuWebApp:
         )
         def on_inputs_change(
             all_inputs: Dict[str, Any],
-        ) -> Tuple[List[html.Div], List[html.Div], str, str]:
+        ) -> Tuple[List[html.Div], List[html.Div], str, str, str]:
             ctx_triggered_id = ctx.triggered_id
             LOGGER.debug(f"Inputs changed caused by: {ctx_triggered_id}")
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
