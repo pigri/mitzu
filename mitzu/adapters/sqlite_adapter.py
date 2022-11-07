@@ -24,6 +24,9 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def _get_connection_url(self, con: M.Connection):
         return "sqlite://?check_same_thread=False"
 
+    def keep_alive_connection(self) -> bool:
+        return True
+
     def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.datetime(SA.func.date(field_ref, "weekday 0", "-6 days"))

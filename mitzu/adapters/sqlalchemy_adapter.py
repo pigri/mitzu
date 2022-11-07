@@ -108,6 +108,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         raise ValueError(f"{sa_type}[{type(sa_type)}]: is not supported.")
 
+    def keep_alive_connection(self) -> bool:
+        return False
+
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
@@ -128,6 +131,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._connection = None
             H.LOGGER.error(f"Failed Query:\n{format_query(query)}")
             raise exc
+        finally:
+            if not self.keep_alive_connection():
+                self._connection = None
 
     def get_engine(self) -> SA.engine.Engine:
         con = self.project.connection
