@@ -595,10 +595,10 @@ class DiscoveredProject:
     def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
 
-    def dashboard(self, mode: str = "inline") -> Any:
+    def notebook_dashboard(self, mode: str = "inline", results: Dict[str, Any] = None):
         import mitzu.notebook.dashboard as DASH
 
-        DASH.dashboard(self, mode=mode)
+        DASH.dashboard(self, mode=mode, results=results)
 
     def get_event_def(self, event_name) -> EventDef:
         for val in self.definitions.values():

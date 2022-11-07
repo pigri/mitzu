@@ -113,9 +113,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         try:
             if H.LOGGER.isEnabledFor(logging.DEBUG):
                 H.LOGGER.debug(f"Query:\n{format_query(query)}")
-            conn = engine.connect()
-            self._connection = conn
-            cursor_result = conn.execute(query)
+            if self._connection is None:
+                self._connection = engine.connect()
+            cursor_result = self._connection.execute(query)
             columns = cursor_result.keys()
             fetched = cursor_result.fetchall()
             if len(fetched) > 0:
@@ -125,10 +125,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
+            self._connection = None
             H.LOGGER.error(f"Failed Query:\n{format_query(query)}")
             raise exc
-        finally:
-            self._connection = None
 
     def get_engine(self) -> SA.engine.Engine:
         con = self.project.connection

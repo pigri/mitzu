@@ -22,7 +22,7 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         return False
 
     def _get_connection_url(self, con: M.Connection):
-        return "sqlite://"
+        return "sqlite://?check_same_thread=False"
 
     def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:

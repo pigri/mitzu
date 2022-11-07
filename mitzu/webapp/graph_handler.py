@@ -4,7 +4,6 @@ import os
 import traceback
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
-
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
@@ -14,6 +13,7 @@ import mitzu.webapp.webapp as WA
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html
 from mitzu.webapp.helper import get_final_all_inputs
+
 
 GRAPH = "graph"
 MESSAGE = "graph_message"
@@ -105,7 +105,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
             elif sql_button_color == "info":
                 return create_sql_area(metric)
             else:
-                return create_graph(metric)
+                return create_graph(metric, webapp)
 
         except Exception as exc:
             traceback.print_exc()
@@ -119,7 +119,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
             )
 
 
-def create_graph(metric: M.Metric) -> Optional[dcc.Graph]:
+def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph]:
     if metric is None:
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 
@@ -132,6 +132,7 @@ def create_graph(metric: M.Metric) -> Optional[dcc.Graph]:
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 
     df = metric.get_df()
+
     if df is None:
         return None
 
@@ -140,6 +141,9 @@ def create_graph(metric: M.Metric) -> Optional[dcc.Graph]:
     elif isinstance(metric, M.SegmentationMetric):
         fig = VIZ.plot_segmentation(metric, df)
 
+    if webapp.results is not None:
+        webapp.results["mitzu_df"] = df
+        webapp.results["mitzu_fig"] = fig
     return dcc.Graph(id=GRAPH, figure=fig, config={"displayModeBar": False})
 
 

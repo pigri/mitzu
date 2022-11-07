@@ -244,6 +244,7 @@
 }
 
 #choose-project-dropdown,
-#navbar_more_dropdown {
+#navbar_more_dropdown,
+#share_button {
   display: None;
 }

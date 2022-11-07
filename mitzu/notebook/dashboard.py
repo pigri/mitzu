@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 from random import random
-from typing import Optional, List
+
+from typing import Optional, List, Dict, Any
 import logging
 import dash_bootstrap_components as dbc
 import diskcache
@@ -33,6 +34,7 @@ def dashboard(
     port: Optional[int] = None,
     host: Optional[str] = None,
     logging_level: int = logging.WARN,
+    results: Optional[Dict[str, Any]] = None,
 ):
     H.LOGGER.setLevel(logging_level)
     callback_manager = DiskcacheManager(diskcache.Cache("./"))
@@ -55,6 +57,7 @@ def dashboard(
         authorizer=AUTH.GuestMitzuAuthorizer(),
         discovered_project_cache={PE.SAMPLE_PROJECT_NAME: discovered_project},
         fixed_project_name=PE.SAMPLE_PROJECT_NAME,
+        results=results,
     )
     if port:
         os.environ["PORT"] = str(port)
@@ -65,7 +68,8 @@ def dashboard(
         os.environ["HOST"] = host
     else:
         os.environ["HOST"] = "0.0.0.0"
-    # os.environ["BACKGROUND_CALLBACK"] = "false"
+
+    os.environ["BACKGROUND_CALLBACK"] = str(results is None)
 
     webapp.init_app()
     app.run_server(mode=mode)

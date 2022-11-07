@@ -10,6 +10,7 @@ from dash import html, dcc
 from dash.dependencies import State, Input, Output
 
 SHARE_BUTTON = "share_button"
+CLIPBOARD = "share_clipboard"
 MANAGE_PROJECTS_LINK = os.getenv("MANAGE_PROJECTS_LINK")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
 DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "assets/mitzu-logo-light.svg")
@@ -46,11 +47,12 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                         html.B(className="bi bi-link-45deg"),
                                         " Share",
                                         dcc.Clipboard(
-                                            id=SHARE_BUTTON,
+                                            id=CLIPBOARD,
                                             content="",
                                             className="position-absolute start-0 top-0 w-100 h-100 opacity-0",
                                         ),
                                     ],
+                                    id=SHARE_BUTTON,
                                     className="position-relative top-0 start-0 text-nowrap",
                                     color="success",
                                     size="sm",

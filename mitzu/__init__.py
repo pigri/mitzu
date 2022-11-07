@@ -1,6 +1,3 @@
-import inspect
-from typing import Dict
-
 from mitzu.model import (
     Connection,
     ConnectionType,
@@ -8,20 +5,13 @@ from mitzu.model import (
     EventDataTable,
     Project,
 )
+import mitzu.helper as helper
 
 Connection
 ConnectionType
 Project
 EventDataTable
 DiscoveredProject
-
-
-def _find_notebook_globals() -> Dict:
-    for stk in inspect.stack():
-        glbs = stk[0].f_globals
-        if ("load_from_project_file" in glbs) and "_find_notebook_globals" not in glbs:
-            return glbs
-    return {}
 
 
 def load_from_project_file(
@@ -32,7 +22,7 @@ def load_from_project_file(
     ).create_notebook_class_model()
 
     if set_globals:
-        glbs = _find_notebook_globals()
+        glbs = helper.find_notebook_globals("load_from_project_file")
         m._to_globals(glbs)
 
     return m
