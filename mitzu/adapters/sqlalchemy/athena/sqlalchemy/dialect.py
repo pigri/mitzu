@@ -77,14 +77,16 @@ class AthenaDialect(DefaultDialect):
             raise ValueError(f"Unexpected database format {url.database}")
 
         if url.password:
-            kwargs["user"] = "token"
-            kwargs["access_token"] = url.password
+            kwargs["aws_access_key_id"] = url.username
+            kwargs["aws_secret_access_key"] = url.password
 
         if "s3_staging_dir" in url.query:
             kwargs["s3_staging_dir"] = url.query["s3_staging_dir"]
 
         if "work_group" in url.query:
             kwargs["work_group"] = url.query["work_group"]
+
+        kwargs["session"] = None
 
         return args, kwargs
 

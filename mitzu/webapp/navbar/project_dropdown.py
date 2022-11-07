@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 import mitzu.webapp.webapp as WA
 from dash import Input, Output
 from mitzu.helper import LOGGER
-from mitzu.webapp.helper import get_path_project_name, value_to_label
+from mitzu.webapp.helper import value_to_label
 
 CHOOSE_PROJECT_DROPDOWN = "choose-project-dropdown"
 
@@ -48,7 +48,7 @@ def create_project_dropdown(webapp: WA.MitzuWebApp):
         dropdown_items = create_dropdown_options(webapp)
         parse_result = urlparse(href)
         LOGGER.debug(f"Parse Result Dropdown {parse_result} - {href}")
-        curr_path_project_name = get_path_project_name(parse_result, webapp.app)
+        curr_path_project_name = webapp.get_path_project_name(parse_result)
 
         LOGGER.debug(
             f"Curr project pathname: {curr_path_project_name} - {parse_result} - {href}"

@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
-from urllib.parse import ParseResult
 
 import mitzu.model as M
-from dash import Dash, html
+from dash import html
 
-PROJECT_PATH_INDEX = 0
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
 
@@ -46,15 +46,6 @@ def get_event_names(segment: Optional[M.Segment]) -> List[str]:
         return get_event_names(segment._left) + get_event_names(segment._right)
     else:
         raise Exception(f"Unsupported Segment Type: {type(segment)}")
-
-
-def get_path_project_name(url_parse_result: ParseResult, dash: Dash) -> Optional[str]:
-    fixed_path = url_parse_result.path
-    if not fixed_path.startswith("/"):
-        fixed_path = f"/{fixed_path}"
-    fixed_path = dash.strip_relative_path(fixed_path)
-    path_parts = fixed_path.split("/")
-    return path_parts[PROJECT_PATH_INDEX]
 
 
 def get_property_name_comp(field_name: str) -> html.Div:

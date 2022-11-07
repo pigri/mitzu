@@ -9,7 +9,7 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
 import sqlparse
-from mitzu.helper import LOGGER
+import mitzu.helper as H
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
@@ -111,8 +111,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
         try:
-            if LOGGER.isEnabledFor(logging.DEBUG):
-                LOGGER.debug(f"Query:\n{format_query(query)}")
+            if H.LOGGER.isEnabledFor(logging.DEBUG):
+                H.LOGGER.debug(f"Query:\n{format_query(query)}")
             conn = engine.connect()
             self._connection = conn
             cursor_result = conn.execute(query)
@@ -125,7 +125,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 pdf = pd.DataFrame(columns=columns)
             return pdf
         except Exception as exc:
-            LOGGER.error(f"Failed Query:\n{format_query(query)}")
+            H.LOGGER.error(f"Failed Query:\n{format_query(query)}")
             raise exc
         finally:
             self._connection = None
@@ -330,7 +330,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_specific: bool,
     ) -> pd.DataFrame:
         event_specific_str = "event specific" if event_specific else "generic"
-        LOGGER.info(f"Discovering {event_specific_str} field enums")
+        H.LOGGER.info(f"Discovering {event_specific_str} field enums")
 
         cte = aliased(
             self._get_dataset_discovery_cte(event_data_table),

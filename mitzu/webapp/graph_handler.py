@@ -13,7 +13,7 @@ import mitzu.webapp.toolbar_handler as TH
 import mitzu.webapp.webapp as WA
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html
-from mitzu.webapp.helper import get_final_all_inputs, get_path_project_name
+from mitzu.webapp.helper import get_final_all_inputs
 
 GRAPH = "graph"
 MESSAGE = "graph_message"
@@ -87,7 +87,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         try:
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
-            project_name = get_path_project_name(parse_result, webapp.app)
+            project_name = webapp.get_path_project_name(parse_result)
             discovered_project = webapp.get_discovered_project(project_name)
             if discovered_project is None:
                 return html.Div("First select a project", id=GRAPH, className=MESSAGE)

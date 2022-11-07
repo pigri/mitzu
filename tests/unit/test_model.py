@@ -54,7 +54,7 @@ def test_event_data_table_having_event_name_alias_and_field():
 
 
 def test_event_data_table_without_event_name_alias_and_field():
-    adapter = MagicMock()
+    MagicMock()
     edt = EventDataTable.create(
         table_name="simple",
         user_id_field="user_id",
@@ -62,10 +62,7 @@ def test_event_data_table_without_event_name_alias_and_field():
         date_partition_field="event_time",
     )
 
-    with pytest.raises(InvalidEventDataTableError) as error:
-        edt.validate(adapter)
-
-    assert "define the event_name_alias or the event_name_field" in str(error.value)
+    assert edt.event_name_alias == "simple"
 
 
 def test_event_data_table_without_any_fields():

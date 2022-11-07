@@ -8,7 +8,7 @@ clean:
 	rm -rf .ipynb_checkpoints
 
 init:
-	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres
+	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres -E athena
 
 
 format: ## formats all python code

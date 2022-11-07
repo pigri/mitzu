@@ -386,6 +386,9 @@ class EventDataTable:
         date_partition_field: Optional[str] = None,
         description: str = None,
     ):
+        event_name_alias = event_name_alias
+        if event_name_field is None and event_name_alias is None:
+            event_name_alias = table_name
         return EventDataTable(
             table_name=table_name,
             event_name_alias=event_name_alias,
@@ -591,6 +594,11 @@ class DiscoveredProject:
 
     def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
+
+    def dashboard(self, mode: str = "inline") -> Any:
+        import mitzu.notebook.dashboard as DASH
+
+        DASH.dashboard(self, mode=mode)
 
     def get_event_def(self, event_name) -> EventDef:
         for val in self.definitions.values():

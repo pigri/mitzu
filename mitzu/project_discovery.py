@@ -113,5 +113,4 @@ class ProjectDiscovery:
             definitions=definitions,
             project=self.project,
         )
-
         return dd

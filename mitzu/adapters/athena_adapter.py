@@ -23,6 +23,9 @@ class AthenaAdapter(SQLAlchemyAdapter):
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
             query = str(query.compile(compile_kwargs={"literal_binds": True}))
+            query = query.replace(
+                "%", "%%"
+            )  # bugfix for pyathena, which has string formatting
         return super().execute_query(query=query)
 
     def _get_column_values_df(

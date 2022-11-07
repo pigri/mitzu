@@ -26,11 +26,11 @@ from mitzu.webapp.helper import (
     METRIC_SEGMENTS,
     find_event_field_def,
     get_final_all_inputs,
-    get_path_project_name,
 )
 from mitzu.webapp.persistence import PersistencyProvider
 
 MITZU_LOCATION = "mitzu_location"
+PROJECT_PATH_INDEX = 0
 
 MAIN = "main"
 ALL_INPUT_COMPS = {
@@ -78,6 +78,8 @@ class MitzuWebApp:
     discovered_project_cache: Dict[str, M.DiscoveredProject] = field(
         default_factory=lambda: {}
     )
+    fixed_project_name: Optional[str] = None
+    results: Optional[Dict[str, Any]] = None
 
     def init_app(self):
         LOGGER.info("Initializing WebApp")
@@ -114,6 +116,17 @@ class MitzuWebApp:
             id=MAIN,
         )
         self.create_callbacks()
+
+    def get_path_project_name(self, url_parse_result: ParseResult) -> Optional[str]:
+        if self.fixed_project_name is not None:
+            return self.fixed_project_name
+
+        fixed_path = url_parse_result.path
+        if not fixed_path.startswith("/"):
+            fixed_path = f"/{fixed_path}"
+        fixed_path = self.app.strip_relative_path(fixed_path)
+        path_parts = fixed_path.split("/")
+        return path_parts[PROJECT_PATH_INDEX]
 
     def get_discovered_project(self, project_name) -> Optional[M.DiscoveredProject]:
         if not project_name:
@@ -232,7 +245,7 @@ class MitzuWebApp:
     ) -> Tuple[Optional[M.Metric], MNB.MetricType]:
         metric: Optional[M.Metric] = None
         metric_type = MNB.MetricType.SEGMENTATION
-        project_name = get_path_project_name(parse_result, self.app)
+        project_name = self.get_path_project_name(parse_result)
         if ctx_triggered_id == MITZU_LOCATION:
             query = parse_qs(parse_result.query).get("m")
             if query is None:
@@ -252,7 +265,7 @@ class MitzuWebApp:
         self, all_inputs: Dict[str, Any], ctx_triggered_id: str
     ) -> Tuple[List[html.Div], List[html.Div], str, str, str]:
         parse_result = urlparse(all_inputs[MITZU_LOCATION])
-        project_name = get_path_project_name(parse_result, self.app)
+        project_name = self.get_path_project_name(parse_result)
         discovered_project = self.get_discovered_project(project_name)
 
         if discovered_project is None:
@@ -303,7 +316,7 @@ class MitzuWebApp:
                 Output(MS.METRIC_SEGMENTS, "children"),
                 Output(MC.METRICS_CONFIG_CONTAINER, "children"),
                 Output(MITZU_LOCATION, "search"),
-                Output(MN.SHARE_BUTTON, "content"),
+                Output(MN.CLIPBOARD, "content"),
                 Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             ],
             inputs=ALL_INPUT_COMPS,
