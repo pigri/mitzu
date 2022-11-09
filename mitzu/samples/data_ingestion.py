@@ -21,7 +21,7 @@ def ingest_dataframe(
         if not recreate:
             return
 
-    LOGGER.info(f"Ingesting records into {table_name}")
+    LOGGER.debug(f"Ingesting records into {table_name}")
     df.to_sql(
         con=engine,
         name=table_name,

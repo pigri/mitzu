@@ -70,7 +70,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
         name: str,
         event_data_table: M.EventDataTable,
     ) -> M.Field:
-        LOGGER.info(f"Discovering map: {name}")
+        LOGGER.debug(f"Discovering map: {name}")
         map: SA_T.MAP = cast(SA_T.MAP, sa_type)
         if map.value_type in (SA_T.ROW, SA_T.MAP):
             raise Exception(

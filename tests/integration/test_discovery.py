@@ -1,6 +1,6 @@
 import pytest
 from mitzu.model import InvalidProjectError, Segment
-from mitzu.project_discovery import ProjectDiscovery, ProjectDiscoveryError
+from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row
 from tests.samples.sources import (
     get_project_with_missing_table,
@@ -37,10 +37,9 @@ def test_simple_big_data_discovery():
 def test_data_discovery_without_data():
     project = get_project_without_records()
     discovery = ProjectDiscovery(project)
-    with pytest.raises(ProjectDiscoveryError) as e_info:
-        discovery.discover_project()
 
-    assert "'simple'" in str(e_info.value)
+    dp = discovery.discover_project()
+    assert len(dp.get_all_events()) == 0
 
 
 def test_data_discovery_with_missing_table():

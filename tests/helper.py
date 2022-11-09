@@ -78,7 +78,7 @@ def ingest_test_file_data(
         if ret:
             continue
         else:
-            LOGGER.info(f"Ingesting {ed_table.table_name}")
+            LOGGER.debug(f"Ingesting {ed_table.table_name}")
         pdf = adapter._read_file(ed_table)
         if transform_dt_col:
             pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(

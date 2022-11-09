@@ -21,6 +21,7 @@ import mitzu.notebook.model_loader as ML
 import mitzu.project_discovery as D
 import mitzu.titles as TI
 import mitzu.visualization as VIS
+import logging
 
 ANY_EVENT_NAME = "any_event"
 
@@ -549,8 +550,8 @@ class Project:
             days=self.default_discovery_lookback_days
         )
 
-    def discover_project(self) -> DiscoveredProject:
-        return D.ProjectDiscovery(project=self).discover_project()
+    def discover_project(self, progress_bar: bool = True) -> DiscoveredProject:
+        return D.ProjectDiscovery(project=self).discover_project(progress_bar)
 
     def validate(self):
         if len(self.event_data_tables) == 0:
@@ -595,10 +596,24 @@ class DiscoveredProject:
     def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
 
-    def notebook_dashboard(self, mode: str = "inline", results: Dict[str, Any] = None):
+    def notebook_dashboard(
+        self,
+        mode: str = "inline",
+        port: Optional[int] = None,
+        host: Optional[str] = None,
+        logging_level: int = logging.WARN,
+        results: Optional[Dict[str, Any]] = None,
+    ):
         import mitzu.notebook.dashboard as DASH
 
-        DASH.dashboard(self, mode=mode, results=results)
+        DASH.dashboard(
+            self,
+            mode=mode,
+            results=results,
+            port=port,
+            host=host,
+            logging_level=logging_level,
+        )
 
     def get_event_def(self, event_name) -> EventDef:
         for val in self.definitions.values():

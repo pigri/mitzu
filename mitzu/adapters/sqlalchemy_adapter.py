@@ -335,7 +335,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         event_specific: bool,
     ) -> pd.DataFrame:
         event_specific_str = "event specific" if event_specific else "generic"
-        H.LOGGER.info(f"Discovering {event_specific_str} field enums")
+        H.LOGGER.debug(f"Discovering {event_specific_str} field enums")
 
         cte = aliased(
             self._get_dataset_discovery_cte(event_data_table),

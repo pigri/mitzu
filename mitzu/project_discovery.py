@@ -4,6 +4,8 @@ from typing import Dict, List
 
 import mitzu.model as M
 from mitzu.helper import LOGGER
+from tqdm import tqdm
+import sys
 
 
 class ProjectDiscoveryError(Exception):
@@ -79,38 +81,54 @@ class ProjectDiscovery:
                 res.append(f)
         return res
 
-    def discover_project(self) -> M.DiscoveredProject:
+    def discover_project(self, progress_bar: bool = False) -> M.DiscoveredProject:
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
         self.project.validate()
-
-        for ed_table in self.project.event_data_tables:
-            LOGGER.info(f"Discovering {ed_table.get_full_name()}")
-            fields = self.project.get_adapter().list_fields(event_data_table=ed_table)
-            fields = self.flatten_fields(fields)
-
-            specific_fields = self._get_specific_fields(ed_table, fields)
-            generic_fields = [c for c in fields if c not in specific_fields]
-            generic_field_values = self._get_field_values(
-                ed_table, generic_fields, False
+        tables = self.project.event_data_tables
+        if progress_bar:
+            tables = tqdm(
+                tables, leave=False, file=sys.stdout, desc="Discovering datasets"
             )
-            if M.ANY_EVENT_NAME not in generic_field_values.keys():
-                raise ProjectDiscoveryError(
-                    f"Can't find any data to determine the generic field values in table '{ed_table.table_name}'"
+        errors = {}
+        for ed_table in tables:
+            try:
+                LOGGER.debug(f"Discovering {ed_table.get_full_name()}")
+                fields = self.project.get_adapter().list_fields(
+                    event_data_table=ed_table
                 )
-            any_event_field_values = generic_field_values[M.ANY_EVENT_NAME]
-            event_specific_field_values = self._get_field_values(
-                ed_table, specific_fields, True
-            )
-            definitions[ed_table] = self._merge_generic_and_specific_definitions(
-                self.project,
-                ed_table,
-                any_event_field_values,
-                event_specific_field_values,
-            )
+                fields = self.flatten_fields(fields)
+
+                specific_fields = self._get_specific_fields(ed_table, fields)
+                generic_fields = [c for c in fields if c not in specific_fields]
+                generic_field_values = self._get_field_values(
+                    ed_table, generic_fields, False
+                )
+                if M.ANY_EVENT_NAME not in generic_field_values.keys():
+                    raise ProjectDiscoveryError(
+                        f"Can't find any data to determine the generic field values in table '{ed_table.table_name}'"
+                    )
+                any_event_field_values = generic_field_values[M.ANY_EVENT_NAME]
+                event_specific_field_values = self._get_field_values(
+                    ed_table, specific_fields, True
+                )
+                definitions[ed_table] = self._merge_generic_and_specific_definitions(
+                    self.project,
+                    ed_table,
+                    any_event_field_values,
+                    event_specific_field_values,
+                )
+            except Exception as exc:
+                LOGGER.error(f"{ed_table.table_name} failed to discover: {str(exc)}")
+                errors[ed_table.table_name] = exc
 
         dd = M.DiscoveredProject(
             definitions=definitions,
             project=self.project,
         )
+
+        if len(errors) > 0:
+            LOGGER.warn(f"Finished discovery with {len(errors)} errors.")
+        else:
+            LOGGER.info("Successfully finished dataset discovery.")
         return dd

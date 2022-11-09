@@ -64,7 +64,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
     def _parse_map_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable
     ) -> M.Field:
-        LOGGER.info(f"Discovering map: {name}")
+        LOGGER.debug(f"Discovering map: {name}")
         map: DA_T.MAP = cast(DA_T.MAP, sa_type)
         if map.value_type in (DA_T.STRUCT, DA_T.MAP):
             raise Exception(
