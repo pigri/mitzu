@@ -26,6 +26,7 @@ COLUMN_NAME_REPLACE_STR = "___"
 FieldReference = Union[SA.Column, EXP.Label]
 SAMPLED_SOURCE_CTE_NAME = "sampled_source"
 
+
 SIMPLE_TYPE_MAPPINGS = {
     SA_T.Numeric: M.DataType.NUMBER,
     SA_T.Integer: M.DataType.NUMBER,
@@ -100,6 +101,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         return self.execute_query(self._get_segmentation_select(metric))
+
+    def get_retention_sql(self, metric: M.RetentionMetric) -> str:
+        return format_query(self._get_retention_select(metric))
+
+    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
+        return self.execute_query(self._get_retention_select(metric))
 
     def map_type(self, sa_type: Any) -> M.DataType:
         for sa_t, data_type in SIMPLE_TYPE_MAPPINGS.items():
@@ -204,6 +211,20 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             "Generic SQL Alchemy Adapter doesn't support map types"
         )
 
+    def _generate_retention_series_cte(
+        self, start_dt: datetime, end_dt: datetime, time_window: M.TimeWindow
+    ) -> EXP.CTE:
+        selects = []
+        curr_dt = start_dt
+        index = 0
+        while curr_dt <= end_dt:
+            index_sel = SA.select(columns=[SA.literal(index).label(GA.RETENTION_INDEX)])
+            selects.append(index_sel)
+            index += time_window.value
+            curr_dt = curr_dt + time_window.to_relative_delta()
+
+        return SA.union(*selects).cte()
+
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         table = self.get_table(event_data_table)
         field_types = table.columns
@@ -257,10 +278,23 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return pd.DataFrame(result)[GA.EVENT_NAME_ALIAS_COL].tolist()
 
+    def _get_timewindow(self, timegroup: M.TimeGroup) -> Any:
+        return SA.text(f"interval '1 {timegroup}'")
+
     def _get_datetime_interval(
         self, field_ref: FieldReference, timewindow: M.TimeWindow
     ) -> Any:
         return field_ref + SA.text(f"interval '{timewindow.value}' {timewindow.period}")
+
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        return SA.func.date_add(
+            SA.text(f"'{time_group.name.lower()}'"), value_field_ref, field_ref
+        )
 
     def _get_connection_url(self, con: M.Connection):
         user_name = "" if con.user_name is None else con.user_name
@@ -592,7 +626,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return SA.literal(None)
 
     def _get_segment_sub_query_cte(
-        self, sub_query: SegmentSubQuery, group_field: Optional[M.EventFieldDef] = None
+        self,
+        sub_query: SegmentSubQuery,
+        group_field: Optional[M.EventFieldDef] = None,
     ) -> EXP.CTE:
         selects = []
         while True:
@@ -601,9 +637,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             group_by_col = SA.literal(None)
             if group_field is not None:
                 group_by_col = self._find_group_by_field_ref(
-                    group_field,
-                    sub_query.table_ref,
-                    ed_table,
+                    group_field, sub_query.table_ref, ed_table
                 )
 
             select = SA.select(
@@ -787,6 +821,100 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 else [SA.text(GA.DATETIME_COL), SA.text(GA.GROUP_COL)]
             ),
         ).select_from(joined_source)
+
+    def _get_retention_select(self, metric: M.RetentionMetric) -> Any:
+        initial_cte = self._get_segment_sub_query_cte(
+            self._get_segment_sub_query(metric._initial_segment, metric),
+            metric._group_by,
+        )
+
+        retention_index_cte = self._generate_retention_series_cte(
+            metric._start_dt, metric._end_dt, metric._retention_window
+        ).alias("ret_indeces")
+
+        initial_group_by = (
+            initial_cte.columns.get(GA.CTE_GROUP_COL)
+            if metric._group_by is not None
+            else SA.literal(None)
+        )
+
+        time_group = (
+            self._get_date_trunc(
+                metric._time_group, initial_cte.columns.get(GA.CTE_DATETIME_COL)
+            )
+            if metric._time_group != M.TimeGroup.TOTAL
+            else SA.literal(None)
+        )
+
+        retaining_cte = self._get_segment_sub_query_cte(
+            self._get_segment_sub_query(metric._retaining_segment, metric)
+        )
+
+        retention_interval_func = self._get_dynamic_datetime_interval(
+            field_ref=initial_cte.columns.get(GA.CTE_DATETIME_COL),
+            value_field_ref=retention_index_cte.columns.get(GA.RETENTION_INDEX),
+            time_group=metric._retention_window.period,
+        )
+
+        joined_source = initial_cte.join(retention_index_cte, True).join(
+            retaining_cte,
+            (
+                (
+                    initial_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)
+                    == retaining_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL)
+                )
+                & (
+                    self._get_datetime_column(retaining_cte, GA.CTE_DATETIME_COL)
+                    > retention_interval_func
+                )
+                & (
+                    self._get_datetime_column(retaining_cte, GA.CTE_DATETIME_COL)
+                    <= self._get_datetime_interval(
+                        retention_interval_func,
+                        metric._retention_window,
+                    )
+                )
+            ),
+            isouter=True,
+        )
+
+        columns = [
+            time_group.label(GA.DATETIME_COL),
+            initial_group_by.label(GA.GROUP_COL),
+            retention_index_cte.columns.get(GA.RETENTION_INDEX),
+            SA.func.count(
+                initial_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+            ).label(fix_col_index(1, GA.USER_COUNT_COL)),
+            SA.func.count(
+                retaining_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+            ).label(fix_col_index(2, GA.USER_COUNT_COL)),
+            (
+                SA.func.count(
+                    retaining_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                )
+                * 100.0
+                / SA.func.count(
+                    initial_cte.columns.get(GA.CTE_USER_ID_ALIAS_COL).distinct()
+                )
+            ).label(GA.AGG_VALUE_COL),
+        ]
+
+        return SA.select(
+            columns=columns,
+            whereclause=(self._get_timewindow_where_clause(initial_cte, metric)),
+            group_by=(
+                [SA.literal(1), SA.literal(2), SA.literal(3)]
+                if self._column_index_support()
+                else [
+                    SA.text(GA.DATETIME_COL),
+                    SA.text(GA.GROUP_COL),
+                    SA.text(GA.RETENTION_INDEX),
+                ]
+            ),
+        ).select_from(joined_source)
+
+    def _get_datetime_column(self, cte: Any, name: str) -> Any:
+        return cte.columns.get(name)
 
     def test_connection(self):
         self.execute_query(

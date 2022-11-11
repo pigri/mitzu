@@ -23,6 +23,19 @@ class MySQLAdapter(SQLAlchemyAdapter):
             SA.func.json_objectagg(SA.func.coalesce(field_ref, NULL_VALUE_KEY), "")
         )
 
+    def _get_datetime_interval(
+        self, field_ref: FieldReference, timewindow: M.TimeWindow
+    ) -> Any:
+        return field_ref + SA.text(f"interval {timewindow.value} {timewindow.period}")
+
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        return field_ref + SA.text(f"interval {value_field_ref} {time_group}")
+
     def _get_column_values_df(
         self,
         event_data_table: M.EventDataTable,

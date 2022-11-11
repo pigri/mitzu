@@ -34,6 +34,13 @@ class TrinoAdapter(SQLAlchemyAdapter):
         df[GA.AGG_VALUE_COL] = df[GA.AGG_VALUE_COL].astype(float)
         return df
 
+    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
+        df = super().get_retention_df(metric)
+        df = dataframe_str_to_datetime(df, GA.GROUP_COL)
+        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        df[GA.AGG_VALUE_COL] = df[GA.AGG_VALUE_COL].astype(float)
+        return df
+
     def execute_query(self, query: Any) -> pd.DataFrame:
         if type(query) != str:
             query = str(query.compile(compile_kwargs={"literal_binds": True}))
@@ -99,6 +106,9 @@ class TrinoAdapter(SQLAlchemyAdapter):
         sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
         return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))
 
+    def _generate_time_series_column(self, dt: datetime) -> Any:
+        return SA.literal_column(f"timestamp '{dt}'")
+
     def _parse_complex_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
     ) -> M.Field:
@@ -150,6 +160,14 @@ class TrinoAdapter(SQLAlchemyAdapter):
             timewindow.value,
             field_ref,
         )
+
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        return SA.func.date_add(time_group.name.lower(), value_field_ref, field_ref)
 
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE

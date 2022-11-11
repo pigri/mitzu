@@ -27,6 +27,12 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def keep_alive_connection(self) -> bool:
         return True
 
+    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
+        df = super().get_retention_df(metric)
+        df = dataframe_str_to_datetime(df, GA.GROUP_COL)
+        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        return df
+
     def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.datetime(SA.func.date(field_ref, "weekday 0", "-6 days"))
@@ -79,6 +85,27 @@ class SQLiteAdapter(SQLAlchemyAdapter):
             SA.text(f"'+{timewindow.value} {timewindow.period.name.lower()}'"),
         )
 
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        if time_group == M.TimeGroup.WEEK:
+            # SQL Lite doesn't have the week concept
+            time_group = M.TimeGroup.DAY
+            return SA.func.datetime(
+                field_ref,
+                SA.text(
+                    f"'+' || ({value_field_ref} * 7) || ' {time_group.name.lower()}'"
+                ),
+            )
+
+        return SA.func.datetime(
+            field_ref,
+            SA.text(f"'+' || {value_field_ref} || ' {time_group.name.lower()}'"),
+        )
+
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
     ) -> Any:
@@ -103,3 +130,6 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         df = super().get_segmentation_df(metric)
         return dataframe_str_to_datetime(df, GA.DATETIME_COL)
+
+    def _get_datetime_column(self, cte: Any, name: str) -> Any:
+        return SA.func.datetime(cte.columns.get(name))

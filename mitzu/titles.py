@@ -132,3 +132,16 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
     ]
 
     return "<br />".join(lines).strip().capitalize()
+
+
+def get_retention_title(metric: M.RetentionMetric):
+    if metric._config.custom_title is not None:
+        return metric._config.custom_title
+
+    initial_title = get_segment_title_text(metric._initial_segment)
+    retaining_title = get_segment_title_text(metric._retaining_segment)
+
+    if initial_title == retaining_title:  # same segment
+        return f"Retention of unique users doing {initial_title}"
+
+    return f"Retention of unique users doing {retaining_title} after {initial_title}"

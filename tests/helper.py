@@ -54,36 +54,32 @@ def assert_row(df: pd.DataFrame, **kwargs):
 
 @retry(Exception, delay=5, tries=6)
 def check_table(engine, ed_table: EventDataTable) -> bool:
-    LOGGER.info(f"Trying to connect to {ed_table.table_name}")
+    LOGGER.debug(f"Trying to connect to {ed_table.table_name}")
     ins = SA.inspect(engine)
     return ins.dialect.has_table(engine.connect(), ed_table.table_name)
 
 
 def ingest_test_file_data(
-    project: Project,
+    source_project: Project,
     target_connection: Connection,
     transform_dt_col: bool = True,
     dtype: Dict[str, Any] = None,
 ) -> SQLAlchemyAdapter:
-    adapter = cast(FileAdapter, project.get_adapter())
+    source_adapter = cast(FileAdapter, source_project.get_adapter())
 
     target_source = Project(
-        connection=target_connection, event_data_tables=project.event_data_tables
+        connection=target_connection, event_data_tables=source_project.event_data_tables
     )
     target_adapter = cast(SQLAlchemyAdapter, target_source.get_adapter())
     target_engine = target_adapter.get_engine()
 
-    for ed_table in project.event_data_tables:
-        ret = check_table(target_engine, ed_table)
-        if ret:
-            continue
-        else:
-            LOGGER.debug(f"Ingesting {ed_table.table_name}")
-        pdf = adapter._read_file(ed_table)
+    for ed_table in source_project.event_data_tables:
+        pdf = source_adapter._read_file(ed_table)
         if transform_dt_col:
             pdf[ed_table.event_time_field] = pdf[ed_table.event_time_field].apply(
                 lambda v: datetime.fromisoformat(v)
             )
+
         pdf.to_sql(
             con=target_engine,
             name=ed_table.table_name,

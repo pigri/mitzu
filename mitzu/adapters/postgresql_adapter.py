@@ -5,7 +5,10 @@ from typing import Any
 import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
-from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import (
+    FieldReference,
+    SQLAlchemyAdapter,
+)
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
@@ -19,6 +22,14 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
         self, field_ref: FieldReference, timewindow: M.TimeWindow
     ) -> Any:
         return field_ref + SA.text(f"interval '{timewindow.value} {timewindow.period}'")
+
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        return field_ref + (value_field_ref * SA.text(f"interval '1 {time_group}'"))
 
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE

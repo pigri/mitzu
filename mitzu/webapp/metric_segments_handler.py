@@ -24,7 +24,7 @@ def from_metric(
         segments = metric._conversion._segments
     elif isinstance(metric, M.RetentionMetric):
         limit = 2
-        segments = metric._conversion._segments
+        segments = [metric._initial_segment, metric._retaining_segment]
     elif metric is None:
         limit = 1
         segments = []

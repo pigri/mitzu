@@ -9,6 +9,7 @@ import pandas as pd
 # Final Select Columns
 EVENT_NAME_ALIAS_COL = "_event_name"
 DATETIME_COL = "_datetime"
+RETENTION_INDEX = "_ret_index"
 GROUP_COL = "_group"
 AGG_VALUE_COL = "_agg_value"
 USER_COUNT_COL = "_user_count"
@@ -64,6 +65,12 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def get_retention_sql(self, metric: M.RetentionMetric) -> str:
+        raise NotImplementedError()
+
+    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
         raise NotImplementedError()
 
     def test_connection(self):

@@ -129,6 +129,18 @@ class AthenaAdapter(SQLAlchemyAdapter):
             field_ref,
         )
 
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        return SA.func.date_add(time_group.name.lower(), value_field_ref, field_ref)
+
+    def _generate_time_series_column(self, dt: datetime) -> Any:
+        dt_str = datetime.strftime(dt, "%Y-%m-%d %H:%M:%S.%f")
+        return SA.literal_column(f"timestamp '{dt_str}'")
+
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
     ) -> Any:

@@ -8,7 +8,10 @@ import mitzu.model as M
 import pandas as pd
 import pytest
 from tests.helper import assert_row, ingest_test_file_data
-from tests.samples.sources import get_simple_csv
+from tests.samples.sources import (
+    get_simple_csv,
+    get_basic_events_csv,
+)
 
 WD = os.path.dirname(os.path.abspath(__file__)) + "/../samples/"
 
@@ -72,23 +75,32 @@ TEST_CASES = [
 @pytest.mark.parametrize("test_case", TEST_CASES, ids=case_name)
 def test_db_integrations(test_case: IntegrationTestCase):
     test_source = get_simple_csv()
+    test_subscriptions = get_basic_events_csv()
     ingested_source = M.Project(
         test_case.connection,
-        event_data_tables=test_source.event_data_tables,
+        event_data_tables=test_source.event_data_tables
+        + test_subscriptions.event_data_tables,
         default_end_dt=datetime(2022, 1, 1),
         default_discovery_lookback_days=2000,
     )
 
     if test_case.ingest:
         ingest_test_file_data(
-            project=test_source,
+            source_project=test_source,
             target_connection=ingested_source.connection,
             transform_dt_col=False,
         )
-    validate_integration(project=ingested_source)
+        ingest_test_file_data(
+            source_project=test_subscriptions,
+            target_connection=ingested_source.connection,
+            transform_dt_col=False,
+        )
+    validate_segmentation(project=ingested_source)
+    validate_funnel(project=ingested_source)
+    validate_retention(project=ingested_source)
 
 
-def validate_integration(project: M.Project):
+def validate_segmentation(project: M.Project):
     m = project.discover_project().create_notebook_class_model()
 
     df = m.cart.brand.is_artex.config(
@@ -102,6 +114,9 @@ def validate_integration(project: M.Project):
         _group=None,
     )
 
+
+def validate_funnel(project: M.Project):
+    m = project.discover_project().create_notebook_class_model()
     df = (
         (m.view >> m.cart)
         .config(
@@ -195,3 +210,101 @@ def validate_integration(project: M.Project):
         _agg_value_2=33.3333,
         _group="cosmoprofi",
     )
+
+
+def validate_retention(project: M.Project):
+    m = project.discover_project().create_notebook_class_model()
+    metric = (m.event_1 >= m.event_2).config(
+        start_dt="2021-01-01",
+        end_dt="2021-01-06",
+        retention_window="1 day",
+        time_group="total",
+    )
+    retention_df = metric.get_df()
+    retention_df = retention_df.round({"_agg_value": 1})
+    retention_df = retention_df.sort_values(by=["_datetime", "_ret_index"]).reset_index(
+        drop=True
+    )
+
+    expected_retention_df = pd.DataFrame(
+        {
+            "_datetime": [None for _ in range(0, 6)],
+            "_group": [None for _ in range(0, 6)],
+            "_ret_index": [i for i in range(0, 6)],
+            "_user_count_1": [3 for i in range(0, 6)],
+            "_user_count_2": [3, 2, 1, 1, 1, 0],
+            "_agg_value": [100.0, 66.7, 33.3, 33.3, 33.3, 0],
+        }
+    )
+
+    pd.testing.assert_frame_equal(retention_df, expected_retention_df)
+
+    metric = (m.new_subscription >= m.renewed_subscription).config(
+        start_dt="2021-01-01",
+        end_dt="2021-06-01",
+        retention_window="1 month",
+        time_group="total",
+    )
+
+    retention_df = metric.get_df()
+    retention_df = retention_df.round({"_agg_value": 1})
+    retention_df = retention_df.sort_values(by=["_datetime", "_ret_index"]).reset_index(
+        drop=True
+    )
+
+    expected_retention_df = pd.DataFrame(
+        {
+            "_datetime": [None for _ in range(0, 6)],
+            "_group": [None for _ in range(0, 6)],
+            "_ret_index": [i for i in range(0, 6)],
+            "_user_count_1": [1000 for i in range(0, 6)],
+            "_user_count_2": [
+                919,
+                878,
+                707,
+                606,
+                505,
+                404,
+            ],
+            "_agg_value": [
+                91.9,
+                87.8,
+                70.7,
+                60.6,
+                50.5,
+                40.4,
+            ],
+        }
+    )
+
+    pd.testing.assert_frame_equal(retention_df, expected_retention_df)
+
+    metric = (m.renewed_subscription >= m.renewed_subscription).config(
+        start_dt="2021-01-01",
+        end_dt="2021-02-14",
+        retention_window="5 week",
+        time_group="month",
+    )
+    retention_df = metric.get_df()
+
+    retention_df = retention_df.round({"_agg_value": 1})
+    retention_df = retention_df.sort_values(by=["_datetime", "_ret_index"]).reset_index(
+        drop=True
+    )
+
+    dt_1 = datetime(2021, 1, 1)
+    dt_2 = datetime(2021, 2, 1)
+    print(retention_df)
+
+    expected_retention_df = pd.DataFrame(
+        {
+            "_datetime": [dt_1, dt_1, dt_2, dt_2],
+            "_group": [None for _ in range(0, 4)],
+            "_ret_index": [0, 5, 0, 5],
+            "_user_count_1": [919, 919, 878, 878],
+            "_user_count_2": [878, 707, 707, 606],
+            "_agg_value": [95.5, 76.9, 80.5, 69.0],
+        }
+    )
+
+    pd.testing.assert_frame_equal(retention_df, expected_retention_df)

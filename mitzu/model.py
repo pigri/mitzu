@@ -795,6 +795,8 @@ class Metric(ABC):
             return AggType.CONVERSION
         if isinstance(self, SegmentationMetric):
             return AggType.COUNT_UNIQUE_USERS
+        if isinstance(self, RetentionMetric):
+            return AggType.COUNT_UNIQUE_USERS
         raise NotImplementedError(
             f"_agg_type property is not implemented for {type(self)}"
         )
@@ -913,21 +915,68 @@ class SegmentationMetric(Metric):
 @dataclass(frozen=True, init=False)
 class RetentionMetric(Metric):
 
-    _conversion: Conversion
-    _ret_window: TimeWindow
+    _initial_segment: Segment
+    _retaining_segment: Segment
+    _retention_window: TimeWindow
 
     def __init__(
         self,
-        conversion: Conversion,
+        initial_segment: Segment,
+        retaining_segment: Segment,
+        retention_window: TimeWindow,
         config: MetricConfig,
-        ret_window: TimeWindow = DEF_RET_WINDOW,
     ):
         super().__init__(config)
-        object.__setattr__(self, "_conversion", conversion)
-        object.__setattr__(self, "_ret_window", ret_window)
+        object.__setattr__(self, "_initial_segment", initial_segment)
+        object.__setattr__(self, "_retaining_segment", retaining_segment)
+        object.__setattr__(self, "_retention_window", retention_window)
+
+    def config(
+        self,
+        start_dt: Optional[str | datetime] = None,
+        end_dt: Optional[str | datetime] = None,
+        custom_title: Optional[str] = None,
+        retention_window: TimeWindow = TimeWindow(value=1, period=TimeGroup.DAY),
+        time_group: TimeGroup = TimeGroup.TOTAL,
+        group_by: Optional[EventFieldDef] = None,
+    ) -> RetentionMetric:
+        config = MetricConfig(
+            start_dt=helper.parse_datetime_input(start_dt, None),
+            end_dt=helper.parse_datetime_input(end_dt, None),
+            time_group=TimeGroup.parse(time_group),
+            custom_title=custom_title,
+            group_by=group_by,
+        )
+
+        return RetentionMetric(
+            initial_segment=self._initial_segment,
+            retaining_segment=self._retaining_segment,
+            retention_window=TimeWindow.parse(retention_window),
+            config=config,
+        )
 
     def __repr__(self) -> str:
         return super().__repr__()
+
+    def get_df(self) -> pd.DataFrame:
+        project = helper.get_segment_project(self._initial_segment)
+        return project.get_adapter().get_retention_df(self)
+
+    def get_sql(self) -> str:
+        project = helper.get_segment_project(self._initial_segment)
+        return project.get_adapter().get_retention_sql(self)
+
+    def get_project(self) -> Project:
+        curr: Segment = self._initial_segment
+        while not isinstance(curr, SimpleSegment):
+            curr = cast(ComplexSegment, curr)._left
+        return curr._left._project
+
+    def get_figure(self):
+        return VIS.plot_retention(self)
+
+    def get_title(self) -> str:
+        return TI.get_retention_title(self)
 
 
 class Conversion(ConversionMetric):
@@ -943,7 +992,6 @@ class Conversion(ConversionMetric):
     def config(
         self,
         conv_window: Optional[str | TimeWindow] = DEF_CONV_WINDOW,
-        ret_window: Optional[str | TimeWindow] = None,
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
         time_group: Optional[str | TimeGroup] = None,
@@ -952,7 +1000,7 @@ class Conversion(ConversionMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
-    ) -> ConversionMetric | RetentionMetric:
+    ) -> ConversionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
         elif type(lookback_days) == TimeWindow:
@@ -974,15 +1022,7 @@ class Conversion(ConversionMetric):
             agg_type=agg_type,
             agg_param=agg_param,
         )
-        if ret_window is not None:
-            ret_res = RetentionMetric(
-                conversion=self._conversion,
-                config=config,
-                ret_window=TimeWindow.parse(ret_window),
-            )
-
-            return ret_res
-        elif conv_window is not None:
+        if conv_window is not None:
             conv_res = ConversionMetric(conversion=self._conversion, config=config)
             conv_res._conv_window = TimeWindow.parse(conv_window)
             return conv_res
@@ -1005,6 +1045,14 @@ class Segment(SegmentationMetric):
 
     def __rshift__(self, right: Segment) -> Conversion:
         return Conversion([self, right])
+
+    def __ge__(self, retaining_segment: Segment) -> RetentionMetric:
+        return RetentionMetric(
+            self,
+            retaining_segment,
+            retention_window=TimeWindow(value=1, period=TimeGroup.DAY),
+            config=MetricConfig(),
+        )
 
     def config(
         self,

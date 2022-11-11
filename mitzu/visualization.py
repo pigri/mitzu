@@ -381,6 +381,45 @@ def plot_segmentation(metric: M.SegmentationMetric, cached_df: pd.DataFrame = No
     return fig
 
 
+def plot_retention(metric: M.RetentionMetric, cached_df: pd.DataFrame = None):
+    if cached_df is None:
+        pdf = metric.get_df()
+    else:
+        pdf = cached_df
+    pdf = fix_na_cols(pdf, metric)
+
+    px.defaults.color_discrete_sequence = PRISM2
+    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].astype(str)
+
+    agg_value_label = "retention rate"
+    x_title = "retention period"
+    x_title_label = (
+        metric._group_by._field._name if metric._group_by is not None else ""
+    )
+    pdf[x_title] = pdf[GA.DATETIME_COL]
+    pdf[TEXT_COL] = pdf[GA.AGG_VALUE_COL]
+    pdf = pdf.sort_values([GA.AGG_VALUE_COL, GA.GROUP_COL], ascending=[False, True])
+    fig = px.bar(
+        pdf,
+        x=x_title,
+        y=GA.AGG_VALUE_COL,
+        color=GA.GROUP_COL,
+        barmode="group",
+        text=TEXT_COL,
+        custom_data=[GA.GROUP_COL],
+        labels={
+            x_title: x_title_label,
+            GA.GROUP_COL: "",  # get_group_label(metric),
+            GA.AGG_VALUE_COL: agg_value_label,
+        },
+    )
+
+    title = T.get_retention_title(metric)
+    # fig.update_traces(hovertemplate=get_segmentation_hover_template(metric))
+    fig = set_figure_style(fig=fig, title=title, metric=metric, group_count=1)
+    return fig
+
+
 def set_figure_style(fig, title: str, metric: M.Metric, group_count: int):
     if metric._config.time_group != M.TimeGroup.TOTAL:
         fig.update_traces(
