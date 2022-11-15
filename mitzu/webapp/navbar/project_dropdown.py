@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 import mitzu.webapp.webapp as WA
 from dash import Input, Output
 from mitzu.helper import LOGGER
-from mitzu.webapp.helper import value_to_label
+from mitzu.helper import value_to_label
 
 CHOOSE_PROJECT_DROPDOWN = "choose-project-dropdown"
 

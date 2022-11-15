@@ -7,12 +7,13 @@ from urllib.parse import urlparse
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-import mitzu.visualization as VIZ
 import mitzu.webapp.toolbar_handler as TH
 import mitzu.webapp.webapp as WA
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html
 from mitzu.webapp.helper import get_final_all_inputs
+import mitzu.visualization.plot as PLT
+import mitzu.visualization.charts as CHRT
 
 
 GRAPH = "graph"
@@ -136,10 +137,8 @@ def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph
     if df is None:
         return None
 
-    if isinstance(metric, M.ConversionMetric):
-        fig = VIZ.plot_conversion(metric, df)
-    elif isinstance(metric, M.SegmentationMetric):
-        fig = VIZ.plot_segmentation(metric, df)
+    chart = CHRT.get_simple_chart(metric)
+    fig = PLT.plot_chart(chart, metric)
 
     if webapp.results is not None:
         webapp.results["mitzu_df"] = df

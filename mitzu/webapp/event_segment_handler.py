@@ -6,7 +6,8 @@ import dash.development.base_component as bc
 import mitzu.model as M
 import mitzu.webapp.simple_segment_handler as SS
 from dash import dcc, html
-from mitzu.webapp.helper import CHILDREN, get_event_names, value_to_label
+from mitzu.webapp.helper import CHILDREN, get_event_names
+from mitzu.helper import value_to_label
 
 EVENT_SEGMENT = "event_segment"
 EVENT_NAME_DROPDOWN = "event_name_dropdown"

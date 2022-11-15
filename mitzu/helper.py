@@ -14,6 +14,10 @@ LOGGER.addHandler(logging.StreamHandler(sys.stdout))
 LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 
+def value_to_label(value: str) -> str:
+    return value.title().replace("_", " ")
+
+
 def find_notebook_globals(hint_string: str) -> Optional[Dict]:
     for stk in inspect.stack():
         glbs = stk[0].f_globals

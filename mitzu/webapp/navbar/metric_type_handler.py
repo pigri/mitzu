@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 import dash.development.base_component as bc
 import mitzu.model as M
 from dash import dcc, html
-from mitzu.webapp.helper import value_to_label
+from mitzu.helper import value_to_label
 
 METRIC_TYPE_DROPDOWN = "metric-type-dropdown"
 METRIC_TYPE_DROPDOWN_OPTION = "metric-type-dropdown-option"

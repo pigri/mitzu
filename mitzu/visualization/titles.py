@@ -119,6 +119,8 @@ def get_conversion_title(metric: M.ConversionMetric) -> str:
             agg = "median conversion time of users"
         else:
             agg = f"P{metric._agg_param:.0f} conversion time of users"
+    elif metric._agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
+        agg = "average conversion time of users"
 
     within_str = f"within {metric._conv_window}"
     group_by = get_grouped_by_str(metric)
@@ -141,7 +143,15 @@ def get_retention_title(metric: M.RetentionMetric):
     initial_title = get_segment_title_text(metric._initial_segment)
     retaining_title = get_segment_title_text(metric._retaining_segment)
 
+    tg = get_time_group_text(metric._time_group).title()
+    lines = [f"{tg} retention rate of users who did"]
     if initial_title == retaining_title:  # same segment
-        return f"Retention of unique users doing {initial_title}"
+        lines += ["recurring " + initial_title]
+    else:
+        lines += ["recurring " + retaining_title + " after " + initial_title]
+    lines += [
+        f"with {metric._retention_window} periods, {get_grouped_by_str(metric)}",
+        get_timeframe_str(metric),
+    ]
 
-    return f"Retention of unique users doing {retaining_title} after {initial_title}"
+    return "<br />".join(lines).strip().capitalize()

@@ -27,12 +27,6 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def keep_alive_connection(self) -> bool:
         return True
 
-    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
-        df = super().get_retention_df(metric)
-        df = dataframe_str_to_datetime(df, GA.GROUP_COL)
-        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
-        return df
-
     def _get_date_trunc(self, time_group: M.TimeGroup, field_ref: FieldReference):
         if time_group == M.TimeGroup.WEEK:
             return SA.func.datetime(SA.func.date(field_ref, "weekday 0", "-6 days"))
@@ -130,6 +124,11 @@ class SQLiteAdapter(SQLAlchemyAdapter):
     def get_segmentation_df(self, metric: M.SegmentationMetric) -> pd.DataFrame:
         df = super().get_segmentation_df(metric)
         return dataframe_str_to_datetime(df, GA.DATETIME_COL)
+
+    def get_retention_df(self, metric: M.RetentionMetric) -> pd.DataFrame:
+        df = super().get_retention_df(metric)
+        df = dataframe_str_to_datetime(df, GA.DATETIME_COL)
+        return df
 
     def _get_datetime_column(self, cte: Any, name: str) -> Any:
         return SA.func.datetime(cte.columns.get(name))

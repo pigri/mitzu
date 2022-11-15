@@ -19,8 +19,9 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.helper as helper
 import mitzu.notebook.model_loader as ML
 import mitzu.project_discovery as D
-import mitzu.titles as TI
-import mitzu.visualization as VIS
+import mitzu.visualization.titles as TI
+import mitzu.visualization.plot as PLT
+import mitzu.visualization.charts as CHRT
 import logging
 
 ANY_EVENT_NAME = "any_event"
@@ -87,12 +88,15 @@ class AggType(Enum):
     COUNT_UNIQUE_USERS = auto()
     COUNT_EVENTS = auto()
     CONVERSION = auto()
+    RETENTION_RATE = auto()
     PERCENTILE_TIME_TO_CONV = auto()
     AVERAGE_TIME_TO_CONV = auto()
 
     def to_agg_str(self, agg_param: Any = None) -> str:
         if self == AggType.CONVERSION:
             return "conversion"
+        if self == AggType.RETENTION_RATE:
+            return "retention_rate"
         if self == AggType.COUNT_EVENTS:
             return "event_count"
         if self == AggType.COUNT_UNIQUE_USERS:
@@ -125,9 +129,12 @@ class AggType(Enum):
             return (AggType.AVERAGE_TIME_TO_CONV, None)
         if val == "conversion":
             return (AggType.CONVERSION, None)
+        if val == "retention_rate":
+            return (AggType.RETENTION_RATE, None)
         raise ValueError(
             f"Unsupported AggType: {val}\n"
-            "supported['event_count', 'user_count', 'ttc_median', 'ttc_p90', 'ttc_p95', 'ttc_avg']"
+            "supported['event_count', 'user_count', 'ttc_median', 'ttc_p90', 'ttc_p95',"
+            " 'ttc_avg', 'conversion', 'retention']"
         )
 
 
@@ -796,7 +803,7 @@ class Metric(ABC):
         if isinstance(self, SegmentationMetric):
             return AggType.COUNT_UNIQUE_USERS
         if isinstance(self, RetentionMetric):
-            return AggType.COUNT_UNIQUE_USERS
+            return AggType.RETENTION_RATE
         raise NotImplementedError(
             f"_agg_type property is not implemented for {type(self)}"
         )
@@ -865,7 +872,8 @@ class ConversionMetric(Metric):
         return project.get_adapter().get_conversion_sql(self)
 
     def get_figure(self):
-        return VIS.plot_conversion(self)
+        chart = CHRT.get_simple_chart(self)
+        return PLT.plot_chart(chart, self)
 
     def __repr__(self) -> str:
         return super().__repr__()
@@ -897,7 +905,8 @@ class SegmentationMetric(Metric):
         return project.get_adapter().get_segmentation_sql(self)
 
     def get_figure(self):
-        return VIS.plot_segmentation(self)
+        chart = CHRT.get_simple_chart(self)
+        return PLT.plot_chart(chart, self)
 
     def __repr__(self) -> str:
         return super().__repr__()
@@ -936,7 +945,7 @@ class RetentionMetric(Metric):
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
         custom_title: Optional[str] = None,
-        retention_window: TimeWindow = TimeWindow(value=1, period=TimeGroup.DAY),
+        retention_window: TimeWindow = TimeWindow(value=1, period=TimeGroup.WEEK),
         time_group: TimeGroup = TimeGroup.TOTAL,
         group_by: Optional[EventFieldDef] = None,
     ) -> RetentionMetric:
@@ -973,7 +982,8 @@ class RetentionMetric(Metric):
         return curr._left._project
 
     def get_figure(self):
-        return VIS.plot_retention(self)
+        chart = CHRT.get_simple_chart(self)
+        return PLT.plot_chart(chart, self)
 
     def get_title(self) -> str:
         return TI.get_retention_title(self)

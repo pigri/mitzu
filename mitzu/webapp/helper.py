@@ -4,13 +4,11 @@ from typing import Any, Dict, List, Optional
 
 import mitzu.model as M
 from dash import html
+from mitzu.helper import value_to_label
+
 
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
-
-
-def value_to_label(value: str) -> str:
-    return value.title().replace("_", " ")
 
 
 def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:
