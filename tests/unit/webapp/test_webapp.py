@@ -99,7 +99,17 @@ def test_event_chosen_for_segmentation():
 
     assert second_event_dd is not None
     assert first_property_dd is not None
-    assert len(first_property_dd["options"]) == 8
+    assert set([option["value"] for option in first_property_dd["options"]]) == set(
+        [
+            "page_visit.event_name",
+            "page_visit.event_properties.url",
+            "page_visit.event_time",
+            "page_visit.user_id",
+            "page_visit.user_properties.country_code",
+            "page_visit.user_properties.is_subscribed",
+            "page_visit.user_properties.locale",
+        ]
+    )
     assert first_property_operator_dd is None
 
 
@@ -114,7 +124,7 @@ def test_event_property_chosen_for_segmentation():
                             "event_name_dropdown": "page_visit",
                             "children": {
                                 0: {
-                                    "property_name_dropdown": "page_visit.user_properties.aquisition_campaign"
+                                    "property_name_dropdown": "page_visit.user_properties.country_code"
                                 }
                             },
                         },
@@ -173,11 +183,13 @@ def test_event_property_chosen_for_segmentation():
     ]
     assert first_property_operator_dd["value"] == "is"
     assert first_property_value_input["options"] == [
-        {"label": "christmass_2020", "value": "christmass_2020"},
-        {"label": "organic", "value": "organic"},
-        {"label": "promo_20off_2020", "value": "promo_20off_2020"},
-        {"label": "spring_sale_2020", "value": "spring_sale_2020"},
-        {"label": "summer_sale_2020", "value": "summer_sale_2020"},
+        {"label": "br", "value": "br"},
+        {"label": "cn", "value": "cn"},
+        {"label": "de", "value": "de"},
+        {"label": "fr", "value": "fr"},
+        {"label": "gb", "value": "gb"},
+        {"label": "hu", "value": "hu"},
+        {"label": "us", "value": "us"},
     ]
     assert first_property_value_input["value"] == []
 
@@ -194,7 +206,7 @@ def test_event_property_operator_changed_with_values_already_chosen():
                             "children": {
                                 0: {
                                     "property_operator_dropdown": ">",
-                                    "property_name_dropdown": "page_visit.user_properties.aquisition_campaign",
+                                    "property_name_dropdown": "page_visit.user_properties.is_subscribed",
                                     "property_value_input": [
                                         "organic",
                                         "promo_20off_2020",
@@ -471,7 +483,17 @@ def test_mitzu_link_redirected():
     assert first_event_dd["value"] == "page_visit"
     assert second_event_dd is not None
     assert first_property_dd is not None
-    assert len(first_property_dd["options"]) == 8
+    assert set([option["value"] for option in first_property_dd["options"]]) == set(
+        [
+            "page_visit.event_name",
+            "page_visit.event_properties.url",
+            "page_visit.event_time",
+            "page_visit.user_id",
+            "page_visit.user_properties.country_code",
+            "page_visit.user_properties.is_subscribed",
+            "page_visit.user_properties.locale",
+        ]
+    )
     assert first_property_operator_dd is None
 
     metric_confs = to_json(res[1])

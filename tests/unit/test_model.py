@@ -1,10 +1,13 @@
 import os
 import pytest
+import pickle
 from unittest.mock import MagicMock
 
 from mitzu.model import (
     Connection,
     ConnectionType,
+    DiscoveredProject,
+    DiscoveredProjectSerializationError,
     EventDataTable,
     Project,
     InvalidProjectError,
@@ -128,3 +131,13 @@ def test_event_data_table_with_uppercase_fields():
     edt = EventDataTable.create(table_name="simple", **fields)  # type: ignore
 
     edt.validate(adapter)
+
+
+def test_deserialize_junk_legacy_format():
+    with pytest.raises(DiscoveredProjectSerializationError):
+        DiscoveredProject.deserialize(pickle.dumps("some pickled project"))
+
+
+def test_deserialize_invalid_json():
+    with pytest.raises(DiscoveredProjectSerializationError):
+        DiscoveredProject.deserialize('{"key": "value"}')

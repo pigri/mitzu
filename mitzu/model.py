@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
 import pathlib
 import pickle
@@ -576,6 +578,13 @@ class DatasetModel:
                 glbs[k] = v
 
 
+DISCOVERED_PROJECT_FILE_VERSION = 1
+
+
+class DiscoveredProjectSerializationError(Exception):
+    pass
+
+
 @dataclass(frozen=True, init=False)
 class DiscoveredProject:
     definitions: Dict[EventDataTable, Dict[str, EventDef]]
@@ -636,12 +645,37 @@ class DiscoveredProject:
     ) -> pathlib.Path:
         return pathlib.Path(folder, f"{project_name}.{extension}")
 
+    def serialize(self) -> str:
+        data = {
+            "version": DISCOVERED_PROJECT_FILE_VERSION,
+            "project": base64.b64encode(self.dump_project_to_binary()).decode("UTF-8"),
+        }
+        return json.dumps(data)
+
+    @classmethod
+    def deserialize(cls, raw_data: bytes) -> DiscoveredProject:
+        try:
+            data = json.loads(raw_data)
+            if data["version"] != DISCOVERED_PROJECT_FILE_VERSION:
+                raise DiscoveredProjectSerializationError(
+                    "Cannot load Mitzu project file, please discover the project again"
+                )
+        except Exception as e:
+            raise DiscoveredProjectSerializationError(
+                "Cannot load Mitzu project file, please discover the project again"
+            ) from e
+
+        return DiscoveredProject.load_from_project_binary(
+            base64.b64decode(data["project"])
+        )
+
     def save_to_project_file(
         self, project_name: str, folder: str = "./", extension="mitzu"
     ) -> DiscoveredProject:
         path = self._get_path(project_name, folder, extension)
-        with path.open(mode="wb") as file:
-            pickle.dump(self, file)
+
+        with path.open(mode="w") as file:
+            file.write(self.serialize())
         return self
 
     @classmethod
@@ -650,7 +684,10 @@ class DiscoveredProject:
     ) -> DiscoveredProject:
         path = cls._get_path(project_name, folder, extension)
         with path.open(mode="rb") as file:
-            return cls.load_from_project_binary(file.read())
+            return cls.deserialize(file.read())
+
+    def dump_project_to_binary(self) -> bytes:
+        return pickle.dumps(self)
 
     @classmethod
     def load_from_project_binary(cls, project_binary: bytes) -> DiscoveredProject:
