@@ -3,7 +3,6 @@ import os
 import sys
 
 import mitzu.model as M
-from mitzu.helper import LOGGER
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
 if __name__ == "__main__":

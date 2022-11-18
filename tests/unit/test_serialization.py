@@ -116,6 +116,31 @@ def test_definition_to_json():
         },
     }
 
+    # Test Retention
+    res = (m.view.category_id.is_not_null >= m.cart).config(
+        start_dt="2020-01-01",
+        end_dt="2021-01-01",
+        time_group="week",
+        retention_window="1 week",
+        custom_title="test_title",
+        aggregation="retention_rate",
+    )
+
+    res_dict = to_dict(res)
+    verify(res, eds)
+    assert res_dict == {
+        "seg_1": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
+        "seg_2": {"l": {"en": "cart"}},
+        "rw": "1 week",
+        "co": {
+            "sdt": "2020-01-01T00:00:00",
+            "edt": "2021-01-01T00:00:00",
+            "tg": "week",
+            "ct": "test_title",
+            "at": "retention_rate",
+        },
+    }
+
 
 def test_compression():
     eds = get_simple_csv()

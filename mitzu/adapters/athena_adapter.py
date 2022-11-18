@@ -45,15 +45,6 @@ class AthenaAdapter(SQLAlchemyAdapter):
         timeformat = dt.strftime("%Y-%m-%d %H:%M:%S")
         return SA.text(f"timestamp '{timeformat}'")
 
-    def _get_timewindow_where_clause(self, cte: EXP.CTE, metric: M.Metric) -> Any:
-        start_date = metric._start_dt.replace(microsecond=0)
-        end_date = metric._end_dt.replace(microsecond=0)
-
-        evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
-        return (evt_time_col >= self._correct_timestamp(start_date)) & (
-            evt_time_col <= self._correct_timestamp(end_date)
-        )
-
     def map_type(self, sa_type: Any) -> M.DataType:
         if isinstance(sa_type, DA_T.MAP):
             return M.DataType.MAP

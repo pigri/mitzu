@@ -12,9 +12,9 @@ from dash import dcc, html
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
 
-CONVERSION_WINDOW = "conversion_window"
-CONVERSION_WINDOW_INTERVAL = "conversion_window_interval"
-CONVERSION_WINDOW_INTERVAL_STEPS = "conversion_window_interval_steps"
+TIME_WINDOW = "time_window"
+TIME_WINDOW_INTERVAL = "time_window_interval"
+TIME_WINDOW_INTERVAL_STEPS = "time_window_interval_steps"
 AGGREGATION_TYPE = "aggregation_type"
 
 SUPPORTED_PERCENTILES = [50, 75, 90, 95, 99, 0, 100]
@@ -25,6 +25,8 @@ def agg_type_to_str(agg_type: M.AggType, agg_param: Any = None) -> str:
         return "Conversion Rate"
     if agg_type == M.AggType.COUNT_EVENTS:
         return "Event Count"
+    if agg_type == M.AggType.RETENTION_RATE:
+        return "Retention Rate"
     if agg_type == M.AggType.COUNT_UNIQUE_USERS:
         return "User Count"
     if agg_type == M.AggType.AVERAGE_TIME_TO_CONV:
@@ -75,6 +77,14 @@ def get_agg_type_options(metric: Optional[M.Metric]) -> List[Dict[str, str]]:
         )
 
         return res
+    elif isinstance(metric, M.RetentionMetric):
+        res = [
+            {
+                "label": agg_type_to_str(M.AggType.RETENTION_RATE),
+                "value": M.AggType.RETENTION_RATE.to_agg_str(),
+            }
+        ]
+        return res
     else:
         return [
             {
@@ -108,6 +118,11 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
             M.AggType.CONVERSION,
         ):
             agg_type = M.AggType.CONVERSION
+    elif isinstance(metric, M.RetentionMetric):
+        tw_value = metric._retention_window.value
+        tg_value = metric._retention_window.period
+        agg_type = M.AggType.RETENTION_RATE
+        agg_param = None
     else:
         agg_type = M.AggType.COUNT_UNIQUE_USERS
         agg_param = None
@@ -131,13 +146,16 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
             ),
         ],
     )
-    conv_window = dbc.InputGroup(
-        id=CONVERSION_WINDOW,
+
+    tw_label = "Ret. Period" if isinstance(metric, M.RetentionMetric) else "Within"
+
+    time_window = dbc.InputGroup(
+        id=TIME_WINDOW,
         children=[
-            dbc.InputGroupText("Within", style={"width": "100px"}),
+            dbc.InputGroupText(tw_label, style={"width": "100px"}),
             dbc.Input(
-                id=CONVERSION_WINDOW_INTERVAL,
-                className=CONVERSION_WINDOW_INTERVAL,
+                id=TIME_WINDOW_INTERVAL,
+                className=TIME_WINDOW_INTERVAL,
                 type="number",
                 max=10000,
                 min=1,
@@ -146,8 +164,8 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
                 style={"max-width": "60px"},
             ),
             dcc.Dropdown(
-                id=CONVERSION_WINDOW_INTERVAL_STEPS,
-                className=CONVERSION_WINDOW_INTERVAL_STEPS,
+                id=TIME_WINDOW_INTERVAL_STEPS,
+                className=TIME_WINDOW_INTERVAL_STEPS,
                 clearable=False,
                 multi=False,
                 value=tg_value.value,
@@ -161,24 +179,24 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         style={
             "visibility": "visible"
             if isinstance(metric, M.ConversionMetric)
+            or isinstance(metric, M.RetentionMetric)
             else "hidden"
         },
     )
 
-    return html.Div(children=[aggregation_comp, conv_window])
+    return html.Div(children=[aggregation_comp, time_window])
 
 
 def from_metric(
     metric: Optional[M.Metric],
     discovered_project: Optional[M.DiscoveredProject],
 ) -> bc.Component:
-    metric_config = metric._config if metric is not None else None
     conversion_comps = [create_metric_options_component(metric)]
 
     component = dbc.Row(
         [
             dbc.Col(
-                children=[DS.from_metric_config(metric_config)],
+                children=[DS.from_metric(metric)],
                 xs=12,
                 md=6,
             ),
@@ -202,16 +220,16 @@ def from_all_inputs(
             agg_type, agg_param = M.AggType.CONVERSION, None
         elif metric_type == M.MetricType.SEGMENTATION:
             agg_type, agg_param = M.AggType.COUNT_UNIQUE_USERS, None
+        elif metric_type == M.MetricType.RETENTION:
+            agg_type, agg_param = M.AggType.RETENTION_RATE, None
         else:
             raise UnsupportedOperation(f"Unsupported Metric Type : {metric_type}")
     else:
         agg_type, agg_param = M.AggType.parse_agg_str(agg_type_val)
 
     res_tw = M.TimeWindow(
-        value=all_inputs.get(CONVERSION_WINDOW_INTERVAL, 1),
-        period=M.TimeGroup(
-            all_inputs.get(CONVERSION_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)
-        ),
+        value=all_inputs.get(TIME_WINDOW_INTERVAL, 1),
+        period=M.TimeGroup(all_inputs.get(TIME_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)),
     )
 
     dates_conf = DS.from_all_inputs(discovered_project, all_inputs)

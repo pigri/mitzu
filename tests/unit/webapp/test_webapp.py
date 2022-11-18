@@ -74,9 +74,9 @@ def test_event_chosen_for_segmentation():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": None,
         "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": 30,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -139,9 +139,9 @@ def test_event_property_chosen_for_segmentation():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": None,
         "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": 30,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -225,9 +225,9 @@ def test_event_property_operator_changed_with_values_already_chosen():
         "metric-type-dropdown": "segmentation",
         "timegroup_dropdown": 5,
         "custom_date_picker": None,
-        "lookback_window_dropdown": 30,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -260,9 +260,9 @@ def test_empty_page_with_project():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": None,
         "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": 30,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -305,7 +305,7 @@ def test_empty_page_with_project():
     timegroup_dd = find_component_by_id("timegroup_dropdown", metric_confs)
 
     assert lookback_dd is not None
-    assert lookback_dd["value"] == 30
+    assert lookback_dd["value"] == "1 month"
     assert timegroup_dd is not None
     assert timegroup_dd["value"] == M.TimeGroup.DAY.value
 
@@ -332,9 +332,9 @@ def test_custom_date_selected():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": None,
         "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": -1,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "_custom_date",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -375,9 +375,9 @@ def test_custom_date_selected_new_start_date():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": "2021-12-01T00:00:00",
         "custom_date_picker_end_date": "2022-01-01T00:00:00",
-        "lookback_window_dropdown": -1,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "_custom_date",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -425,9 +425,9 @@ def test_custom_date_lookback_days_selected():
         "timegroup_dropdown": 5,
         "custom_date_picker_start_date": "2021-12-01T00:00:00",
         "custom_date_picker_end_date": "2022-01-01T00:00:00",
-        "lookback_window_dropdown": 30,
-        "conversion_window_interval_steps": 5,
-        "conversion_window_interval": 1,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 5,
+        "time_window_interval": 1,
         "aggregation_type": "user_count",
         "graph_refresh_button": None,
         "chart_button": None,
@@ -448,18 +448,17 @@ def test_custom_date_lookback_days_selected():
     assert date_picker["start_date"] is None
     assert date_picker["end_date"] is None
 
-    assert lookback_days_dd["value"] == 30
+    assert lookback_days_dd["value"] == "1 month"
 
 
 def test_mitzu_link_redirected():
     ctx_triggered_id = "mitzu_location"
     all_inputs = {
         "mitzu_location": (
-            "http://localhost:8082/trino_test_project?m=eNqrVipOTVeyUqhWygGTqXlASqkgM"
-            "T01viyzOLNEqbZWR0EpOR%2BiJCkFJGtsoJCSWKkEFC8BaVWCcpJLQBwQKxHMKi1OLYpPzi/NAxkCABkvHc8="
+            "http://localhost:8082/trino_test_project?m=eNolTEsKgCAUvIrMulXLLiOm"
+            "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
         )
     }
-
     res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
     metric_segs = to_json(res[0])
 
@@ -507,5 +506,47 @@ def test_mitzu_link_redirected():
     assert date_picker["style"] == {"display": "none"}
     assert date_picker["start_date"] is None
     assert date_picker["end_date"] is None
+    assert lookback_days_dd["value"] == "2 months"
 
-    assert lookback_days_dd["value"] == 30
+
+def test_event_chosen_for_retention():
+    ctx_triggered_id = {"index": "1-0", "type": "event_name_dropdown"}
+    all_inputs = {
+        "metric_segments": {
+            "children": {
+                0: {"children": {0: {"event_name_dropdown": "page_visit"}}},
+                1: {"children": {0: {"event_name_dropdown": "checkout"}}},
+            }
+        },
+        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
+        "metric-type-dropdown": "retention",
+        "timegroup_dropdown": 1,
+        "custom_date_picker_start_date": None,
+        "custom_date_picker_end_date": None,
+        "lookback_window_dropdown": "1 month",
+        "time_window_interval_steps": 1,
+        "time_window_interval": 1,
+        "aggregation_type": "retention_rate",
+        "graph_refresh_button": None,
+        "chart_button": None,
+        "table_button": None,
+        "sql_button": None,
+    }
+
+    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = to_json(res[0][0])
+
+    second_event_dd = find_component_by_id(
+        {"index": "0-1", "type": "event_name_dropdown"}, res
+    )
+    first_property_dd = find_component_by_id(
+        {"index": "0-0-0", "type": "property_name_dropdown"}, res
+    )
+    first_property_operator_dd = find_component_by_id(
+        {"index": "0-0-0", "type": "property_operator_dropdown"}, res
+    )
+
+    assert second_event_dd is not None
+    assert first_property_dd is not None
+    assert len(first_property_dd["options"]) == 7
+    assert first_property_operator_dd is None

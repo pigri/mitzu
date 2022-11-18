@@ -24,6 +24,8 @@ import mitzu.project_discovery as D
 import mitzu.visualization.titles as TI
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
+import mitzu.visualization.common as CC
+
 import logging
 
 ANY_EVENT_NAME = "any_event"
@@ -650,7 +652,10 @@ class DiscoveredProject:
     def _get_path(
         project_name: str, folder: str = "./", extension="mitzu"
     ) -> pathlib.Path:
-        return pathlib.Path(folder, f"{project_name}.{extension}")
+        if project_name.endswith(f".{extension}"):
+            return pathlib.Path(folder, f"{project_name}")
+        else:
+            return pathlib.Path(folder, f"{project_name}.{extension}")
 
     def serialize(self) -> str:
         data = {
@@ -787,6 +792,7 @@ class MetricConfig:
     custom_title: Optional[str] = None
     agg_type: Optional[AggType] = None
     agg_param: Optional[Any] = None
+    chart_type: Optional[CC.SimpleChartType] = None
 
 
 @dataclass(init=False, frozen=True)
@@ -878,7 +884,8 @@ class Metric(ABC):
         print(self.get_sql())
 
     def get_figure(self):
-        raise NotImplementedError()
+        chart = CHRT.get_simple_chart(self, self._config.chart_type)
+        return PLT.plot_chart(chart, self)
 
     def __repr__(self) -> str:
         fig = self.get_figure()
@@ -941,10 +948,6 @@ class SegmentationMetric(Metric):
         project = helper.get_segment_project(self._segment)
         return project.get_adapter().get_segmentation_sql(self)
 
-    def get_figure(self):
-        chart = CHRT.get_simple_chart(self)
-        return PLT.plot_chart(chart, self)
-
     def __repr__(self) -> str:
         return super().__repr__()
 
@@ -982,22 +985,49 @@ class RetentionMetric(Metric):
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
         custom_title: Optional[str] = None,
-        retention_window: TimeWindow = TimeWindow(value=1, period=TimeGroup.WEEK),
-        time_group: TimeGroup = TimeGroup.TOTAL,
+        retention_window: Optional[Union[TimeWindow, str]] = None,
+        time_group: Optional[TimeGroup] = None,
         group_by: Optional[EventFieldDef] = None,
+        max_group_by_count: Optional[int] = None,
+        lookback_days: Optional[Union[int, TimeWindow]] = None,
+        aggregation: Optional[str] = None,
+        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
     ) -> RetentionMetric:
+        if type(lookback_days) == int:
+            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
+        elif type(lookback_days) == TimeWindow:
+            lbd = lookback_days
+        else:
+            lbd = None
+
+        if aggregation is not None:
+            agg_type, agg_param = AggType.parse_agg_str(aggregation)
+        else:
+            agg_type, agg_param = AggType.RETENTION_RATE, None
+
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group),
+            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
             custom_title=custom_title,
             group_by=group_by,
+            max_group_count=max_group_by_count,
+            lookback_days=lbd,
+            agg_type=agg_type,
+            agg_param=agg_param,
+            chart_type=(
+                CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
+            ),
         )
 
         return RetentionMetric(
             initial_segment=self._initial_segment,
             retaining_segment=self._retaining_segment,
-            retention_window=TimeWindow.parse(retention_window),
+            retention_window=(
+                TimeWindow.parse(retention_window)
+                if retention_window is not None
+                else TimeWindow(value=1, period=TimeGroup.WEEK)
+            ),
             config=config,
         )
 
@@ -1017,10 +1047,6 @@ class RetentionMetric(Metric):
         while not isinstance(curr, SimpleSegment):
             curr = cast(ComplexSegment, curr)._left
         return curr._left._project
-
-    def get_figure(self):
-        chart = CHRT.get_simple_chart(self)
-        return PLT.plot_chart(chart, self)
 
     def get_title(self) -> str:
         return TI.get_retention_title(self)
@@ -1047,6 +1073,7 @@ class Conversion(ConversionMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
+        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1068,6 +1095,9 @@ class Conversion(ConversionMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
+            chart_type=(
+                CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
+            ),
         )
         if conv_window is not None:
             conv_res = ConversionMetric(conversion=self._conversion, config=config)
@@ -1097,8 +1127,8 @@ class Segment(SegmentationMetric):
         return RetentionMetric(
             self,
             retaining_segment,
-            retention_window=TimeWindow(value=1, period=TimeGroup.DAY),
-            config=MetricConfig(),
+            retention_window=TimeWindow(value=1, period=TimeGroup.WEEK),
+            config=MetricConfig(time_group=TimeGroup.WEEK),
         )
 
     def config(
@@ -1111,6 +1141,7 @@ class Segment(SegmentationMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
+        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
     ) -> SegmentationMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1132,6 +1163,9 @@ class Segment(SegmentationMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
+            chart_type=CC.SimpleChartType.parse(chart_type)
+            if chart_type is not None
+            else None,
         )
 
         return SegmentationMetric(segment=self, config=config)

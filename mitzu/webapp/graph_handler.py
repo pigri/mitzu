@@ -124,11 +124,13 @@ def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph
     if metric is None:
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 
-    if isinstance(metric, M.SegmentationMetric) and metric._segment is None:
-        return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
     if (
-        isinstance(metric, M.ConversionMetric)
-        and len(metric._conversion._segments) == 0
+        (isinstance(metric, M.SegmentationMetric) and metric._segment is None)
+        or (
+            isinstance(metric, M.ConversionMetric)
+            and len(metric._conversion._segments) == 0
+        )
+        or (isinstance(metric, M.RetentionMetric) and metric._initial_segment is None)
     ):
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 

@@ -76,6 +76,13 @@ def _to_dict(value: Any) -> Any:
             "cw": _to_dict(value._conv_window),
             "co": _to_dict(value._config),
         }
+    if isinstance(value, M.RetentionMetric):
+        return {
+            "seg_1": _to_dict(value._initial_segment),
+            "seg_2": _to_dict(value._retaining_segment),
+            "rw": _to_dict(value._retention_window),
+            "co": _to_dict(value._config),
+        }
     if isinstance(value, M.SegmentationMetric):
         return {"seg": _to_dict(value._segment), "co": _to_dict(value._config)}
     raise ValueError("Unsupported value type: {}".format(type(value)))
@@ -115,6 +122,8 @@ def _from_dict(
     if type_hint is None:
         if "conv" in value:
             return _from_dict(value, project, M.ConversionMetric, path)
+        if "rw" in value:
+            return _from_dict(value, project, M.RetentionMetric, path)
         if "seg" in value:
             return _from_dict(value, project, M.SegmentationMetric, path)
         if "segs" in value:
@@ -158,6 +167,19 @@ def _from_dict(
         return M.Conversion(
             segments=_from_dict(
                 value.get("segs"), project, list, path + ".segs", M.Segment
+            ),
+        )
+    if type_hint == M.RetentionMetric:
+        return M.RetentionMetric(
+            initial_segment=_from_dict(
+                value.get("seg_1"), project, M.Segment, path + ".seg_1"
+            ),
+            retaining_segment=_from_dict(
+                value.get("seg_2"), project, M.Segment, path + ".seg_2"
+            ),
+            config=_from_dict(value.get("co"), project, M.MetricConfig, path + ".co"),
+            retention_window=_from_dict(
+                value.get("rw"), project, M.TimeWindow, path + ".rw"
             ),
         )
     if type_hint == M.SegmentationMetric:

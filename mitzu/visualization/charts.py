@@ -62,7 +62,7 @@ def get_default_chart_type(metric: M.Metric) -> C.SimpleChartType:
         ):
             return C.SimpleChartType.LINE
         elif isinstance(metric, M.RetentionMetric):
-            return C.SimpleChartType.LINE
+            return C.SimpleChartType.HEATMAP
         else:
             raise ValueError(f"No default chart type defined for {type(metric)}")
 
@@ -121,14 +121,17 @@ def get_preprocessed_segmentation_dataframe(metric: M.SegmentationMetric):
 def get_preprocessed_retention_dataframe(
     pdf: pd.DataFrame, metric: M.RetentionMetric
 ) -> pd.DataFrame:
-    pdf = TR.fix_retention(pdf)
+    size = pdf.shape[0]
+    pdf = TR.fix_retention(pdf, metric)
     pdf = filter_top_groups(pdf, metric, order_by_col=GA.USER_COUNT_COL + "_1")
-    pdf = TR.get_retention_period_col(pdf, metric)
     pdf = TR.get_retention_mapping(pdf, metric)
     pdf = T.get_retention_tooltip(pdf, metric)
-    pdf[C.TEXT_COL] = pdf[C.Y_AXIS_COL].astype(str) + "%"
+    pdf[C.TEXT_COL] = pdf[C.Y_AXIS_COL].apply(
+        lambda val: f"{val:.1f}%" if val > 0 and size <= 200 else ""
+    )
+    pdf = pdf.sort_values([C.X_AXIS_COL, C.Y_AXIS_COL], ascending=[True, True])
     pdf[C.COLOR_COL] = pdf[C.COLOR_COL].astype(str)
-    pdf = pdf.sort_values([GA.RETENTION_INDEX, C.COLOR_COL], ascending=[True, True])
+
     return pdf
 
 
@@ -179,6 +182,7 @@ def get_simple_chart(
             hover_mode="closest",
             yaxis_ticksuffix="%",
             dataframe=pdf,
+            x_axis_tick_labels_func=C.retention_x_tick_label,
         )
 
     raise Exception(f"Unsupported metric type for visualization {type(metric)}")

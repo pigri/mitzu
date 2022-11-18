@@ -56,10 +56,8 @@ ALL_INPUT_COMPS = {
         DS.CUSTOM_DATE_PICKER_START_DATE: Input(DS.CUSTOM_DATE_PICKER, "start_date"),
         DS.CUSTOM_DATE_PICKER_END_DATE: Input(DS.CUSTOM_DATE_PICKER, "end_date"),
         DS.LOOKBACK_WINDOW_DROPDOWN: Input(DS.LOOKBACK_WINDOW_DROPDOWN, "value"),
-        MC.CONVERSION_WINDOW_INTERVAL_STEPS: Input(
-            MC.CONVERSION_WINDOW_INTERVAL_STEPS, "value"
-        ),
-        MC.CONVERSION_WINDOW_INTERVAL: Input(MC.CONVERSION_WINDOW_INTERVAL, "value"),
+        MC.TIME_WINDOW_INTERVAL_STEPS: Input(MC.TIME_WINDOW_INTERVAL_STEPS, "value"),
+        MC.TIME_WINDOW_INTERVAL: Input(MC.TIME_WINDOW_INTERVAL, "value"),
         MC.AGGREGATION_TYPE: Input(MC.AGGREGATION_TYPE, "value"),
         TH.GRAPH_REFRESH_BUTTON: Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
         TH.CHART_BUTTON: Input(TH.CHART_BUTTON, "n_clicks"),
@@ -186,17 +184,22 @@ class MitzuWebApp:
 
         segments = MS.from_all_inputs(discovered_project, all_inputs)
 
-        metric: Optional[Union[M.Segment, M.Conversion]] = None
+        metric: Optional[Union[M.Segment, M.Conversion, M.RetentionMetric]] = None
         if metric_type == MNB.MetricType.CONVERSION:
             metric = M.Conversion(segments)
         elif metric_type == MNB.MetricType.SEGMENTATION:
             if len(segments) == 1:
                 metric = segments[0]
+        elif metric_type == MNB.MetricType.RETENTION:
+            if len(segments) == 2:
+                metric = segments[0] >= segments[1]
+            elif len(segments) == 1:
+                metric = segments[0] >= segments[0]
 
         if metric is None:
             return None
 
-        metric_config, conv_tw = MC.from_all_inputs(
+        metric_config, res_tw = MC.from_all_inputs(
             discovered_project, all_inputs, metric_type
         )
         if metric_config.agg_type:
@@ -215,7 +218,7 @@ class MitzuWebApp:
         if isinstance(metric, M.Conversion):
             return metric.config(
                 time_group=metric_config.time_group,
-                conv_window=conv_tw,
+                conv_window=res_tw,
                 group_by=group_by,
                 lookback_days=metric_config.lookback_days,
                 start_dt=metric_config.start_dt,
@@ -230,6 +233,17 @@ class MitzuWebApp:
                 lookback_days=metric_config.lookback_days,
                 start_dt=metric_config.start_dt,
                 end_dt=metric_config.end_dt,
+                custom_title="",
+                aggregation=agg_str,
+            )
+        elif isinstance(metric, M.RetentionMetric):
+            return metric.config(
+                time_group=metric_config.time_group,
+                group_by=group_by,
+                lookback_days=metric_config.lookback_days,
+                start_dt=metric_config.start_dt,
+                end_dt=metric_config.end_dt,
+                retention_window=res_tw,
                 custom_title="",
                 aggregation=agg_str,
             )

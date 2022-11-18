@@ -302,8 +302,13 @@ def validate_retention(project: M.Project):
             "_group": [None for _ in range(0, 4)],
             "_ret_index": [0, 5, 0, 5],
             "_user_count_1": [919, 919, 878, 878],
-            "_user_count_2": [878, 707, 707, 606],
-            "_agg_value": [95.5, 76.9, 80.5, 69.0],
+            "_user_count_2": [
+                878,
+                707,
+                707,
+                0,
+            ],  # The last retention period is out of the prefiltered data
+            "_agg_value": [95.5, 76.9, 80.5, 0.0],
         }
     )
 

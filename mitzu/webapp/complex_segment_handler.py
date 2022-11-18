@@ -93,10 +93,15 @@ def from_segment(
     metric_type: MNB.MetricType,
 ) -> bc.Component:
     type_index = str(funnel_step)
+    if metric_type == MNB.MetricType.CONVERSION:
+        title = f"{funnel_step+1}. Step"
+    elif metric_type == MNB.MetricType.RETENTION:
+        title = "Initial Step" if funnel_step == 0 else "Retaining Step"
+    else:
+        title = "Events"
+
     header = dbc.CardHeader(
-        "Events"
-        if metric_type == MNB.MetricType.SEGMENTATION
-        else f"{funnel_step+1}. Step",
+        title,
         style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
     )
 

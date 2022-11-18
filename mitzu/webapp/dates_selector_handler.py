@@ -14,7 +14,7 @@ LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
 CUSTOM_DATE_PICKER_START_DATE = "custom_date_picker_start_date"
 CUSTOM_DATE_PICKER_END_DATE = "custom_date_picker_end_date"
-CUSTOM_DATE_TW_VALUE = -1
+CUSTOM_DATE_TW_VALUE = "_custom_date"
 DEF_OPTIONS_COUNT = 5
 
 CUSTOM_OPTION = {
@@ -22,15 +22,17 @@ CUSTOM_OPTION = {
     "value": CUSTOM_DATE_TW_VALUE,
 }
 
-TW_MULTIPLIER: Dict[M.TimeGroup, int] = {
-    M.TimeGroup.DAY: 30,
-    M.TimeGroup.HOUR: 24,
-    M.TimeGroup.MINUTE: 60,
-    M.TimeGroup.SECOND: 60,
-    M.TimeGroup.WEEK: 4,
-    M.TimeGroup.MONTH: 3,
-    M.TimeGroup.QUARTER: 1,
-    M.TimeGroup.YEAR: 1,
+DEFAULT_LOOKBACK_DAY_OPTION = M.TimeWindow(1, M.TimeGroup.MONTH)
+LOOKBACK_DAYS_OPTIONS = {
+    "Today": M.TimeWindow(0, M.TimeGroup.DAY),
+    "Last 7 days": M.TimeWindow(7, M.TimeGroup.DAY),
+    "Last 14 days": M.TimeWindow(14, M.TimeGroup.DAY),
+    "Last month": M.TimeWindow(1, M.TimeGroup.MONTH),
+    "Last 2 month": M.TimeWindow(2, M.TimeGroup.MONTH),
+    "Last 4 months": M.TimeWindow(4, M.TimeGroup.MONTH),
+    "Last 6 months": M.TimeWindow(6, M.TimeGroup.MONTH),
+    "Last 12 months": M.TimeWindow(12, M.TimeGroup.MONTH),
+    "Last 2 years": M.TimeWindow(2, M.TimeGroup.YEAR),
 }
 
 
@@ -42,50 +44,48 @@ def get_time_group_options(exclude: List[M.TimeGroup]) -> List[Dict[str, Any]]:
     ]
 
 
-def create_timewindow_options(
-    tg: M.TimeGroup, options_count: int = DEF_OPTIONS_COUNT
-) -> List[Dict[str, Any]]:
-    if tg == M.TimeGroup.TOTAL:
-        tg = M.TimeGroup.DAY
-
-    multiplier = TW_MULTIPLIER[tg]
-    window = tg.name.lower().title()
-
-    return [
-        {"label": f"{i*multiplier} {window}", "value": i * multiplier}
-        for i in range(1, options_count)
-    ]
+def create_timewindow_options() -> List[Dict[str, str]]:
+    return [{"label": k, "value": str(v)} for k, v in LOOKBACK_DAYS_OPTIONS.items()]
 
 
-def from_metric_config(
-    metric_config: Optional[M.MetricConfig],
+def get_default_tg_value(metric: Optional[M.Metric]) -> M.TimeGroup:
+    metric_config = metric._config if metric is not None else None
+    if metric is not None:
+        if metric_config is not None and metric_config.time_group is not None:
+            return metric_config.time_group
+        else:
+            if isinstance(metric, M.RetentionMetric):
+                return M.TimeGroup.WEEK
+            else:
+                return M.TimeGroup.DAY
+    else:
+        return M.TimeGroup.DAY
+
+
+def from_metric(
+    metric: Optional[M.Metric],
 ) -> bc.Component:
-    tg_val = (
-        metric_config.time_group
-        if metric_config is not None and metric_config.time_group is not None
-        else M.TimeGroup.DAY
-    )
-    tw_options = create_timewindow_options(tg_val)
+    metric_config = metric._config if metric is not None else None
+    tg_val = get_default_tg_value(metric)
+    tw_options = create_timewindow_options()
 
-    lookback_days = (
-        TW_MULTIPLIER[tg_val]
-        if tg_val != M.TimeGroup.TOTAL
-        else TW_MULTIPLIER[M.TimeGroup.DAY]
-    )
     start_date = None
     end_date = None
 
     if metric_config is not None:
         if metric_config.start_dt is None and metric_config.lookback_days is not None:
             if type(metric_config.lookback_days) == M.TimeWindow:
-                lookback_days = metric_config.lookback_days.value
-            elif type(metric_config.lookback_days) == int:
-                lookback_days = metric_config.lookback_days
+                lookback_days = str(metric_config.lookback_days)
+            else:
+                raise Exception(
+                    f"Unsupported lookback days type {type(metric_config.lookback_days)}"
+                )
         elif metric_config.start_dt is not None:
             lookback_days = CUSTOM_DATE_TW_VALUE
-
         start_date = metric_config.start_dt
         end_date = metric_config.end_dt
+    else:
+        lookback_days = str(DEFAULT_LOOKBACK_DAY_OPTION)
 
     comp = html.Div(
         id=DATE_SELECTOR_DIV,
@@ -117,7 +117,7 @@ def from_metric_config(
                 children=[
                     dbc.InputGroupText("Dates", style={"width": "60px"}),
                     dcc.Dropdown(
-                        options=[*tw_options, CUSTOM_OPTION],
+                        options=[CUSTOM_OPTION, *tw_options],
                         id=LOOKBACK_WINDOW_DROPDOWN,
                         value=lookback_days,
                         clearable=False,
@@ -179,30 +179,18 @@ def get_metric_lookback_days(all_inputs: Dict[str, Any]) -> Optional[M.TimeWindo
     tw_val = all_inputs.get(
         LOOKBACK_WINDOW_DROPDOWN,
     )
-    time_group = M.TimeGroup(all_inputs.get(TIME_GROUP_DROPDOWN))
+    if tw_val is None:
+        return M.TimeWindow(1, M.TimeGroup.MONTH)
+    if tw_val == CUSTOM_DATE_TW_VALUE:
+        return None
 
-    options = create_timewindow_options(time_group)
-
-    if tw_val != CUSTOM_DATE_TW_VALUE and type(tw_val) == int:
-        if tw_val not in [v["value"] for v in options]:
-            if time_group == M.TimeGroup.TOTAL:
-                tw_val = TW_MULTIPLIER[M.TimeGroup.DAY]
-            else:
-                tw_val = TW_MULTIPLIER[time_group]
-
-        return M.TimeWindow(
-            tw_val,
-            time_group if time_group != M.TimeGroup.TOTAL else M.TimeGroup.DAY,
-        )
-
-    return None
+    return M.TimeWindow.parse(str(tw_val))
 
 
 def from_all_inputs(
     discovered_project: Optional[M.DiscoveredProject], all_inputs: Dict[str, Any]
 ) -> M.MetricConfig:
     lookback_days = get_metric_lookback_days(all_inputs)
-
     start_dt, end_dt = get_metric_custom_dates(discovered_project, all_inputs)
     time_group = M.TimeGroup(all_inputs.get(TIME_GROUP_DROPDOWN))
 

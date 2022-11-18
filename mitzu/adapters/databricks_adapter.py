@@ -6,7 +6,7 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.adapters.sqlalchemy.databricks.sqlalchemy.datatype as DA_T
 import mitzu.model as M
 from mitzu.adapters.sqlalchemy.databricks import sqlalchemy  # noqa: F401
-from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter, FieldReference
 from mitzu.helper import LOGGER
 
 import sqlalchemy as SA
@@ -118,3 +118,36 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             return SA.func.avg(SA.cast(t2 - t1, SA_T.BIGINT))
         else:
             return super()._get_conv_aggregation(metric, cte, first_cte)
+
+    def _get_dynamic_datetime_interval(
+        self,
+        field_ref: FieldReference,
+        value_field_ref: FieldReference,
+        time_group: M.TimeGroup,
+    ) -> Any:
+        if time_group == M.TimeGroup.SECOND:
+            return SA.func.from_unixtime(
+                SA.func.unix_timestamp(field_ref) + value_field_ref
+            )
+        if time_group == M.TimeGroup.MINUTE:
+            return SA.func.from_unixtime(
+                SA.func.unix_timestamp(field_ref) + value_field_ref * 60
+            )
+        if time_group == M.TimeGroup.HOUR:
+            SA.func.from_unixtime(
+                SA.func.unix_timestamp(field_ref) + value_field_ref * 3600
+            )
+        if time_group == M.TimeGroup.DAY:
+            return SA.func.date_add(field_ref, value_field_ref)
+        if time_group == M.TimeGroup.WEEK:
+            return SA.func.date_add(field_ref, value_field_ref * 7)
+        if time_group == M.TimeGroup.MONTH:
+            return SA.func.add_months(field_ref, value_field_ref)
+        if time_group == M.TimeGroup.QUARTER:
+            return SA.func.add_months(field_ref, value_field_ref * 4)
+        if time_group == M.TimeGroup.YEAR:
+            return SA.func.add_months(field_ref, value_field_ref * 12)
+
+        raise ValueError(
+            f"{time_group} is not supported for databricks dynamic time intervals"
+        )

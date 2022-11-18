@@ -2,10 +2,11 @@ from __future__ import annotations
 
 
 import plotly.express as px
-
-
+import plotly.figure_factory as ff
+import pandas as pd
 import mitzu.model as M
 import mitzu.visualization.common as C
+from typing import Dict, List
 
 
 PRISM2 = [
@@ -78,19 +79,102 @@ def set_figure_style(fig, simple_chart: C.SimpleChart, metric: M.Metric):
     return fig
 
 
+def set_heatmap_figure_style(fig, simple_chart: C.SimpleChart):
+    fig.update_traces(xgap=1, ygap=1, hovertemplate="%{hovertext} <extra></extra>")
+    fig.update_xaxes(
+        side="top",
+        title=simple_chart.title,
+        showgrid=False,
+    )
+    fig.update_yaxes(
+        side="left",
+        title="Initial date",
+        showgrid=False,
+    )
+    fig["layout"]["yaxis"]["autorange"] = "reversed"
+
+    if simple_chart.title is not None:
+        title_height = len(simple_chart.title.split("<br />")) * 30
+    else:
+        title_height = 0
+
+    fig.update_layout(
+        showlegend=True,
+        uniformtext_minsize=9,
+        uniformtext_mode="hide",
+        autosize=True,
+        hoverlabel={"font": {"size": 12}},
+        annotations={"font": {"size": 8}},
+        hovermode="closest",
+        margin=dict(t=title_height, l=1, r=1, b=1, pad=0),
+    )
+    return fig
+
+
+def pdf_to_heatmap(
+    pdf: pd.DataFrame, chart: C.SimpleChart, metric: M.Metric
+) -> Dict[str, List]:
+
+    df = pd.pivot_table(
+        pdf,
+        values=[C.TEXT_COL, C.Y_AXIS_COL, C.TOOLTIP_COL],
+        index=[C.COLOR_COL],
+        columns=[C.X_AXIS_COL],
+        aggfunc="first",
+    )
+
+    x_vals = [*dict.fromkeys([val[1] for val in df.columns.tolist()])]
+    if chart.x_axis_tick_labels_func is not None:
+        x_vals = [chart.x_axis_tick_labels_func(v, metric) for v in x_vals]
+
+    y_vals = df.index.tolist()
+    if chart.y_axis_tick_labels_func is not None:
+        y_vals = [chart.y_axis_tick_labels_func(v, metric) for v in y_vals]
+
+    return {
+        "x": x_vals,
+        "y": [f"{v}." for v in y_vals],
+        "z": df[C.Y_AXIS_COL].values.tolist(),
+        "hovertext": df[C.TOOLTIP_COL].values.tolist(),
+        "annotation_text": df[C.TEXT_COL].values.tolist(),
+    }
+
+
 def plot_chart(
     simple_chart: C.SimpleChart,
     metric: M.Metric,
 ):
+    size = simple_chart.dataframe.shape[0]
+    if size > 3000:
+        raise Exception(
+            f"Too many data points to visualize ({size}), try reducing the scope."
+        )
+
+    ct = simple_chart.chart_type
     px.defaults.color_discrete_sequence = PRISM2
-    if simple_chart.chart_type == C.SimpleChartType.BAR:
+    if ct in [
+        C.SimpleChartType.BAR,
+        C.SimpleChartType.STACKED_BAR,
+        C.SimpleChartType.HORIZONTAL_BAR,
+        C.SimpleChartType.HORIZONTAL_STACKED_BAR,
+    ]:
+
+        barmode = (
+            "group"
+            if ct in [C.SimpleChartType.BAR, C.SimpleChartType.HORIZONTAL_BAR]
+            else "relative"
+        )
+        orientation = (
+            "v" if ct in [C.SimpleChartType.STACKED_BAR, C.SimpleChartType.BAR] else "h"
+        )
         fig = px.bar(
             simple_chart.dataframe,
             x=C.X_AXIS_COL,
             y=C.Y_AXIS_COL,
             text=C.TEXT_COL,
             color=C.COLOR_COL,
-            barmode="group",
+            barmode=barmode,
+            orientation=orientation,
             custom_data=[C.TOOLTIP_COL],
             labels={
                 C.X_AXIS_COL: simple_chart.x_axis_label,
@@ -98,7 +182,8 @@ def plot_chart(
                 C.COLOR_COL: simple_chart.color_label,
             },
         )
-    elif simple_chart.chart_type == C.SimpleChartType.LINE:
+    elif ct == C.SimpleChartType.LINE:
+
         fig = px.line(
             simple_chart.dataframe,
             x=C.X_AXIS_COL,
@@ -112,6 +197,30 @@ def plot_chart(
                 C.COLOR_COL: simple_chart.color_label,
             },
         )
+    elif ct == C.SimpleChartType.STACKED_AREA:
+        fig = px.area(
+            simple_chart.dataframe,
+            x=C.X_AXIS_COL,
+            y=C.Y_AXIS_COL,
+            text=C.TEXT_COL,
+            color=C.COLOR_COL,
+            custom_data=[C.TOOLTIP_COL],
+            labels={
+                C.X_AXIS_COL: simple_chart.x_axis_label,
+                C.Y_AXIS_COL: simple_chart.y_axis_label,
+                C.COLOR_COL: simple_chart.color_label,
+            },
+        )
+    elif ct == C.SimpleChartType.HEATMAP:
+        args = pdf_to_heatmap(
+            pdf=simple_chart.dataframe, chart=simple_chart, metric=metric
+        )
+        fig = ff.create_annotated_heatmap(
+            colorscale="BuPu",
+            **args,
+        )
+        fig = set_heatmap_figure_style(fig, simple_chart)
+        return fig
 
     fig.update_traces(hovertemplate="%{customdata[0]} <extra></extra>")
     fig.update_layout(yaxis_ticksuffix=simple_chart.yaxis_ticksuffix)

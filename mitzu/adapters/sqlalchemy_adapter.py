@@ -504,25 +504,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             return SA.not_(ref.in_(segment._right))
         raise ValueError(f"Operator {op} is not supported by SQLAlchemy Adapter.")
 
-    def _get_date_partition_filter(
-        self,
-        edt: M.EventDataTable,
-        table: SA.Table,
-        start_dt: datetime,
-        end_dt: datetime,
-    ):
-        if edt.date_partition_field is not None:
-            dt_part = SA.func.date(
-                self.get_field_reference(edt.date_partition_field, edt, table)
-            )
-            return (dt_part >= SA.func.date(start_dt.date())) & (
-                dt_part <= SA.func.date(end_dt.date())
-            )
-        else:
-            return SA.literal(True)
-
     def _get_segment_sub_query(
-        self, segment: M.Segment, metric: M.Metric
+        self, segment: M.Segment, metric: M.Metric, step: int
     ) -> SegmentSubQuery:
         if isinstance(segment, M.SimpleSegment):
             s = cast(M.SimpleSegment, segment)
@@ -530,13 +513,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             edt = left._event_data_table
             table = self.get_table(edt)
             evt_name_col = self.get_event_name_field(edt)
-            end_dt_partition = (
-                metric._end_dt + metric._conv_window.to_relative_delta()
-                if isinstance(metric, M.ConversionMetric)
-                else metric._end_dt
-            )
-            date_partition_filter = self._get_date_partition_filter(
-                edt, table, metric._start_dt, end_dt_partition
+            event_time_filter = self._get_timewindow_where_clause(
+                edt, table, metric, step
             )
 
             event_name_filter = (
@@ -549,7 +527,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     event_name=left._event_name,
                     event_data_table=left._event_data_table,
                     table_ref=table,
-                    where_clause=(event_name_filter & date_partition_filter),
+                    where_clause=(event_name_filter & event_time_filter),
                 )
             else:
                 return SegmentSubQuery(
@@ -558,14 +536,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     table_ref=table,
                     where_clause=(
                         event_name_filter
-                        & date_partition_filter
+                        & event_time_filter
                         & self._get_simple_segment_condition(table, segment)
                     ),
                 )
         elif isinstance(segment, M.ComplexSegment):
             c = cast(M.ComplexSegment, segment)
-            l_query = self._get_segment_sub_query(c._left, metric)
-            r_query = self._get_segment_sub_query(c._right, metric)
+            l_query = self._get_segment_sub_query(c._left, metric, step)
+            r_query = self._get_segment_sub_query(c._right, metric, step)
             if c._operator == M.BinaryOperator.AND:
                 if l_query.event_data_table != r_query.event_data_table:
                     raise Exception(
@@ -663,14 +641,45 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _correct_timestamp(self, dt: datetime) -> Any:
         return dt
 
-    def _get_timewindow_where_clause(self, cte: EXP.CTE, metric: M.Metric) -> Any:
+    def _get_date_partition_filter(
+        self,
+        edt: M.EventDataTable,
+        table: SA.Table,
+        start_dt: datetime,
+        end_dt: datetime,
+    ):
+        if edt.date_partition_field is not None:
+            dt_part = SA.func.date(
+                self.get_field_reference(edt.date_partition_field, edt, table)
+            )
+            return (dt_part >= SA.func.date(start_dt.date())) & (
+                dt_part <= SA.func.date(end_dt.date())
+            )
+        else:
+            return SA.literal(True)
+
+    def _get_timewindow_where_clause(
+        self, edt: M.EventDataTable, table: SA.Table, metric: M.Metric, step: int
+    ) -> Any:
+        evt_time_col = self.get_field_reference(edt.event_time_field, edt)
         start_date = metric._start_dt
         end_date = metric._end_dt
 
-        evt_time_col = cte.columns.get(GA.CTE_DATETIME_COL)
-        return (evt_time_col >= self._correct_timestamp(start_date)) & (
+        if step > 0:
+            if isinstance(metric, M.ConversionMetric):
+                end_date = end_date + metric._conv_window.to_relative_delta()
+            elif isinstance(metric, M.RetentionMetric):
+                end_date = end_date + metric._retention_window.to_relative_delta()
+
+        start_date = start_date.replace(microsecond=0)
+        end_date = end_date.replace(microsecond=0)
+        event_time_filter = (evt_time_col >= self._correct_timestamp(start_date)) & (
             evt_time_col <= self._correct_timestamp(end_date)
         )
+        date_partition_filter = self._get_date_partition_filter(
+            edt, table, start_date, end_date
+        )
+        return event_time_filter & date_partition_filter
 
     def _get_seg_aggregation(self, metric: M.Metric, cte: EXP.CTE) -> Any:
         at = metric._agg_type
@@ -703,7 +712,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise ValueError(f"Aggregation type {at} is not supported for conversion")
 
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
-        sub_query = self._get_segment_sub_query(metric._segment, metric)
+        sub_query = self._get_segment_sub_query(metric._segment, metric, step=0)
         cte: EXP.CTE = aliased(
             self._get_segment_sub_query_cte(sub_query, metric._group_by)
         )
@@ -729,7 +738,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 group_by.label(GA.GROUP_COL),
                 self._get_seg_aggregation(metric, cte).label(GA.AGG_VALUE_COL),
             ],
-            whereclause=(self._get_timewindow_where_clause(cte, metric)),
             group_by=(
                 [SA.literal(1), SA.literal(2)]
                 if self._column_index_support()
@@ -740,7 +748,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
         first_segment = metric._conversion._segments[0]
         first_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(first_segment, metric), metric._group_by
+            self._get_segment_sub_query(first_segment, metric, step=0), metric._group_by
         )
         first_group_by = (
             first_cte.columns.get(GA.CTE_GROUP_COL)
@@ -766,7 +774,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             prev_table = steps[i]
             prev_cols = prev_table.columns
             curr_cte = self._get_segment_sub_query_cte(
-                self._get_segment_sub_query(seg, metric)
+                self._get_segment_sub_query(seg, metric, step=i + 1)
             )
             curr_cols = curr_cte.columns
             curr_used_id_col = curr_cols.get(GA.CTE_USER_ID_ALIAS_COL)
@@ -814,7 +822,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         columns.extend(other_selects)
         return SA.select(
             columns=columns,
-            whereclause=(self._get_timewindow_where_clause(first_cte, metric)),
             group_by=(
                 [SA.literal(1), SA.literal(2)]
                 if self._column_index_support()
@@ -824,7 +831,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def _get_retention_select(self, metric: M.RetentionMetric) -> Any:
         initial_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(metric._initial_segment, metric),
+            self._get_segment_sub_query(metric._initial_segment, metric, step=0),
             metric._group_by,
         )
 
@@ -847,7 +854,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
         retaining_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(metric._retaining_segment, metric)
+            self._get_segment_sub_query(metric._retaining_segment, metric, step=1)
         )
 
         retention_interval_func = self._get_dynamic_datetime_interval(
@@ -901,7 +908,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.select(
             columns=columns,
-            whereclause=(self._get_timewindow_where_clause(initial_cte, metric)),
             group_by=(
                 [SA.literal(1), SA.literal(2), SA.literal(3)]
                 if self._column_index_support()

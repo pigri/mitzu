@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import dash.development.base_component as bc
 import mitzu.model as M
@@ -23,6 +23,8 @@ class MetricType(Enum):
     def from_metric(cls, metric: Optional[M.Metric]) -> MetricType:
         if isinstance(metric, M.ConversionMetric):
             return MetricType.CONVERSION
+        elif isinstance(metric, M.RetentionMetric):
+            return MetricType.RETENTION
         else:
             return MetricType.SEGMENTATION
 
@@ -50,7 +52,12 @@ def from_metric_type(metric_type: MetricType) -> bc.Component:
                     className=METRIC_TYPE_DROPDOWN_OPTION,
                 ),
                 "value": val.value,
-                "disabled": val not in [MetricType.SEGMENTATION, MetricType.CONVERSION],
+                "disabled": val
+                not in [
+                    MetricType.SEGMENTATION,
+                    MetricType.CONVERSION,
+                    MetricType.RETENTION,
+                ],
             }
             for val, css_class in TYPES.items()
         ],
@@ -61,7 +68,3 @@ def from_metric_type(metric_type: MetricType) -> bc.Component:
         searchable=False,
         style={"border-radius": "5px"},
     )
-
-
-def from_all_inputs(all_inputs: Dict[str, Any]) -> MetricType:
-    return MetricType(all_inputs.get(METRIC_TYPE_DROPDOWN))
