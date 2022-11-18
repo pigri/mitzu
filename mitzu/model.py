@@ -533,7 +533,7 @@ class Project:
     default_end_dt: Optional[datetime] = None
     default_property_sample_rate: int = 100
     default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
-    default_discovery_lookback_days: int = 2
+    default_discovery_lookback_days: int = 14
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
         default_factory=lambda: ProtectedState()
     )
