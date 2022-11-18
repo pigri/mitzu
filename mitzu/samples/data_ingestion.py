@@ -10,10 +10,17 @@ import sqlalchemy as SA
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 from mitzu.helper import LOGGER
 from mitzu.samples.sample_data_generator import create_all_funnels
+from tqdm import tqdm
+import sys
 
 
 def ingest_dataframe(
-    engine: SA.engine.Engine, table_name: str, df: pd.DataFrame, recreate: bool
+    engine: SA.engine.Engine,
+    table_name: str,
+    df: pd.DataFrame,
+    recreate: bool,
+    show_progress: bool = False,
+    chunk_size: int = 10000,
 ):
     ins = SA.inspect(engine)
     if ins.dialect.has_table(engine.connect(), table_name):
@@ -22,12 +29,23 @@ def ingest_dataframe(
             return
 
     LOGGER.debug(f"Ingesting records into {table_name}")
-    df.to_sql(
-        con=engine,
-        name=table_name,
-        index=False,
-        if_exists="replace",
-    )
+    list_df = [
+        df[i : i + chunk_size] for i in range(0, df.shape[0], chunk_size)  # noqa: E203
+    ]
+
+    mode = "replace"
+    if show_progress:
+        list_df = tqdm(
+            list_df, leave=False, file=sys.stdout, desc=f"Populating {table_name}"
+        )
+    for df in list_df:
+        df.to_sql(
+            con=engine,
+            name=table_name,
+            index=False,
+            if_exists=mode,
+        )
+        mode = "append"
 
 
 def flatten_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -48,6 +66,8 @@ def create_and_ingest_sample_project(
     event_count: int = 100000,
     number_of_users: int = 1000,
     overwrite_records: bool = True,
+    show_progress: bool = False,
+    chunk_size: int = 100000,
     seed: Optional[int] = 100,
 ) -> M.Project:
     dfs = create_all_funnels(
@@ -74,7 +94,7 @@ def create_and_ingest_sample_project(
     for key, df in dfs.items():
         adapter = project.get_adapter()
         engine = cast(SQLAlchemyAdapter, adapter).get_engine()
-        ingest_dataframe(engine, key, df, overwrite_records)
+        ingest_dataframe(engine, key, df, overwrite_records, show_progress, chunk_size)
 
     return project
 

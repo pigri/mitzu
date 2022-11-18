@@ -8,8 +8,7 @@ clean:
 	rm -rf .ipynb_checkpoints
 
 init:
-	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres -E athena -E databricks
-
+	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres -E athena -E snowflake  -E databricks
 
 format: ## formats all python code
 	$(POETRY) run black mitzu tests release
