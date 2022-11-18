@@ -341,7 +341,7 @@ def generate_checkout_funnels(
 
 
 def create_all_funnels(
-    user_count: int = 1000, event_count: int = 100000, seed: int = 100
+    user_count: int = 1000, event_count: int = 100000, seed: Optional[int] = 100
 ) -> Dict[str, pd.DataFrame]:
     if seed is not None:
         random.seed(seed)

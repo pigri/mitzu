@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import cast
+from typing import cast, Optional
 
 import mitzu.model as M
 import pandas as pd
@@ -48,7 +48,7 @@ def create_and_ingest_sample_project(
     event_count: int = 100000,
     number_of_users: int = 1000,
     overwrite_records: bool = True,
-    seed: int = 100,
+    seed: Optional[int] = 100,
 ) -> M.Project:
     dfs = create_all_funnels(
         event_count=event_count, user_count=number_of_users, seed=seed

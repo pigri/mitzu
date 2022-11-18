@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import mitzu.model as M
 import mitzu.samples.data_ingestion as DI
+from typing import Optional
 
 
-def get_simple_discovered_project(seed: int = None) -> M.DiscoveredProject:
+def get_simple_discovered_project(seed: Optional[int] = None) -> M.DiscoveredProject:
     connection = M.Connection(connection_type=M.ConnectionType.SQLITE)
 
     project = DI.create_and_ingest_sample_project(connection, seed=seed)
