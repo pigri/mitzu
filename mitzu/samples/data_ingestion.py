@@ -48,9 +48,10 @@ def create_and_ingest_sample_project(
     event_count: int = 100000,
     number_of_users: int = 1000,
     overwrite_records: bool = True,
+    seed: int = 100,
 ) -> M.Project:
     dfs = create_all_funnels(
-        event_count=event_count, user_count=number_of_users, seed=100
+        event_count=event_count, user_count=number_of_users, seed=seed
     )
     event_data_tables = []
     for key, df in dfs.items():
@@ -79,6 +80,6 @@ def create_and_ingest_sample_project(
 
 
 if __name__ == "__main__":
-    dfs = create_all_funnels(event_count=500000, user_count=2500, seed=100)
+    dfs = create_all_funnels(event_count=500000, user_count=2500)
     for name, df in dfs.items():
         df.to_parquet(f"{name}.parquet")
