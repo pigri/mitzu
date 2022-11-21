@@ -32,7 +32,8 @@ LOOKBACK_DAYS_OPTIONS = {
     "Last 4 months": M.TimeWindow(4, M.TimeGroup.MONTH),
     "Last 6 months": M.TimeWindow(6, M.TimeGroup.MONTH),
     "Last 12 months": M.TimeWindow(12, M.TimeGroup.MONTH),
-    "Last 2 years": M.TimeWindow(2, M.TimeGroup.YEAR),
+    "Last 2 years": M.TimeWindow(24, M.TimeGroup.MONTH),
+    "Last 3 years": M.TimeWindow(36, M.TimeGroup.MONTH),
 }
 
 
