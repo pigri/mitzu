@@ -118,22 +118,22 @@ def pdf_to_heatmap(
     df = pd.pivot_table(
         pdf,
         values=[C.TEXT_COL, C.Y_AXIS_COL, C.TOOLTIP_COL],
-        index=[C.COLOR_COL],
-        columns=[C.X_AXIS_COL],
+        index=[C.X_AXIS_COL],
+        columns=[C.COLOR_COL],
         aggfunc="first",
     )
 
-    x_vals = [*dict.fromkeys([val[1] for val in df.columns.tolist()])]
-    if chart.x_axis_tick_labels_func is not None:
-        x_vals = [chart.x_axis_tick_labels_func(v, metric) for v in x_vals]
+    x_vals = df.index.tolist()
+    if chart.x_axis_labels_func is not None:
+        x_vals = [chart.x_axis_labels_func(v, metric) for v in x_vals]
 
-    y_vals = df.index.tolist()
-    if chart.y_axis_tick_labels_func is not None:
-        y_vals = [chart.y_axis_tick_labels_func(v, metric) for v in y_vals]
+    color_vals = [*dict.fromkeys([val[1] for val in df.columns.tolist()])]
+    if chart.color_labels_func is not None:
+        color_vals = [chart.color_labels_func(v, metric) for v in color_vals]
 
     return {
-        "x": x_vals,
-        "y": [f"{v}." for v in y_vals],
+        "x": color_vals,
+        "y": [f"{v}." for v in x_vals],
         "z": df[C.Y_AXIS_COL].values.tolist(),
         "hovertext": df[C.TOOLTIP_COL].values.tolist(),
         "annotation_text": df[C.TEXT_COL].values.tolist(),

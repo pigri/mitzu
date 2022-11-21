@@ -129,9 +129,7 @@ def get_preprocessed_retention_dataframe(
     pdf[C.TEXT_COL] = pdf[C.Y_AXIS_COL].apply(
         lambda val: f"{val:.1f}%" if val > 0 and size <= 200 else ""
     )
-    pdf = pdf.sort_values([C.X_AXIS_COL, C.Y_AXIS_COL], ascending=[True, True])
-    pdf[C.COLOR_COL] = pdf[C.COLOR_COL].astype(str)
-
+    pdf = pdf.sort_values([C.X_AXIS_COL, C.COLOR_COL], ascending=[True, True])
     return pdf
 
 
@@ -182,7 +180,7 @@ def get_simple_chart(
             hover_mode="closest",
             yaxis_ticksuffix="%",
             dataframe=pdf,
-            x_axis_tick_labels_func=C.retention_x_tick_label,
+            color_labels_func=C.retention_period_label,
         )
 
     raise Exception(f"Unsupported metric type for visualization {type(metric)}")

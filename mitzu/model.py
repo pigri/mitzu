@@ -828,6 +828,10 @@ class Metric(ABC):
         return self._config.group_by
 
     @property
+    def _chart_type(self) -> Optional[CC.SimpleChartType]:
+        return self._config.chart_type
+
+    @property
     def _custom_title(self) -> Optional[str]:
         return self._config.custom_title
 

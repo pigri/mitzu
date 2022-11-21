@@ -19,7 +19,7 @@ COLOR_COL = "_color"
 TOOLTIP_COL = "_tooltip"
 
 
-def retention_x_tick_label(val: int, metric: M.Metric) -> str:
+def retention_period_label(val: int, metric: M.Metric) -> str:
     if isinstance(metric, M.RetentionMetric):
         return f"{val} to {val+ metric._retention_window.value} {metric._retention_window.period.name.lower()}"
     return str(val)
@@ -60,5 +60,6 @@ class SimpleChart:
     hover_mode: str
     chart_type: SimpleChartType
     dataframe: pd.DataFrame
-    x_axis_tick_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
-    y_axis_tick_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
+    x_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
+    y_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
+    color_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None

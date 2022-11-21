@@ -79,7 +79,7 @@ def get_retention_tooltip(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.Da
             "<b>Retention period: </b>"
             + (
                 pdf[C.X_AXIS_COL]
-                .apply(lambda val: C.retention_x_tick_label(val, metric))
+                .apply(lambda val: C.retention_period_label(val, metric))
                 .astype(str)
             )
             + "<br /><b>Group: </b>"
@@ -95,11 +95,11 @@ def get_retention_tooltip(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.Da
     else:
         pdf[C.TOOLTIP_COL] = (
             "<b>Initial date: </b>"
-            + pdf[C.COLOR_COL].astype(str)
+            + pdf[C.X_AXIS_COL].astype(str)
             + "<br /><b>Retention period: </b>"
             + (
-                pdf[C.X_AXIS_COL]
-                .apply(lambda val: C.retention_x_tick_label(val, metric))
+                pdf[C.COLOR_COL]
+                .apply(lambda val: C.retention_period_label(val, metric))
                 .astype(str)
             )
             + f"<br /><br /><b>{agg_type_str}: </b>"

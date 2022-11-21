@@ -31,10 +31,11 @@ def get_retention_mapping(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.Da
             raise Exception(
                 "Break downs are not supported for retention over time metric"
             )
+
         mapping = {
-            GA.RETENTION_INDEX: C.X_AXIS_COL,
+            GA.DATETIME_COL: C.X_AXIS_COL,
             GA.AGG_VALUE_COL: C.Y_AXIS_COL,
-            GA.DATETIME_COL: C.COLOR_COL,
+            GA.RETENTION_INDEX: C.COLOR_COL,
         }
 
     return pdf.rename(columns=mapping)
