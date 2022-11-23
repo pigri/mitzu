@@ -74,6 +74,7 @@ def create_mitzu_navbar(webapp: WA.MitzuWebApp) -> dbc.Navbar:
                                             "Sign out",
                                             disabled=(SIGN_OUT_URL is None),
                                             href=SIGN_OUT_URL,
+                                            external_link=True,
                                         ),
                                     ],
                                     id=MORE_DD,

@@ -14,7 +14,7 @@ import jwt
 import requests
 from mitzu.helper import LOGGER
 
-REDIRECT_TO = "redirect_to"
+REDIRECT_TO_COOKIE = "redirect_to"
 HOME_URL = os.getenv("HOME_URL")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL")
 NOT_FOUND_URL = os.getenv("NOT_FOUND_URL")
@@ -84,32 +84,73 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             return flask.Response(status=resp.status_code, response=resp.content)
 
         cookie_val = f"{resp.json()['id_token']}"
-        redirect_url = flask.request.cookies.get(REDIRECT_TO, MITZU_WEBAPP_URL)
-        final_resp = flask.redirect(code=307, location=redirect_url)
-        final_resp.set_cookie(OAUTH_JWT_COOKIE, cookie_val)
-        final_resp.set_cookie(REDIRECT_TO, "", expires=0)
+        redirect_url = flask.request.cookies.get(REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL)
+        resp = flask.redirect(code=307, location=redirect_url)
+        resp.set_cookie(OAUTH_JWT_COOKIE, cookie_val)
+        resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
         LOGGER.debug(f"Setting cookie resp: {cookie_val}")
-        return final_resp
+        resp = self.add_no_cache_headers(resp)
+        return resp
+
+    def handle_email_regex_check(
+        self, resp: flask.Response, jwt_encoded
+    ) -> flask.Response:
+        if (
+            OAUTH_AUTHORIZED_EMAIL_REG is not None
+            and resp is None
+            and flask.request.url
+            not in (
+                NOT_FOUND_URL,
+                SIGN_OUT_URL,
+            )
+            and re.search(OAUTH_AUTHORIZED_EMAIL_REG, self.get_user_email(jwt_encoded))
+            is None
+        ):
+            LOGGER.debug(f"Unauthorized email, redirecting to {NOT_FOUND_URL}")
+            resp = flask.redirect(code=307, location=NOT_FOUND_URL)
+        return resp
+
+    def add_no_cache_headers(self, resp: flask.Response) -> flask.Response:
+        if resp is not None:
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+            resp.headers["Cache-Control"] = "public, max-age=0"
+        return resp
 
     def setup_authorizer(self):
         @self.server.before_request
         def authorize_request():
-            jwt_encoded = flask.request.cookies.get(OAUTH_JWT_COOKIE)
-            code = get_oauth_code()
             resp: flask.Response
-            if code is not None:
-                LOGGER.debug(f"Redirected with code= {code}")
-                resp = self.handle_code_redirect()
-            elif flask.request.path == HEALTH_CHECK_PATH:
+
+            # Healthcheck for ECS or similar service
+            if flask.request.path == HEALTH_CHECK_PATH:
                 LOGGER.debug("Health check")
                 resp = flask.Response("ok", status=200)
-            elif flask.request.url == NOT_FOUND_URL:
+                resp = self.add_no_cache_headers(resp)
+                return resp
+
+            # Not found URL
+            if flask.request.url == NOT_FOUND_URL:
                 LOGGER.debug(f"Allowing not found url: {flask.request.url}")
                 page_404 = flask.render_template("404.html")
                 page_404 = page_404.format(home_url=HOME_URL, sign_out_url=SIGN_OUT_URL)
                 resp = flask.Response(status=200, response=page_404)
-            elif SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
-                if jwt_encoded in self.tokens:
+                resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
+                return resp
+
+            # [CodeFlow] - OAuth2 code is in path
+            code = get_oauth_code()
+            if code is not None:
+                LOGGER.debug(f"Redirected with code= {code}")
+                resp = self.handle_code_redirect()
+                resp = self.add_no_cache_headers(resp)
+                return resp
+
+            # Signout Flow
+            jwt_encoded = flask.request.cookies.get(OAUTH_JWT_COOKIE)
+            if SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
+                if jwt_encoded in self.tokens.keys():
                     self.tokens.pop(jwt_encoded)
                 LOGGER.debug(f"Signed out URL: {SIGN_OUT_URL}")
                 location = (
@@ -120,64 +161,52 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                     # state=STATE& todo
                     f"scope=email+openid"
                 )
-                LOGGER.debug(f"Redirect {location}")
+                LOGGER.debug(f"Signout Redirect {location}")
                 resp = flask.redirect(code=307, location=location)
                 resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
-            elif not jwt_encoded:
+                resp = self.add_no_cache_headers(resp)
+                return resp
+
+            # OAuth2 code flow starting + storing original link
+            if not jwt_encoded:
                 LOGGER.debug("Unauthorized (missing jwt_token cookie)")
                 resp = flask.redirect(code=307, location=OAUTH_SIGN_IN_URL)
                 clean_url = (
                     f"{flask.request.base_url}?{flask.request.query_string.decode()}"
                 )
-                resp.set_cookie(REDIRECT_TO, clean_url)
-            elif jwt_encoded in self.tokens.keys():
-                resp = None
-            else:
-                LOGGER.debug("Authorization started")
-                try:
-                    jwks_client = jwt.PyJWKClient(OAUTH_JWKS_URL)
-                    signing_key = jwks_client.get_signing_key_from_jwt(jwt_encoded)
-                    decoded_token = jwt.decode(
-                        jwt_encoded,
-                        signing_key.key,
-                        algorithms=OAUTH_JWT_ALGORITHMS,
-                        audience=OAUTH_JWT_AUDIENCE,
-                    )
+                resp.set_cookie(REDIRECT_TO_COOKIE, clean_url)
+                resp = self.add_no_cache_headers(resp)
+                return resp
 
-                    if decoded_token is None:
-                        LOGGER.debug("Unauthorized (Invalid jwt token)")
-                        resp = flask.redirect(code=307, location=SIGN_OUT_URL)
-                    else:
-                        LOGGER.debug("Authorization finished (caching)")
-                        self.tokens[jwt_encoded] = decoded_token
-                        LOGGER.debug(f"User email: {self.get_user_email(jwt_encoded)}")
-                        resp = None
-                except Exception as exc:
-                    LOGGER.debug(f"Authorization error: {exc}")
+            # Authenticated
+            if jwt_encoded in self.tokens.keys():
+                return None
+
+            # JWT Token in cookies, however validation is needed
+            LOGGER.debug("Authorization started")
+            try:
+                jwks_client = jwt.PyJWKClient(OAUTH_JWKS_URL)
+                signing_key = jwks_client.get_signing_key_from_jwt(jwt_encoded)
+                decoded_token = jwt.decode(
+                    jwt_encoded,
+                    signing_key.key,
+                    algorithms=OAUTH_JWT_ALGORITHMS,
+                    audience=OAUTH_JWT_AUDIENCE,
+                )
+                if decoded_token is None:
+                    LOGGER.warn("Unauthorized (Invalid jwt token)")
                     resp = flask.redirect(code=307, location=NOT_FOUND_URL)
-
-            if (
-                OAUTH_AUTHORIZED_EMAIL_REG is not None
-                and resp is None
-                and flask.request.url
-                not in (
-                    NOT_FOUND_URL,
-                    SIGN_OUT_URL,
-                )
-                and re.search(
-                    OAUTH_AUTHORIZED_EMAIL_REG, self.get_user_email(jwt_encoded)
-                )
-                is None
-            ):
-                LOGGER.debug(f"Unauthorized email, redirecting to {NOT_FOUND_URL}")
+                    resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
+                else:
+                    LOGGER.info("Authorization finished (caching)")
+                    self.tokens[jwt_encoded] = decoded_token
+                    LOGGER.info(f"User email: {self.get_user_email(jwt_encoded)}")
+                    resp = None
+            except Exception as exc:
+                LOGGER.error(f"Authorization error: {exc}")
                 resp = flask.redirect(code=307, location=NOT_FOUND_URL)
-
-            if resp is not None:
-                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-                resp.headers["Pragma"] = "no-cache"
-                resp.headers["Expires"] = "0"
-                resp.headers["Cache-Control"] = "public, max-age=0"
-
+                resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
+            resp = self.add_no_cache_headers(resp)
             return resp
 
     def get_user_email(self, encoded_token: str) -> Optional[str]:

@@ -60,7 +60,7 @@ notebook:
 dash_trino_sso: 	
 	cd release/app/ && \
 	BASEPATH=../../examples/data/ \
-	LOG_LEVEL=DEBUG \
+	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
 	MITZU_WEBAPP_URL="http://localhost:8082/" \
