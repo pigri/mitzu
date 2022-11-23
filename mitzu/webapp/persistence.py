@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import os
-import pickle
 from abc import ABC
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import mitzu.model as M
-import s3fs
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
+import boto3
+from urllib import parse
 
 PROJECTS_SUB_PATH = "projects"
 PROJECT_SUFFIX = ".mitzu"
@@ -69,7 +69,7 @@ class FileSystemPersistencyProvider(PersistencyProvider):
         folder.mkdir(parents=True, exist_ok=True)
         path = f"{folder}/{key}{PROJECT_SUFFIX}"
         with open(path, "rb") as f:
-            res: M.DiscoveredProject = pickle.load(f)
+            res = M.DiscoveredProject.deserialize(f.read())
             res.project._discovered_project.set_value(res)
             return res
 
@@ -81,11 +81,24 @@ class S3PersistencyProvider(PersistencyProvider):
             base_path = base_path[:-1]
         self.base_path = base_path
         self.projects_path = projects_path
-        self.s3fs = s3fs.S3FileSystem(anon=False)
+
+    def get_project_bucket_and_path(self) -> Tuple[str, str]:
+        s3_url = parse.urlparse(self.base_path)
+        paths = s3_url.path.split("/")
+        bucket = paths[0]
+        path = "/".join(paths[1:] + [self.projects_path]) + "/"
+        return bucket, path
 
     def list_projects(self) -> List[str]:
-        res = self.s3fs.listdir(f"{self.base_path}/{self.projects_path}/")
-        res = [r["name"].split("/")[-1] for r in res if r["name"].endswith(".mitzu")]
+
+        bucket, prefix = self.get_project_bucket_and_path()
+        conn = boto3.client("s3")
+        res = [
+            key["Key"]
+            for key in conn.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
+        ]
+
+        res = [r.split("/")[-1] for r in res if r.endswith(".mitzu")]
         if len(res) == 0:
             return super().list_projects()
         return res
@@ -95,9 +108,17 @@ class S3PersistencyProvider(PersistencyProvider):
             key = key[: len(PROJECT_SUFFIX)]
         if key == SAMPLE_PROJECT_NAME:
             return super().get_project(key)
-        path = f"{self.base_path}/{self.projects_path}/{key}{PROJECT_SUFFIX}"
 
-        with self.s3fs.open(path, "rb") as f:
-            res: M.DiscoveredProject = pickle.load(f)
-            res.project._discovered_project.set_value(res)
-            return res
+        bucket, prefix = self.get_project_bucket_and_path()
+        conn = boto3.client("s3")
+
+        full_key = prefix + key
+        if not full_key.endswith(PROJECT_SUFFIX):
+            full_key = full_key + PROJECT_SUFFIX
+
+        obj = conn.get_object(Bucket=bucket, Key=full_key)
+        raw_discovered_project = obj["Body"].read()
+        res = M.DiscoveredProject.deserialize(raw_discovered_project)
+
+        res.project._discovered_project.set_value(res)
+        return res

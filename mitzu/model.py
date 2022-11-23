@@ -670,11 +670,11 @@ class DiscoveredProject:
             data = json.loads(raw_data)
             if data["version"] != DISCOVERED_PROJECT_FILE_VERSION:
                 raise DiscoveredProjectSerializationError(
-                    "Cannot load Mitzu project file, please discover the project again"
+                    "Invalid discovered project version. Please discover the project again."
                 )
         except Exception as e:
             raise DiscoveredProjectSerializationError(
-                "Cannot load Mitzu project file, please discover the project again"
+                "Something went wrong, cannot deserialize discovered project file.\n Try discovering the project again."
             ) from e
 
         return DiscoveredProject.load_from_project_binary(

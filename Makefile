@@ -80,7 +80,6 @@ dash_trino_sso:
 
 serve:
 	cd release/app/ && \
-	BASEPATH=../../examples/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \

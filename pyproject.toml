@@ -35,7 +35,6 @@ dash-bootstrap-components = { version="^1.2.0", optional=true}
 jupyter-dash = {version="^0.4.2", optional=true}
 serverless-wsgi = {version="^3.0.1",  optional=true}
 orjson = {version="^3.7.11", optional=true}
-s3fs = {version="^2022.7.1", optional=true}
 PyJWT = { version="^2.4.0", extras=["crypto"], optional=true}
 gunicorn = {version= "^20.1.0", optional=true}
 tqdm = "^4.64.1"
@@ -47,7 +46,7 @@ mysql = ["mysql-connector-python"]
 trinodwh = ["trino"]
 databricks = ["databricks-sql-connector"]
 athena = ["PyAthena"]
-webapp = ["serverless-wsgi", "s3fs", "orjson", "PyJWT", "dash-bootstrap-components", "dash", "jupyter-dash", "gunicorn"]
+webapp = ["serverless-wsgi", "orjson", "PyJWT", "dash-bootstrap-components", "dash", "jupyter-dash", "gunicorn"]
 snowflake = ["snowflake-sqlalchemy"]
 
 
