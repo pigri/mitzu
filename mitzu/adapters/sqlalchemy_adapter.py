@@ -336,7 +336,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         raw_cte: EXP.CTE = SA.select(
             columns=[
                 *table.columns.values(),
-                (SA.cast(SA.func.random() * 367, SA.Integer) % 100).label("__sample"),
+                (SA.cast(SA.func.random() * 1367, SA.Integer) % 100).label("__sample"),
             ],
             whereclause=(
                 (
