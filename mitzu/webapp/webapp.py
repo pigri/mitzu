@@ -211,7 +211,10 @@ class MitzuWebApp:
 
         group_by = None
         group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
-        if len(group_by_paths) >= 1:
+        if len(group_by_paths) >= 1 and not (
+            metric_type == MNB.MetricType.RETENTION
+            and metric_config.time_group != M.TimeGroup.TOTAL
+        ):
             gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
             group_by = find_event_field_def(gp, discovered_project) if gp else None
 

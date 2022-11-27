@@ -248,3 +248,11 @@
 #share_button {
   display: None;
 }
+
+.dash-debug-menu {
+  display: None !important;
+}
+
+.dash-debug-menu__outer {
+  display: None !important;
+}

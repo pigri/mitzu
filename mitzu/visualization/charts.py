@@ -109,7 +109,7 @@ def get_preprocessed_segmentation_dataframe(metric: M.SegmentationMetric):
         }
     )
     pdf[C.TEXT_COL] = pdf[C.Y_AXIS_COL]
-    pdf = pdf.sort_values([C.X_AXIS_COL, C.Y_AXIS_COL], ascending=[False, True])
+    pdf = pdf.sort_values([C.X_AXIS_COL, C.Y_AXIS_COL], ascending=[True, False])
     pdf = T.get_segmentation_tooltip(pdf, metric)
 
     pdf[C.COLOR_COL] = pdf[C.COLOR_COL].fillna("")

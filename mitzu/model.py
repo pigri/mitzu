@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from random import random
 
 import pandas as pd
 from dateutil import parser
@@ -309,7 +310,7 @@ class SecretResolver(ABC):
 
 @dataclass(frozen=True)
 class PromptSecretResolver(SecretResolver):
-    title: str
+    title: str = "Secret"
 
     def resolve_secret(self) -> str:
         import getpass
@@ -486,7 +487,8 @@ class EventDataTable:
 
     def get_full_name(self) -> str:
         schema = "" if self.schema is None else self.schema + "."
-        return f"{schema}{self.table_name}"
+        catalog = "" if self.catalog is None else self.catalog + "."
+        return f"{catalog}{schema}{self.table_name}"
 
     def validate(self, adapter: GA.GenericDatasetAdapter):
         if self.event_name_alias is not None and self.event_name_field is not None:
@@ -614,16 +616,50 @@ class DiscoveredProject:
     def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
 
+    def display_inline_dashboard(
+        self,
+        port: Optional[int] = None,
+        host: Optional[str] = None,
+        logging_level: int = logging.WARN,
+        height: int = 800,
+        width: int = 1800,
+    ):
+        import mitzu.notebook.dashboard as DASH
+        import IPython.display as ID
+        import warnings
+
+        warnings.filterwarnings("ignore")
+
+        self.project.validate()
+        if port is None:
+            port = 18000 + int(random() * 10000)
+        if host is None:
+            host = "0.0.0.0"
+
+        results: Optional[Dict[str, Any]] = {}
+        DASH.dashboard(
+            self,
+            mode="external",
+            results=results,
+            port=port,
+            host=host,
+            logging_level=logging_level,
+        )
+        ID.display(ID.IFrame(f"http://{host}:{port}", height=height, width=width))
+        return results
+
     def notebook_dashboard(
         self,
         mode: str = "inline",
         port: Optional[int] = None,
         host: Optional[str] = None,
         logging_level: int = logging.WARN,
-        results: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         import mitzu.notebook.dashboard as DASH
 
+        self.project.validate()
+
+        results: Optional[Dict[str, Any]] = {}
         DASH.dashboard(
             self,
             mode=mode,
@@ -632,6 +668,7 @@ class DiscoveredProject:
             host=host,
             logging_level=logging_level,
         )
+        return results
 
     def get_event_def(self, event_name) -> EventDef:
         for val in self.definitions.values():

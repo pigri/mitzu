@@ -5,7 +5,6 @@ import mitzu.adapters.generic_adapter as GA
 from typing import Tuple
 import pandas as pd
 import mitzu.visualization.common as C
-import mitzu.visualization.titles as TI
 
 STEP_COL = "_step"
 
@@ -57,7 +56,7 @@ def get_melted_conv_column(
     )
     res[STEP_COL] = res[STEP_COL].replace(
         {
-            f"{column_prefix}{i+1}": f"{i+1}. {TI.fix_title_text(TI.get_segment_title_text(val))}"
+            f"{column_prefix}{i+1}": f"<b>Step {i+1}.</b>"
             for i, val in enumerate(metric._conversion._segments)
         }
     )

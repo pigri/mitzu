@@ -86,6 +86,7 @@ class AthenaDialect(DefaultDialect):
         if "work_group" in url.query:
             kwargs["work_group"] = url.query["work_group"]
 
+        kwargs["region_name"] = url.query["region"]
         kwargs["session"] = None
 
         return args, kwargs

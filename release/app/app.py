@@ -73,7 +73,7 @@ def create_app():
         assets_url_path=DASH_ASSETS_URL_PATH,
         serve_locally=DASH_SERVE_LOCALLY,
         title=DASH_TITLE,
-        update_title=None,
+        update_title=f"{DASH_TITLE}...",
         suppress_callback_exceptions=True,
         long_callback_manager=get_callback_manager(),
     )

@@ -39,14 +39,23 @@ GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 200)
 
 
+def is_background_callback_enabled() -> bool:
+    return bool(os.getenv("BACKGROUND_CALLBACK", "true").lower() != "false")
+
+
 def create_graph_container() -> bc.Component:
-    return html.Div(id=GRAPH_CONTAINER, children=[], className=GRAPH_CONTAINER)
+    background_callback = is_background_callback_enabled()
+    if background_callback:
+        return html.Div(id=GRAPH_CONTAINER, children=[], className=GRAPH_CONTAINER)
+    else:
+        return html.Div(
+            dcc.Loading(id=GRAPH_CONTAINER, children=[], color="#287bb5", type="dot"),
+            className=GRAPH_CONTAINER,
+        )
 
 
 def create_callbacks(webapp: WA.MitzuWebApp):
-    background_callback = bool(
-        os.getenv("BACKGROUND_CALLBACK", "true").lower() != "false"
-    )
+    background_callback = is_background_callback_enabled()
 
     @webapp.app.callback(
         output=Output(GRAPH_CONTAINER, "children"),

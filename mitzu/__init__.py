@@ -4,25 +4,30 @@ from mitzu.model import (
     DiscoveredProject,
     EventDataTable,
     Project,
+    PromptSecretResolver,
+    ConstSecretResolver,
+    EnvVarSecretResolver,
+    TimeWindow,
+    TimeGroup,
 )
-import mitzu.helper as helper
+from mitzu.samples import get_simple_discovered_project
 
-Connection
-ConnectionType
-Project
-EventDataTable
-DiscoveredProject
+__all__ = [
+    "Connection",
+    "ConnectionType",
+    "Project",
+    "EventDataTable",
+    "DiscoveredProject",
+    "PromptSecretResolver",
+    "ConstSecretResolver",
+    "EnvVarSecretResolver",
+    "TimeWindow",
+    "TimeGroup",
+    "get_simple_discovered_project",
+]
 
 
 def load_from_project_file(
-    project: str, folder: str = "./", extension="mitzu", set_globals: bool = True
-):
-    m = DiscoveredProject.load_from_project_file(
-        project, folder, extension
-    ).create_notebook_class_model()
-
-    if set_globals:
-        glbs = helper.find_notebook_globals("load_from_project_file")
-        m._to_globals(glbs)
-
-    return m
+    project: str, folder: str = "./", extension="mitzu"
+) -> DiscoveredProject:
+    return DiscoveredProject.load_from_project_file(project, folder, extension)

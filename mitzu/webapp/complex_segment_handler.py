@@ -117,7 +117,14 @@ def from_segment(
         ES.from_segment(None, discovered_project, funnel_step, len(body_children))
     )
 
-    if segment is not None and funnel_step == 0:
+    if (
+        segment is not None
+        and funnel_step == 0
+        and not (
+            isinstance(metric, M.RetentionMetric)
+            and metric._time_group != M.TimeGroup.TOTAL
+        )
+    ):
         group_by_dd = html.Div(
             [create_group_by_dropdown(type_index, metric, segment, discovered_project)],
             className=COMPLEX_SEGMENT_FOOTER,
