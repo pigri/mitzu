@@ -1,12 +1,12 @@
 import os
 
-from mitzu.samples import get_simple_discovered_project
+from mitzu.samples import get_sample_discovered_project
 
 WD = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_samples_generator():
-    dp = get_simple_discovered_project()
+    dp = get_sample_discovered_project()
     m = dp.create_notebook_class_model()
 
     df = (

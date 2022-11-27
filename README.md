@@ -65,7 +65,7 @@ Mitzu can [discover](https://mitzu.io/documentation/discovery) your tables in a 
 ```python
 import mitzu.samples as smp
 
-dp = smp.get_simple_discovered_project()
+dp = smp.get_sample_discovered_project()
 m = dp.create_notebook_class_model()
 ```
 
@@ -197,7 +197,7 @@ You can also visualize the webapp in a Jupyter Notebook:
 ```python
 import mitzu.samples as smp
 
-dp = smp.get_simple_discovered_project()
+dp = smp.get_sample_discovered_project()
 dp.notebook_dashboard()
 ```
 

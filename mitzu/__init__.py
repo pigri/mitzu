@@ -10,7 +10,7 @@ from mitzu.model import (
     TimeWindow,
     TimeGroup,
 )
-from mitzu.samples import get_simple_discovered_project
+from mitzu.samples import get_sample_discovered_project
 
 __all__ = [
     "Connection",
@@ -23,7 +23,7 @@ __all__ = [
     "EnvVarSecretResolver",
     "TimeWindow",
     "TimeGroup",
-    "get_simple_discovered_project",
+    "get_sample_discovered_project",
 ]
 
 

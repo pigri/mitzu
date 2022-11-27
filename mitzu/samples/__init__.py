@@ -5,7 +5,7 @@ import mitzu.samples.data_ingestion as DI
 from typing import Optional
 
 
-def get_simple_discovered_project(
+def get_sample_discovered_project(
     random_seed: Optional[int] = None,
 ) -> M.DiscoveredProject:
     """Generates a random discovered project, ready to be used.
