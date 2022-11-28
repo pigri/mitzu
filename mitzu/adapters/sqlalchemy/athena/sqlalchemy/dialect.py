@@ -97,16 +97,12 @@ class AthenaDialect(DefaultDialect):
 
         db_conn: pa_conn.Connection = connection._dbapi_connection
         schema, table_name = self._handle_table_name(table_name, schema)
-
-        res: List[AthenaTableMetadataColumn] = (
-            db_conn.cursor()
-            .get_table_metadata(
-                catalog_name=None, schema_name=schema, table_name=table_name
-            )
-            .columns
+        metadata = db_conn.cursor().get_table_metadata(
+            catalog_name=None, schema_name=schema, table_name=table_name
         )
         columns = []
-        for record in res:
+        records = metadata.partition_keys + metadata.columns
+        for record in records:
             if record.type is None:
                 raise error.AthenaQueryError(f"'{record.name}' column type is unkown")
             column = dict(
