@@ -24,7 +24,7 @@ CUSTOM_OPTION = {
 
 DEFAULT_LOOKBACK_DAY_OPTION = M.TimeWindow(1, M.TimeGroup.MONTH)
 LOOKBACK_DAYS_OPTIONS = {
-    "Today": M.TimeWindow(0, M.TimeGroup.DAY),
+    "Last 24 hours": M.TimeWindow(1, M.TimeGroup.DAY),
     "Last 7 days": M.TimeWindow(7, M.TimeGroup.DAY),
     "Last 14 days": M.TimeWindow(14, M.TimeGroup.DAY),
     "Last month": M.TimeWindow(1, M.TimeGroup.MONTH),

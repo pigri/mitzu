@@ -93,7 +93,6 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         table_button_color: str,
         sql_button_color: str,
     ) -> Any:
-
         try:
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
@@ -143,16 +142,11 @@ def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph
     ):
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 
-    df = metric.get_df()
-
-    if df is None:
-        return None
-
     chart = CHRT.get_simple_chart(metric)
     fig = PLT.plot_chart(chart, metric)
 
     if webapp.results is not None:
-        webapp.results["mitzu_df"] = df
+        webapp.results["mitzu_df"] = chart.dataframe
         webapp.results["mitzu_fig"] = fig
     return dcc.Graph(id=GRAPH, figure=fig, config={"displayModeBar": False})
 
