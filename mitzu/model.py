@@ -621,8 +621,8 @@ class DiscoveredProject:
         port: Optional[int] = None,
         host: Optional[str] = None,
         logging_level: int = logging.WARN,
-        height: int = 800,
-        width: int = 1800,
+        height: Any = 800,
+        width: Any = "100%",
     ):
         import mitzu.notebook.dashboard as DASH
         import IPython.display as ID
