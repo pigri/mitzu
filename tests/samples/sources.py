@@ -45,6 +45,8 @@ def get_simple_big_data() -> Project:
         max_map_key_cardinality=300,
         default_end_dt=datetime(2022, 1, 1),
         default_discovery_lookback_days=2000,
+        default_property_sample_rate=100,
+        min_discovery_property_sample_size=10,
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={

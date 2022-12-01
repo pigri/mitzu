@@ -321,6 +321,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
         table = self.get_table(event_data_table).alias("_evt")
+        event_name_field = self.get_event_name_field(event_data_table, table)
         dt_field = self.get_field_reference(
             field=event_data_table.event_time_field,
             event_data_table=event_data_table,
@@ -337,6 +338,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             columns=[
                 *table.columns.values(),
                 (SA.cast(SA.func.random() * 1367, SA.Integer) % 100).label("__sample"),
+                SA.func.row_number()
+                .over(partition_by=event_name_field, order_by=SA.func.random())
+                .label("rn"),
             ],
             whereclause=(
                 (
@@ -353,11 +357,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             ),
         ).cte()
 
-        sampling_condition = SA.literal(True)
-        if self.project.default_discovery_lookback_days > 0:
-            sampling_condition = (
-                raw_cte.columns["__sample"] <= self.project.default_property_sample_rate
-            )
+        sampling_condition = (
+            raw_cte.columns["__sample"] <= self.project.default_property_sample_rate
+        ) | (raw_cte.columns["rn"] <= self.project.min_discovery_property_sample_size)
         return SA.select(
             columns=raw_cte.columns.values(), whereclause=sampling_condition
         ).cte()

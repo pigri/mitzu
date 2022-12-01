@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import pyathena
 import pyathena.connection as pa_conn
 from mitzu.adapters.sqlalchemy.athena.sqlalchemy import compiler, datatype, error
-from pyathena.model import AthenaTableMetadataColumn
 
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
