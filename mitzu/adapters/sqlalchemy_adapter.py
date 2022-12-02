@@ -320,6 +320,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return True
 
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
+        if event_data_table.discovery_settings is None:
+            raise ValueError("Missing discovery settings")
+
         table = self.get_table(event_data_table).alias("_evt")
         event_name_field = self.get_event_name_field(event_data_table, table)
         dt_field = self.get_field_reference(
@@ -357,9 +360,15 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             ),
         ).cte()
 
-        sampling_condition = (
-            raw_cte.columns["__sample"] <= self.project.default_property_sample_rate
-        ) | (raw_cte.columns["rn"] <= self.project.min_discovery_property_sample_size)
+        sampling_condition = SA.literal(True)
+        if event_data_table.discovery_settings.lookback_days > 0:
+            sampling_condition = (
+                raw_cte.columns["__sample"]
+                <= event_data_table.discovery_settings.property_sample_rate
+            ) | (
+                raw_cte.columns["rn"]
+                <= self.project.discovery_settings.min_property_sample_size
+            )
         return SA.select(
             columns=raw_cte.columns.values(), whereclause=sampling_condition
         ).cte()
@@ -370,6 +379,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         fields: List[M.Field],
         event_specific: bool,
     ) -> pd.DataFrame:
+        if event_data_table.discovery_settings is None:
+            raise ValueError("Missing discovery settings")
+
         event_specific_str = "event specific" if event_specific else "generic"
         H.LOGGER.debug(f"Discovering {event_specific_str} field enums")
 
@@ -399,7 +411,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         SA.func.count(
                             SA.distinct(self.get_field_reference(f, sa_table=cte))
                         )
-                        < self.project.max_enum_cardinality,
+                        < event_data_table.discovery_settings.max_enum_cardinality,
                         self._get_distinct_array_agg_func(
                             self.get_field_reference(f, sa_table=cte)
                         ),

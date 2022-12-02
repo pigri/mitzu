@@ -366,6 +366,23 @@ class Connection:
         return self._secret.get_value()
 
 
+@dataclass(frozen=True)
+class DiscoverySettings:
+    max_enum_cardinality: int = 300
+    max_map_key_cardinality: int = 300
+
+    end_dt: Optional[datetime] = None
+    property_sample_rate: int = 100
+
+    lookback_days: int = 14
+    min_property_sample_size: int = 100
+
+
+@dataclass(frozen=True)
+class WebappSettings:
+    lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
+
+
 class InvalidEventDataTableError(Exception):
     pass
 
@@ -384,6 +401,8 @@ class EventDataTable:
     event_specific_fields: List[str] = field(default_factory=lambda: [])
     description: Optional[str] = None
 
+    discovery_settings: Optional[DiscoverySettings] = None
+
     @classmethod
     def create(
         cls,
@@ -398,6 +417,7 @@ class EventDataTable:
         event_specific_fields: List[str] = None,
         date_partition_field: Optional[str] = None,
         description: str = None,
+        discovery_settings: Optional[DiscoverySettings] = None,
     ):
         event_name_alias = event_name_alias
         if event_name_field is None and event_name_alias is None:
@@ -422,6 +442,7 @@ class EventDataTable:
             user_id_field=Field(_name=user_id_field, _type=DataType.STRING),
             schema=schema,
             catalog=catalog,
+            discovery_settings=discovery_settings,
         )
 
     @classmethod
@@ -436,6 +457,7 @@ class EventDataTable:
         ignored_fields: List[str] = None,
         date_partition_field: Optional[str] = None,
         description: str = None,
+        discovery_settings: Optional[DiscoverySettings] = None,
     ):
         return EventDataTable.create(
             table_name=table_name,
@@ -449,6 +471,7 @@ class EventDataTable:
             user_id_field=user_id_field,
             schema=schema,
             catalog=catalog,
+            discovery_settings=discovery_settings,
         )
 
     @classmethod
@@ -464,6 +487,7 @@ class EventDataTable:
         event_specific_fields: List[str] = None,
         date_partition_field: Optional[str] = None,
         description: str = None,
+        discovery_settings: Optional[DiscoverySettings] = None,
     ):
         return EventDataTable.create(
             table_name=table_name,
@@ -477,6 +501,7 @@ class EventDataTable:
             user_id_field=user_id_field,
             schema=schema,
             catalog=catalog,
+            discovery_settings=discovery_settings,
         )
 
     def __hash__(self):
@@ -489,6 +514,11 @@ class EventDataTable:
         schema = "" if self.schema is None else self.schema + "."
         catalog = "" if self.catalog is None else self.catalog + "."
         return f"{catalog}{schema}{self.table_name}"
+
+    def update_discovery_settings(self, discovery_settings: DiscoverySettings):
+        properties = self.__dict__.copy()
+        properties.update(discovery_settings=discovery_settings)
+        return EventDataTable(**properties)
 
     def validate(self, adapter: GA.GenericDatasetAdapter):
         if self.event_name_alias is not None and self.event_name_field is not None:
@@ -529,14 +559,9 @@ class InvalidProjectError(Exception):
 class Project:
     connection: Connection
     event_data_tables: List[EventDataTable]
-    max_enum_cardinality: int = 300
-    max_map_key_cardinality: int = 300
+    discovery_settings: DiscoverySettings = DiscoverySettings()
+    webapp_settings: WebappSettings = WebappSettings()
 
-    default_end_dt: Optional[datetime] = None
-    default_property_sample_rate: int = 100
-    min_discovery_property_sample_size: int = 100
-    default_lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
-    default_discovery_lookback_days: int = 14
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
         default_factory=lambda: ProtectedState()
     )
@@ -544,6 +569,31 @@ class Project:
     _discovered_project: State[DiscoveredProject] = field(
         default_factory=lambda: State()
     )
+
+    def __init__(
+        self,
+        connection: Connection,
+        event_data_tables: List[EventDataTable],
+        discovery_settings: DiscoverySettings = DiscoverySettings(),
+        webapp_settings: WebappSettings = WebappSettings(),
+    ):
+        object.__setattr__(self, "connection", connection)
+
+        edt_with_discovery_settings = []
+        for edt in event_data_tables:
+            if edt.discovery_settings is None:
+                edt_with_discovery_settings.append(
+                    edt.update_discovery_settings(discovery_settings)
+                )
+            else:
+                edt_with_discovery_settings.append(edt)
+
+        object.__setattr__(self, "event_data_tables", edt_with_discovery_settings)
+        object.__setattr__(self, "discovery_settings", discovery_settings)
+        object.__setattr__(self, "webapp_settings", webapp_settings)
+
+        object.__setattr__(self, "_adapter_cache", ProtectedState())
+        object.__setattr__(self, "_discovered_project", State())
 
     def get_adapter(self) -> GA.GenericDatasetAdapter:
         val = self._adapter_cache.get_value()
@@ -555,13 +605,13 @@ class Project:
             return val
 
     def get_default_end_dt(self) -> datetime:
-        if self.default_end_dt is None:
+        if self.discovery_settings.end_dt is None:
             return datetime.now()
-        return self.default_end_dt
+        return self.discovery_settings.end_dt
 
     def get_default_discovery_start_dt(self) -> datetime:
         return self.get_default_end_dt() - timedelta(
-            days=self.default_discovery_lookback_days
+            days=self.discovery_settings.lookback_days
         )
 
     def discover_project(self, progress_bar: bool = True) -> DiscoveredProject:
@@ -905,10 +955,7 @@ class Metric(ABC):
     def _end_dt(self) -> datetime:
         if self._config.end_dt is not None:
             return self._config.end_dt
-        eds = self.get_project()
-        if eds.default_end_dt is not None:
-            return eds.default_end_dt
-        return datetime.now()
+        return self.get_project().get_default_end_dt()
 
     def get_project(self) -> Project:
         raise NotImplementedError()

@@ -1,11 +1,14 @@
 import pytest
-from mitzu.model import InvalidProjectError, Segment
+from datetime import datetime
+
+from mitzu.model import DiscoverySettings, InvalidProjectError, Project, Segment
 from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row
 from tests.samples.sources import (
     get_project_with_missing_table,
     get_project_without_records,
     get_simple_big_data,
+    get_simple_csv,
 )
 
 
@@ -49,3 +52,30 @@ def test_data_discovery_with_missing_table():
         discovery.discover_project()
 
     assert "missing.csv" in str(e_info.value)
+
+
+def test_event_data_table_discovery_settings_used():
+    project_config = get_simple_csv().__dict__
+    project_config.update(
+        discovery_settings=DiscoverySettings(end_dt=datetime(2010, 1, 1))
+    )
+    for key in [key for key in project_config.keys() if key.startswith("_")]:
+        del project_config[key]
+    project = Project(**project_config)
+
+    dp = ProjectDiscovery(project).discover_project()
+    assert len(dp.get_all_events()) == 0
+
+    new_edt = project.event_data_tables[0].update_discovery_settings(
+        DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+            end_dt=datetime(2022, 1, 1),
+            lookback_days=2000,
+        )
+    )
+    project_config.update(event_data_tables=[new_edt])
+    project = Project(**project_config)
+
+    dp = ProjectDiscovery(project).discover_project()
+    assert len(dp.get_all_events()) == 0

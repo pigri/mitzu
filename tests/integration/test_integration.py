@@ -80,8 +80,10 @@ def test_db_integrations(test_case: IntegrationTestCase):
         test_case.connection,
         event_data_tables=test_source.event_data_tables
         + test_subscriptions.event_data_tables,
-        default_end_dt=datetime(2022, 1, 1),
-        default_discovery_lookback_days=2000,
+        discovery_settings=M.DiscoverySettings(
+            end_dt=datetime(2022, 1, 1),
+            lookback_days=2000,
+        ),
     )
 
     if test_case.ingest:

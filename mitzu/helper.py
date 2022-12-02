@@ -25,7 +25,7 @@ def find_notebook_globals(hint_string: str) -> Optional[Dict]:
         if (hint_string in glbs) and "find_notebook_globals" not in glbs:
             LOGGER.debug("Found globals on stack")
             return glbs
-    LOGGER.warn("Globals not found on stack.")
+    LOGGER.warning("Globals not found on stack.")
     return None
 
 

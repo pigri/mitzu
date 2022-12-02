@@ -1,7 +1,13 @@
 import os
 from datetime import datetime
 
-from mitzu.model import Connection, ConnectionType, EventDataTable, Project
+from mitzu.model import (
+    Connection,
+    ConnectionType,
+    DiscoverySettings,
+    EventDataTable,
+    Project,
+)
 
 WD = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,10 +23,12 @@ def get_simple_csv() -> Project:
                 date_partition_field="event_time",
             )
         ],
-        max_enum_cardinality=300,
-        max_map_key_cardinality=300,
-        default_end_dt=datetime(2022, 1, 1),
-        default_discovery_lookback_days=2000,
+        discovery_settings=DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+            end_dt=datetime(2022, 1, 1),
+            lookback_days=2000,
+        ),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={
@@ -41,12 +49,14 @@ def get_simple_big_data() -> Project:
                 event_time_field="event_time",
             )
         ],
-        max_enum_cardinality=300,
-        max_map_key_cardinality=300,
-        default_end_dt=datetime(2022, 1, 1),
-        default_discovery_lookback_days=2000,
-        default_property_sample_rate=100,
-        min_discovery_property_sample_size=10,
+        discovery_settings=DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+            end_dt=datetime(2022, 1, 1),
+            lookback_days=2000,
+            property_sample_rate=100,
+            min_property_sample_size=10,
+        ),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={
@@ -68,8 +78,10 @@ def get_project_without_records() -> Project:
                 date_partition_field="event_time",
             )
         ],
-        max_enum_cardinality=300,
-        max_map_key_cardinality=300,
+        discovery_settings=DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+        ),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={
@@ -91,8 +103,10 @@ def get_project_with_missing_table() -> Project:
                 date_partition_field="event_time",
             )
         ],
-        max_enum_cardinality=300,
-        max_map_key_cardinality=300,
+        discovery_settings=DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+        ),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={
@@ -119,10 +133,12 @@ def get_basic_events_csv() -> Project:
                 event_time_field="event_time",
             ),
         ],
-        max_enum_cardinality=300,
-        max_map_key_cardinality=300,
-        default_end_dt=datetime(2022, 1, 1),
-        default_discovery_lookback_days=2000,
+        discovery_settings=DiscoverySettings(
+            max_enum_cardinality=300,
+            max_map_key_cardinality=300,
+            end_dt=datetime(2022, 1, 1),
+            lookback_days=2000,
+        ),
         connection=Connection(
             connection_type=ConnectionType.FILE,
             extra_configs={

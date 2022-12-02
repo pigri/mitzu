@@ -160,14 +160,15 @@ def get_metric_custom_dates(
     if lookback_days == CUSTOM_DATE_TW_VALUE:
         if end_dt is None:
             end_dt = (
-                dd.project.default_end_dt
-                if (dd is not None and dd.project.default_end_dt is not None)
-                else datetime.now()
+                dd.project.get_default_end_dt() if dd is not None else datetime.now()
             )
         if start_dt is None:
             def_lookback_window = (
-                dd.project.default_lookback_window.value
-                if (dd is not None and dd.project.default_lookback_window is not None)
+                dd.project.webapp_settings.lookback_window.value
+                if (
+                    dd is not None
+                    and dd.project.webapp_settings.lookback_window is not None
+                )
                 else 30
             )
             start_dt = end_dt - timedelta(days=def_lookback_window)

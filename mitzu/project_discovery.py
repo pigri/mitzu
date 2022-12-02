@@ -49,7 +49,6 @@ class ProjectDiscovery:
 
     def _merge_generic_and_specific_definitions(
         self,
-        project: M.Project,
         event_data_table: M.EventDataTable,
         generic: M.EventDef,
         specific: Dict[str, M.EventDef],
@@ -62,7 +61,7 @@ class ProjectDiscovery:
             }
 
             new_def = M.EventDef(
-                _project=project,
+                _project=self.project,
                 _event_data_table=event_data_table,
                 _event_name=evt_name,
                 _fields={**spec_evt_def._fields, **copied_gen_fields},
@@ -113,7 +112,6 @@ class ProjectDiscovery:
                     ed_table, specific_fields, True
                 )
                 definitions[ed_table] = self._merge_generic_and_specific_definitions(
-                    self.project,
                     ed_table,
                     any_event_field_values,
                     event_specific_field_values,
@@ -128,7 +126,7 @@ class ProjectDiscovery:
         )
 
         if len(errors) > 0:
-            LOGGER.warn(f"Finished discovery with {len(errors)} errors.")
+            LOGGER.warning(f"Finished discovery with {len(errors)} errors.")
         else:
             LOGGER.info("Successfully finished dataset discovery.")
         return dd

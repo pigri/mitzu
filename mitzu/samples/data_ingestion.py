@@ -24,7 +24,7 @@ def ingest_dataframe(
 ):
     ins = SA.inspect(engine)
     if ins.dialect.has_table(engine.connect(), table_name):
-        LOGGER.warn(f"Table {table_name} already exists")
+        LOGGER.warning(f"Table {table_name} already exists")
         if not recreate:
             return
 
@@ -87,8 +87,10 @@ def create_and_ingest_sample_project(
     project = M.Project(
         connection=connection,
         event_data_tables=event_data_tables,
-        default_discovery_lookback_days=365,
-        default_end_dt=datetime(2022, 1, 1),
+        discovery_settings=M.DiscoverySettings(
+            lookback_days=365,
+            end_dt=datetime(2022, 1, 1),
+        ),
     )
 
     for key, df in dfs.items():

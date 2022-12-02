@@ -16,7 +16,7 @@
 - Visualization for:
   - Funnels
   - Segmentation
-  - Retention (coming soon)
+  - Retention
   - User Journey (coming soon)
   - Revenue calculations (coming soon)
 - User Lookup (coming soon)
@@ -46,12 +46,12 @@ Mitzu integrates with most modern data lake and warehouse solutions:
 
 # Quick Start
 
-In this section we will describe how to start with `Mitzu` on your local machine. Skip this section if you rather see `Mitzu` in a prepared notebook or webapp. Otherwise get ready and fire up your own data-science [notebook](https://jupyter.org/).
+In this section, we will describe how to start with `Mitzu` on your local machine. Skip this section if you rather see `Mitzu` in a prepared notebook or webapp. Otherwise get ready and fire up your own data-science [notebook](https://jupyter.org/).
 ![Notebook example](https://raw.githubusercontent.com/mitzu-io/mitzu/main/resources/mitzu_notebook_hero.gif)
 
 ---
 
-Install Mitzu python library
+Install the Mitzu python library
 
 ```
 pip install mitzu

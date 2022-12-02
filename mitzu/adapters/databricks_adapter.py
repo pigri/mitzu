@@ -43,6 +43,9 @@ class DatabricksAdapter(SQLAlchemyAdapter):
     def _parse_map_type(
         self, sa_type: Any, name: str, event_data_table: M.EventDataTable
     ) -> M.Field:
+        if event_data_table.discovery_settings is None:
+            raise ValueError("Missing discovery settings")
+
         LOGGER.debug(f"Discovering map: {name}")
         map: DA_T.MAP = cast(DA_T.MAP, sa_type)
         if map.value_type in (DA_T.STRUCT, DA_T.MAP):
@@ -55,7 +58,7 @@ class DatabricksAdapter(SQLAlchemyAdapter):
             F.flatten(F.collect_set(F.map_keys(cte.columns[name])))
         )
 
-        max_cardinality = self.project.max_map_key_cardinality
+        max_cardinality = event_data_table.discovery_settings.max_map_key_cardinality
         q = SA.select(
             columns=[
                 SA.case(

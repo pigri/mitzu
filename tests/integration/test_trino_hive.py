@@ -21,7 +21,9 @@ def test_trino_complex_data():
                 event_specific_fields=["event_properties"],
             ),
         ],
-        default_end_dt=datetime(2021, 1, 4),
+        discovery_settings=M.DiscoverySettings(
+            end_dt=datetime(2021, 1, 4),
+        ),
         connection=M.Connection(
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
@@ -70,7 +72,9 @@ def test_trino_map_types_discovery():
                 event_specific_fields=["event_properties"],
             ),
         ],
-        default_end_dt=datetime(2021, 1, 4),
+        discovery_settings=M.DiscoverySettings(
+            end_dt=datetime(2021, 1, 4),
+        ),
         connection=M.Connection(
             connection_type=M.ConnectionType.TRINO,
             user_name="test",

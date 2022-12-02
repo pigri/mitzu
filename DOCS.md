@@ -3,12 +3,13 @@
 ## Mitzu Project
 
 In the heart of Mitzu there is the Mitzu Project class. This holds everything together.
-It contains the: 
--  connection information 
--  table references
--  discovery defaults
--  analytics defaults 
--  chart defaults
+It contains the:
+
+- connection information
+- table references
+- discovery defaults
+- analytics defaults
+- chart defaults
 
 ```python
 import mitzu.model as M
@@ -16,10 +17,9 @@ import mitzu.model as M
 M.Project(
     connection = ...
     event_data_tables = ...
-    discovery_defaults = ...
-    analytics_defaults = ...
-    chart_defaults = ...
-)
+    discovery_settings = ...
+    webapp_settings = ...
+    )
 ```
 
 ### Connection
@@ -38,16 +38,16 @@ M.Project(
         secret_resolver = ...
         catalog = "catalog",
         schema = "schema",
-        extra_configs = {}        
+        extra_configs = {}
     )
     event_data_tables = ...
-    discovery_defaults = ...
-    analytics_defaults = ...
-    chart_defaults = ...
+    discovery_settings = ...
+    webapp_settings = ...
+
 )
 ```
 
---- 
+---
 
 In the `Connection` class you need to provide the `connection_type`. Mitzu supports these connections types at the moment:
 
@@ -71,7 +71,7 @@ There are 3 `SecretResolver` types:
 import mitzu.model as M
 
 # Reading secrets from environmental variables
-M.EnvVarSecretResolver(variable_name='env_var_name') 
+M.EnvVarSecretResolver(variable_name='env_var_name')
 
 # Prompting the user for Secrets
 M.PromptSecretResolver(title='password')
@@ -86,9 +86,9 @@ Usage:
 import mitzu.model as M
 
 M.Project(
-    connection = M.Connection(            
+    connection = M.Connection(
         secret_resolver = M.EnvVarSecretResolver(variable_name='DWH_SECRET')
-        ...    
+        ...
     )
     ...
 )
@@ -96,28 +96,24 @@ M.Project(
 
 Mitzu gets and caches the secret from the `SecretResolver` at the first query execution.
 
-More secret resolvers are coming soon. The aim is to integrate with most cloud provider credential storages. 
+More secret resolvers are coming soon. The aim is to integrate with most cloud provider credential storages.
 
 ### Event Data Tables
 
-The `EventDataTable` class is the reference to a single table in the data warehouse or data lake. 
+The `EventDataTable` class is the reference to a single table in the data warehouse or data lake.
 
 > The referenced tables must contain user event logs. These are records that describe a user action. (e.g `payment`, `sign up`, `page visit`, `search`, `app opened`, etc.)
 > These tables must contain the `user identifier` and a `timestamp` when the event happened.
-> <br/><br/> **Example (`web_events` multi event table):** 
-> ![event_data_table](resources/event_data_table.png)
-> <br/><br/> **Note:** The `event_name` is not a mandatory column. If the `event_name` column is missing the table contains a single event type. In this case the table name is referring to the name of event. 
-> <br/><br/> **Example (`payments` single event table):**
-> ![event_data_table2](resources/event_data_table_2.png)
+> <br/><br/> **Example (`web_events` multi event table):** > ![event_data_table](resources/event_data_table.png) > <br/><br/> **Note:** The `event_name` is not a mandatory column. If the `event_name` column is missing the table contains a single event type. In this case the table name is referring to the name of event.
+> <br/><br/> **Example (`payments` single event table):** > ![event_data_table2](resources/event_data_table_2.png)
 
 Mitzu simultaneously queries one or more event data tables in the data warehouse or data lake.
-
 
 ```python
 import mitzu.model as M
 
 t1 = M.EventDataTable.single_event_table(
-    table_name = 'payments',  
+    table_name = 'payments',
     user_id_field = 'user_id', # the column name of the user reference
     event_time_field = 'payed_at', # the column name for the time of the payment
     event_name_alias = 'user_payment', # the alias for the event
@@ -126,7 +122,7 @@ t1 = M.EventDataTable.single_event_table(
 )
 
 t2 = M.EventDataTable.multi_event_table(
-    table_name = 'web_events', 
+    table_name = 'web_events',
     user_id_field = 'user_id',
     event_time_field = 'event_time', # the column name for the time of the event
     event_name_field = 'event_name', # the column for the name of the event
@@ -157,10 +153,11 @@ Mitzu doesn't require any column to be of a specific type. For best performance 
 
 #### Complex Types
 
-Some data warehouse or data lakes support complex types such as MAPs and STRUCTs. 
-Mitzu supports both of these as long as they contain only simple types. 
+Some data warehouse or data lakes support complex types such as MAPs and STRUCTs.
+Mitzu supports both of these as long as they contain only simple types.
 
 Examples:
+
 - `MAP<string, string>` - SUPPORTED
 - `MAP<int, int>` - SUPPORTED
 - `MAP<string, MAP<string, string>>` - NOT SUPPORTED
@@ -176,6 +173,7 @@ Examples:
 The event data discovery is the process where Mitzu discovers the possible values for every column in every event data table. Mitzu uses these values to populate the `webapp` dropdowns or the `notebook class model` for autocompletion.
 
 Start the discovery process with:
+
 ```python
 import mitzu.model as M
 
@@ -191,7 +189,7 @@ dp.save_to_project_file('project_name')
 dp = M.DiscoveredProject.load_from_file('project_name')
 ```
 
-The discovery process can last a significant amount of time depending on the 
+The discovery process can last a significant amount of time depending on the
 date lake or warehouse performance or by the size of the event data tables.
 Discovering the project and persisting it enables the users of Mitzu to start product analytics without the initial wait.
 
@@ -200,7 +198,7 @@ Discovering the project and persisting it enables the users of Mitzu to start pr
 ## Segmentation
 
 > To Be Done...
- 
+
 ## Funnels
 
 > To Be Done...
@@ -225,7 +223,7 @@ Discovering the project and persisting it enables the users of Mitzu to start pr
 
 The discovered project itself is not yet usable. We need either to load it to the webapp or to the notebook as a `class model`.
 
-The class model is a handy way to query the data. 
+The class model is a handy way to query the data.
 You can find how to use the notebook class model in the [README](README.md)
 
 ## Product Analytics In The Webapp
@@ -233,7 +231,6 @@ You can find how to use the notebook class model in the [README](README.md)
 ## Revenue
 
 > To Be Done...
-
 
 # Web APP
 

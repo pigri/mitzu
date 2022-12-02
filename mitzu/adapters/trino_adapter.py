@@ -77,6 +77,9 @@ class TrinoAdapter(SQLAlchemyAdapter):
         name: str,
         event_data_table: M.EventDataTable,
     ) -> M.Field:
+        if event_data_table.discovery_settings is None:
+            raise ValueError("Missing discovery settings")
+
         LOGGER.debug(f"Discovering map: {name}")
         map: SA_T.MAP = cast(SA_T.MAP, sa_type)
         if map.value_type in (SA_T.ROW, SA_T.MAP):
@@ -89,7 +92,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
             F.flatten(F.array_agg(F.distinct(F.map_keys(cte.columns[name]))))
         )
 
-        max_cardinality = self.project.max_map_key_cardinality
+        max_cardinality = event_data_table.discovery_settings.max_map_key_cardinality
         q = SA.select(
             columns=[
                 SA.case(
