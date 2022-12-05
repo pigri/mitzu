@@ -364,7 +364,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         if event_data_table.discovery_settings.lookback_days > 0:
             sampling_condition = (
                 raw_cte.columns["__sample"]
-                <= event_data_table.discovery_settings.property_sample_rate
+                < event_data_table.discovery_settings.property_sample_rate
             ) | (
                 raw_cte.columns["rn"]
                 <= self.project.discovery_settings.min_property_sample_size

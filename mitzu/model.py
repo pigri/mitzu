@@ -372,10 +372,10 @@ class DiscoverySettings:
     max_map_key_cardinality: int = 300
 
     end_dt: Optional[datetime] = None
-    property_sample_rate: int = 100
+    property_sample_rate: int = 0
 
     lookback_days: int = 14
-    min_property_sample_size: int = 100
+    min_property_sample_size: int = 1000
 
 
 @dataclass(frozen=True)
