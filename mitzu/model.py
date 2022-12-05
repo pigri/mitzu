@@ -369,7 +369,7 @@ class Connection:
 @dataclass(frozen=True)
 class DiscoverySettings:
     max_enum_cardinality: int = 300
-    max_map_key_cardinality: int = 300
+    max_map_key_cardinality: int = 500
 
     end_dt: Optional[datetime] = None
     property_sample_rate: int = 0
@@ -771,12 +771,11 @@ class DiscoveredProject:
 
     def save_to_project_file(
         self, project_name: str, folder: str = "./", extension="mitzu"
-    ) -> DiscoveredProject:
+    ):
         path = self._get_path(project_name, folder, extension)
 
         with path.open(mode="w") as file:
             file.write(self.serialize())
-        return self
 
     @classmethod
     def load_from_project_file(
