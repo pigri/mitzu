@@ -30,7 +30,6 @@ OAUTH_CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
 OAUTH_CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
 OAUTH_AUTHORIZED_EMAIL_REG = os.getenv("OAUTH_AUTHORIZED_EMAIL_REG")
 OAUTH_JWKS_URL = os.getenv("OAUTH_JWKS_URL")
-HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 
 
 def get_oauth_code() -> Optional[str]:
@@ -122,13 +121,6 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         @self.server.before_request
         def authorize_request():
             resp: flask.Response
-
-            # Healthcheck for ECS or similar service
-            if flask.request.path == HEALTH_CHECK_PATH:
-                LOGGER.debug("Health check")
-                resp = flask.Response("ok", status=200)
-                resp = self.add_no_cache_headers(resp)
-                return resp
 
             # Not found URL
             if flask.request.url == NOT_FOUND_URL:
