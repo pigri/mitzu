@@ -163,7 +163,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 )
                 LOGGER.debug(f"Signout Redirect {location}")
                 resp = flask.redirect(code=307, location=location)
-                resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
+                resp.set_cookie(OAUTH_JWT_COOKIE, "", max_age=120)
                 resp = self.add_no_cache_headers(resp)
                 return resp
 
@@ -174,7 +174,9 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 clean_url = (
                     f"{flask.request.base_url}?{flask.request.query_string.decode()}"
                 )
-                resp.set_cookie(REDIRECT_TO_COOKIE, clean_url)
+                redirect_cookie = flask.request.cookies.get(REDIRECT_TO_COOKIE)
+                if redirect_cookie is None:
+                    resp.set_cookie(REDIRECT_TO_COOKIE, clean_url)
                 resp = self.add_no_cache_headers(resp)
                 return resp
 
