@@ -38,9 +38,15 @@ def external_dashboard(
     logging_level: int = logging.WARN,
     results: Optional[Dict[str, Any]] = None,
     new_thread: bool = False,
+    interactive_shell_only: bool = True,
 ):
-
     warnings.filterwarnings("ignore")
+    if interactive_shell_only:
+        import __main__ as main
+
+        if hasattr(main, "__file__"):
+            return
+
     H.LOGGER.setLevel(logging_level)
     log = logging.getLogger("werkzeug")
     log.setLevel(logging_level)
