@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from random import random
 
 from typing import Optional, List, Dict, Any
 import logging
@@ -12,8 +11,9 @@ import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.persistence as PE
 import mitzu.webapp.webapp as MWA
 import mitzu.helper as H
-from dash import DiskcacheManager
-from jupyter_dash import JupyterDash
+from dash import DiskcacheManager, Dash
+import threading
+import warnings
 
 
 class SingleProjectPersistancyProvider(PE.PersistencyProvider):
@@ -28,17 +28,21 @@ class SingleProjectPersistancyProvider(PE.PersistencyProvider):
         return self.sample_project
 
 
-def dashboard(
+def external_dashboard(
     discovered_project: M.DiscoveredProject,
-    mode: str = "inline",
-    port: Optional[int] = None,
-    host: Optional[str] = None,
+    port: Optional[int] = 8080,
+    host: Optional[str] = "0.0.0.0",
     logging_level: int = logging.WARN,
     results: Optional[Dict[str, Any]] = None,
+    new_thread: bool = False,
 ):
+
+    warnings.filterwarnings("ignore")
     H.LOGGER.setLevel(logging_level)
+    log = logging.getLogger("werkzeug")
+    log.setLevel(logging_level)
     callback_manager = DiskcacheManager(diskcache.Cache("./"))
-    app = JupyterDash(
+    app = Dash(
         __name__,
         compress=True,
         external_stylesheets=[
@@ -59,17 +63,12 @@ def dashboard(
         fixed_project_name=PE.SAMPLE_PROJECT_NAME,
         results=results,
     )
-    if port:
-        os.environ["PORT"] = str(port)
-    else:
-        os.environ["PORT"] = str(18000 + int(random() * 10000))
-
-    if host:
-        os.environ["HOST"] = host
-    else:
-        os.environ["HOST"] = "0.0.0.0"
 
     os.environ["BACKGROUND_CALLBACK"] = str(results is None)
 
     webapp.init_app()
-    app.run_server(mode=mode)
+    if new_thread:
+        t = threading.Thread(target=app.run_server, kwargs={"port": port, "host": host})
+        t.start()
+    else:
+        app.run_server(port=port, host=host)

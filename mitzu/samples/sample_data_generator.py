@@ -6,12 +6,24 @@ from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import pandas as pd
-from faker import Faker
 
 START_DATE = datetime(2021, 1, 1)
 LENGTH = 365
 
-fake = Faker(locale="en-GB")
+texts = [
+    "jeans",
+    "shirt",
+    "blue",
+    "red",
+    "yellow",
+    "black",
+    "gray",
+    "pink",
+    "shoes",
+    "jumper",
+    "long",
+    "short",
+]
 
 country_codes = [
     "cn",
@@ -227,8 +239,15 @@ def create_user_funnel(
     for _ in range(0, int(random.random() ** 2 * 10)):
         event_time = event_time + random_timedelta(180)
         search_events.append(
-            search_event(event_time=event_time, user=user, search_text=fake.text())
+            search_event(
+                event_time=event_time,
+                user=user,
+                search_text=" ".join(
+                    [random.choice(texts) for i in range(1, random.randint(1, 4))]
+                ),
+            )
         )
+
         if random.random() < dist.add_to_cart_probability:
             add_to_carts.append(
                 add_to_cart(

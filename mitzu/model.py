@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
-from random import random
 
 import pandas as pd
 from dateutil import parser
@@ -669,55 +668,41 @@ class DiscoveredProject:
 
     def display_inline_dashboard(
         self,
-        port: Optional[int] = None,
-        host: Optional[str] = None,
+        port: int = 8080,
+        host: str = "0.0.0.0",
+        external_url: Optional[str] = None,
         logging_level: int = logging.WARN,
         height: Any = 800,
         width: Any = "100%",
     ):
-        import mitzu.notebook.dashboard as DASH
         import IPython.display as ID
-        import warnings
 
-        warnings.filterwarnings("ignore")
-
-        self.project.validate()
-        if port is None:
-            port = 18000 + int(random() * 10000)
-        if host is None:
-            host = "0.0.0.0"
-
-        results: Optional[Dict[str, Any]] = {}
-        DASH.dashboard(
-            self,
-            mode="external",
-            results=results,
-            port=port,
-            host=host,
-            logging_level=logging_level,
+        if not external_url:
+            external_url = f"http://{host}:{port}"
+        results = self.display_external_dashboard(
+            port, host, logging_level, new_thread=True
         )
-        ID.display(ID.IFrame(f"http://{host}:{port}", height=height, width=width))
+        ID.display(ID.IFrame(external_url, height=height, width=width))
         return results
 
-    def notebook_dashboard(
+    def display_external_dashboard(
         self,
-        mode: str = "inline",
-        port: Optional[int] = None,
-        host: Optional[str] = None,
+        port: Optional[int] = 8080,
+        host: Optional[str] = "0.0.0.0",
         logging_level: int = logging.WARN,
-    ) -> Optional[Dict[str, Any]]:
+        new_thread: bool = False,
+    ):
         import mitzu.notebook.dashboard as DASH
 
         self.project.validate()
-
         results: Optional[Dict[str, Any]] = {}
-        DASH.dashboard(
+        DASH.external_dashboard(
             self,
-            mode=mode,
             results=results,
             port=port,
             host=host,
             logging_level=logging_level,
+            new_thread=new_thread,
         )
         return results
 

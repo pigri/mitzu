@@ -3,12 +3,9 @@ from datetime import datetime
 from typing import Any, Dict, List, cast
 
 import pandas as pd
-import sqlalchemy as SA
 from mitzu.adapters.file_adapter import FileAdapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from mitzu.helper import LOGGER
-from mitzu.model import Connection, EventDataTable, Project
-from retry import retry  # type: ignore
+from mitzu.model import Connection, Project
 
 
 def assert_sql(expected: str, actual: str):
@@ -50,13 +47,6 @@ def assert_row(df: pd.DataFrame, **kwargs):
         return
 
     assert False, f"Not matching record for {kwargs}\nClosest records:\n{closest}"
-
-
-@retry(Exception, delay=5, tries=6)
-def check_table(engine, ed_table: EventDataTable) -> bool:
-    LOGGER.debug(f"Trying to connect to {ed_table.table_name}")
-    ins = SA.inspect(engine)
-    return ins.dialect.has_table(engine.connect(), ed_table.table_name)
 
 
 def ingest_test_file_data(
