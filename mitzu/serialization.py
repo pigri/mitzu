@@ -48,6 +48,7 @@ def _to_dict(value: Any) -> Any:
             "mgc": _to_dict(value.max_group_count),
             "gb": _to_dict(value.group_by),
             "ct": _to_dict(value.custom_title),
+            "res": _to_dict(value.resolution),
         }
         if value.agg_type is not None:
             res["at"] = value.agg_type.to_agg_str(value.agg_param)
@@ -150,6 +151,9 @@ def _from_dict(
                 value.get("gb"), project, M.EventFieldDef, path + ".gb"
             ),
             custom_title=_from_dict(value.get("ct"), project, str, path + ".ct"),
+            resolution=_from_dict(
+                value.get("res"), project, M.TimeGroup, path + ".res"
+            ),
             agg_type=at,
             agg_param=ap,
         )

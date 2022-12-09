@@ -70,7 +70,9 @@ class DatabricksAdapter(SQLAlchemyAdapter):
         df = self.execute_query(q)
         if df.shape[0] == 0:
             return M.Field(_name=name, _type=M.DataType.MAP)
+
         keys = df.iat[0, 0].tolist()
+
         sf_type = self.map_type(map.value_type)
         sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
         return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))

@@ -16,6 +16,10 @@ TIME_WINDOW = "time_window"
 TIME_WINDOW_INTERVAL = "time_window_interval"
 TIME_WINDOW_INTERVAL_STEPS = "time_window_interval_steps"
 AGGREGATION_TYPE = "aggregation_type"
+RESOLUTION_DD = "resolution_dd"
+RESOLUTION_IG = "resolution_ig"
+
+EVERY_EVENT_RESOLUTION = "EVERY_EVENT"
 
 SUPPORTED_PERCENTILES = [50, 75, 90, 95, 99, 0, 100]
 
@@ -184,7 +188,42 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         },
     )
 
-    return html.Div(children=[aggregation_comp, time_window])
+    res_value = (
+        EVERY_EVENT_RESOLUTION
+        if metric is None or metric._resolution is None
+        else str(metric._resolution).lower()
+    )
+
+    resolution_ig = dbc.InputGroup(
+        id=RESOLUTION_IG,
+        children=[
+            dbc.InputGroupText("Resolution", style={"width": "100px"}),
+            dcc.Dropdown(
+                id=RESOLUTION_DD,
+                className=RESOLUTION_DD,
+                clearable=False,
+                multi=False,
+                value=res_value,
+                options=[
+                    {"label": "Every event", "value": EVERY_EVENT_RESOLUTION},
+                    {"label": "Single user event hourly", "value": "hour"},
+                    {"label": "Single user event daily", "value": "day"},
+                ],
+                style={
+                    "width": "180px",
+                    "border-radius": "0px 0.25rem 0.25rem 0px",
+                },
+            ),
+        ],
+        style={
+            "visibility": "visible"
+            if isinstance(metric, M.ConversionMetric)
+            or isinstance(metric, M.RetentionMetric)
+            else "hidden"
+        },
+    )
+
+    return html.Div(children=[aggregation_comp, time_window, resolution_ig])
 
 
 def from_metric(
@@ -232,6 +271,11 @@ def from_all_inputs(
         period=M.TimeGroup(all_inputs.get(TIME_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)),
     )
 
+    res_val = all_inputs.get(RESOLUTION_DD, EVERY_EVENT_RESOLUTION)
+    resolution: Optional[M.TimeGroup] = None
+    if res_val != EVERY_EVENT_RESOLUTION:
+        resolution = M.TimeGroup.parse(res_val)
+
     dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
     res_config = M.MetricConfig(
         start_dt=dates_conf.start_dt,
@@ -240,5 +284,6 @@ def from_all_inputs(
         time_group=dates_conf.time_group,
         agg_type=agg_type,
         agg_param=agg_param,
+        resolution=resolution,
     )
     return res_config, res_tw

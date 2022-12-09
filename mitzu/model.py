@@ -865,6 +865,7 @@ class MetricConfig:
     agg_type: Optional[AggType] = None
     agg_param: Optional[Any] = None
     chart_type: Optional[CC.SimpleChartType] = None
+    resolution: Optional[TimeGroup] = None
 
 
 @dataclass(init=False, frozen=True)
@@ -891,9 +892,12 @@ class Metric(ABC):
     @property
     def _time_group(self) -> TimeGroup:
         if self._config.time_group is None:
-            # TBD TG calc
             return DEF_TIME_GROUP
         return self._config.time_group
+
+    @property
+    def _resolution(self) -> Optional[TimeGroup]:
+        return self._config.resolution
 
     @property
     def _group_by(self) -> Optional[EventFieldDef]:
@@ -1065,6 +1069,7 @@ class RetentionMetric(Metric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
+        resolution: Optional[Union[str, TimeGroup]] = None,
     ) -> RetentionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1078,16 +1083,24 @@ class RetentionMetric(Metric):
         else:
             agg_type, agg_param = AggType.RETENTION_RATE, None
 
+        if resolution is not None:
+            resolution = TimeGroup.parse(resolution)
+
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
+            time_group=(
+                TimeGroup.parse(time_group)
+                if time_group is not None
+                else TimeGroup.WEEK
+            ),
             custom_title=custom_title,
             group_by=group_by,
             max_group_count=max_group_by_count,
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
+            resolution=resolution,
             chart_type=(
                 CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
@@ -1147,6 +1160,7 @@ class Conversion(ConversionMetric):
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
+        resolution: Optional[Union[str, TimeGroup]] = None,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1158,6 +1172,10 @@ class Conversion(ConversionMetric):
             agg_type, agg_param = AggType.parse_agg_str(aggregation)
         else:
             agg_type, agg_param = AggType.CONVERSION, None
+
+        if resolution is not None:
+            resolution = TimeGroup.parse(resolution)
+
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
@@ -1168,6 +1186,7 @@ class Conversion(ConversionMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
+            resolution=resolution,
             chart_type=(
                 CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),

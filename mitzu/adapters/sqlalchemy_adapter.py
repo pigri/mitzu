@@ -621,6 +621,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self,
         sub_query: SegmentSubQuery,
         group_field: Optional[M.EventFieldDef] = None,
+        resolution: Optional[M.TimeGroup] = None,
     ) -> EXP.CTE:
         selects = []
         while True:
@@ -632,18 +633,26 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     group_field, sub_query.table_ref, ed_table
                 )
 
+            datetime_col = self.get_field_reference(ed_table.event_time_field, ed_table)
+            if resolution is not None:
+                datetime_col = self._get_date_trunc(
+                    field_ref=datetime_col,
+                    time_group=resolution,
+                )
+
             select = SA.select(
                 columns=[
                     self.get_field_reference(ed_table.user_id_field, ed_table).label(
                         GA.CTE_USER_ID_ALIAS_COL
                     ),
-                    self.get_field_reference(ed_table.event_time_field, ed_table).label(
-                        GA.CTE_DATETIME_COL
-                    ),
+                    datetime_col.label(GA.CTE_DATETIME_COL),
                     group_by_col.label(GA.CTE_GROUP_COL),
                 ],
                 whereclause=(sub_query.where_clause),
             )
+            if resolution is not None:
+                select = select.distinct()
+
             selects.append(select)
             if sub_query.unioned_with is not None:
                 sub_query = sub_query.unioned_with
@@ -684,6 +693,18 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 end_date = end_date + metric._conv_window.to_relative_delta()
             elif isinstance(metric, M.RetentionMetric):
                 end_date = end_date + metric._retention_window.to_relative_delta()
+
+        if metric._resolution == M.TimeGroup.DAY:
+            start_date = start_date.replace(hour=0, minute=0, second=0)
+        elif metric._resolution == M.TimeGroup.HOUR:
+            start_date = start_date.replace(minute=0, second=0)
+        elif metric._resolution == M.TimeGroup.MINUTE:
+            start_date = start_date.replace(second=0)
+        elif metric._resolution is not None:
+
+            raise ValueError(
+                f"Unsupported resolution value {metric._resolution}. Supported are [None, minute, hour, day]"
+            )
 
         start_date = start_date.replace(microsecond=0)
         end_date = end_date.replace(microsecond=0)
@@ -762,7 +783,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_conversion_select(self, metric: M.ConversionMetric) -> Any:
         first_segment = metric._conversion._segments[0]
         first_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(first_segment, metric, step=0), metric._group_by
+            self._get_segment_sub_query(first_segment, metric, step=0),
+            metric._group_by,
+            metric._resolution,
         )
         first_group_by = (
             first_cte.columns.get(GA.CTE_GROUP_COL)
@@ -788,7 +811,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             prev_table = steps[i]
             prev_cols = prev_table.columns
             curr_cte = self._get_segment_sub_query_cte(
-                self._get_segment_sub_query(seg, metric, step=i + 1)
+                self._get_segment_sub_query(seg, metric, step=i + 1),
+                resolution=metric._resolution,
             )
             curr_cols = curr_cte.columns
             curr_used_id_col = curr_cols.get(GA.CTE_USER_ID_ALIAS_COL)
@@ -847,6 +871,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         initial_cte = self._get_segment_sub_query_cte(
             self._get_segment_sub_query(metric._initial_segment, metric, step=0),
             metric._group_by,
+            metric._resolution,
         )
 
         retention_index_cte = self._generate_retention_series_cte(
@@ -868,7 +893,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         )
 
         retaining_cte = self._get_segment_sub_query_cte(
-            self._get_segment_sub_query(metric._retaining_segment, metric, step=1)
+            self._get_segment_sub_query(metric._retaining_segment, metric, step=1),
+            resolution=metric._resolution,
         )
 
         retention_interval_func = self._get_dynamic_datetime_interval(

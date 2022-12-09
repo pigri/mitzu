@@ -59,6 +59,7 @@ ALL_INPUT_COMPS = {
         MC.TIME_WINDOW_INTERVAL_STEPS: Input(MC.TIME_WINDOW_INTERVAL_STEPS, "value"),
         MC.TIME_WINDOW_INTERVAL: Input(MC.TIME_WINDOW_INTERVAL, "value"),
         MC.AGGREGATION_TYPE: Input(MC.AGGREGATION_TYPE, "value"),
+        MC.RESOLUTION_DD: Input(MC.RESOLUTION_DD, "value"),
         TH.GRAPH_REFRESH_BUTTON: Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
         TH.CHART_BUTTON: Input(TH.CHART_BUTTON, "n_clicks"),
         TH.TABLE_BUTTON: Input(TH.TABLE_BUTTON, "n_clicks"),
@@ -226,6 +227,7 @@ class MitzuWebApp:
                 lookback_days=metric_config.lookback_days,
                 start_dt=metric_config.start_dt,
                 end_dt=metric_config.end_dt,
+                resolution=metric_config.resolution,
                 custom_title="",
                 aggregation=agg_str,
             )
@@ -247,6 +249,7 @@ class MitzuWebApp:
                 start_dt=metric_config.start_dt,
                 end_dt=metric_config.end_dt,
                 retention_window=res_tw,
+                resolution=metric_config.resolution,
                 custom_title="",
                 aggregation=agg_str,
             )

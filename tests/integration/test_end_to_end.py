@@ -149,6 +149,7 @@ def test_retention_query():
         time_group="hour",
         start_dt="2020-01-01",
         end_dt="2020-01-02",
+        resolution="minute",
     )
 
     print(conv.get_df())
@@ -158,17 +159,17 @@ def test_retention_query():
         _datetime=datetime(2020, 1, 1, 0, 0, 0),
         _ret_index=0,
         _user_count_1=160,
-        _user_count_2=20,
-        _agg_value=12.5,
+        _user_count_2=19,
+        _agg_value=11.875,
     )
 
     sql = conv.get_sql()
     print(sql)
     assert (
         """WITH anon_1 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
-          NULL AS _cte_group
+  (SELECT DISTINCT simple.user_id AS _cte_user_id,
+                   datetime(strftime('%Y-%m-%dT%H:%M:00', simple.event_time)) AS _cte_datetime,
+                   NULL AS _cte_group
    FROM SIMPLE
    WHERE simple.event_type = 'view'
      AND simple.event_time >= '2020-01-01 00:00:00'
@@ -202,9 +203,9 @@ def test_retention_query():
    UNION SELECT 23 AS _ret_index
    UNION SELECT 24 AS _ret_index),
      anon_2 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
-          NULL AS _cte_group
+  (SELECT DISTINCT simple.user_id AS _cte_user_id,
+                   datetime(strftime('%Y-%m-%dT%H:%M:00', simple.event_time)) AS _cte_datetime,
+                   NULL AS _cte_group
    FROM SIMPLE
    WHERE simple.event_type = 'cart'
      AND simple.event_time >= '2020-01-01 00:00:00'

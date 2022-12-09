@@ -57,6 +57,7 @@ def test_definition_to_json():
         group_by=m.view.category_id,
         custom_title="test_title",
         aggregation="conversion",
+        resolution="day",
     )
 
     res_dict = to_dict(res)
@@ -75,6 +76,7 @@ def test_definition_to_json():
             "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
             "at": "conversion",
+            "res": "day",
         },
     }
 

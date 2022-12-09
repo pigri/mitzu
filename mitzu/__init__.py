@@ -9,6 +9,8 @@ from mitzu.model import (
     EnvVarSecretResolver,
     TimeWindow,
     TimeGroup,
+    DiscoverySettings,
+    WebappSettings,
 )
 from mitzu.samples import get_sample_discovered_project
 
@@ -24,6 +26,8 @@ __all__ = [
     "TimeWindow",
     "TimeGroup",
     "get_sample_discovered_project",
+    "DiscoverySettings",
+    "WebappSettings",
 ]
 
 
