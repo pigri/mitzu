@@ -60,15 +60,13 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
     server: flask.Flask
     tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
 
-    def handle_code_redirect(self):
-        code = get_oauth_code()
-
+    def _get_identity_token(self, auth_code) -> str:
         message = bytes(f"{OAUTH_CLIENT_ID}:{OAUTH_CLIENT_SECRET}", "utf-8")
         secret_hash = base64.b64encode(message).decode()
         payload = {
             "grant_type": "authorization_code",
             "client_id": OAUTH_CLIENT_ID,
-            "code": code,
+            "code": auth_code,
             "redirect_uri": OAUTH_REDIRECT_URI,
         }
         headers = {
@@ -77,17 +75,16 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         }
         LOGGER.debug(f"Payload: {payload}")
         LOGGER.debug(f"Oauth Token URL: {OAUTH_TOKEN_URL}")
+
         resp = requests.post(OAUTH_TOKEN_URL, params=payload, headers=headers)
         if resp.status_code != 200:
-            LOGGER.debug(f"Failed token resp: {resp.status_code}, {resp.content}")
-            return flask.Response(status=resp.status_code, response=resp.content)
+            raise Exception(f"Unexpected response: {resp.status_code}, {resp.content}")
 
-        cookie_val = f"{resp.json()['id_token']}"
-        redirect_url = flask.request.cookies.get(REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL)
-        resp = flask.redirect(code=307, location=redirect_url)
-        resp.set_cookie(OAUTH_JWT_COOKIE, cookie_val)
-        resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
-        LOGGER.debug(f"Setting cookie resp: {cookie_val}")
+        return resp.json()["id_token"]
+
+    def _get_unauthenticated_response(self) -> flask.Response:
+        resp = flask.redirect(code=307, location=NOT_FOUND_URL)
+        resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
         resp = self.add_no_cache_headers(resp)
         return resp
 
@@ -135,9 +132,37 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             code = get_oauth_code()
             if code is not None:
                 LOGGER.debug(f"Redirected with code= {code}")
-                resp = self.handle_code_redirect()
-                resp = self.add_no_cache_headers(resp)
-                return resp
+                try:
+                    id_token = self._get_identity_token(code)
+                    redirect_url = flask.request.cookies.get(
+                        REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL
+                    )
+                    resp = flask.redirect(code=307, location=redirect_url)
+                    resp.set_cookie(OAUTH_JWT_COOKIE, id_token)
+                    resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
+                    LOGGER.debug(f"Setting cookie resp: {id_token}")
+
+                    jwks_client = jwt.PyJWKClient(OAUTH_JWKS_URL)
+                    signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+                    decoded_token = jwt.decode(
+                        id_token,
+                        signing_key.key,
+                        algorithms=OAUTH_JWT_ALGORITHMS,
+                        audience=OAUTH_JWT_AUDIENCE,
+                    )
+
+                    if decoded_token is None:
+                        raise Exception("Unauthorized (Invalid jwt token)")
+
+                    LOGGER.info("Authorization finished (caching)")
+                    self.tokens[id_token] = decoded_token
+                    LOGGER.info(f"User email: {self.get_user_email(id_token)}")
+
+                    resp = self.add_no_cache_headers(resp)
+                    return resp
+                except Exception as e:
+                    LOGGER.warn(f"Failed to authenticate: {str(e)}")
+                    return self._get_unauthenticated_response()
 
             # Signout Flow
             jwt_encoded = flask.request.cookies.get(OAUTH_JWT_COOKIE)
@@ -176,32 +201,8 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             if jwt_encoded in self.tokens.keys():
                 return None
 
-            # JWT Token in cookies, however validation is needed
-            LOGGER.debug("Authorization started")
-            try:
-                jwks_client = jwt.PyJWKClient(OAUTH_JWKS_URL)
-                signing_key = jwks_client.get_signing_key_from_jwt(jwt_encoded)
-                decoded_token = jwt.decode(
-                    jwt_encoded,
-                    signing_key.key,
-                    algorithms=OAUTH_JWT_ALGORITHMS,
-                    audience=OAUTH_JWT_AUDIENCE,
-                )
-                if decoded_token is None:
-                    LOGGER.warn("Unauthorized (Invalid jwt token)")
-                    resp = flask.redirect(code=307, location=NOT_FOUND_URL)
-                    resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
-                else:
-                    LOGGER.info("Authorization finished (caching)")
-                    self.tokens[jwt_encoded] = decoded_token
-                    LOGGER.info(f"User email: {self.get_user_email(jwt_encoded)}")
-                    resp = None
-            except Exception as exc:
-                LOGGER.error(f"Authorization error: {exc}")
-                resp = flask.redirect(code=307, location=NOT_FOUND_URL)
-                resp.set_cookie(OAUTH_JWT_COOKIE, "", expires=0)
-            resp = self.add_no_cache_headers(resp)
-            return resp
+            # Unauthenticated
+            return self._get_unauthenticated_response()
 
     def get_user_email(self, encoded_token: str) -> Optional[str]:
         val = self.tokens.get(encoded_token, {})
