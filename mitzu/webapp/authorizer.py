@@ -88,23 +88,6 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         resp = self.add_no_cache_headers(resp)
         return resp
 
-    def handle_email_regex_check(
-        self, resp: flask.Response, jwt_encoded
-    ) -> flask.Response:
-        if (
-            OAUTH_AUTHORIZED_EMAIL_REG is not None
-            and resp is None
-            and flask.request.url
-            not in (
-                NOT_FOUND_URL,
-                SIGN_OUT_URL,
-            )
-            and re.search(OAUTH_AUTHORIZED_EMAIL_REG, self.get_user_email(jwt_encoded))
-            is None
-        ):
-            LOGGER.debug(f"Unauthorized email, redirecting to {NOT_FOUND_URL}")
-            resp = flask.redirect(code=307, location=NOT_FOUND_URL)
-        return resp
 
     def add_no_cache_headers(self, resp: flask.Response) -> flask.Response:
         if resp is not None:
