@@ -21,7 +21,7 @@ from mitzu.webapp.auth.authorizer import (
 
 
 @dataclass(frozen=True)
-class OAuthAuthorizerConfig:
+class CognitoConfig:
     _client_id: str
     _client_secret: str
     _domain: str
@@ -115,8 +115,8 @@ class OAuthAuthorizerConfig:
 
 @dataclass
 class CognitoAuthorizer(MitzuAuthorizer):
-    _config: OAuthAuthorizerConfig = field(
-        default_factory=lambda: OAuthAuthorizerConfig()
+    _config: CognitoConfig = field(
+        default_factory=lambda: CognitoConfig()
     )
     tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
 
@@ -146,8 +146,6 @@ class CognitoAuthorizer(MitzuAuthorizer):
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": f"Basic {secret_hash}",
         }
-        LOGGER.debug(f"Payload: {payload}")
-        LOGGER.debug(f"Oauth Token URL: {self._config._token_url}")
 
         resp = requests.post(self._config._token_url, params=payload, headers=headers)
         if resp.status_code != 200:
@@ -193,10 +191,6 @@ class CognitoAuthorizer(MitzuAuthorizer):
                     redirect_url = flask.request.cookies.get(
                         REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL
                     )
-                    resp = flask.redirect(code=307, location=redirect_url)
-                    resp.set_cookie(self._config._cookie_name, id_token)
-                    resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
-                    LOGGER.debug(f"Setting cookie resp: {id_token}")
 
                     jwks_client = jwt.PyJWKClient(self._config._jwks_url)
                     signing_key = jwks_client.get_signing_key_from_jwt(id_token)
@@ -214,6 +208,9 @@ class CognitoAuthorizer(MitzuAuthorizer):
                     self.tokens[id_token] = decoded_token
                     LOGGER.info(f"User email: {self.get_user_email(id_token)}")
 
+                    resp = flask.redirect(code=307, location=redirect_url)
+                    resp.set_cookie(self._config._cookie_name, id_token)
+                    resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
                     resp = self.add_no_cache_headers(resp)
                     return resp
                 except Exception as e:
@@ -225,9 +222,7 @@ class CognitoAuthorizer(MitzuAuthorizer):
             if SIGN_OUT_URL is not None and flask.request.url == SIGN_OUT_URL:
                 if jwt_encoded in self.tokens.keys():
                     self.tokens.pop(jwt_encoded)
-                LOGGER.debug(f"Signed out URL: {SIGN_OUT_URL}")
                 location = self._config._sign_out_url
-                LOGGER.debug(f"Signout Redirect {location}")
                 resp = flask.redirect(code=307, location=location)
                 resp.set_cookie(self._config._cookie_name, "", max_age=120)
                 resp = self.add_no_cache_headers(resp)
@@ -236,7 +231,6 @@ class CognitoAuthorizer(MitzuAuthorizer):
             # OAuth2 code flow starting + storing original link
             if not jwt_encoded:
                 LOGGER.debug("Unauthorized (missing jwt_token cookie)")
-                LOGGER.debug(f"Redirecting to {self._config._sign_in_url}")
                 resp = flask.redirect(code=307, location=self._config._sign_in_url)
                 clean_url = (
                     f"{flask.request.base_url}?{flask.request.query_string.decode()}"
