@@ -24,12 +24,11 @@ from mitzu.webapp.auth.authorizer import (
 class OAuthAuthorizerConfig:
     _client_id: str
     _client_secret: str
+    _domain: str
+    _region: str
+    _pool_id: str
 
     _redirect_url: str
-    _sign_in_base_url: str
-    _sign_out_base_url: str
-    _token_url: str
-    _jwks_url: str
 
     _cookie_name: str
 
@@ -37,60 +36,54 @@ class OAuthAuthorizerConfig:
 
     def __init__(
         self,
+        pool_id: Optional[str] = None,
+        region: Optional[str] = None,
+        domain: Optional[str] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
         redirect_url: Optional[str] = None,
-        sign_in_base_url: Optional[str] = None,
-        sign_out_base_url: Optional[str] = None,
-        token_url: Optional[str] = None,
-        jwks_url: Optional[str] = None,
         cookie_name: Optional[str] = None,
         jwt_algo: List[str] = ["RS256"],
     ):
         object.__setattr__(
-            self, "_client_id", self.fallback_to_env_var(client_id, "OAUTH_CLIENT_ID")
+            self,
+            "_pool_id",
+            self.fallback_to_env_var(pool_id, "COGNITO_POOL_ID"),
+        )
+        object.__setattr__(
+            self,
+            "_region",
+            self.fallback_to_env_var(region, "COGNITO_REGION"),
+        )
+        object.__setattr__(
+            self,
+            "_domain",
+            self.fallback_to_env_var(domain, "COGNITO_DOMAIN"),
+        )
+        object.__setattr__(
+            self, "_client_id", self.fallback_to_env_var(client_id, "COGNITO_CLIENT_ID")
         )
         object.__setattr__(
             self,
             "_client_secret",
-            self.fallback_to_env_var(client_secret, "OAUTH_CLIENT_SECRET"),
-        )
-
-        object.__setattr__(
-            self,
-            "_redirect_url",
-            self.fallback_to_env_var(redirect_url, "OAUTH_REDIRECT_URI"),
-        )
-        object.__setattr__(
-            self,
-            "_sign_in_base_url",
-            self.fallback_to_env_var(sign_in_base_url, "OAUTH_SIGN_IN_BASE_URL"),
-        )
-        object.__setattr__(
-            self,
-            "_sign_out_base_url",
-            self.fallback_to_env_var(sign_out_base_url, "OAUTH_SIGN_OUT_BASE_URL"),
-        )
-        object.__setattr__(
-            self,
-            "_token_url",
-            self.fallback_to_env_var(token_url, "OAUTH_TOKEN_URL"),
-        )
-        object.__setattr__(
-            self, "_jwks_url", self.fallback_to_env_var(jwks_url, "OAUTH_JWKS_URL")
+            self.fallback_to_env_var(client_secret, "COGNITO_CLIENT_SECRET"),
         )
         object.__setattr__(
             self,
             "_cookie_name",
-            self.fallback_to_env_var(cookie_name, "OAUTH_JWT_COOKIE"),
+            self.fallback_to_env_var(cookie_name, "COGNITO_JWT_COOKIE"),
         )
-
+        object.__setattr__(
+            self,
+            "_redirect_url",
+            self.fallback_to_env_var(redirect_url, "COGNITO_REDIRECT_URL"),
+        )
         object.__setattr__(
             self,
             "_jwt_algo",
-            self.fallback_to_env_var(",".join(jwt_algo), "OAUTH_JWT_ALGORITHMS").split(
-                ","
-            ),
+            self.fallback_to_env_var(
+                ",".join(jwt_algo), "COGNITO_JWT_ALGORITHMS"
+            ).split(","),
         )
 
     @classmethod
@@ -102,22 +95,30 @@ class OAuthAuthorizerConfig:
     @property
     def _sign_in_url(self) -> str:
         return (
-            f"{self._sign_in_base_url}?"
-            "client_id={self._client_id}&"
+            f"https://{self._domain}/oauth2/authorize?"
+            f"client_id={self._client_id}&"
             "response_type=code&"
             "scope=email+openid&"
-            "redirect_uri={self._redirect_url}"
+            f"redirect_uri={self._redirect_url}"
         )
 
     @property
     def _sign_out_url(self) -> str:
         return (
-            f"{self._sign_out_base_url}?"
-            "client_id={self._client_id}&"
+            f"https://{self._domain}/logout?"
+            f"client_id={self._client_id}&"
             "response_type=code&"
             "scope=email+openid&"
-            "redirect_uri={self._redirect_url}"
+            f"redirect_uri={self._redirect_url}"
         )
+
+    @property
+    def _token_url(self) -> str:
+        return f"https://{self._domain}/oauth2/token"
+
+    @property
+    def _jwks_url(self) -> str:
+        return f"https://cognito-idp.{self._region}.amazonaws.com/{self._pool_id}/.well-known/jwks.json"
 
 
 @dataclass
