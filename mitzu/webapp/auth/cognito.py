@@ -27,12 +27,9 @@ class OAuthAuthorizerConfig:
     _domain: str
     _region: str
     _pool_id: str
-
     _redirect_url: str
-
-    _cookie_name: str
-
     _jwt_algo: List[str]
+    _cookie_name: str
 
     def __init__(
         self,
@@ -42,7 +39,6 @@ class OAuthAuthorizerConfig:
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
         redirect_url: Optional[str] = None,
-        cookie_name: Optional[str] = None,
         jwt_algo: List[str] = ["RS256"],
     ):
         object.__setattr__(
@@ -70,11 +66,6 @@ class OAuthAuthorizerConfig:
         )
         object.__setattr__(
             self,
-            "_cookie_name",
-            self.fallback_to_env_var(cookie_name, "COGNITO_JWT_COOKIE"),
-        )
-        object.__setattr__(
-            self,
             "_redirect_url",
             self.fallback_to_env_var(redirect_url, "COGNITO_REDIRECT_URL"),
         )
@@ -85,6 +76,7 @@ class OAuthAuthorizerConfig:
                 ",".join(jwt_algo), "COGNITO_JWT_ALGORITHMS"
             ).split(","),
         )
+        object.__setattr__(self, "_cookie_name", "access_token")
 
     @classmethod
     def fallback_to_env_var(cls, value: Optional[str], env_var: str):
