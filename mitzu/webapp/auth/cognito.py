@@ -2,46 +2,22 @@ from __future__ import annotations
 
 import base64
 import os
-import re
-from abc import ABC, abstractmethod
 from copy import copy
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from urllib import parse
-
 import flask
 import jwt
 import requests
 from mitzu.helper import LOGGER
-
-REDIRECT_TO_COOKIE = "redirect_to"
-HOME_URL = os.getenv("HOME_URL")
-MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL")
-NOT_FOUND_URL = os.getenv("NOT_FOUND_URL")
-SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
-
-
-def get_oauth_code() -> Optional[str]:
-    code = flask.request.values.get("code")
-    if code is not None:
-        return code
-    parse_result = parse.urlparse(flask.request.url)
-    params = parse.parse_qs(parse_result.query)
-    code_ls = params.get("code")
-    if code_ls is not None:
-        return code_ls[0]
-    return None
-
-
-class MitzuAuthorizer(ABC):
-    @abstractmethod
-    def get_user_email(self, encoded_token: str) -> Optional[str]:
-        pass
-
-
-class GuestMitzuAuthorizer(MitzuAuthorizer):
-    def get_user_email(self, _: str) -> Optional[str]:
-        return "Guest"
+from mitzu.webapp.auth.authorizer import (
+    NOT_FOUND_URL,
+    HOME_URL,
+    REDIRECT_TO_COOKIE,
+    SIGN_OUT_URL,
+    MITZU_WEBAPP_URL,
+    MitzuAuthorizer,
+)
 
 
 @dataclass(frozen=True)
@@ -125,19 +101,42 @@ class OAuthAuthorizerConfig:
 
     @property
     def _sign_in_url(self) -> str:
-        return f"{self._sign_in_base_url}?client_id={self._client_id}&response_type=code&scope=email+openid&redirect_uri={self._redirect_url}"
+        return (
+            f"{self._sign_in_base_url}?"
+            "client_id={self._client_id}&"
+            "response_type=code&"
+            "scope=email+openid&"
+            "redirect_uri={self._redirect_url}"
+        )
 
     @property
     def _sign_out_url(self) -> str:
-        return f"{self._sign_out_base_url}?client_id={self._client_id}&response_type=code&scope=email+openid&redirect_uri={self._redirect_url}"
+        return (
+            f"{self._sign_out_base_url}?"
+            "client_id={self._client_id}&"
+            "response_type=code&"
+            "scope=email+openid&"
+            "redirect_uri={self._redirect_url}"
+        )
 
 
 @dataclass
-class JWTMitzuAuthorizer(MitzuAuthorizer):
+class CognitoAuthorizer(MitzuAuthorizer):
     _config: OAuthAuthorizerConfig = field(
         default_factory=lambda: OAuthAuthorizerConfig()
     )
     tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
+
+    def _get_oauth_code(self) -> Optional[str]:
+        code = flask.request.values.get("code")
+        if code is not None:
+            return code
+        parse_result = parse.urlparse(flask.request.url)
+        params = parse.parse_qs(parse_result.query)
+        code_ls = params.get("code")
+        if code_ls is not None:
+            return code_ls[0]
+        return None
 
     def _get_identity_token(self, auth_code) -> str:
         message = bytes(
@@ -159,7 +158,9 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
         resp = requests.post(self._config._token_url, params=payload, headers=headers)
         if resp.status_code != 200:
-            raise Exception(f"Unexpected response: {resp.status_code}, {resp.content}")
+            raise Exception(
+                f"Unexpected response: {resp.status_code}, {resp.content.decode('utf-8')}"
+            )
 
         return resp.json()["id_token"]
 
@@ -169,12 +170,11 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
         resp = self.add_no_cache_headers(resp)
         return resp
 
-    def add_no_cache_headers(self, resp: flask.Response) -> flask.Response:
-        if resp is not None:
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            resp.headers["Pragma"] = "no-cache"
-            resp.headers["Expires"] = "0"
-            resp.headers["Cache-Control"] = "public, max-age=0"
+    def add_no_cache_headers(self, resp) -> flask.Response:
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        resp.headers["Cache-Control"] = "public, max-age=0"
         return resp
 
     def setup_authorizer(self, server: flask.Flask):
@@ -192,7 +192,7 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
                 return resp
 
             # [CodeFlow] - OAuth2 code is in path
-            code = get_oauth_code()
+            code = self._get_oauth_code()
             if code is not None:
                 LOGGER.debug(f"Redirected with code= {code}")
                 try:
@@ -269,6 +269,6 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
     @classmethod
     def from_env_vars(cls, server: flask.Flask) -> MitzuAuthorizer:
-        authorizer = JWTMitzuAuthorizer()
+        authorizer = CognitoAuthorizer()
         authorizer.setup_authorizer(server)
         return authorizer
