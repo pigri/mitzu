@@ -57,7 +57,6 @@ class GuestMitzuAuthorizer(MitzuAuthorizer):
 
 @dataclass
 class JWTMitzuAuthorizer(MitzuAuthorizer):
-    server: flask.Flask
     tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
 
     def _get_identity_token(self, auth_code) -> str:
@@ -97,8 +96,8 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
             resp.headers["Cache-Control"] = "public, max-age=0"
         return resp
 
-    def setup_authorizer(self):
-        @self.server.before_request
+    def setup_authorizer(self, server: flask.Flask):
+        @server.before_request
         def authorize_request():
             resp: flask.Response
 
@@ -195,6 +194,6 @@ class JWTMitzuAuthorizer(MitzuAuthorizer):
 
     @classmethod
     def from_env_vars(cls, server: flask.Flask) -> MitzuAuthorizer:
-        authorizer = JWTMitzuAuthorizer(server=server)
-        authorizer.setup_authorizer()
+        authorizer = JWTMitzuAuthorizer()
+        authorizer.setup_authorizer(server)
         return authorizer
