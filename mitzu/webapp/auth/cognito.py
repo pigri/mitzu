@@ -115,9 +115,7 @@ class CognitoConfig:
 
 @dataclass
 class CognitoAuthorizer(MitzuAuthorizer):
-    _config: CognitoConfig = field(
-        default_factory=lambda: CognitoConfig()
-    )
+    _config: CognitoConfig = field(default_factory=lambda: CognitoConfig())
     tokens: Dict[str, Dict[str, str]] = field(default_factory=lambda: copy({}))
 
     def _get_oauth_code(self) -> Optional[str]:
