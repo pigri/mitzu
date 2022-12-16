@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-import os
 import traceback
-from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from typing import Any, Dict, Optional, cast
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-import mitzu.webapp.toolbar_handler as TH
-import mitzu.webapp.webapp as WA
+import mitzu.webapp.pages.explore.toolbar_handler as TH
+import mitzu.webapp.pages.explore.explore_page as EXP
+import mitzu.webapp.configs as configs
+import mitzu.webapp.dependencies as DEPS
+import flask
+
 import pandas as pd
-from dash import Input, Output, State, ctx, dcc, html
-from mitzu.webapp.helper import get_final_all_inputs
+from dash import Input, Output, State, ctx, dcc, html, callback, no_update
+from mitzu.webapp.helper import get_final_all_inputs, MITZU_LOCATION
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
-
 
 GRAPH = "graph"
 MESSAGE = "graph_message"
@@ -36,16 +37,10 @@ MARKDOWN = """```sql
 
 GRAPH_CONTAINER = "graph_container"
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
-GRAPH_POLL_INTERVAL_MS = os.getenv("GRAPH_POLL_INTERVAL_MS", 200)
-
-
-def is_background_callback_enabled() -> bool:
-    return bool(os.getenv("BACKGROUND_CALLBACK", "true").lower() != "false")
 
 
 def create_graph_container() -> bc.Component:
-    background_callback = is_background_callback_enabled()
-    if background_callback:
+    if configs.BACKGROUND_CALLBACK:
         return html.Div(id=GRAPH_CONTAINER, children=[], className=GRAPH_CONTAINER)
     else:
         return html.Div(
@@ -54,20 +49,19 @@ def create_graph_container() -> bc.Component:
         )
 
 
-def create_callbacks(webapp: WA.MitzuWebApp):
-    background_callback = is_background_callback_enabled()
-
-    @webapp.app.callback(
+def create_callbacks():
+    @callback(
         output=Output(GRAPH_CONTAINER, "children"),
-        inputs=WA.ALL_INPUT_COMPS,
+        inputs=EXP.ALL_INPUT_COMPS,
         state=dict(
             chart_button_color=State(TH.CHART_BUTTON, "color"),
             table_button_color=State(TH.TABLE_BUTTON, "color"),
             sql_button_color=State(TH.SQL_BUTTON, "color"),
+            pathname=State(MITZU_LOCATION, "pathname"),
         ),
-        interval=GRAPH_POLL_INTERVAL_MS,
+        interval=configs.GRAPH_POLL_INTERVAL_MS,
         prevent_initial_call=True,
-        background=background_callback,
+        background=configs.BACKGROUND_CALLBACK,
         running=[
             (
                 Output(TH.GRAPH_REFRESH_BUTTON, "disabled"),
@@ -87,25 +81,24 @@ def create_callbacks(webapp: WA.MitzuWebApp):
         ],
         cancel=[Input(TH.CANCEL_BUTTON, "n_clicks")],
     )
-    def handle_layout_changes_for_graph(
+    def handle_changes_for_graph(
         all_inputs: Dict[str, Any],
         chart_button_color: str,
         table_button_color: str,
         sql_button_color: str,
-    ) -> Any:
+        pathname: str,
+    ) -> bc.Component:
+        project_name = pathname.split("/")[-1]
+        depenedencies: DEPS.Dependencies = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        )
+        discovered_project = depenedencies.storage.get_project(project_name)
+
+        if discovered_project is None:
+            return no_update
         try:
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
-            parse_result = urlparse(all_inputs[WA.MITZU_LOCATION])
-            project_name = webapp.get_path_project_name(parse_result)
-            discovered_project = webapp.get_discovered_project(project_name)
-            if discovered_project is None:
-                return html.Div("First select a project", id=GRAPH, className=MESSAGE)
-            metric, _ = webapp.metric_from_all_inputs(
-                parse_result=parse_result,
-                discovered_project=discovered_project,
-                all_inputs=all_inputs,
-                ctx_triggered_id=ctx.triggered_id,
-            )
+            metric = EXP.create_metric_from_all_inputs(all_inputs, discovered_project)
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)
 
@@ -114,7 +107,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
             elif sql_button_color == "info":
                 return create_sql_area(metric)
             else:
-                return create_graph(metric, webapp)
+                return create_graph(metric)
 
         except Exception as exc:
             traceback.print_exc()
@@ -128,7 +121,7 @@ def create_callbacks(webapp: WA.MitzuWebApp):
             )
 
 
-def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph]:
+def create_graph(metric: M.Metric) -> Optional[dcc.Graph]:
     if metric is None:
         return html.Div("Select the first event...", id=GRAPH, className=MESSAGE)
 
@@ -144,10 +137,6 @@ def create_graph(metric: M.Metric, webapp: WA.MitzuWebApp) -> Optional[dcc.Graph
 
     chart = CHRT.get_simple_chart(metric)
     fig = PLT.plot_chart(chart, metric)
-
-    if webapp.results is not None:
-        webapp.results["mitzu_df"] = chart.dataframe
-        webapp.results["mitzu_fig"] = fig
     return dcc.Graph(id=GRAPH, figure=fig, config={"displayModeBar": False})
 
 

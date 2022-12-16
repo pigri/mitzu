@@ -4,8 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import mitzu.model as M
-import mitzu.webapp.webapp as WA
-from dash import dcc, html
+from dash import dcc, html, callback
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
 from mitzu.webapp.helper import find_event_field_def, get_enums, get_property_name_comp
@@ -271,8 +270,8 @@ def from_simple_segment(
     return component
 
 
-def create_callbacks(webapp: WA.MitzuWebApp):
-    @webapp.app.callback(
+def create_callbacks():
+    @callback(
         Output({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "options"),
         Input({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "search_value"),
         State({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "options"),

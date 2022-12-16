@@ -15,7 +15,6 @@ CUSTOM_DATE_PICKER = "custom_date_picker"
 CUSTOM_DATE_PICKER_START_DATE = "custom_date_picker_start_date"
 CUSTOM_DATE_PICKER_END_DATE = "custom_date_picker_end_date"
 CUSTOM_DATE_TW_VALUE = "_custom_date"
-DEF_OPTIONS_COUNT = 5
 
 CUSTOM_OPTION = {
     "label": html.Span(" Custom", className="bi bi-calendar-range"),

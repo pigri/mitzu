@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import dash.development.base_component as bc
 import mitzu.model as M
-import mitzu.webapp.simple_segment_handler as SS
+import mitzu.webapp.pages.explore.simple_segment_handler as SS
 from dash import dcc, html
 from mitzu.webapp.helper import CHILDREN, get_event_names
 from mitzu.helper import value_to_label

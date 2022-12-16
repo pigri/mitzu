@@ -692,7 +692,7 @@ class DiscoveredProject:
         logging_level: int = logging.WARN,
         new_thread: bool = False,
     ):
-        import mitzu.notebook.dashboard as DASH
+        import mitzu.webapp.notebook as DASH
 
         self.project.validate()
         results: Optional[Dict[str, Any]] = {}

@@ -4,8 +4,7 @@ from typing import Tuple
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import mitzu.webapp.webapp as WA
-from dash import Input, Output, ctx, html
+from dash import Input, Output, ctx, html, callback
 
 CHART_BUTTON = "chart_button"
 TABLE_BUTTON = "table_button"
@@ -99,8 +98,8 @@ def create_toolbar_handler() -> bc.Component:
     return comp
 
 
-def create_callbacks(webapp: WA.MitzuWebApp):
-    @webapp.app.callback(
+def create_callbacks():
+    @callback(
         output=[
             Output(CHART_BUTTON, "color"),
             Output(TABLE_BUTTON, "color"),

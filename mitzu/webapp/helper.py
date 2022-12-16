@@ -9,6 +9,7 @@ from mitzu.helper import value_to_label
 
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
+MITZU_LOCATION = "mitzu_location"
 
 
 def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:

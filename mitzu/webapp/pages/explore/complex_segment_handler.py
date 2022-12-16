@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-import mitzu.webapp.event_segment_handler as ES
-import mitzu.webapp.navbar.metric_type_handler as MNB
+import mitzu.webapp.pages.explore.event_segment_handler as ES
+import mitzu.webapp.pages.explore.metric_type_handler as MNB
 from dash import dcc, html
 from mitzu.webapp.helper import CHILDREN, get_event_names, get_property_name_comp
 

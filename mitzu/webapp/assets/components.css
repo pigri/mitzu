@@ -3,6 +3,7 @@
   --bs-body-font-size-large: 18px;
   --bs-body-font-size: 12px;
   --bs-body-font-size-small: 8px;
+  --offcanvas-horizontal-width: 300px;
 }
 
 .main {
@@ -241,4 +242,12 @@
 
 .graph_message {
   font-size: var(--bs-body-font-size-large);
+}
+
+#choose-project-dropdown .btn {
+  min-width: 100%;
+}
+
+.dropdown-menu.show {
+  min-width: 100%;
 }

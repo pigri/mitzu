@@ -9,6 +9,7 @@ import mitzu.model as M
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 import boto3
 from urllib import parse
+import functools
 
 PROJECTS_SUB_PATH = "projects"
 PROJECT_SUFFIX = ".mitzu"
@@ -20,12 +21,12 @@ def create_sample_project() -> M.DiscoveredProject:
         connection_type=M.ConnectionType.SQLITE,
     )
     project = create_and_ingest_sample_project(
-        connection, event_count=200000, number_of_users=1000
+        connection, event_count=20000, number_of_users=100
     )
     return project.discover_project()
 
 
-class PersistencyProvider(ABC):
+class MitzuStorage(ABC):
     def __init__(self) -> None:
         super().__init__()
         self.sample_project: Optional[M.DiscoveredProject] = None
@@ -42,7 +43,22 @@ class PersistencyProvider(ABC):
             return None
 
 
-class FileSystemPersistencyProvider(PersistencyProvider):
+class CachingMitzuStorage(MitzuStorage):
+    def __init__(self, mitzu_storage: MitzuStorage):
+        super().__init__()
+
+        self.mitzu_storage = mitzu_storage
+
+    @functools.cache
+    def list_projects(self) -> List[str]:
+        return self.mitzu_storage.list_projects()
+
+    @functools.cache
+    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
+        return self.mitzu_storage.get_project(key)
+
+
+class FileSystemStorage(MitzuStorage):
     def __init__(self, base_path: str = "./", projects_path: str = PROJECTS_SUB_PATH):
         super().__init__()
         if base_path.endswith("/"):
@@ -54,19 +70,23 @@ class FileSystemPersistencyProvider(PersistencyProvider):
         folder = Path(f"{self.base_path}/{self.projects_path}/")
         folder.mkdir(parents=True, exist_ok=True)
         res = os.listdir(folder)
-        res = [r for r in res if r.endswith(".mitzu")]
+        res = [
+            os.path.basename(r)[: -len(PROJECT_SUFFIX)]
+            for r in res
+            if r.endswith(PROJECT_SUFFIX)
+        ]
 
         if len(res) == 0:
             return super().list_projects()
         return res
 
     def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        if key.endswith(PROJECT_SUFFIX):
-            key = key[: len(PROJECT_SUFFIX)]
         if key == SAMPLE_PROJECT_NAME:
             return super().get_project(key)
+
         folder = Path(f"{self.base_path}/{self.projects_path}/")
         folder.mkdir(parents=True, exist_ok=True)
+
         path = f"{folder}/{key}{PROJECT_SUFFIX}"
         with open(path, "rb") as f:
             res = M.DiscoveredProject.deserialize(f.read())
@@ -74,7 +94,7 @@ class FileSystemPersistencyProvider(PersistencyProvider):
             return res
 
 
-class S3PersistencyProvider(PersistencyProvider):
+class S3MitzuStorage(MitzuStorage):
     def __init__(self, base_path: str, projects_path: str = PROJECTS_SUB_PATH):
         super().__init__()
         if base_path.endswith("/"):
@@ -90,7 +110,6 @@ class S3PersistencyProvider(PersistencyProvider):
         return bucket, path
 
     def list_projects(self) -> List[str]:
-
         bucket, prefix = self.get_project_bucket_and_path()
         conn = boto3.client("s3")
         res = [
@@ -98,23 +117,23 @@ class S3PersistencyProvider(PersistencyProvider):
             for key in conn.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
         ]
 
-        res = [r.split("/")[-1] for r in res if r.endswith(".mitzu")]
+        res = [
+            os.path.basename(r)[: -len(PROJECT_SUFFIX)]
+            for r in res
+            if r.endswith(PROJECT_SUFFIX)
+        ]
         if len(res) == 0:
             return super().list_projects()
         return res
 
     def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        if key.endswith(PROJECT_SUFFIX):
-            key = key[: len(PROJECT_SUFFIX)]
         if key == SAMPLE_PROJECT_NAME:
             return super().get_project(key)
 
         bucket, prefix = self.get_project_bucket_and_path()
         conn = boto3.client("s3")
 
-        full_key = prefix + key
-        if not full_key.endswith(PROJECT_SUFFIX):
-            full_key = full_key + PROJECT_SUFFIX
+        full_key = prefix + key + PROJECT_SUFFIX
 
         obj = conn.get_object(Bucket=bucket, Key=full_key)
         raw_discovered_project = obj["Body"].read()

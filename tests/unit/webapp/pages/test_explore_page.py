@@ -1,34 +1,12 @@
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional, Union
 
 import dash.development.base_component as bc
 import mitzu.model as M
-from dash import Dash
-from mitzu.webapp.persistence import PersistencyProvider
-from mitzu.webapp.webapp import MitzuWebApp
-
-
-class DummyPersistencyProvider(PersistencyProvider):
-    def list_projects(self) -> List[str]:
-        return []
-
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        return None
-
-
-CURR_DIR = os.path.dirname(os.path.abspath(__file__))
-
-MWA = MitzuWebApp(
-    app=Dash(__name__),
-    authorizer=None,
-    persistency_provider=DummyPersistencyProvider(),
-    discovered_project_cache={
-        "trino_test_project": M.DiscoveredProject.load_from_project_file(
-            project_name="trino_test_project", folder=CURR_DIR
-        )
-    },
-)
+import mitzu.webapp.pages.explore.explore_page as EXP
+from pytest import fixture
+from urllib.parse import unquote
 
 
 def to_json(input: Any) -> Any:
@@ -50,7 +28,9 @@ def to_json(input: Any) -> Any:
     return input
 
 
-def find_component_by_id(comp_id: str, input: Any) -> Optional[Dict[str, Any]]:
+def find_component_by_id(
+    comp_id: Union[str, Dict], input: Any
+) -> Optional[Dict[str, Any]]:
     if type(input) == list:
         for v in input:
             res = find_component_by_id(comp_id, v)
@@ -63,8 +43,15 @@ def find_component_by_id(comp_id: str, input: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
-def test_event_chosen_for_segmentation():
-    ctx_triggered_id = {"index": "0-0", "type": "event_name_dropdown"}
+@fixture(scope="module")
+def discovered_project():
+    path = os.path.dirname(os.path.abspath(__file__))
+    return M.DiscoveredProject.load_from_project_file(
+        project_name="trino_test_project", folder=path
+    )
+
+
+def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
     all_inputs = {
         "metric_segments": {
             "children": {0: {"children": {0: {"event_name_dropdown": "page_visit"}}}}
@@ -84,7 +71,7 @@ def test_event_chosen_for_segmentation():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     res = to_json(res[0][0])
 
     second_event_dd = find_component_by_id(
@@ -113,8 +100,9 @@ def test_event_chosen_for_segmentation():
     assert first_property_operator_dd is None
 
 
-def test_event_property_chosen_for_segmentation():
-    ctx_triggered_id = {"index": "0-0-0", "type": "property_name_dropdown"}
+def test_event_property_chosen_for_segmentation(
+    discovered_project: M.DiscoveredProject,
+):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -149,7 +137,7 @@ def test_event_property_chosen_for_segmentation():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     res = to_json(res[0][0])
 
     second_event_dd = find_component_by_id(
@@ -194,8 +182,9 @@ def test_event_property_chosen_for_segmentation():
     assert first_property_value_input["value"] == []
 
 
-def test_event_property_operator_changed_with_values_already_chosen():
-    ctx_triggered_id = {"index": "0-0-0", "type": "property_operator_dropdown"}
+def test_event_property_operator_changed_with_values_already_chosen(
+    discovered_project: M.DiscoveredProject,
+):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -235,7 +224,7 @@ def test_event_property_operator_changed_with_values_already_chosen():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     res = to_json(res[0][0])
 
     first_property_operator_dd = find_component_by_id(
@@ -245,12 +234,16 @@ def test_event_property_operator_changed_with_values_already_chosen():
         {"index": "0-0-0", "type": "property_value_input"}, res
     )
 
+    assert first_property_operator_dd is not None
+    assert first_property_value_input is not None
+
     assert first_property_operator_dd["value"] == ">"
     assert first_property_value_input["value"] is None
 
 
-def test_empty_page_with_project():
-    ctx_triggered_id = "mitzu_location"
+def test_empty_page_with_project(
+    discovered_project: M.DiscoveredProject,
+):
     all_inputs = {
         "metric_segments": {
             "children": {0: {"children": {0: {"event_name_dropdown": None}}}}
@@ -270,7 +263,7 @@ def test_empty_page_with_project():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     metric_segs = to_json(res[0])
     metric_confs = to_json(res[1])
 
@@ -310,8 +303,7 @@ def test_empty_page_with_project():
     assert timegroup_dd["value"] == M.TimeGroup.DAY.value
 
 
-def test_custom_date_selected():
-    ctx_triggered_id = "lookback_window_dropdown"
+def test_custom_date_selected(discovered_project: M.DiscoveredProject):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -342,7 +334,7 @@ def test_custom_date_selected():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     metric_confs = to_json(res[1])
 
     # Metric Segments Part
@@ -353,8 +345,7 @@ def test_custom_date_selected():
     assert date_picker["style"] == {"display": "inline"}
 
 
-def test_custom_date_selected_new_start_date():
-    ctx_triggered_id = "custom_date_picker"
+def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredProject):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -385,7 +376,7 @@ def test_custom_date_selected_new_start_date():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     metric_confs = to_json(res[1])
 
     # Metric Segments Part
@@ -398,8 +389,7 @@ def test_custom_date_selected_new_start_date():
     assert date_picker["end_date"] == datetime(2022, 1, 1, 0, 0)
 
 
-def test_custom_date_lookback_days_selected():
-    ctx_triggered_id = "custom_date_picker"
+def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProject):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -435,7 +425,7 @@ def test_custom_date_lookback_days_selected():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     metric_confs = to_json(res[1])
 
     # Metric Segments Part
@@ -448,34 +438,35 @@ def test_custom_date_lookback_days_selected():
     assert date_picker["start_date"] is None
     assert date_picker["end_date"] is None
 
+    assert lookback_days_dd is not None
     assert lookback_days_dd["value"] == "1 month"
 
 
-def test_mitzu_link_redirected():
-    ctx_triggered_id = "mitzu_location"
-    all_inputs = {
-        "mitzu_location": (
-            "http://localhost:8082/trino_test_project?m=eNolTEsKgCAUvIrMulXLLiOm"
+def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject):
+    query_params = {
+        "m": unquote(
+            "eNolTEsKgCAUvIrMulXLLiOm"
             "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
         )
     }
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
-    metric_segs = to_json(res[0])
+    res = EXP.create_explore_page(query_params, discovered_project)
+
+    explore_page = to_json(res)
 
     # Metric Segments Part
 
     first_event_dd = find_component_by_id(
-        {"index": "0-0", "type": "event_name_dropdown"}, metric_segs
+        {"index": "0-0", "type": "event_name_dropdown"}, explore_page
     )
 
     second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, metric_segs
+        {"index": "0-1", "type": "event_name_dropdown"}, explore_page
     )
     first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, metric_segs
+        {"index": "0-0-0", "type": "property_name_dropdown"}, explore_page
     )
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, metric_segs
+        {"index": "0-0-0", "type": "property_operator_dropdown"}, explore_page
     )
 
     assert first_event_dd is not None
@@ -495,22 +486,20 @@ def test_mitzu_link_redirected():
     )
     assert first_property_operator_dd is None
 
-    metric_confs = to_json(res[1])
-
     # Metric confs Part
 
-    date_picker = find_component_by_id("custom_date_picker", metric_confs)
-    lookback_days_dd = find_component_by_id("lookback_window_dropdown", metric_confs)
+    date_picker = find_component_by_id("custom_date_picker", explore_page)
+    lookback_days_dd = find_component_by_id("lookback_window_dropdown", explore_page)
 
     assert date_picker is not None
     assert date_picker["style"] == {"display": "none"}
     assert date_picker["start_date"] is None
     assert date_picker["end_date"] is None
+    assert lookback_days_dd is not None
     assert lookback_days_dd["value"] == "2 months"
 
 
-def test_event_chosen_for_retention():
-    ctx_triggered_id = {"index": "1-0", "type": "event_name_dropdown"}
+def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
     all_inputs = {
         "metric_segments": {
             "children": {
@@ -518,7 +507,6 @@ def test_event_chosen_for_retention():
                 1: {"children": {0: {"event_name_dropdown": "checkout"}}},
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
         "metric-type-dropdown": "retention",
         "timegroup_dropdown": 1,
         "custom_date_picker_start_date": None,
@@ -533,7 +521,7 @@ def test_event_chosen_for_retention():
         "sql_button": None,
     }
 
-    res = MWA.handle_input_changes(all_inputs, ctx_triggered_id)
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
     res = to_json(res[0][0])
 
     second_event_dd = find_component_by_id(

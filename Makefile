@@ -35,7 +35,7 @@ docker_test_down:
 	docker-compose -f docker/docker-compose.yml down
 
 docker_test_up:	
-	docker-compose -f docker/docker-compose.yml up
+	docker-compose -f docker/docker-compose.yml up -d 
 
 trino_setup_test_data:
 	$(POETRY) run python3 scripts/wait_for_trino.py
@@ -80,7 +80,7 @@ dash_trino_sso:
 
 serve:
 	cd release/app/ && \
-	LOG_LEVEL=INFO \
+	LOG_LEVEL=WARN \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
 	HOME_URL="http://localhost:8082/" \

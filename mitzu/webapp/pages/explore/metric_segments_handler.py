@@ -4,30 +4,33 @@ from typing import Any, Dict, List, Optional
 
 import dash.development.base_component as bc
 import mitzu.model as M
-import mitzu.webapp.complex_segment_handler as CS
-import mitzu.webapp.navbar.metric_type_handler as MNB
+import mitzu.webapp.pages.explore.complex_segment_handler as CS
+import mitzu.webapp.pages.explore.metric_type_handler as MNB
 from dash import html
 from mitzu.webapp.helper import CHILDREN, METRIC_SEGMENTS
 
 
 def from_metric(
-    discovered_project: M.DiscoveredProject,
     metric: Optional[M.Metric],
-    metric_type: MNB.MetricType,
+    discovered_project: M.DiscoveredProject,
 ) -> bc.Component:
     segments = []
     if isinstance(metric, M.SegmentationMetric):
         limit = 1
         segments = [metric._segment]
+        metric_type = MNB.MetricType.SEGMENTATION
     elif isinstance(metric, M.ConversionMetric):
         limit = 10
         segments = metric._conversion._segments
+        metric_type = MNB.MetricType.CONVERSION
     elif isinstance(metric, M.RetentionMetric):
         limit = 2
         segments = [metric._initial_segment, metric._retaining_segment]
+        metric_type = MNB.MetricType.RETENTION
     elif metric is None:
         limit = 1
         segments = []
+        metric_type = MNB.MetricType.SEGMENTATION
 
     fixed_metric_comps = []
     for funnel_step, segment in enumerate(segments):

@@ -8,21 +8,24 @@ import dash_bootstrap_components as dbc
 import diskcache
 import mitzu.model as M
 import mitzu.webapp.authorizer as AUTH
-import mitzu.webapp.persistence as PE
-import mitzu.webapp.webapp as MWA
+import mitzu.webapp.storage as S
+import mitzu.webapp.cache as C
 import mitzu.helper as H
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.pages.explore.explore_page as EXP
 from dash import DiskcacheManager, Dash
 import threading
+import flask
 import warnings
 
 
-class SingleProjectPersistancyProvider(PE.PersistencyProvider):
+class SingleProjectMitzuStorage(S.MitzuStorage):
     def __init__(self, project: M.DiscoveredProject) -> None:
         super().__init__()
         self.sample_project = project
 
     def list_projects(self) -> List[str]:
-        return [PE.SAMPLE_PROJECT_NAME]
+        return [S.SAMPLE_PROJECT_NAME]
 
     def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
         return self.sample_project
@@ -41,7 +44,14 @@ def external_dashboard(
     H.LOGGER.setLevel(logging_level)
     log = logging.getLogger("werkzeug")
     log.setLevel(logging_level)
+
     callback_manager = DiskcacheManager(diskcache.Cache("./"))
+    dependencies = DEPS.Dependencies(
+        authorizer=AUTH.GuestMitzuAuthorizer(),
+        storage=SingleProjectMitzuStorage(discovered_project),
+        cache=C.DiskMitzuCache(),
+    )
+
     app = Dash(
         __name__,
         compress=True,
@@ -52,21 +62,17 @@ def external_dashboard(
         ],
         update_title=None,
         suppress_callback_exceptions=True,
+        prevent_initial_callbacks=True,
         long_callback_manager=callback_manager,
     )
 
-    webapp = MWA.MitzuWebApp(
-        persistency_provider=SingleProjectPersistancyProvider(discovered_project),
-        app=app,
-        authorizer=AUTH.GuestMitzuAuthorizer(),
-        discovered_project_cache={PE.SAMPLE_PROJECT_NAME: discovered_project},
-        fixed_project_name=PE.SAMPLE_PROJECT_NAME,
-        results=results,
-    )
+    app.layout = EXP.create_explore_page({}, discovered_project, notebook_mode=True)
+    EXP.create_callbacks()
 
     os.environ["BACKGROUND_CALLBACK"] = str(results is None)
+    with app.server.app_context():
+        flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
 
-    webapp.init_app()
     if new_thread:
         t = threading.Thread(target=app.run_server, kwargs={"port": port, "host": host})
         t.start()

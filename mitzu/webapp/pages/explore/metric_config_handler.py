@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
-import mitzu.webapp.dates_selector_handler as DS
-import mitzu.webapp.navbar.metric_type_handler as MTH
+import mitzu.webapp.pages.explore.dates_selector_handler as DS
+import mitzu.webapp.pages.explore.metric_type_handler as MTH
 from dash import dcc, html
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
@@ -228,10 +228,8 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
 
 def from_metric(
     metric: Optional[M.Metric],
-    discovered_project: Optional[M.DiscoveredProject],
 ) -> bc.Component:
     conversion_comps = [create_metric_options_component(metric)]
-
     component = dbc.Row(
         [
             dbc.Col(
@@ -244,7 +242,6 @@ def from_metric(
         id=METRICS_CONFIG_CONTAINER,
         className=METRICS_CONFIG_CONTAINER,
     )
-
     return component
 
 
