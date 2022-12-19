@@ -21,11 +21,16 @@ class Dependencies:
     @classmethod
     def from_configs(cls, server: Flask) -> Dependencies:
         authorizer = None
+        auth_config = None
         if configs.OAUTH_BACKEND == "cognito":
             from mitzu.webapp.auth.cognito import CognitoConfig
+            auth_config = CognitoConfig()
+        elif configs.OAUTH_BACKEND == "google":
+            from mitzu.webapp.auth.google import GoogleOAuthConfig
+            auth_config = GoogleOAuthConfig()
 
-            config = CognitoConfig()
-            authorizer = A.OAuthAuthorizer(oauth_config=config)
+        if auth_config:
+            authorizer = A.OAuthAuthorizer(oauth_config=auth_config)
             authorizer.setup_authorizer(server)
 
         cache: C.MitzuCache
