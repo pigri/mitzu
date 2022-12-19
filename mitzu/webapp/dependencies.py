@@ -24,9 +24,11 @@ class Dependencies:
         auth_config = None
         if configs.OAUTH_BACKEND == "cognito":
             from mitzu.webapp.auth.cognito import CognitoConfig
+
             auth_config = CognitoConfig()
         elif configs.OAUTH_BACKEND == "google":
             from mitzu.webapp.auth.google import GoogleOAuthConfig
+
             auth_config = GoogleOAuthConfig()
 
         if auth_config:
