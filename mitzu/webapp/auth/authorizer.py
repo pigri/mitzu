@@ -82,9 +82,6 @@ class OAuthAuthorizer(ABC):
     _oauth_config: OAuthConfig
 
     _unauthorized_url_prefixes = [
-        "/_dash-layout",
-        "/_dash-dependencies",
-        "/_dash-update-component",
         "/auth/",
         "/assets/",
     ]
@@ -107,6 +104,14 @@ class OAuthAuthorizer(ABC):
                 oauth_config.jwt_algorithms,
                 oauth_config.client_id,
             )
+
+        unauthorized_html_path = os.path.join(
+            os.path.dirname(__file__), "../assets/unauthorized.html"
+        )
+        page_content = open(unauthorized_html_path, "r").read()
+        self._unauthorized_page_content = page_content.replace(
+            "LOGIN_URL", REDIRECT_TO_LOGIN_URL
+        )
 
     def get_user_email(self, encoded_token: str) -> Optional[str]:
         val = self._tokens.get(encoded_token, {})
@@ -208,7 +213,10 @@ class OAuthAuthorizer(ABC):
                     self._tokens.pop(auth_token)
                 return self._get_unauthenticated_response()
 
-            # FIXME: fake dash deps
+            if request.path == UNAUTHORIZED_URL:
+                resp = flask.Response(self._unauthorized_page_content, 200)
+                return resp
+
             for prefix in self._unauthorized_url_prefixes:
                 if request.path.startswith(prefix):
                     return None
