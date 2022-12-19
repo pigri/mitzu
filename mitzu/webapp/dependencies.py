@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import mitzu.webapp.authorizer as A
+import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.storage as S
 import mitzu.webapp.cache as C
 import mitzu.webapp.configs as configs
@@ -20,10 +20,12 @@ class Dependencies:
     @classmethod
     def from_configs(cls, server: Flask) -> Dependencies:
         auth: A.MitzuAuthorizer
-        if configs.OAUTH_SIGN_IN_URL:
-            auth = A.JWTMitzuAuthorizer.from_env_vars(server)
+        if configs.OAUTH_BACKEND == 'cognito':
+            from mitzu.webapp.auth.cognito import CognitoAuthorizer
+            auth = CognitoAuthorizer.from_env_vars(server)
         else:
-            auth = A.GuestMitzuAuthorizer()
+            from mitzu.webapp.auth.authorizer import GuestAuthorizer
+            auth = GuestAuthorizer()
 
         cache: C.MitzuCache
         if configs.REDIS_URL is not None:
