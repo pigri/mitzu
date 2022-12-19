@@ -205,7 +205,7 @@ class OAuthAuthorizer(ABC):
 
             if request.path == SIGN_OUT_URL:
                 if auth_token in self._tokens.keys():
-                    del self._tokens[auth_token]
+                    self._tokens.pop(auth_token)
                 return self._get_unauthenticated_response()
 
             # FIXME: fake dash deps
