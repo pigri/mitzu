@@ -1,0 +1,165 @@
+import json
+import flask
+from unittest.mock import patch, MagicMock
+from requests.models import Response
+
+from mitzu.webapp.auth.authorizer import (
+    OAuthAuthorizer,
+    OAuthConfig,
+    OAUTH_CODE_URL,
+    HOME_URL,
+    REDIRECT_TO_LOGIN_URL,
+)
+
+from typing import Optional
+
+app = flask.Flask(__name__)
+
+auth_token = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ."
+    "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+)
+
+
+class DummyConfig(OAuthConfig):
+    @property
+    def client_id(self) -> str:
+        return "client_id"
+
+    @property
+    def client_secret(self) -> str:
+        return "secret"
+
+    @property
+    def jwks_url(self) -> str:
+        return "https://jwks_url/"
+
+    @property
+    def sign_in_url(self) -> str:
+        return "https://sign_in_url/"
+
+    @property
+    def token_url(self) -> str:
+        return "https://token_url/"
+
+
+config = DummyConfig()
+token_validator = MagicMock()
+authorizer = OAuthAuthorizer(config, token_validator=token_validator)
+authorizer.setup_authorizer(app)
+
+
+def assert_redirected_to_unauthorized_page(resp: Optional[flask.Response]):
+    assert resp is not None
+    assert resp.status_code == 307
+    assert resp.headers["Location"] == "/auth/unauthorized"
+
+
+def assert_request_authorized(resp: Optional[flask.Response]):
+    assert resp is None
+
+
+def test_unauthorized_request_redirected_to_unauthorized_page():
+    with app.test_request_context("/"):
+        resp = app.preprocess_request()
+        assert_redirected_to_unauthorized_page(resp)
+
+
+def test_request_with_cached_token_is_allowed():
+    token = "allowed-token"
+    authorizer._tokens[token] = "dummy@user.com"
+    with app.test_request_context(
+        "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
+    ):
+        resp = app.preprocess_request()
+        assert_request_authorized(resp)
+
+
+def test_request_with_uncached_token_is_rejected():
+    token = "invalid-token"
+    with app.test_request_context(
+        "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
+    ):
+        resp = app.preprocess_request()
+        assert_redirected_to_unauthorized_page(resp)
+
+
+def test_redirects_to_sign_in_url():
+    with app.test_request_context(REDIRECT_TO_LOGIN_URL):
+        resp = app.preprocess_request()
+        assert resp.status_code == 307
+        assert resp.headers["Location"] == config.sign_in_url
+
+
+def test_oauth_code_url_called_without_code():
+    with app.test_request_context(OAUTH_CODE_URL):
+        resp = app.preprocess_request()
+        assert_request_authorized(resp)
+
+
+@patch("requests.post")
+def test_oauth_code_url_called_with_valid_code(req_mock):
+    response = Response()
+    response.code = "success"
+    response.status_code = 200
+    response._content = json.dumps(
+        {
+            "id_token": auth_token,
+        }
+    ).encode("utf-8")
+
+    req_mock.return_value = response
+
+    code = "1234567890"
+    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert resp is not None
+        assert resp.status_code == 307
+        assert resp.headers["Location"] == HOME_URL
+
+
+@patch("requests.post")
+def test_oauth_code_url_called_with_invalid_code(req_mock):
+    response = Response()
+    response.code = "success"
+    response.status_code = 200
+    response._content = json.dumps(
+        {
+            "id_token": auth_token,
+        }
+    ).encode("utf-8")
+
+    req_mock.return_value = response
+    token_validator.validate_token.return_value = None
+
+    code = "1234567890"
+    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert_redirected_to_unauthorized_page(resp)
