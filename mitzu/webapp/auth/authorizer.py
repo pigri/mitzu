@@ -8,9 +8,9 @@ from typing import Optional
 REDIRECT_TO_COOKIE = "redirect_to"
 HOME_URL = os.getenv("HOME_URL")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL")
-NOT_FOUND_URL = os.getenv("NOT_FOUND_URL")
 SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
 
+UNAUTHORIZED_URL = "/auth/unauthorized"
 
 class MitzuAuthorizer(ABC):
     @abstractmethod

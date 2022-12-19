@@ -11,8 +11,7 @@ import jwt
 import requests
 from mitzu.helper import LOGGER
 from mitzu.webapp.auth.authorizer import (
-    NOT_FOUND_URL,
-    HOME_URL,
+    UNAUTHORIZED_URL,
     REDIRECT_TO_COOKIE,
     SIGN_OUT_URL,
     MITZU_WEBAPP_URL,
@@ -154,7 +153,7 @@ class CognitoAuthorizer(MitzuAuthorizer):
         return resp.json()["id_token"]
 
     def _get_unauthenticated_response(self) -> flask.Response:
-        resp = flask.redirect(code=307, location=NOT_FOUND_URL)
+        resp = flask.redirect(code=307, location=UNAUTHORIZED_URL)
         resp.set_cookie(self._config._cookie_name, "", expires=0)
         resp = self.add_no_cache_headers(resp)
         return resp
@@ -170,15 +169,6 @@ class CognitoAuthorizer(MitzuAuthorizer):
         @server.before_request
         def authorize_request():
             resp: flask.Response
-
-            # Not found URL
-            if flask.request.url == NOT_FOUND_URL:
-                LOGGER.debug(f"Allowing not found url: {flask.request.url}")
-                page_404 = flask.render_template("404.html")
-                page_404 = page_404.format(home_url=HOME_URL, sign_out_url=SIGN_OUT_URL)
-                resp = flask.Response(status=200, response=page_404)
-                resp.set_cookie(self._config._cookie_name, "", expires=0)
-                return resp
 
             # [CodeFlow] - OAuth2 code is in path
             code = self._get_oauth_code()
