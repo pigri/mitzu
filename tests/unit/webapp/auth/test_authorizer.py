@@ -170,7 +170,7 @@ def test_authenticated_session_survives_mitzu_restart():
 
 def test_invalid_forged_tokens_are_rejected():
     token = "invalid-token"
-    token_validator.validate_token.return_value = None
+    token_validator.validate_token.side_effect = Exception()
     with app.test_request_context(
         "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
     ):

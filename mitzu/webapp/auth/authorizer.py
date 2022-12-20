@@ -171,15 +171,19 @@ class OAuthAuthorizer(ABC):
         return resp.json()["id_token"]
 
     def _validate_and_store_token(self, token) -> Optional[Dict[str, Any]]:
-        decoded_token = self._token_validator.validate_token(token)
-        if decoded_token is None:
+        try:
+            decoded_token = self._token_validator.validate_token(token)
+            if decoded_token is None:
+                return None
+
+            self._tokens[token] = decoded_token
+            user_email = self.get_user_email(token)
+            LOGGER.info(f"Identity token stored for user: {user_email}")
+
+            return decoded_token
+        except Exception as e:
+            LOGGER.warning(f"Failed to validate token: {str(e)}")
             return None
-
-        self._tokens[token] = decoded_token
-        user_email = self.get_user_email(token)
-        LOGGER.info(f"Identity token stored for user: {user_email}")
-
-        return decoded_token
 
     def setup_authorizer(self, server: flask.Flask):
         @server.before_request
