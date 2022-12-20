@@ -74,9 +74,6 @@ class GoogleOAuthConfig:
             f"redirect_uri={self._redirect_url}"
         )
 
-    def _sign_out_url(self, access_token) -> str:
-        return f"https://oauth2.googleapis.com/revoke?token={access_token}"
-
     @property
     def token_url(self) -> str:
         return "https://oauth2.googleapis.com/token"

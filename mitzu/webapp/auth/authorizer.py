@@ -96,9 +96,9 @@ class OAuthAuthorizer(ABC):
         self._oauth_config = oauth_config
         self._tokens = {}
 
-        self._token_validator = token_validator
-
-        if self._token_validator is None:
+        if token_validator is not None:
+            self._token_validator = token_validator
+        else:
             self._token_validator = JWTTokenValidator(
                 oauth_config.jwks_url,
                 oauth_config.jwt_algorithms,
@@ -170,6 +170,17 @@ class OAuthAuthorizer(ABC):
 
         return resp.json()["id_token"]
 
+    def _validate_and_store_token(self, token) -> Optional[Dict[str, Any]]:
+        decoded_token = self._token_validator.validate_token(token)
+        if decoded_token is None:
+            return None
+
+        self._tokens[token] = decoded_token
+        user_email = self.get_user_email(token)
+        LOGGER.info(f"Identity token stored for user: {user_email}")
+
+        return decoded_token
+
     def setup_authorizer(self, server: flask.Flask):
         @server.before_request
         def authorize_request():
@@ -182,21 +193,15 @@ class OAuthAuthorizer(ABC):
             if request.path == OAUTH_CODE_URL:
                 code = self._get_oauth_code()
                 if code is not None:
-                    LOGGER.debug(f"Redirected with code= {code}")
+                    LOGGER.debug(f"Redirected with code={code}")
                     try:
                         id_token = self._get_identity_token(code)
                         redirect_url = flask.request.cookies.get(
                             REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL
                         )
 
-                        decoded_token = self._token_validator.validate_token(id_token)
-
-                        if decoded_token is None:
+                        if not self._validate_and_store_token(id_token):
                             raise Exception("Unauthorized (Invalid jwt token)")
-
-                        LOGGER.info("Authorization finished (caching)")
-                        self._tokens[id_token] = decoded_token
-                        LOGGER.info(f"User email: {self.get_user_email(id_token)}")
 
                         resp = self._redirect(redirect_url)
                         resp.set_cookie(self._cookie_name, id_token)
@@ -222,6 +227,9 @@ class OAuthAuthorizer(ABC):
                     return None
 
             if auth_token in self._tokens.keys():
+                return None
+
+            if auth_token and self._validate_and_store_token(auth_token):
                 return None
 
             return self._get_unauthenticated_response()

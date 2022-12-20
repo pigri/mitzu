@@ -54,6 +54,7 @@ def assert_redirected_to_unauthorized_page(resp: Optional[flask.Response]):
     assert resp is not None
     assert resp.status_code == 307
     assert resp.headers["Location"] == "/auth/unauthorized"
+    assert resp.headers["Set-Cookie"].startswith("auth-token=; ")
 
 
 def assert_request_authorized(resp: Optional[flask.Response]):
@@ -74,15 +75,6 @@ def test_request_with_cached_token_is_allowed():
     ):
         resp = app.preprocess_request()
         assert_request_authorized(resp)
-
-
-def test_request_with_uncached_token_is_rejected():
-    token = "invalid-token"
-    with app.test_request_context(
-        "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
-    ):
-        resp = app.preprocess_request()
-        assert_redirected_to_unauthorized_page(resp)
 
 
 def test_redirects_to_sign_in_url():
@@ -162,4 +154,26 @@ def test_oauth_code_url_called_with_invalid_code(req_mock):
                 "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
             },
         )
+        assert_redirected_to_unauthorized_page(resp)
+
+
+def test_authenticated_session_survives_mitzu_restart():
+    token = "valid-token"
+    token_validator.validate_token.return_value = {"email": "user@email.com"}
+    with app.test_request_context(
+        "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
+    ):
+        resp = app.preprocess_request()
+        token_validator.validate_token.assert_called_with(token)
+        assert resp is None
+
+
+def test_invalid_forged_tokens_are_rejected():
+    token = "invalid-token"
+    token_validator.validate_token.return_value = None
+    with app.test_request_context(
+        "/", headers={"Cookie": f"{authorizer._cookie_name}={token}"}
+    ):
+        resp = app.preprocess_request()
+        token_validator.validate_token.assert_called_with(token)
         assert_redirected_to_unauthorized_page(resp)
