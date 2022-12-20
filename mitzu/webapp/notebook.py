@@ -41,11 +41,6 @@ def external_dashboard(
     interactive_shell_only: bool = True,
 ):
     warnings.filterwarnings("ignore")
-    if interactive_shell_only:
-        import __main__ as main
-
-        if hasattr(main, "__file__"):
-            return
 
     H.LOGGER.setLevel(logging_level)
     log = logging.getLogger("werkzeug")
@@ -78,6 +73,12 @@ def external_dashboard(
     os.environ["BACKGROUND_CALLBACK"] = str(results is None)
     with app.server.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
+
+    if interactive_shell_only:
+        import __main__ as main
+
+        if hasattr(main, "__file__"):
+            return
 
     if new_thread:
         t = threading.Thread(target=app.run_server, kwargs={"port": port, "host": host})
