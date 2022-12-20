@@ -57,23 +57,34 @@ notebook:
 	$(POETRY) run jupyter lab
 
 # This make command is used for testing the SSO
-dash_trino_sso: 	
+serve_cognito_sso:
 	cd release/app/ && \
-	BASEPATH=../../examples/data/ \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
-	MITZU_WEBAPP_URL="http://localhost:8082/" \
-	HOME_URL="http://localhost:8082/" \
-	NOT_FOUND_URL="http://localhost:8082/not_found" \
-	SIGN_OUT_URL="http://localhost:8082/logout" \
-	AUTH_BACKEND="cognito" \
+	MITZU_WEBAPP_URL="http://localhost:8082" \
+	HOME_URL="http://localhost:8082" \
+	OAUTH_BACKEND="cognito" \
 	COGNITO_CLIENT_ID="1bqlja23lfmniv7bm703aid9o0" \
 	COGNITO_CLIENT_SECRET="${COGNITO_CLIENT_SECRET}" \
 	COGNITO_DOMAIN="signin.mitzu.io" \
 	COGNITO_REGION="eu-west-1" \
 	COGNITO_POOL_ID="eu-west-1_QkZu6BnVD" \
-	COGNITO_REDIRECT_URL="http://localhost:8082/" \
+	COGNITO_REDIRECT_URL="http://localhost:8082/auth/oauth" \
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
+
+serve_google_sso:
+	cd release/app/ && \
+	LOG_LEVEL=INFO \
+	LOG_HANDLER=stdout \
+	MANAGE_PROJECTS_LINK="http://localhost:8081" \
+	MITZU_WEBAPP_URL="http://localhost:8082" \
+	HOME_URL="http://localhost:8082" \
+	OAUTH_BACKEND="google" \
+	GOOGLE_CLIENT_ID="669095060108-42hhm4rgo8cjseumiu47saq2g8690ehh.apps.googleusercontent.com" \
+	GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
+	GOOGLE_PROJECT_ID="mitzu-test" \
+	GOOGLE_REDIRECT_URL="http://localhost:8082/auth/oauth" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
 serve:
