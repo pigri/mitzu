@@ -40,6 +40,10 @@ class DummyConfig(OAuthConfig):
         return "https://sign_in_url/"
 
     @property
+    def sign_out_url(self) -> Optional[str]:
+        return None
+
+    @property
     def token_url(self) -> str:
         return "https://token_url/"
 

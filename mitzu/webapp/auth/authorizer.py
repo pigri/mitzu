@@ -45,6 +45,11 @@ class OAuthConfig:
 
     @property
     @abstractmethod
+    def sign_out_url(self) -> Optional[str]:
+        return None
+
+    @property
+    @abstractmethod
     def token_url(self) -> str:
         pass
 
@@ -220,6 +225,9 @@ class OAuthAuthorizer(ABC):
             if request.path == SIGN_OUT_URL:
                 if auth_token in self._tokens.keys():
                     self._tokens.pop(auth_token)
+
+                if self._oauth_config.sign_out_url:
+                    return self._redirect(self._oauth_config.sign_out_url)
                 return self._get_unauthenticated_response()
 
             if request.path == UNAUTHORIZED_URL:

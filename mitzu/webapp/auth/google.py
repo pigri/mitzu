@@ -75,6 +75,10 @@ class GoogleOAuthConfig:
         )
 
     @property
+    def sign_out_url(self) -> Optional[str]:
+        return None
+
+    @property
     def token_url(self) -> str:
         return "https://oauth2.googleapis.com/token"
 

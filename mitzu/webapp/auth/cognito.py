@@ -89,7 +89,7 @@ class CognitoConfig(OAuthConfig):
         )
 
     @property
-    def _sign_out_url(self) -> str:
+    def sign_out_url(self) -> str:
         return (
             f"https://{self._domain}/logout?"
             f"client_id={self._client_id}&"
