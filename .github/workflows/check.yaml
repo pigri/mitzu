@@ -33,6 +33,15 @@ jobs:
         run: |
           poetry run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter postgresql
           poetry run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter mysql
+      - name: Check example notebooks
+        run: |
+          cd examples/notebook
+          for notebook in $(ls *.ipynb); do
+            echo "::group::$notebook"
+              poetry run jupyter nbconvert --to python --output "$notebook.py" $notebook
+              poetry run python3 "$notebook.py"
+            echo "::endgroup::"
+          done
       - name: Dump trino logs
         if: failure()
         run: |
