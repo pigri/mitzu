@@ -306,6 +306,7 @@ class SecretResolver(ABC):
     """
     Abstract base class for all secret resolvers
     """
+
     def resolve_secret(self) -> str:
         raise NotImplementedError()
 
@@ -317,6 +318,7 @@ class PromptSecretResolver(SecretResolver):
 
     :param title: the title of the prompt
     """
+
     title: str = "Secret"
 
     def resolve_secret(self) -> str:
@@ -424,6 +426,7 @@ class EventDataTable:
     """
     Refers to a single table in the data warehouse or data lake.
     """
+
     table_name: str
     event_time_field: Field
     user_id_field: Field
@@ -548,7 +551,8 @@ class EventDataTable:
         :param catalog:
         :param event_name_alias:
         :param ignored_fields: name of the field which should be ignored
-        :param event_specific_fields: name of the fields which are specific for certain events, these fields will be discovered separately for every event.
+        :param event_specific_fields: name of the fields which are specific for certain events,
+            these fields will be discovered separately for every event.
         :param date_partition_field: name of the field used for partitioning the data by date
         :param description:
         :param discovery_settings: discovery settings, if None then the project wide discovery settings will be used
@@ -629,6 +633,7 @@ class Project:
     :param discovery_settings: default, project wide discovery settings
     :param webapp_settings: configurations to represent the project in the Mitzu webapp
     """
+
     connection: Connection
     event_data_tables: List[EventDataTable]
     discovery_settings: DiscoverySettings = DiscoverySettings()

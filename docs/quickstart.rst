@@ -20,7 +20,7 @@ Reading The Sample Dataset
 --------------------------
 
 The simplest way to get started with `Mitzu` is in a data-science notebook. In your notebook read the sample user behavior dataset.
-Mitzu can :ref:`discover<Discovery>` your tables in a data warehouse or data lake. For the sake of simplicity we provide you an in-memory `sqlite <https://www.sqlite.org/index.html>`_ based table that contains
+Mitzu can discover your tables in a data warehouse or data lake. For the sake of simplicity we provide you an in-memory `sqlite <https://www.sqlite.org/index.html>`_ based table that contains
 
 .. code-block:: python
 
