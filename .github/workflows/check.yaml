@@ -42,6 +42,9 @@ jobs:
               poetry run python3 "$notebook.py"
             echo "::endgroup::"
           done
+      - name: Generate documentation
+        run: |
+          make generate_docs_ci
       - name: Dump trino logs
         if: failure()
         run: |

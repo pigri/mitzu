@@ -40,6 +40,9 @@ docker_test_up:
 generate_docs:
 	$(POETRY) run sphinx-build docs docs/build
 
+generate_docs_ci:
+	$(POETRY) run sphinx-build -W docs docs/build
+
 trino_setup_test_data:
 	$(POETRY) run python3 scripts/wait_for_trino.py
 	docker container exec docker-trino-coordinator-1 trino --execute="$$(cat docker/trino_hive_init.sql)"
