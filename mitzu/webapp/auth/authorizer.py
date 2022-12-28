@@ -207,7 +207,9 @@ class OAuthAuthorizer:
                     self._tokens.pop(auth_token)
 
                 if self._oauth_config.sign_out_url:
-                    return self._redirect(self._oauth_config.sign_out_url)
+                    resp = self._redirect(self._oauth_config.sign_out_url)
+                    resp.set_cookie(self._cookie_name, "", expires=0)
+                    return resp
                 return self._get_unauthenticated_response()
 
             if request.path == UNAUTHORIZED_URL:

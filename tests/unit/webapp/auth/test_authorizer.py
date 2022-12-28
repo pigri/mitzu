@@ -37,11 +37,15 @@ authorizer = OAuthAuthorizer.create(config, token_validator)
 authorizer.setup_authorizer(app)
 
 
+def assert_auth_token_removed(resp: flask.Response):
+    assert resp.headers["Set-Cookie"].startswith("auth-token=; ")
+
+
 def assert_redirected_to_unauthorized_page(resp: Optional[flask.Response]):
     assert resp is not None
     assert resp.status_code == 307
     assert resp.headers["Location"] == UNAUTHORIZED_URL
-    assert resp.headers["Set-Cookie"].startswith("auth-token=; ")
+    assert_auth_token_removed(resp)
 
 
 def assert_request_authorized(resp: Optional[flask.Response]):
@@ -173,7 +177,30 @@ def test_unauthorized_page_is_shown_for_unauthorized_requests():
         assert resp.data.decode("utf-8") == authorizer._unauthorized_page_content
 
 
-def test_sign_out_():
+def test_sign_out_without_sign_out_url():
     with app.test_request_context(SIGN_OUT_URL):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(resp)
+
+
+def test_sign_out_with_sign_out_url():
+    app = flask.Flask(__name__)
+
+    config = OAuthConfig(
+        client_id="client_id",
+        client_secret="secret",
+        jwks_url="https://jwks_url/",
+        sign_in_url="https://sign_in_ulr/",
+        sign_out_url="https://sign_out_url/",
+        token_url="https://token_url/",
+        jwt_algorithms=["RS256"],
+    )
+    authorizer = OAuthAuthorizer.create(config)
+    authorizer.setup_authorizer(app)
+
+    with app.test_request_context(SIGN_OUT_URL):
+        resp = app.preprocess_request()
+        assert resp is not None
+        assert resp.status_code == 307
+        assert resp.headers["Location"] == config.sign_out_url
+        assert_auth_token_removed(resp)
