@@ -9,6 +9,8 @@ from mitzu.webapp.auth.authorizer import (
     OAUTH_CODE_URL,
     HOME_URL,
     REDIRECT_TO_LOGIN_URL,
+    UNAUTHORIZED_URL,
+    SIGN_OUT_URL,
 )
 
 from typing import Optional
@@ -38,7 +40,7 @@ authorizer.setup_authorizer(app)
 def assert_redirected_to_unauthorized_page(resp: Optional[flask.Response]):
     assert resp is not None
     assert resp.status_code == 307
-    assert resp.headers["Location"] == "/auth/unauthorized"
+    assert resp.headers["Location"] == UNAUTHORIZED_URL
     assert resp.headers["Set-Cookie"].startswith("auth-token=; ")
 
 
@@ -161,4 +163,17 @@ def test_invalid_forged_tokens_are_rejected():
     ):
         resp = app.preprocess_request()
         token_validator.validate_token.assert_called_with(token)
+        assert_redirected_to_unauthorized_page(resp)
+
+
+def test_unauthorized_page_is_shown_for_unauthorized_requests():
+    with app.test_request_context(UNAUTHORIZED_URL):
+        resp = app.preprocess_request()
+        assert resp.status_code == 200
+        assert resp.data.decode("utf-8") == authorizer._unauthorized_page_content
+
+
+def test_sign_out_():
+    with app.test_request_context(SIGN_OUT_URL):
+        resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(resp)
