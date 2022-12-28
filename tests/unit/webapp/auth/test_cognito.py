@@ -1,8 +1,8 @@
-from mitzu.webapp.auth.cognito import CognitoConfig
+from mitzu.webapp.auth.cognito import Cognito
 
 
 def test_cognito_config():
-    config = CognitoConfig(
+    config = Cognito.get_config(
         pool_id="pool_id",
         region="eu-west-1",
         domain="unit.ts",

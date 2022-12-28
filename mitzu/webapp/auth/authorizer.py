@@ -23,41 +23,15 @@ REDIRECT_TO_LOGIN_URL = "/auth/redirect-to-login"
 OAUTH_CODE_URL = "/auth/oauth"
 
 
+@dataclass(frozen=True)
 class OAuthConfig:
-    @property
-    @abstractmethod
-    def client_id(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def client_secret(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def jwks_url(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def sign_in_url(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def sign_out_url(self) -> Optional[str]:
-        return None
-
-    @property
-    @abstractmethod
-    def token_url(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def jwt_algorithms(self) -> List[str]:
-        pass
+    client_id: str
+    client_secret: str
+    jwks_url: str
+    sign_in_url: str
+    sign_out_url: Optional[str]
+    token_url: str
+    jwt_algorithms: List[str]
 
 
 class TokenValidator(ABC):

@@ -23,13 +23,13 @@ class Dependencies:
         authorizer = None
         auth_config = None
         if configs.OAUTH_BACKEND == "cognito":
-            from mitzu.webapp.auth.cognito import CognitoConfig
+            from mitzu.webapp.auth.cognito import Cognito
 
-            auth_config = CognitoConfig()
+            auth_config = Cognito.get_config()
         elif configs.OAUTH_BACKEND == "google":
-            from mitzu.webapp.auth.google import GoogleOAuthConfig
+            from mitzu.webapp.auth.google import GoogleOAuth
 
-            auth_config = GoogleOAuthConfig()
+            auth_config = GoogleOAuth.get_config()
 
         if auth_config:
             authorizer = A.OAuthAuthorizer.create(oauth_config=auth_config)

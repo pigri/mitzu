@@ -21,34 +21,15 @@ auth_token = (
     "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 )
 
-
-class DummyConfig(OAuthConfig):
-    @property
-    def client_id(self) -> str:
-        return "client_id"
-
-    @property
-    def client_secret(self) -> str:
-        return "secret"
-
-    @property
-    def jwks_url(self) -> str:
-        return "https://jwks_url/"
-
-    @property
-    def sign_in_url(self) -> str:
-        return "https://sign_in_url/"
-
-    @property
-    def sign_out_url(self) -> Optional[str]:
-        return None
-
-    @property
-    def token_url(self) -> str:
-        return "https://token_url/"
-
-
-config = DummyConfig()
+config = OAuthConfig(
+    client_id="client_id",
+    client_secret="secret",
+    jwks_url="https://jwks_url/",
+    sign_in_url="https://sign_in_ulr/",
+    sign_out_url=None,
+    token_url="https://token_url/",
+    jwt_algorithms=["RS256"],
+)
 token_validator = MagicMock()
 authorizer = OAuthAuthorizer.create(config, token_validator)
 authorizer.setup_authorizer(app)
