@@ -32,7 +32,7 @@ class Dependencies:
             auth_config = GoogleOAuthConfig()
 
         if auth_config:
-            authorizer = A.OAuthAuthorizer(oauth_config=auth_config)
+            authorizer = A.OAuthAuthorizer.create(oauth_config=auth_config)
             authorizer.setup_authorizer(server)
 
         cache: C.MitzuCache

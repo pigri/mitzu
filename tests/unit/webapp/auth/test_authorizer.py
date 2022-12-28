@@ -50,7 +50,7 @@ class DummyConfig(OAuthConfig):
 
 config = DummyConfig()
 token_validator = MagicMock()
-authorizer = OAuthAuthorizer(config, token_validator=token_validator)
+authorizer = OAuthAuthorizer.create(config, token_validator)
 authorizer.setup_authorizer(app)
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 import flask
 import werkzeug
 import jwt
@@ -82,29 +83,29 @@ class JWTTokenValidator(TokenValidator):
         )
 
 
-class OAuthAuthorizer(ABC):
-
+@dataclass(frozen=True)
+class OAuthAuthorizer:
     _oauth_config: OAuthConfig
+    _token_validator: TokenValidator
 
-    _unauthorized_url_prefixes = [
-        "/auth/",
-        "/assets/",
-    ]
-    _cookie_name = "auth-token"
-    _tokens: Dict[str, Dict[str, str]]
+    _unauthorized_url_prefixes: List[str] = field(
+        default_factory=lambda: [
+            "/auth/",
+            "/assets/",
+        ]
+    )
+    _cookie_name: str = field(default_factory=lambda: "auth-token")
+    _tokens: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    _unauthorized_page_content: str = field(default_factory=lambda: "")
 
-    def __init__(
-        self,
+    @classmethod
+    def create(
+        cls,
         oauth_config: OAuthConfig,
         token_validator: Optional[TokenValidator] = None,
-    ):
-        self._oauth_config = oauth_config
-        self._tokens = {}
-
-        if token_validator is not None:
-            self._token_validator = token_validator
-        else:
-            self._token_validator = JWTTokenValidator(
+    ) -> OAuthAuthorizer:
+        if token_validator is None:
+            token_validator = JWTTokenValidator(
                 oauth_config.jwks_url,
                 oauth_config.jwt_algorithms,
                 oauth_config.client_id,
@@ -114,8 +115,13 @@ class OAuthAuthorizer(ABC):
             os.path.dirname(__file__), "../assets/unauthorized.html"
         )
         page_content = open(unauthorized_html_path, "r").read()
-        self._unauthorized_page_content = page_content.replace(
+        unauthorized_page_content = page_content.replace(
             "LOGIN_URL", REDIRECT_TO_LOGIN_URL
+        )
+        return OAuthAuthorizer(
+            _oauth_config=oauth_config,
+            _token_validator=token_validator,
+            _unauthorized_page_content=unauthorized_page_content,
         )
 
     def get_user_email(self, encoded_token: str) -> Optional[str]:
