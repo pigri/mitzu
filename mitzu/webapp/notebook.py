@@ -7,7 +7,6 @@ import logging
 import dash_bootstrap_components as dbc
 import diskcache
 import mitzu.model as M
-import mitzu.webapp.authorizer as AUTH
 import mitzu.webapp.storage as S
 import mitzu.webapp.cache as C
 import mitzu.helper as H
@@ -47,7 +46,7 @@ def external_dashboard(
 
     callback_manager = DiskcacheManager(diskcache.Cache("./"))
     dependencies = DEPS.Dependencies(
-        authorizer=AUTH.GuestMitzuAuthorizer(),
+        authorizer=None,
         storage=SingleProjectMitzuStorage(discovered_project),
         cache=C.DiskMitzuCache(),
     )
