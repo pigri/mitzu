@@ -12,8 +12,6 @@ from typing import Any, Dict, Optional, List
 from urllib import parse
 from mitzu.helper import LOGGER
 
-
-REDIRECT_TO_COOKIE = "redirect_to"
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
 
@@ -21,6 +19,12 @@ SIGN_OUT_URL = "/auth/logout"
 UNAUTHORIZED_URL = "/auth/unauthorized"
 REDIRECT_TO_LOGIN_URL = "/auth/redirect-to-login"
 OAUTH_CODE_URL = "/auth/oauth"
+
+
+@dataclass(frozen=True)
+class AuthConfig:
+    token_cookie_name: str = field(default_factory=lambda: "auth-token")
+    redirect_cookie_name: str = field(default_factory=lambda: "redirect-to")
 
 
 @dataclass(frozen=True)
@@ -68,7 +72,7 @@ class OAuthAuthorizer:
             "/assets/",
         ]
     )
-    _cookie_name: str = field(default_factory=lambda: "auth-token")
+    _config: AuthConfig = field(default_factory=lambda: AuthConfig())
     _tokens: Dict[str, Dict[str, str]] = field(default_factory=dict)
     _unauthorized_page_content: str = field(default_factory=lambda: "")
 
@@ -108,9 +112,10 @@ class OAuthAuthorizer:
         self, redirect: Optional[str] = None
     ) -> werkzeug.wrappers.response.Response:
         resp = self._redirect(UNAUTHORIZED_URL)
-        resp.set_cookie(self._cookie_name, "", expires=0)
+        resp.set_cookie(self._config.token_cookie_name, "", expires=0)
         if redirect:
-            resp.set_cookie(REDIRECT_TO_COOKIE, redirect)
+            print(redirect)
+            resp.set_cookie(self._config.redirect_cookie_name, redirect)
         return resp
 
     def _redirect(self, location: str) -> werkzeug.wrappers.response.Response:
@@ -190,21 +195,23 @@ class OAuthAuthorizer:
                     try:
                         id_token = self._get_identity_token(code)
                         redirect_url = flask.request.cookies.get(
-                            REDIRECT_TO_COOKIE, MITZU_WEBAPP_URL
+                            self._config.redirect_cookie_name, MITZU_WEBAPP_URL
                         )
 
                         if not self._validate_and_store_token(id_token):
                             raise Exception("Unauthorized (Invalid jwt token)")
 
                         resp = self._redirect(redirect_url)
-                        resp.set_cookie(self._cookie_name, id_token)
-                        resp.set_cookie(REDIRECT_TO_COOKIE, "", expires=0)
+                        resp.set_cookie(self._config.token_cookie_name, id_token)
+                        resp.set_cookie(
+                            self._config.redirect_cookie_name, "", expires=0
+                        )
                         return resp
                     except Exception as e:
                         LOGGER.warning(f"Failed to authenticate: {str(e)}")
                         return self._get_unauthenticated_response()
 
-            auth_token = flask.request.cookies.get(self._cookie_name)
+            auth_token = flask.request.cookies.get(self._config.token_cookie_name)
 
             if request.path == SIGN_OUT_URL:
                 if auth_token in self._tokens.keys():
@@ -212,7 +219,7 @@ class OAuthAuthorizer:
 
                 if self._oauth_config.sign_out_url:
                     resp = self._redirect(self._oauth_config.sign_out_url)
-                    resp.set_cookie(self._cookie_name, "", expires=0)
+                    resp.set_cookie(self._config.token_cookie_name, "", expires=0)
                     return resp
                 return self._get_unauthenticated_response()
 
