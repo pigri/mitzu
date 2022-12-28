@@ -8,6 +8,7 @@ from mitzu.webapp.auth.authorizer import (
     OAuthConfig,
     OAUTH_CODE_URL,
     HOME_URL,
+    REDIRECT_TO_COOKIE,
     REDIRECT_TO_LOGIN_URL,
     UNAUTHORIZED_URL,
     SIGN_OUT_URL,
@@ -37,15 +38,29 @@ authorizer = OAuthAuthorizer.create(config, token_validator)
 authorizer.setup_authorizer(app)
 
 
+def get_cookie_by_name(cookie_name, resp: flask.Response) -> Optional[str]:
+    for cookie in resp.headers.getlist("Set-Cookie"):
+        if cookie.startswith(cookie_name):
+            return cookie
+    return None
+
+
 def assert_auth_token_removed(resp: flask.Response):
-    assert resp.headers["Set-Cookie"].startswith("auth-token=; ")
+    assert get_cookie_by_name("auth-token", resp).startswith("auth-token=; ")
 
 
-def assert_redirected_to_unauthorized_page(resp: Optional[flask.Response]):
+def assert_redirected_to_unauthorized_page(
+    resp: Optional[flask.Response], expected_redirect_cookie: Optional[str] = None
+):
     assert resp is not None
     assert resp.status_code == 307
     assert resp.headers["Location"] == UNAUTHORIZED_URL
     assert_auth_token_removed(resp)
+
+    if expected_redirect_cookie:
+        assert get_cookie_by_name(REDIRECT_TO_COOKIE, resp) == f"redirect_to={expected_redirect_cookie}; Path=/"
+    else:
+        assert get_cookie_by_name(REDIRECT_TO_COOKIE, resp) is None
 
 
 def assert_request_authorized(resp: Optional[flask.Response]):
@@ -53,9 +68,9 @@ def assert_request_authorized(resp: Optional[flask.Response]):
 
 
 def test_unauthorized_request_redirected_to_unauthorized_page():
-    with app.test_request_context("/"):
+    with app.test_request_context("/example_project"):
         resp = app.preprocess_request()
-        assert_redirected_to_unauthorized_page(resp)
+        assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/example_project")
 
 
 def test_request_with_cached_token_is_allowed():
@@ -114,6 +129,40 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         assert resp.status_code == 307
         assert resp.headers["Location"] == HOME_URL
 
+@patch("requests.post")
+def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
+    response = Response()
+    response.code = "success"
+    response.status_code = 200
+    response._content = json.dumps(
+        {
+            "id_token": auth_token,
+        }
+    ).encode("utf-8")
+
+    req_mock.return_value = response
+    redirect_after_login = "/example-project"
+
+    code = "1234567890"
+    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}", headers={"Cookie": f"{REDIRECT_TO_COOKIE}={redirect_after_login}"}):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert resp is not None
+        assert resp.status_code == 307
+        assert resp.headers["Location"] == redirect_after_login
+
 
 @patch("requests.post")
 def test_oauth_code_url_called_with_invalid_code(req_mock):
@@ -167,7 +216,7 @@ def test_invalid_forged_tokens_are_rejected():
     ):
         resp = app.preprocess_request()
         token_validator.validate_token.assert_called_with(token)
-        assert_redirected_to_unauthorized_page(resp)
+        assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/")
 
 
 def test_unauthorized_page_is_shown_for_unauthorized_requests():

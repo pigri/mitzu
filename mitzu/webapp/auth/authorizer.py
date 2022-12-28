@@ -104,9 +104,13 @@ class OAuthAuthorizer:
             return val.get("email")
         return None
 
-    def _get_unauthenticated_response(self) -> werkzeug.wrappers.response.Response:
+    def _get_unauthenticated_response(
+        self, redirect: Optional[str] = None
+    ) -> werkzeug.wrappers.response.Response:
         resp = self._redirect(UNAUTHORIZED_URL)
         resp.set_cookie(self._cookie_name, "", expires=0)
+        if redirect:
+            resp.set_cookie(REDIRECT_TO_COOKIE, redirect)
         return resp
 
     def _redirect(self, location: str) -> werkzeug.wrappers.response.Response:
@@ -226,4 +230,7 @@ class OAuthAuthorizer:
             if auth_token and self._validate_and_store_token(auth_token):
                 return None
 
-            return self._get_unauthenticated_response()
+            redirect_url = request.path
+            if len(request.query_string) > 0:
+                redirect_url += "?" + request.query_string.decode("utf-8")
+            return self._get_unauthenticated_response(redirect_url)
