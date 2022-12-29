@@ -22,8 +22,7 @@ DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "/assets/mitzu-logo-light.svg")
 
 
 # auth
-OAUTH_SIGN_IN_URL = os.getenv("OAUTH_SIGN_IN_URL")
-SIGN_OUT_URL = os.getenv("SIGN_OUT_URL")
+OAUTH_BACKEND = os.getenv("OAUTH_BACKEND")
 
 
 # cache

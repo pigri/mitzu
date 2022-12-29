@@ -18,9 +18,9 @@ import mitzu.webapp.configs as configs
 MAIN = "main"
 
 
-def create_webapp_layout() -> bc.Component:
+def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
     LOGGER.info("Initializing WebApp")
-    offcanvas = OC.create_offcanvas()
+    offcanvas = OC.create_offcanvas(dependencies)
     location = dcc.Location(id=MITZU_LOCATION, refresh=False)
     return html.Div(
         children=[location, offcanvas, page_container],
@@ -77,7 +77,7 @@ def create_dash_app() -> Dash:
         long_callback_manager=get_callback_manager(dependencies),
     )
     app._favicon = configs.DASH_FAVICON_PATH
-    app.layout = create_webapp_layout()
+    app.layout = create_webapp_layout(dependencies)
 
     @server.route(configs.HEALTH_CHECK_PATH)
     def healthcheck():

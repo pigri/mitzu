@@ -1,11 +1,12 @@
 from __future__ import annotations
-
 from typing import Dict, Any
 import dash_bootstrap_components as dbc
 import mitzu.webapp.navbar as NB
 from dash import ctx, html, callback
 from dash.dependencies import ALL, Input, Output
 import mitzu.webapp.configs as configs
+import mitzu.webapp.dependencies as DEPS
+from mitzu.webapp.auth.authorizer import SIGN_OUT_URL
 
 OFF_CANVAS = "off-canvas-id"
 SEARCH_INPUT = "search-input"
@@ -16,7 +17,7 @@ EXPLORE_BUTTON = "explore-button"
 MENU_ITEM_CSS = "mb-3 w-100 border-0 text-start"
 
 
-def create_offcanvas() -> dbc.Offcanvas:
+def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
     res = dbc.Offcanvas(
         children=[
             dbc.Row(
@@ -78,8 +79,8 @@ def create_offcanvas() -> dbc.Offcanvas:
             dbc.Button(
                 "Sign out",
                 color="secondary",
-                class_name=f"{MENU_ITEM_CSS} {'d-none' if not configs.SIGN_OUT_URL else ''}",
-                href=configs.SIGN_OUT_URL,
+                class_name=f"{MENU_ITEM_CSS} {'d-none' if not dependencies.authorizer else ''}",
+                href=SIGN_OUT_URL,
                 external_link=True,
             ),
         ],
