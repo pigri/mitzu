@@ -303,12 +303,22 @@ class ProtectedState(State[T]):
 
 
 class SecretResolver(ABC):
+    """
+    Abstract base class for all secret resolvers
+    """
+
     def resolve_secret(self) -> str:
         raise NotImplementedError()
 
 
 @dataclass(frozen=True)
 class PromptSecretResolver(SecretResolver):
+    """
+    Prompts for a secret value on the first query execution in an interactive Python environment.
+
+    :param title: the title of the prompt
+    """
+
     title: str = "Secret"
 
     def resolve_secret(self) -> str:
@@ -319,6 +329,12 @@ class PromptSecretResolver(SecretResolver):
 
 @dataclass(frozen=True)
 class ConstSecretResolver(SecretResolver):
+    """
+    Resolves a secret with a preconfigured static value.
+
+    :param secret: the secret value
+    """
+
     secret: str
 
     def resolve_secret(self) -> str:
@@ -327,6 +343,12 @@ class ConstSecretResolver(SecretResolver):
 
 @dataclass(frozen=True)
 class EnvVarSecretResolver(SecretResolver):
+    """
+    Resolves a secret from an environmental variable or raises an exception if the environment variable is not found.
+
+    :param variable_name: name of the environment variable with containing the secret
+    """
+
     variable_name: str
 
     def resolve_secret(self) -> str:
@@ -339,6 +361,19 @@ class EnvVarSecretResolver(SecretResolver):
 
 @dataclass(frozen=True)
 class Connection:
+    """
+    Contains all details needed to connect to a data warehouse.
+
+    :param connection_type: type of the connection
+    :param user_name: username
+    :param secret_resolver: secret resolver to get the user password
+    :param host: hostname
+    :param port: port number
+    :param schema: schema name
+    :param catalog: catalog name
+    :param url_params: extra sqlite connection url parameters
+    :param extra_configs: used for connection adapter configuration
+    """
 
     connection_type: ConnectionType
     user_name: Optional[str] = None
@@ -388,6 +423,10 @@ class InvalidEventDataTableError(Exception):
 
 @dataclass(frozen=True)
 class EventDataTable:
+    """
+    Refers to a single table in the data warehouse or data lake.
+    """
+
     table_name: str
     event_time_field: Field
     user_id_field: Field
@@ -458,6 +497,20 @@ class EventDataTable:
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
+        """
+        Creates an Event Data Table from a table in a data warehouse
+
+        :param table_name: name of the table
+        :param event_time_field: name of the field containing the event time
+        :param user_id_field: name of the field containing the user ID
+        :param schema:
+        :param catalog:
+        :param event_name_alias:
+        :param ignored_fields: name of the field which should be ignored
+        :param date_partition_field: name of the field used for partitioning the data by date
+        :param description:
+        :param discovery_settings: discovery settings, if None then the project wide discovery settings will be used
+        """
         return EventDataTable.create(
             table_name=table_name,
             event_name_alias=event_name_alias,
@@ -488,6 +541,22 @@ class EventDataTable:
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
+        """
+        Creates an Event Data Table from a table in a data warehouse
+
+        :param table_name: name of the table
+        :param event_time_field: name of the field containing the event time
+        :param user_id_field: name of the field containing the user ID
+        :param schema:
+        :param catalog:
+        :param event_name_alias:
+        :param ignored_fields: name of the field which should be ignored
+        :param event_specific_fields: name of the fields which are specific for certain events,
+            these fields will be discovered separately for every event.
+        :param date_partition_field: name of the field used for partitioning the data by date
+        :param description:
+        :param discovery_settings: discovery settings, if None then the project wide discovery settings will be used
+        """
         return EventDataTable.create(
             table_name=table_name,
             event_name_alias=None,
@@ -556,6 +625,15 @@ class InvalidProjectError(Exception):
 
 @dataclass(frozen=True)
 class Project:
+    """
+    Defines a Mitzu project
+
+    :param connection: configurations to connect to a data warehouse
+    :param event_data_tables: list of Event Data Tables containing the events
+    :param discovery_settings: default, project wide discovery settings
+    :param webapp_settings: configurations to represent the project in the Mitzu webapp
+    """
+
     connection: Connection
     event_data_tables: List[EventDataTable]
     discovery_settings: DiscoverySettings = DiscoverySettings()
@@ -614,6 +692,12 @@ class Project:
         )
 
     def discover_project(self, progress_bar: bool = True) -> DiscoveredProject:
+        """
+        Discovers all Event Data Tables with the given discovery settings.
+
+        :param progress_bar: if True then a progressbar will be shown
+        :return: DiscoveredProject containing all the discovered event properties
+        """
         return D.ProjectDiscovery(project=self).discover_project(progress_bar)
 
     def validate(self):
