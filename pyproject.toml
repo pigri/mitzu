@@ -49,7 +49,7 @@ databricks = ["databricks-sql-connector"]
 athena = ["PyAthena"]
 snowflake = ["snowflake-sqlalchemy"]
 webapp = ["orjson", "PyJWT", "dash-bootstrap-components", "dash", "gunicorn", "redis", "dependency-injector"]
-
+doc = ["sphinx", "sphinx-autodoc-typehints"]
 
 
 [tool.poetry.dev-dependencies]
