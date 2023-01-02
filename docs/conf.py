@@ -24,6 +24,11 @@ extensions = [
     'sphinx_autodoc_typehints',
 ]
 
+# make sure the mitzu root is in the path
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
