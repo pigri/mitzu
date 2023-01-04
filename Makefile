@@ -53,14 +53,10 @@ trino_setup_test_data:
 	docker container exec docker-trino-coordinator-1 trino --execute="$$(cat docker/trino_hive_init.sql)"
 	
 test_coverage:
-	$(POETRY) run pytest --cov=mitzu --cov-report=html tests/
+	$(POETRY) run pytest --cov=mitzu --cov-report=html --cov-report=xml tests/
 
 check: lint mypy test_coverage test_notebooks
 	@echo 'done'
-
-test_coverage_ci:
-	$(POETRY) run pytest --cov=mitzu --cov-report=xml tests/
-
 
 notebook: 
 	$(POETRY) run jupyter lab
