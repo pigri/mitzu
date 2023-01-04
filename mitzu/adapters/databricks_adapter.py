@@ -12,6 +12,7 @@ from mitzu.helper import LOGGER
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 import sqlalchemy.sql.sqltypes as SA_T
+from sqlalchemy.sql.type_api import TypeEngine
 
 
 class DatabricksAdapter(SQLAlchemyAdapter):
@@ -77,32 +78,8 @@ class DatabricksAdapter(SQLAlchemyAdapter):
         sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
         return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))
 
-    def _parse_complex_type(
-        self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
-    ) -> M.Field:
-        if isinstance(sa_type, DA_T.STRUCT):
-            struct: DA_T.STRUCT = cast(DA_T.STRUCT, sa_type)
-            sub_fields: List[M.Field] = []
-            for n, st in struct.attr_types:
-                next_path = f"{path}.{n}"
-                if next_path in event_data_table.ignored_fields:
-                    continue
-                sf = self._parse_complex_type(
-                    sa_type=st,
-                    name=n,
-                    event_data_table=event_data_table,
-                    path=next_path,
-                )
-                if sf._type == M.DataType and (
-                    sf._sub_fields is None or len(sf._sub_fields) == 0
-                ):
-                    continue
-                sub_fields.append(sf)
-            return M.Field(
-                _name=name, _type=M.DataType.STRUCT, _sub_fields=tuple(sub_fields)
-            )
-        else:
-            return M.Field(_name=name, _type=self.map_type(sa_type))
+    def _get_struct_type(self) -> TypeEngine:
+        return DA_T.STRUCT
 
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE

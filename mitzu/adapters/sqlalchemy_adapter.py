@@ -15,6 +15,7 @@ import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 import sqlalchemy.sql.sqltypes as SA_T
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.type_api import TypeEngine
 
 
 def fix_col_index(index: int, col_name: str):
@@ -152,9 +153,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self._engine = SA.create_engine(url)
         return self._engine
 
-    def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
-        full_name = event_data_table.get_full_name()
-
+    def get_table_by_name(self, schema: str, table_name: str) -> SA.Table:
+        full_name = f"{schema}.{table_name}"
         try:
             engine = self.get_engine()
         except Exception as e:
@@ -162,21 +162,23 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         if full_name not in self._table_cache:
             metadata_obj = SA.MetaData()
-
-            if event_data_table.schema is not None:
-                schema = event_data_table.schema
-            elif self.project.connection.schema is not None:
-                schema = self.project.connection.schema
-            else:
-                schema = None
             self._table_cache[full_name] = SA.Table(
-                event_data_table.table_name,
+                table_name,
                 metadata_obj,
                 schema=schema,
                 autoload_with=engine,
                 autoload=True,
             )
         return self._table_cache[full_name]
+
+    def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
+        if event_data_table.schema is not None:
+            schema = event_data_table.schema
+        elif self.project.connection.schema is not None:
+            schema = self.project.connection.schema
+        else:
+            raise ValueError("Event data table doesn't have schema defined")
+        return self.get_table_by_name(schema, event_data_table.table_name)
 
     def get_field_reference(
         self,
@@ -194,12 +196,33 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.literal_column(f"{sa_table.name}.{field._get_name()}")
 
-    def _parse_complex_type(
-        self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
-    ) -> M.Field:
+    def _get_struct_type(self) -> TypeEngine:
         raise NotImplementedError(
             "Generic SQL Alchemy Adapter doesn't support complex types (struct, row)"
         )
+
+    def _parse_struct_type(self, sa_type: Any, name: str, path: str) -> M.Field:
+        real_struct_type = self._get_struct_type()
+        if isinstance(sa_type, real_struct_type):
+            row: TypeEngine = sa_type
+            sub_fields: List[M.Field] = []
+            for n, st in row.attr_types:
+                next_path = f"{path}.{n}"
+                sf = self._parse_struct_type(
+                    sa_type=st,
+                    name=n,
+                    path=next_path,
+                )
+                if sf._type == M.DataType and (
+                    sf._sub_fields is None or len(sf._sub_fields) == 0
+                ):
+                    continue
+                sub_fields.append(sf)
+            return M.Field(
+                _name=name, _type=M.DataType.STRUCT, _sub_fields=tuple(sub_fields)
+            )
+        else:
+            return M.Field(_name=name, _type=self.map_type(sa_type))
 
     def _parse_map_type(
         self,
@@ -225,6 +248,16 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         return SA.union(*selects).cte()
 
+    def list_schemas(self) -> List[str]:
+        engine = self.get_engine()
+        insp = SA.inspect(engine)
+        return insp.get_schema_names()
+
+    def list_tables(self, schema: str) -> List[str]:
+        engine = self.get_engine()
+        insp = SA.inspect(engine)
+        return insp.get_table_names(schema=schema)
+
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         table = self.get_table(event_data_table)
         field_types = table.columns
@@ -234,10 +267,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 continue
             data_type = self.map_type(field_type.type)
             if data_type == M.DataType.STRUCT:
-                complex_field = self._parse_complex_type(
+                complex_field = self._parse_struct_type(
                     sa_type=field_type.type,
                     name=field_name,
-                    event_data_table=event_data_table,
                     path=field_name,
                 )
                 if (
@@ -255,6 +287,29 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 if map_field._sub_fields is None or len(map_field._sub_fields) == 0:
                     continue
                 res.append(map_field)
+            else:
+                field = M.Field(_name=field_name, _type=data_type)
+                res.append(field)
+        return res
+
+    def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
+        table = self.get_table_by_name(schema, table_name)
+        field_types = table.columns
+        res = []
+        for field_name, field_type in field_types.items():
+            data_type = self.map_type(field_type.type)
+            if data_type == M.DataType.STRUCT:
+                complex_field = self._parse_struct_type(
+                    sa_type=field_type.type,
+                    name=field_name,
+                    path=field_name,
+                )
+                if (
+                    complex_field._sub_fields is None
+                    or len(complex_field._sub_fields) == 0
+                ):
+                    continue
+                res.append(complex_field)
             else:
                 field = M.Field(_name=field_name, _type=data_type)
                 res.append(field)

@@ -10,6 +10,7 @@ import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
 import flask
+import mitzu.webapp.pages.paths as P
 
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html, callback, no_update
@@ -18,16 +19,15 @@ import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
 
 GRAPH = "graph"
-MESSAGE = "graph_message"
+MESSAGE = "lead fw-normal text-center h-100 w-100"
 TABLE = "table"
 SQL_AREA = "sql_area"
 
 
 CONTENT_STYLE = {
-    "min-height": "500px",
+    "min-height": "200px",
     "max-height": "700px",
     "overflow": "auto",
-    "font-size": "13px",
 }
 
 DF_CACHE: Dict[int, pd.DataFrame] = {}
@@ -35,13 +35,17 @@ MARKDOWN = """```sql
 {sql}
 ```"""
 
-GRAPH_CONTAINER = "graph_container"
+GRAPH_CONTAINER = "graph_container d-flex align-items-center justify-content-stretch"
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 
 
 def create_graph_container() -> bc.Component:
     if configs.BACKGROUND_CALLBACK:
-        return html.Div(id=GRAPH_CONTAINER, children=[], className=GRAPH_CONTAINER)
+        return html.Div(
+            id=GRAPH_CONTAINER,
+            children=[],
+            className=GRAPH_CONTAINER,
+        )
     else:
         return html.Div(
             dcc.Loading(id=GRAPH_CONTAINER, children=[], color="#287bb5", type="dot"),
@@ -54,9 +58,7 @@ def create_callbacks():
         output=Output(GRAPH_CONTAINER, "children"),
         inputs=EXP.ALL_INPUT_COMPS,
         state=dict(
-            chart_button_color=State(TH.CHART_BUTTON, "color"),
-            table_button_color=State(TH.TABLE_BUTTON, "color"),
-            sql_button_color=State(TH.SQL_BUTTON, "color"),
+            graph_content_type=State(TH.GRAPH_CONTENT_TYPE, "value"),
             pathname=State(MITZU_LOCATION, "pathname"),
         ),
         interval=configs.GRAPH_POLL_INTERVAL_MS,
@@ -83,16 +85,16 @@ def create_callbacks():
     )
     def handle_changes_for_graph(
         all_inputs: Dict[str, Any],
-        chart_button_color: str,
-        table_button_color: str,
-        sql_button_color: str,
+        graph_content_type: str,
         pathname: str,
     ) -> bc.Component:
-        project_name = pathname.split("/")[-1]
+        project_id = P.get_path_value(
+            P.PROJECTS_EXPLORE_PATH, pathname, P.PROJECT_ID_PATH_PART
+        )
         depenedencies: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        discovered_project = depenedencies.storage.get_project(project_name)
+        discovered_project = depenedencies.storage.get_discovered_project(project_id)
 
         if discovered_project is None:
             return no_update
@@ -102,13 +104,12 @@ def create_callbacks():
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)
 
-            if table_button_color == "info":
+            if graph_content_type == TH.TABLE_VAL:
                 return create_table(metric)
-            elif sql_button_color == "info":
+            elif graph_content_type == TH.SQL_VAL:
                 return create_sql_area(metric)
-            else:
-                return create_graph(metric)
 
+            return create_graph(metric)
         except Exception as exc:
             traceback.print_exc()
             return html.Div(
@@ -117,7 +118,7 @@ def create_callbacks():
                     html.Pre(children=str(exc)),
                 ],
                 id=GRAPH,
-                style={"color": "red"},
+                className="text-danger small",
             )
 
 
@@ -137,7 +138,9 @@ def create_graph(metric: M.Metric) -> Optional[dcc.Graph]:
 
     chart = CHRT.get_simple_chart(metric)
     fig = PLT.plot_chart(chart, metric)
-    return dcc.Graph(id=GRAPH, figure=fig, config={"displayModeBar": False})
+    return dcc.Graph(
+        id=GRAPH, className="w-100", figure=fig, config={"displayModeBar": False}
+    )
 
 
 def create_table(metric: M.Metric) -> Optional[dbc.Table]:

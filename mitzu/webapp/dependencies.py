@@ -14,7 +14,7 @@ CONFIG_KEY = "dependencies"
 @dataclass(frozen=True)
 class Dependencies:
 
-    authorizer: Optional[A.MitzuAuthorizer]
+    authorizer: Optional[A.OAuthAuthorizer]
     storage: S.MitzuStorage
     cache: C.MitzuCache
 
@@ -41,13 +41,7 @@ class Dependencies:
         else:
             cache = C.DiskMitzuCache()
 
-        storage: S.MitzuStorage
-        if configs.MITZU_BASEPATH.startswith("s3://"):
-            storage = S.S3MitzuStorage(configs.MITZU_BASEPATH[5:])
-        else:
-            storage = S.FileSystemStorage(configs.MITZU_BASEPATH)
-
         # Adding cache layer over storage
-        storage = S.CachingMitzuStorage(storage)
+        storage = S.MitzuStorage(cache)
 
         return Dependencies(authorizer=authorizer, cache=cache, storage=storage)

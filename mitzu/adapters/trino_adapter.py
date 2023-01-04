@@ -10,7 +10,7 @@ import trino.sqlalchemy.datatype as SA_T
 from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 from mitzu.helper import LOGGER
-
+from sqlalchemy.sql.type_api import TypeEngine
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 
@@ -112,32 +112,8 @@ class TrinoAdapter(SQLAlchemyAdapter):
     def _generate_time_series_column(self, dt: datetime) -> Any:
         return SA.literal_column(f"timestamp '{dt}'")
 
-    def _parse_complex_type(
-        self, sa_type: Any, name: str, event_data_table: M.EventDataTable, path: str
-    ) -> M.Field:
-        if isinstance(sa_type, SA_T.ROW):
-            row: SA_T.ROW = cast(SA_T.ROW, sa_type)
-            sub_fields: List[M.Field] = []
-            for n, st in row.attr_types:
-                next_path = f"{path}.{n}"
-                if next_path in event_data_table.ignored_fields:
-                    continue
-                sf = self._parse_complex_type(
-                    sa_type=st,
-                    name=n,
-                    event_data_table=event_data_table,
-                    path=next_path,
-                )
-                if sf._type == M.DataType and (
-                    sf._sub_fields is None or len(sf._sub_fields) == 0
-                ):
-                    continue
-                sub_fields.append(sf)
-            return M.Field(
-                _name=name, _type=M.DataType.STRUCT, _sub_fields=tuple(sub_fields)
-            )
-        else:
-            return M.Field(_name=name, _type=self.map_type(sa_type))
+    def _get_struct_type(self) -> TypeEngine:
+        return SA_T.ROW
 
     def _get_column_values_df(
         self,

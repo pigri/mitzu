@@ -1,28 +1,24 @@
 from dash import register_page, html
 import mitzu.webapp.pages.explore.explore_page as EXP
 import dash.development.base_component as bc
-import mitzu.helper as H
 import flask
 import mitzu.webapp.dependencies as DEPS
 from typing import cast
-
-
-def get_title(project_name: str):
-    return f"Mitzu - {H.value_to_label(project_name)}"
+import mitzu.webapp.pages.paths as P
 
 
 register_page(
     __name__,
-    path_template="/explore/<project_name>",
-    title=get_title,
+    path_template=P.PROJECTS_EXPLORE_PATH,
+    title="Mitzu - Explore",
 )
 
 
-def layout(project_name: str, **query_params) -> bc.Component:
+def layout(project_id: str, **query_params) -> bc.Component:
     depenednecies: DEPS.Dependencies = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     )
-    discovered_project = depenednecies.storage.get_project(project_name)
+    discovered_project = depenednecies.storage.get_discovered_project(project_id)
     if discovered_project is None:
         return html.Div("Project not found", className="d-flex text-center lead")
 

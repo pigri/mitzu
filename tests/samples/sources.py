@@ -14,9 +14,11 @@ WD = os.path.dirname(os.path.abspath(__file__))
 
 def get_simple_csv() -> Project:
     return Project(
+        project_name="simple_project",
         event_data_tables=[
             EventDataTable.create(
                 table_name="simple",
+                schema="main",
                 event_name_field="event_type",
                 user_id_field="user_id",
                 event_time_field="event_time",
@@ -30,6 +32,7 @@ def get_simple_csv() -> Project:
             lookback_days=2000,
         ),
         connection=Connection(
+            connection_name="Sample project",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",
@@ -41,9 +44,11 @@ def get_simple_csv() -> Project:
 
 def get_simple_big_data() -> Project:
     return Project(
+        project_name="simple_big_project",
         event_data_tables=[
             EventDataTable.create(
                 table_name="simple_big_data",
+                schema="main",
                 event_name_field="event_name",
                 user_id_field="user_id",
                 event_time_field="event_time",
@@ -58,6 +63,7 @@ def get_simple_big_data() -> Project:
             min_property_sample_size=10,
         ),
         connection=Connection(
+            connection_name="Sample project",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "parquet",
@@ -69,9 +75,11 @@ def get_simple_big_data() -> Project:
 
 def get_project_without_records() -> Project:
     return Project(
+        project_name="simple_project",
         event_data_tables=[
             EventDataTable.create(
                 table_name="simple",
+                schema="main",
                 event_name_field="event_type",
                 user_id_field="user_id",
                 event_time_field="event_time",
@@ -83,6 +91,7 @@ def get_project_without_records() -> Project:
             max_map_key_cardinality=300,
         ),
         connection=Connection(
+            connection_name="Sample project",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",
@@ -94,6 +103,7 @@ def get_project_without_records() -> Project:
 
 def get_project_with_missing_table() -> Project:
     return Project(
+        project_name="simple_project",
         event_data_tables=[
             EventDataTable.create(
                 table_name="missing",
@@ -108,6 +118,7 @@ def get_project_with_missing_table() -> Project:
             max_map_key_cardinality=300,
         ),
         connection=Connection(
+            connection_name="Sample project",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",
@@ -119,6 +130,7 @@ def get_project_with_missing_table() -> Project:
 
 def get_basic_events_csv() -> Project:
     return Project(
+        project_name="simple_big_project",
         event_data_tables=[
             EventDataTable.create(
                 table_name="subscriptions",
@@ -140,6 +152,7 @@ def get_basic_events_csv() -> Project:
             lookback_days=2000,
         ),
         connection=Connection(
+            connection_name="Sample project",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",

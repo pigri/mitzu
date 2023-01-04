@@ -5,12 +5,24 @@ import json
 import os
 import pathlib
 import pickle
+from urllib import parse
 from abc import ABC
 from copy import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum, auto
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+    Callable,
+)
 
 import pandas as pd
 from dateutil import parser
@@ -24,8 +36,7 @@ import mitzu.project_discovery as D
 import mitzu.visualization.titles as TI
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
-import mitzu.visualization.common as CC
-
+from uuid import uuid4
 import logging
 
 ANY_EVENT_NAME = "any_event"
@@ -142,6 +153,30 @@ class AggType(Enum):
         )
 
 
+class SimpleChartType(Enum):
+    BAR = auto()
+    STACKED_BAR = auto()
+    LINE = auto()
+    STACKED_AREA = auto()
+    HEATMAP = auto()
+
+    @classmethod
+    def parse(cls, value: Union[str, SimpleChartType]) -> SimpleChartType:
+        if type(value) == SimpleChartType:
+            return value
+        elif type(value) == str:
+            for key, enm in SimpleChartType._member_map_.items():
+                if key.lower() == value.lower():
+                    return SimpleChartType[key]
+            raise ValueError(
+                f"Unknown chart type {value} supported are {[k.lower() for k in SimpleChartType._member_names_]}"
+            )
+        else:
+            raise ValueError(
+                f"Parse should only be str or SimpleChartType but it was {type(value)}"
+            )
+
+
 class Operator(Enum):
     EQ = auto()
     NEQ = auto()
@@ -235,6 +270,18 @@ class ConnectionType(Enum):
     SQLITE = "sqlite"
     DATABRICKS = "databricks"
     SNOWFLAKE = "snowflake"
+
+    @classmethod
+    def parse(cls, val: str | ConnectionType) -> ConnectionType:
+        if type(val) == str:
+            val = val.upper()
+            return ConnectionType[val]
+        elif type(val) == ConnectionType:
+            return val
+        else:
+            raise ValueError(
+                f"Invalid argument type for ConnectionType parse: {type(val)}"
+            )
 
 
 @dataclass(frozen=True)
@@ -375,11 +422,14 @@ class Connection:
     :param extra_configs: used for connection adapter configuration
     """
 
+    connection_name: str
     connection_type: ConnectionType
+    id: str = field(default_factory=lambda: str(uuid4())[-12:])
     user_name: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
     url: Optional[str] = None
+    # TBD remove schema
     schema: Optional[str] = None
     catalog: Optional[str] = None
     # Used for connection url parametrization
@@ -399,6 +449,12 @@ class Connection:
                 return ""
         return self._secret.get_value()
 
+    def get_url_param(self, param: str) -> Optional[str]:
+        res = parse.parse_qs(self.url_params).get(param)
+        if res is not None and len(res) == 1:
+            return res[0]
+        raise ValueError(f"Expected 1 value for {param} in {self.url_params}")
+
 
 @dataclass(frozen=True)
 class DiscoverySettings:
@@ -415,6 +471,7 @@ class DiscoverySettings:
 @dataclass(frozen=True)
 class WebappSettings:
     lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
+    auto_refresh_enabled: bool = True
 
 
 class InvalidEventDataTableError(Exception):
@@ -435,8 +492,14 @@ class EventDataTable:
     event_name_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
     date_partition_field: Optional[Field] = None
+
+    # TBD change to Field type
     ignored_fields: List[str] = field(default_factory=lambda: [])
+
+    # TBD change to Field type
     event_specific_fields: List[str] = field(default_factory=lambda: [])
+
+    # TBD remove
     description: Optional[str] = None
 
     discovery_settings: Optional[DiscoverySettings] = None
@@ -457,9 +520,10 @@ class EventDataTable:
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
-        event_name_alias = event_name_alias
+
         if event_name_field is None and event_name_alias is None:
             event_name_alias = table_name
+
         return EventDataTable(
             table_name=table_name,
             event_name_alias=event_name_alias,
@@ -623,7 +687,7 @@ class InvalidProjectError(Exception):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(init=False, frozen=True)
 class Project:
     """
     Defines a Mitzu project
@@ -634,11 +698,15 @@ class Project:
     :param webapp_settings: configurations to represent the project in the Mitzu webapp
     """
 
+    project_name: str
     connection: Connection
     event_data_tables: List[EventDataTable]
-    discovery_settings: DiscoverySettings = DiscoverySettings()
-    webapp_settings: WebappSettings = WebappSettings()
+    discovery_settings: DiscoverySettings
+    webapp_settings: WebappSettings
 
+    description: Optional[str]
+
+    id: str = field(default_factory=lambda: str(uuid4())[-12:])
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
         default_factory=lambda: ProtectedState()
     )
@@ -651,12 +719,17 @@ class Project:
         self,
         connection: Connection,
         event_data_tables: List[EventDataTable],
-        discovery_settings: DiscoverySettings = DiscoverySettings(),
-        webapp_settings: WebappSettings = WebappSettings(),
+        project_name: str,
+        project_id: Optional[str] = None,
+        description: Optional[str] = None,
+        discovery_settings: Optional[DiscoverySettings] = None,
+        webapp_settings: Optional[WebappSettings] = None,
     ):
         object.__setattr__(self, "connection", connection)
 
         edt_with_discovery_settings = []
+        if discovery_settings is None:
+            discovery_settings = DiscoverySettings()
         for edt in event_data_tables:
             if edt.discovery_settings is None:
                 edt_with_discovery_settings.append(
@@ -665,10 +738,18 @@ class Project:
             else:
                 edt_with_discovery_settings.append(edt)
 
+        if webapp_settings is None:
+            webapp_settings = WebappSettings()
+
+        if project_id is None:
+            project_id = str(uuid4())[-12:]
+
         object.__setattr__(self, "event_data_tables", edt_with_discovery_settings)
         object.__setattr__(self, "discovery_settings", discovery_settings)
         object.__setattr__(self, "webapp_settings", webapp_settings)
-
+        object.__setattr__(self, "project_name", project_name)
+        object.__setattr__(self, "description", description)
+        object.__setattr__(self, "id", project_id)
         object.__setattr__(self, "_adapter_cache", ProtectedState())
         object.__setattr__(self, "_discovered_project", State())
 
@@ -691,14 +772,19 @@ class Project:
             days=self.discovery_settings.lookback_days
         )
 
-    def discover_project(self, progress_bar: bool = True) -> DiscoveredProject:
+    def discover_project(
+        self, progress_bar: bool = True, callback: Optional[Callable] = None
+    ) -> DiscoveredProject:
         """
         Discovers all Event Data Tables with the given discovery settings.
 
         :param progress_bar: if True then a progressbar will be shown
+        :param callback: callback function for each EDT discovered
         :return: DiscoveredProject containing all the discovered event properties
         """
-        return D.ProjectDiscovery(project=self).discover_project(progress_bar)
+        return D.ProjectDiscovery(project=self, callback=callback).discover_project(
+            progress_bar
+        )
 
     def validate(self):
         if len(self.event_data_tables) == 0:
@@ -723,7 +809,7 @@ class DatasetModel:
                 glbs[k] = v
 
 
-DISCOVERED_PROJECT_FILE_VERSION = 1
+DISCOVERED_PROJECT_FILE_VERSION = 2
 
 
 class DiscoveredProjectSerializationError(Exception):
@@ -831,7 +917,8 @@ class DiscoveredProject:
                 )
         except Exception as e:
             raise DiscoveredProjectSerializationError(
-                "Something went wrong, cannot deserialize discovered project file.\n Try discovering the project again."
+                "Something went wrong, cannot deserialize discovered project file.\n"
+                "Try discovering the project again."
             ) from e
 
         return DiscoveredProject.load_from_project_binary(
@@ -895,8 +982,16 @@ class Field:
         curr = field
         while curr._parent is not None:
             curr = curr._parent
-
         return curr == self
+
+    def get_all_subfields(self) -> List[Field]:
+        if self._sub_fields is None:
+            return [self]
+        else:
+            all_sfs = []
+            for sf in self._sub_fields:
+                all_sfs.extend(sf.get_all_subfields())
+            return all_sfs
 
     def __str__(self) -> str:
         if self._sub_fields is not None:
@@ -913,7 +1008,11 @@ class Field:
 class EventFieldDef:
     _event_name: str
     _field: Field
+
+    # TBD remove project
     _project: Project
+
+    # TBD remove EDT
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
     _enums: Optional[List[Any]] = None
@@ -923,7 +1022,11 @@ class EventFieldDef:
 class EventDef:
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
+
+    # TBD remove project
     _project: Project
+
+    # TBD remove EDT
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
 
@@ -948,7 +1051,7 @@ class MetricConfig:
     custom_title: Optional[str] = None
     agg_type: Optional[AggType] = None
     agg_param: Optional[Any] = None
-    chart_type: Optional[CC.SimpleChartType] = None
+    chart_type: Optional[SimpleChartType] = None
     resolution: Optional[TimeGroup] = None
 
 
@@ -988,7 +1091,7 @@ class Metric(ABC):
         return self._config.group_by
 
     @property
-    def _chart_type(self) -> Optional[CC.SimpleChartType]:
+    def _chart_type(self) -> Optional[SimpleChartType]:
         return self._config.chart_type
 
     @property
@@ -1045,7 +1148,7 @@ class Metric(ABC):
         print(self.get_sql())
 
     def get_figure(self):
-        chart = CHRT.get_simple_chart(self, self._config.chart_type)
+        chart = CHRT.get_simple_chart(self)
         return PLT.plot_chart(chart, self)
 
     def __repr__(self) -> str:
@@ -1152,7 +1255,7 @@ class RetentionMetric(Metric):
         max_group_by_count: Optional[int] = None,
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         aggregation: Optional[str] = None,
-        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
+        chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
     ) -> RetentionMetric:
         if type(lookback_days) == int:
@@ -1186,7 +1289,7 @@ class RetentionMetric(Metric):
             agg_param=agg_param,
             resolution=resolution,
             chart_type=(
-                CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
+                SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
 
@@ -1243,7 +1346,7 @@ class Conversion(ConversionMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
-        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
+        chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
@@ -1272,7 +1375,7 @@ class Conversion(ConversionMetric):
             agg_param=agg_param,
             resolution=resolution,
             chart_type=(
-                CC.SimpleChartType.parse(chart_type) if chart_type is not None else None
+                SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
         if conv_window is not None:
@@ -1317,7 +1420,7 @@ class Segment(SegmentationMetric):
         lookback_days: Optional[Union[int, TimeWindow]] = None,
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
-        chart_type: Optional[Union[str, CC.SimpleChartType]] = None,
+        chart_type: Optional[Union[str, SimpleChartType]] = None,
     ) -> SegmentationMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1339,7 +1442,7 @@ class Segment(SegmentationMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
-            chart_type=CC.SimpleChartType.parse(chart_type)
+            chart_type=SimpleChartType.parse(chart_type)
             if chart_type is not None
             else None,
         )

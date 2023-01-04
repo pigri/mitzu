@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import mitzu.model as M
 import mitzu.adapters.generic_adapter as GA
-from typing import Optional
 import pandas as pd
 import mitzu.visualization.labels as L
 import mitzu.visualization.common as C
@@ -53,16 +52,16 @@ def get_hover_mode(pdf: pd.DataFrame, metric: M.Metric) -> str:
             return "closest" if group_count > 4 else "x"
 
 
-def get_default_chart_type(metric: M.Metric) -> C.SimpleChartType:
+def get_default_chart_type(metric: M.Metric) -> M.SimpleChartType:
     if metric._time_group == M.TimeGroup.TOTAL:
-        return C.SimpleChartType.BAR
+        return M.SimpleChartType.BAR
     else:
         if isinstance(metric, M.SegmentationMetric) or isinstance(
             metric, M.ConversionMetric
         ):
-            return C.SimpleChartType.LINE
+            return M.SimpleChartType.LINE
         elif isinstance(metric, M.RetentionMetric):
-            return C.SimpleChartType.HEATMAP
+            return M.SimpleChartType.HEATMAP
         else:
             raise ValueError(f"No default chart type defined for {type(metric)}")
 
@@ -134,23 +133,40 @@ def get_preprocessed_retention_dataframe(
 
 
 def get_simple_chart(
-    metric: M.Metric, chart_type: Optional[C.SimpleChartType] = None
+    metric: M.Metric,
 ) -> C.SimpleChart:
-    if chart_type is None:
+    if metric._chart_type is None:
         chart_type = get_default_chart_type(metric)
+    else:
+        chart_type = metric._chart_type
+
+    if chart_type == M.SimpleChartType.HEATMAP:
+        y_axis_label = get_color_label(metric)
+        color_label = L.agg_type_label(metric._agg_type, metric._agg_param)
+    else:
+        y_axis_label = L.agg_type_label(metric._agg_type, metric._agg_param)
+        color_label = get_color_label(metric)
+
+    if (
+        chart_type not in (M.SimpleChartType.LINE, M.SimpleChartType.STACKED_AREA)
+        and metric._time_group != M.TimeGroup.TOTAL
+    ):
+        x_axis_label_func = C.fix_date_label
+    else:
+        x_axis_label_func = None
 
     if isinstance(metric, M.SegmentationMetric):
         pdf = get_preprocessed_segmentation_dataframe(metric)
-
         return C.SimpleChart(
             x_axis_label="",
-            y_axis_label=L.agg_type_label(metric._agg_type, metric._agg_param),
-            color_label=get_color_label(metric),
+            y_axis_label=y_axis_label,
+            color_label=color_label,
             hover_mode=get_hover_mode(pdf, metric),
             chart_type=chart_type,
             title=TI.get_segmentation_title(metric),
             yaxis_ticksuffix="",
             dataframe=pdf,
+            x_axis_labels_func=x_axis_label_func,
         )
 
     if isinstance(metric, M.ConversionMetric):
@@ -159,13 +175,14 @@ def get_simple_chart(
         pdf = get_preprocessed_conversion_dataframe(pdf, metric, suffix)
         return C.SimpleChart(
             x_axis_label="",
-            y_axis_label=L.agg_type_label(metric._agg_type, metric._agg_param),
-            color_label=get_color_label(metric),
+            y_axis_label=y_axis_label,
+            color_label=color_label,
             title=TI.get_conversion_title(metric),
             chart_type=chart_type,
             hover_mode=get_hover_mode(pdf, metric),
             yaxis_ticksuffix=suffix,
             dataframe=pdf,
+            x_axis_labels_func=x_axis_label_func,
         )
 
     if isinstance(metric, M.RetentionMetric):
@@ -173,14 +190,14 @@ def get_simple_chart(
         pdf = get_preprocessed_retention_dataframe(pdf, metric)
         return C.SimpleChart(
             x_axis_label="",
-            y_axis_label=L.agg_type_label(metric._agg_type, metric._agg_param),
-            color_label=get_color_label(metric),
+            y_axis_label=y_axis_label,
+            color_label=color_label,
             title=TI.get_retention_title(metric),
             chart_type=chart_type,
             hover_mode="closest",
             yaxis_ticksuffix="%",
             dataframe=pdf,
-            color_labels_func=C.retention_period_label,
+            x_axis_labels_func=C.retention_period_label,
         )
 
     raise Exception(f"Unsupported metric type for visualization {type(metric)}")

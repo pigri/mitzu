@@ -37,6 +37,8 @@ def _to_dict(value: Any) -> Any:
         return value.name.lower()
     if isinstance(value, M.TimeWindow):
         return f"{value.value} {value.period.name.lower()}"
+    if isinstance(value, M.SimpleChartType):
+        return value.name.lower()
     if isinstance(value, M.Field):
         return value._get_name()
     if isinstance(value, M.MetricConfig):
@@ -48,6 +50,7 @@ def _to_dict(value: Any) -> Any:
             "mgc": _to_dict(value.max_group_count),
             "gb": _to_dict(value.group_by),
             "ct": _to_dict(value.custom_title),
+            "cat": _to_dict(value.chart_type),
             "res": _to_dict(value.resolution),
         }
         if value.agg_type is not None:
@@ -153,6 +156,9 @@ def _from_dict(
             custom_title=_from_dict(value.get("ct"), project, str, path + ".ct"),
             resolution=_from_dict(
                 value.get("res"), project, M.TimeGroup, path + ".res"
+            ),
+            chart_type=_from_dict(
+                value.get("cat"), project, M.SimpleChartType, path + ".cat"
             ),
             agg_type=at,
             agg_param=ap,
@@ -260,6 +266,8 @@ def _from_dict(
         return M.AggType.parse_agg_str(value)
     if type_hint == M.TimeWindow:
         return M.TimeWindow.parse(value)
+    if type_hint == M.SimpleChartType:
+        return M.SimpleChartType.parse(value)
     if type_hint == datetime:
         return datetime.fromisoformat(value)
     if type_hint == list:

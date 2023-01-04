@@ -23,44 +23,48 @@ def case_name(tc: IntegrationTestCase):
 @dataclass(frozen=True)
 class IntegrationTestCase:
     connection: M.Connection
+    schema: str
     ingest: bool = True
-
-
-def def_con(type: M.ConnectionType) -> M.Connection:
-    return M.Connection(
-        connection_type=type,
-        host="localhost",
-        secret_resolver=M.ConstSecretResolver("test"),
-        user_name="test",
-    )
 
 
 TEST_CASES = [
     IntegrationTestCase(
         M.Connection(
+            connection_name="Sample project",
             connection_type=M.ConnectionType.MYSQL,
             host="localhost",
             secret_resolver=M.ConstSecretResolver("test"),
             user_name="test",
             port=3307,
-            schema="test",
         ),
+        schema="test",
     ),
-    IntegrationTestCase(def_con(M.ConnectionType.POSTGRESQL)),
     IntegrationTestCase(
         M.Connection(
+            connection_name="Sample project",
+            connection_type=M.ConnectionType.POSTGRESQL,
+            host="localhost",
+            secret_resolver=M.ConstSecretResolver("test"),
+            user_name="test",
+        ),
+        schema="public",
+    ),
+    IntegrationTestCase(
+        M.Connection(
+            connection_name="Sample project",
             connection_type=M.ConnectionType.TRINO,
             host="localhost",
             secret_resolver=None,
             user_name="test",
             port=8080,
-            schema="test",
             catalog="mysql",
         ),
         ingest=False,
+        schema="test",
     ),
     IntegrationTestCase(
         M.Connection(
+            connection_name="Sample project",
             connection_type=M.ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",
@@ -68,6 +72,7 @@ TEST_CASES = [
             },
         ),
         ingest=False,
+        schema="main",
     ),
 ]
 
@@ -76,10 +81,27 @@ TEST_CASES = [
 def test_db_integrations(test_case: IntegrationTestCase):
     test_source = get_simple_csv()
     test_subscriptions = get_basic_events_csv()
+    target_edts = [
+        M.EventDataTable(
+            table_name=edt.table_name,
+            schema=test_case.schema,
+            user_id_field=edt.user_id_field,
+            event_time_field=edt.event_time_field,
+            event_name_field=edt.event_name_field,
+            event_name_alias=edt.event_name_alias,
+            ignored_fields=edt.ignored_fields,
+            event_specific_fields=edt.event_specific_fields,
+            date_partition_field=edt.date_partition_field,
+        )
+        for edt in (
+            test_source.event_data_tables + test_subscriptions.event_data_tables
+        )
+    ]
+
     ingested_source = M.Project(
-        test_case.connection,
-        event_data_tables=test_source.event_data_tables
-        + test_subscriptions.event_data_tables,
+        project_name="integration_test",
+        connection=test_case.connection,
+        event_data_tables=target_edts,
         discovery_settings=M.DiscoverySettings(
             end_dt=datetime(2022, 1, 1),
             lookback_days=2000,
@@ -91,9 +113,11 @@ def test_db_integrations(test_case: IntegrationTestCase):
             source_project=test_source,
             target_connection=ingested_source.connection,
             transform_dt_col=False,
+            schema=test_case.schema,
         )
         ingest_test_file_data(
             source_project=test_subscriptions,
+            schema=test_case.schema,
             target_connection=ingested_source.connection,
             transform_dt_col=False,
         )

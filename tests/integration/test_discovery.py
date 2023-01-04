@@ -14,6 +14,7 @@ from tests.samples.sources import (
 
 def test_simple_big_data_discovery():
     project = get_simple_big_data()
+
     discovery = ProjectDiscovery(project)
     m = discovery.discover_project().create_notebook_class_model()
 
@@ -61,6 +62,8 @@ def test_event_data_table_discovery_settings_used():
     )
     for key in [key for key in project_config.keys() if key.startswith("_")]:
         del project_config[key]
+
+    del project_config["id"]
     project = Project(**project_config)
 
     dp = ProjectDiscovery(project).discover_project()

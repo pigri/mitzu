@@ -4,20 +4,19 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
-import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
+
 import mitzu.model as M
-from dash import dcc, html
+from dash import html
 
 DATE_SELECTOR_DIV = "date_selector"
 TIME_GROUP_DROPDOWN = "timegroup_dropdown"
 LOOKBACK_WINDOW_DROPDOWN = "lookback_window_dropdown"
 CUSTOM_DATE_PICKER = "custom_date_picker"
-CUSTOM_DATE_PICKER_START_DATE = "custom_date_picker_start_date"
-CUSTOM_DATE_PICKER_END_DATE = "custom_date_picker_end_date"
 CUSTOM_DATE_TW_VALUE = "_custom_date"
 
 CUSTOM_OPTION = {
-    "label": html.Span(" Custom", className="bi bi-calendar-range"),
+    "label": "Custom",
     "value": CUSTOM_DATE_TW_VALUE,
 }
 
@@ -90,53 +89,45 @@ def from_metric(
     comp = html.Div(
         id=DATE_SELECTOR_DIV,
         children=[
-            dbc.InputGroup(
-                children=[
-                    dbc.InputGroupText("Period", style={"width": "60px"}),
-                    dcc.Dropdown(
-                        id=TIME_GROUP_DROPDOWN,
-                        options=get_time_group_options(
-                            exclude=[
-                                M.TimeGroup.SECOND,
-                                M.TimeGroup.MINUTE,
-                                M.TimeGroup.QUARTER,
-                            ]
-                        ),
-                        value=tg_val.value,
-                        clearable=False,
-                        searchable=False,
-                        multi=False,
-                        style={
-                            "width": "120px",
-                            "border-radius": "0px 0.25rem 0.25rem 0px",
-                        },
-                    ),
-                ],
+            dmc.Select(
+                id=TIME_GROUP_DROPDOWN,
+                data=get_time_group_options(
+                    exclude=[
+                        M.TimeGroup.SECOND,
+                        M.TimeGroup.MINUTE,
+                        M.TimeGroup.QUARTER,
+                    ]
+                ),
+                label="Period",
+                value=tg_val.value,
+                clearable=False,
+                size="xs",
+                style={"width": "120px"},
             ),
-            dbc.InputGroup(
-                children=[
-                    dbc.InputGroupText("Dates", style={"width": "60px"}),
-                    dcc.Dropdown(
-                        options=[CUSTOM_OPTION, *tw_options],
+            html.Div(
+                [
+                    dmc.Select(
+                        data=[CUSTOM_OPTION, *tw_options],
                         id=LOOKBACK_WINDOW_DROPDOWN,
+                        className="me-1",
                         value=lookback_days,
                         clearable=False,
-                        searchable=False,
-                        multi=False,
-                        style={"width": "120px"},
+                        size="xs",
+                        label="Time horizon",
+                        style={"width": "120px", "display": "inline-block"},
                     ),
-                    dcc.DatePickerRange(
-                        clearable=True,
-                        display_format="YYYY-MM-DD",
+                    dmc.DateRangePicker(
+                        clearable=False,
+                        inputFormat="YYYY-MM-DD",
                         id=CUSTOM_DATE_PICKER,
-                        className=CUSTOM_DATE_PICKER,
-                        start_date=start_date,
-                        end_date=end_date,
-                        number_of_months_shown=1,
+                        value=[start_date, end_date],
+                        size="xs",
+                        amountOfMonths=1,
                         style={
+                            "width": "180px",
                             "display": "none"
                             if lookback_days != CUSTOM_DATE_TW_VALUE
-                            else "inline",
+                            else "inline-block",
                         },
                     ),
                 ],
@@ -149,8 +140,9 @@ def from_metric(
 def get_metric_custom_dates(
     dd: Optional[M.DiscoveredProject], all_inputs: Dict[str, Any]
 ) -> Tuple[Optional[datetime], Optional[datetime]]:
-    start_dt = all_inputs.get(CUSTOM_DATE_PICKER_START_DATE)
-    end_dt = all_inputs.get(CUSTOM_DATE_PICKER_END_DATE)
+    custom_dates = all_inputs.get(CUSTOM_DATE_PICKER, [None, None])
+    start_dt = custom_dates[0]
+    end_dt = custom_dates[1]
     lookback_days = all_inputs.get(LOOKBACK_WINDOW_DROPDOWN)
 
     if dd is None:

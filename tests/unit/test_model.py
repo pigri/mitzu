@@ -21,8 +21,10 @@ WD = os.path.dirname(os.path.abspath(__file__))
 
 def test_project_without_event_data_table():
     project = Project(
+        project_name="sample_project",
         event_data_tables=[],
         connection=Connection(
+            connection_name="sample_connection",
             connection_type=ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",

@@ -11,14 +11,12 @@ init:
 	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres -E athena -E snowflake  -E databricks
 
 format: ## formats all python code
-	$(POETRY) run black mitzu tests release
+	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
+	$(POETRY) run black mitzu tests release *.ipynb
 
 lint: ## lints and checks formatting all python code
 	$(POETRY) run black --exclude .dbs --check mitzu tests release
 	$(POETRY) run flake8 mitzu tests release
-
-autoflake: ## fixes imports, unused variables
-	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
 
 mypy:
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
@@ -29,6 +27,13 @@ test_units:
 test_integrations:
 	docker-compose -f docker/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
+
+test_project_creation_and_discovery:
+	$(POETRY) run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter postgresql
+	$(POETRY) run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter mysql
+
+test_notebooks: test_project_creation_and_discovery
+	sh scripts/convert_and_run_notebook.sh
 
 docker_test_down:
 	rm -rf tests/.dbs/
@@ -50,14 +55,12 @@ trino_setup_test_data:
 test_coverage:
 	$(POETRY) run pytest --cov=mitzu --cov-report=html tests/
 
-check: format autoflake mypy lint test_coverage
-	@ECHO 'done'
+check: lint mypy test_coverage test_notebooks
+	@echo 'done'
 
 test_coverage_ci:
 	$(POETRY) run pytest --cov=mitzu --cov-report=xml tests/
 
-check_ci: autoflake mypy lint test_coverage_ci
-	@echo 'done'
 
 notebook: 
 	$(POETRY) run jupyter lab
@@ -100,6 +103,9 @@ serve:
 	MANAGE_PROJECTS_LINK="http://localhost:8081" \
 	HOME_URL="http://localhost:8082/" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
+
+run:
+	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check
 	$(POETRY) build

@@ -16,7 +16,9 @@ def get_sample_discovered_project(
     Returns:
         M.DiscoveredProject: The discovered project that is ready to be used.
     """
-    connection = M.Connection(connection_type=M.ConnectionType.SQLITE)
+    connection = M.Connection(
+        connection_type=M.ConnectionType.SQLITE, connection_name="Sample project"
+    )
 
     project = DI.create_and_ingest_sample_project(connection, seed=random_seed)
     return project.discover_project()

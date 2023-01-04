@@ -30,13 +30,15 @@ def set_figure_style(fig, simple_chart: C.SimpleChart, metric: M.Metric):
     else:
         title_height = 0
 
-    if metric._config.time_group != M.TimeGroup.TOTAL:
+    if metric._chart_type == M.SimpleChartType.LINE:
         fig.update_traces(
-            line=dict(width=2.5),
+            line=dict(width=1.5),
             mode="lines+markers",
             textposition="top center",
             textfont_size=9,
         )
+    elif metric._chart_type == M.SimpleChartType.STACKED_AREA:
+        fig.update_traces(textposition="top center", textfont_size=9)
     else:
         fig.update_traces(textposition="outside", textfont_size=9)
 
@@ -88,7 +90,7 @@ def set_heatmap_figure_style(fig, simple_chart: C.SimpleChart):
     )
     fig.update_yaxes(
         side="left",
-        title="Initial date",
+        title=simple_chart.y_axis_label,
         showgrid=False,
     )
     fig["layout"]["yaxis"]["autorange"] = "reversed"
@@ -111,32 +113,24 @@ def set_heatmap_figure_style(fig, simple_chart: C.SimpleChart):
     return fig
 
 
-def pdf_to_heatmap(
-    pdf: pd.DataFrame, chart: C.SimpleChart, metric: M.Metric
-) -> Dict[str, List]:
-
-    df = pd.pivot_table(
+def pdf_to_heatmap(pdf: pd.DataFrame) -> Dict[str, List]:
+    pdf = pd.pivot_table(
         pdf,
         values=[C.TEXT_COL, C.Y_AXIS_COL, C.TOOLTIP_COL],
-        index=[C.X_AXIS_COL],
-        columns=[C.COLOR_COL],
+        index=[C.COLOR_COL],
+        columns=[C.X_AXIS_COL],
         aggfunc="first",
     )
 
-    x_vals = df.index.tolist()
-    if chart.x_axis_labels_func is not None:
-        x_vals = [chart.x_axis_labels_func(v, metric) for v in x_vals]
-
-    color_vals = [*dict.fromkeys([val[1] for val in df.columns.tolist()])]
-    if chart.color_labels_func is not None:
-        color_vals = [chart.color_labels_func(v, metric) for v in color_vals]
+    color_vals = [f"{v}." for v in pdf.index.tolist()]
+    x_vals = [*dict.fromkeys([val[1] for val in pdf.columns.tolist()])]
 
     return {
-        "x": color_vals,
-        "y": [f"{v}." for v in x_vals],
-        "z": df[C.Y_AXIS_COL].values.tolist(),
-        "hovertext": df[C.TOOLTIP_COL].values.tolist(),
-        "annotation_text": df[C.TEXT_COL].values.tolist(),
+        "x": x_vals,
+        "y": color_vals,
+        "z": pdf[C.Y_AXIS_COL].values.tolist(),
+        "hovertext": pdf[C.TOOLTIP_COL].values.tolist(),
+        "annotation_text": pdf[C.TEXT_COL].values.tolist(),
     }
 
 
@@ -149,26 +143,32 @@ def plot_chart(
         raise Exception(
             f"Too many data points to visualize ({size}), try reducing the scope."
         )
+    pdf = simple_chart.dataframe
+    if simple_chart.x_axis_labels_func is not None:
+        pdf[C.X_AXIS_COL] = pdf[C.X_AXIS_COL].apply(
+            lambda val: simple_chart.x_axis_labels_func(val, metric)
+        )
+    if simple_chart.y_axis_labels_func is not None:
+        pdf[C.Y_AXIS_COL] = pdf[C.Y_AXIS_COL].apply(
+            lambda val: simple_chart.y_axis_labels_func(val, metric)
+        )
+    if simple_chart.color_labels_func is not None:
+        pdf[C.COLOR_COL] = pdf[C.COLOR_COL].apply(
+            lambda val: simple_chart.color_labels_func(val, metric)
+        )
 
     ct = simple_chart.chart_type
     px.defaults.color_discrete_sequence = PRISM2
     if ct in [
-        C.SimpleChartType.BAR,
-        C.SimpleChartType.STACKED_BAR,
-        C.SimpleChartType.HORIZONTAL_BAR,
-        C.SimpleChartType.HORIZONTAL_STACKED_BAR,
+        M.SimpleChartType.BAR,
+        M.SimpleChartType.STACKED_BAR,
     ]:
-
-        barmode = (
-            "group"
-            if ct in [C.SimpleChartType.BAR, C.SimpleChartType.HORIZONTAL_BAR]
-            else "relative"
-        )
+        barmode = "group" if ct in [M.SimpleChartType.BAR] else "relative"
         orientation = (
-            "v" if ct in [C.SimpleChartType.STACKED_BAR, C.SimpleChartType.BAR] else "h"
+            "v" if ct in [M.SimpleChartType.STACKED_BAR, M.SimpleChartType.BAR] else "h"
         )
         fig = px.bar(
-            simple_chart.dataframe,
+            pdf,
             x=C.X_AXIS_COL,
             y=C.Y_AXIS_COL,
             text=C.TEXT_COL,
@@ -182,10 +182,9 @@ def plot_chart(
                 C.COLOR_COL: simple_chart.color_label,
             },
         )
-    elif ct == C.SimpleChartType.LINE:
-
+    elif ct == M.SimpleChartType.LINE:
         fig = px.line(
-            simple_chart.dataframe,
+            pdf,
             x=C.X_AXIS_COL,
             y=C.Y_AXIS_COL,
             text=C.TEXT_COL,
@@ -197,9 +196,9 @@ def plot_chart(
                 C.COLOR_COL: simple_chart.color_label,
             },
         )
-    elif ct == C.SimpleChartType.STACKED_AREA:
+    elif ct == M.SimpleChartType.STACKED_AREA:
         fig = px.area(
-            simple_chart.dataframe,
+            pdf,
             x=C.X_AXIS_COL,
             y=C.Y_AXIS_COL,
             text=C.TEXT_COL,
@@ -211,10 +210,8 @@ def plot_chart(
                 C.COLOR_COL: simple_chart.color_label,
             },
         )
-    elif ct == C.SimpleChartType.HEATMAP:
-        args = pdf_to_heatmap(
-            pdf=simple_chart.dataframe, chart=simple_chart, metric=metric
-        )
+    elif ct == M.SimpleChartType.HEATMAP:
+        args = pdf_to_heatmap(pdf)
         fig = ff.create_annotated_heatmap(
             colorscale="BuPu",
             **args,

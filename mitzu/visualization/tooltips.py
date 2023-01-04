@@ -74,40 +74,21 @@ def get_segmentation_tooltip(
 def get_retention_tooltip(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.DataFrame:
     agg_type_str = L.agg_type_label(metric._agg_type, metric._agg_param)
     value_suffix = "%"
-    if metric._time_group == M.TimeGroup.TOTAL:
-        pdf[C.TOOLTIP_COL] = (
-            "<b>Retention period: </b>"
-            + (
-                pdf[C.X_AXIS_COL]
-                .apply(lambda val: C.retention_period_label(val, metric))
-                .astype(str)
-            )
-            + "<br /><b>Group: </b>"
-            + pdf[C.COLOR_COL].astype(str)
-            + f"<br /><br /><b>{agg_type_str}: </b>"
-            + round(pdf[C.Y_AXIS_COL], 2).astype(str)
-            + f" {value_suffix}"
-            + "<br /><b>Initial user count: </b>"
-            + pdf[GA.USER_COUNT_COL + "_1"].astype(str)
-            + "<br /><b>Retaining user count: </b>"
-            + pdf[GA.USER_COUNT_COL + "_2"].astype(str)
+    pdf[C.TOOLTIP_COL] = (
+        "<b>Retention period: </b>"
+        + (
+            pdf[C.X_AXIS_COL]
+            .apply(lambda val: C.retention_period_label(val, metric))
+            .astype(str)
         )
-    else:
-        pdf[C.TOOLTIP_COL] = (
-            "<b>Initial date: </b>"
-            + pdf[C.X_AXIS_COL].astype(str)
-            + "<br /><b>Retention period: </b>"
-            + (
-                pdf[C.COLOR_COL]
-                .apply(lambda val: C.retention_period_label(val, metric))
-                .astype(str)
-            )
-            + f"<br /><br /><b>{agg_type_str}: </b>"
-            + round(pdf[C.Y_AXIS_COL], 2).astype(str)
-            + f" {value_suffix}"
-            + "<br /><b>Initial user count: </b>"
-            + pdf[GA.USER_COUNT_COL + "_1"].astype(str)
-            + "<br /><b>Retaining user count: </b>"
-            + pdf[GA.USER_COUNT_COL + "_2"].astype(str)
-        )
+        + "<br /><b>Group: </b>"
+        + pdf[C.COLOR_COL].astype(str)
+        + f"<br /><br /><b>{agg_type_str}: </b>"
+        + round(pdf[C.Y_AXIS_COL], 2).astype(str)
+        + f" {value_suffix}"
+        + "<br /><b>Initial user count: </b>"
+        + pdf[GA.USER_COUNT_COL + "_1"].astype(str)
+        + "<br /><b>Retaining user count: </b>"
+        + pdf[GA.USER_COUNT_COL + "_2"].astype(str)
+    )
     return pdf

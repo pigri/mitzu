@@ -134,7 +134,8 @@ class AthenaDialect(DefaultDialect):
     def get_schema_names(self, connection: Connection, **kw) -> List[str]:
         query = "show schemas"
         res = connection.execute(query)
-        return [row.databaseName for row in res]
+
+        return [row[0] for row in res]
 
     def get_table_names(
         self, connection: Connection, schema: str = None, **kw
@@ -142,7 +143,7 @@ class AthenaDialect(DefaultDialect):
         schema = schema or self._get_default_schema_name(connection)
         query = f"show tables in {schema}"
         res = connection.execute(query)
-        return [row.tableName for row in res]
+        return [row[0] for row in res]
 
     def get_temp_table_names(
         self, connection: Connection, schema: str = None, **kw

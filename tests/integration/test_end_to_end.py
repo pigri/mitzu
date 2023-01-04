@@ -35,15 +35,15 @@ def test_simple_csv_segmentation():
     assert_sql(
         """
 WITH anon_2 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
+  (SELECT main.simple.user_id AS _cte_user_id,
+          main.simple.event_time AS _cte_datetime,
           NULL AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'cart'
-     AND simple.event_time >= '2020-01-01 00:00:00'
-     AND simple.event_time <= '2021-01-01 00:00:00'
-     AND date(simple.event_time) >= date('2020-01-01')
-     AND date(simple.event_time) <= date('2021-01-01'))
+   FROM main.simple
+   WHERE main.simple.event_type = 'cart'
+     AND main.simple.event_time >= '2020-01-01 00:00:00'
+     AND main.simple.event_time <= '2021-01-01 00:00:00'
+     AND date(main.simple.event_time) >= date('2020-01-01')
+     AND date(main.simple.event_time) <= date('2021-01-01'))
 SELECT NULL AS _datetime,
        NULL AS _group,
        count(DISTINCT anon_1._cte_user_id) AS _agg_value
@@ -75,25 +75,25 @@ def test_simple_csv_funnel():
     assert_sql(
         """
 WITH anon_1 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
-          simple.category_id AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'view'
-     AND simple.event_time >= '2020-01-01 00:00:00'
-     AND simple.event_time <= '2021-01-01 00:00:00'
-     AND date(simple.event_time) >= date('2020-01-01')
-     AND date(simple.event_time) <= date('2021-01-01')),
+  (SELECT main.simple.user_id AS _cte_user_id,
+          main.simple.event_time AS _cte_datetime,
+          main.simple.category_id AS _cte_group
+   FROM main.simple
+   WHERE main.simple.event_type = 'view'
+     AND main.simple.event_time >= '2020-01-01 00:00:00'
+     AND main.simple.event_time <= '2021-01-01 00:00:00'
+     AND date(main.simple.event_time) >= date('2020-01-01')
+     AND date(main.simple.event_time) <= date('2021-01-01')),
      anon_2 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
+  (SELECT main.simple.user_id AS _cte_user_id,
+          main.simple.event_time AS _cte_datetime,
           NULL AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'cart'
-     AND simple.event_time >= '2020-01-01 00:00:00'
-     AND simple.event_time <= '2021-02-01 00:00:00'
-     AND date(simple.event_time) >= date('2020-01-01')
-     AND date(simple.event_time) <= date('2021-02-01'))
+   FROM main.simple
+   WHERE main.simple.event_type = 'cart'
+     AND main.simple.event_time >= '2020-01-01 00:00:00'
+     AND main.simple.event_time <= '2021-02-01 00:00:00'
+     AND date(main.simple.event_time) >= date('2020-01-01')
+     AND date(main.simple.event_time) <= date('2021-02-01'))
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) AS _datetime,
        anon_1._cte_group AS _group,
        count(DISTINCT anon_1._cte_user_id) AS _user_count_1,
@@ -120,16 +120,16 @@ def test_null_filter():
     print(sql)
     assert (
         """WITH anon_2 AS
-  (SELECT simple.user_id AS _cte_user_id,
-          simple.event_time AS _cte_datetime,
+  (SELECT main.simple.user_id AS _cte_user_id,
+          main.simple.event_time AS _cte_datetime,
           NULL AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'view'
-     AND simple.event_time >= '2021-12-02 00:00:00'
-     AND simple.event_time <= '2022-01-01 00:00:00'
-     AND date(simple.event_time) >= date('2021-12-02')
-     AND date(simple.event_time) <= date('2022-01-01')
-     AND simple.category_id IS NOT NULL)
+   FROM main.simple
+   WHERE main.simple.event_type = 'view'
+     AND main.simple.event_time >= '2021-12-02 00:00:00'
+     AND main.simple.event_time <= '2022-01-01 00:00:00'
+     AND date(main.simple.event_time) >= date('2021-12-02')
+     AND date(main.simple.event_time) <= date('2022-01-01')
+     AND main.simple.category_id IS NOT NULL)
 SELECT datetime(strftime('%Y-%m-%dT00:00:00', anon_1._cte_datetime)) AS _datetime,
        NULL AS _group,
        count(DISTINCT anon_1._cte_user_id) AS _agg_value
@@ -167,15 +167,15 @@ def test_retention_query():
     print(sql)
     assert (
         """WITH anon_1 AS
-  (SELECT DISTINCT simple.user_id AS _cte_user_id,
-                   datetime(strftime('%Y-%m-%dT%H:%M:00', simple.event_time)) AS _cte_datetime,
+  (SELECT DISTINCT main.simple.user_id AS _cte_user_id,
+                   datetime(strftime('%Y-%m-%dT%H:%M:00', main.simple.event_time)) AS _cte_datetime,
                    NULL AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'view'
-     AND simple.event_time >= '2020-01-01 00:00:00'
-     AND simple.event_time <= '2020-01-02 00:00:00'
-     AND date(simple.event_time) >= date('2020-01-01')
-     AND date(simple.event_time) <= date('2020-01-02')),
+   FROM main.simple
+   WHERE main.simple.event_type = 'view'
+     AND main.simple.event_time >= '2020-01-01 00:00:00'
+     AND main.simple.event_time <= '2020-01-02 00:00:00'
+     AND date(main.simple.event_time) >= date('2020-01-01')
+     AND date(main.simple.event_time) <= date('2020-01-02')),
      anon_3 AS
   (SELECT 0 AS _ret_index
    UNION SELECT 1 AS _ret_index
@@ -203,15 +203,15 @@ def test_retention_query():
    UNION SELECT 23 AS _ret_index
    UNION SELECT 24 AS _ret_index),
      anon_2 AS
-  (SELECT DISTINCT simple.user_id AS _cte_user_id,
-                   datetime(strftime('%Y-%m-%dT%H:%M:00', simple.event_time)) AS _cte_datetime,
+  (SELECT DISTINCT main.simple.user_id AS _cte_user_id,
+                   datetime(strftime('%Y-%m-%dT%H:%M:00', main.simple.event_time)) AS _cte_datetime,
                    NULL AS _cte_group
-   FROM SIMPLE
-   WHERE simple.event_type = 'cart'
-     AND simple.event_time >= '2020-01-01 00:00:00'
-     AND simple.event_time <= '2020-01-02 01:00:00'
-     AND date(simple.event_time) >= date('2020-01-01')
-     AND date(simple.event_time) <= date('2020-01-02'))
+   FROM main.simple
+   WHERE main.simple.event_type = 'cart'
+     AND main.simple.event_time >= '2020-01-01 00:00:00'
+     AND main.simple.event_time <= '2020-01-02 01:00:00'
+     AND date(main.simple.event_time) >= date('2020-01-01')
+     AND date(main.simple.event_time) <= date('2020-01-02'))
 SELECT datetime(strftime('%Y-%m-%dT%H:00:00', anon_1._cte_datetime)) AS _datetime,
        NULL AS _group,
        ret_indeces._ret_index,

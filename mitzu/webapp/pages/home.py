@@ -3,14 +3,14 @@ import dash_bootstrap_components as dbc
 from dash import html
 import mitzu.webapp.configs as configs
 import mitzu.webapp.navbar as NB
+import mitzu.webapp.pages.paths as P
+
 
 register_page(
     __name__,
-    path="/",
+    path=P.HOME_PATH,
     title="Mitzu",
 )
-
-START_EXPLORING = "start_exploring"
 
 
 def layout():
@@ -38,9 +38,8 @@ def layout():
                                     "Start exploring",
                                 ],
                                 color="secondary",
-                                class_name="mb-3 w-25 ",
-                                href="/explore/",
-                                id=START_EXPLORING,
+                                class_name="mb-3 w-25",
+                                href=P.PROJECTS_PATH,
                             ),
                         ],
                         justify="center",

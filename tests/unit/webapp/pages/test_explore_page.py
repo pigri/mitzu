@@ -1,12 +1,25 @@
 import os
-from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
 import dash.development.base_component as bc
 import mitzu.model as M
-import mitzu.webapp.pages.explore.explore_page as EXP
 from pytest import fixture
+import mitzu.webapp.pages.explore.metric_segments_handler as MS
+import mitzu.webapp.pages.explore.metric_config_handler as MC
+import mitzu.webapp.pages.explore.simple_segment_handler as SS
+import mitzu.webapp.pages.explore.complex_segment_handler as CS
+import mitzu.webapp.pages.explore.event_segment_handler as ES
+import mitzu.webapp.pages.explore.dates_selector_handler as DS
+import mitzu.webapp.pages.explore.toolbar_handler as TH
+import mitzu.webapp.pages.explore.explore_page as EXP
+import mitzu.webapp.helper as H
+import mitzu.webapp.pages.explore.metric_type_handler as MTH
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.storage as S
+import mitzu.webapp.cache as C
 from urllib.parse import unquote
+
+from datetime import datetime
 
 
 def to_json(input: Any) -> Any:
@@ -51,37 +64,43 @@ def discovered_project():
     )
 
 
+@fixture(scope="module")
+def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
+    cache = C.InMemoryCache()
+    return DEPS.Dependencies(
+        authorizer=None, storage=S.MitzuStorage(cache), cache=cache
+    )
+
+
 def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
     all_inputs = {
-        "metric_segments": {
-            "children": {0: {"children": {0: {"event_name_dropdown": "page_visit"}}}}
+        MS.METRIC_SEGMENTS: {
+            "children": {0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "page_visit"}}}}
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": None,
-        "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        TH.GRAPH_CONTENT_TYPE: TH.CHART_VAL,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[0][0])
+    res = to_json(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, res
+        {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
     )
     first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_NAME_DROPDOWN}, res
     )
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
     )
 
     assert second_event_dd is not None
@@ -104,53 +123,50 @@ def test_event_property_chosen_for_segmentation(
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
                 0: {
                     "children": {
                         0: {
-                            "event_name_dropdown": "page_visit",
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
                             "children": {
                                 0: {
-                                    "property_name_dropdown": "page_visit.user_properties.country_code"
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.user_properties.country_code"
                                 }
                             },
                         },
-                        1: {"event_name_dropdown": None},
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
                     },
-                    "complex_segment_group_by": None,
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
                 }
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": None,
-        "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[0][0])
+    res = to_json(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, res
+        {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
     )
     first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_NAME_DROPDOWN}, res
     )
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
     )
     first_property_value_input = find_component_by_id(
-        {"index": "0-0-0", "type": "property_value_input"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_VALUE_INPUT}, res
     )
 
     assert second_event_dd is not None
@@ -186,52 +202,50 @@ def test_event_property_operator_changed_with_values_already_chosen(
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
                 0: {
                     "children": {
                         0: {
-                            "event_name_dropdown": "page_visit",
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
                             "children": {
                                 0: {
-                                    "property_operator_dropdown": ">",
-                                    "property_name_dropdown": "page_visit.user_properties.is_subscribed",
-                                    "property_value_input": [
+                                    SS.PROPERTY_OPERATOR_DROPDOWN: ">",
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.user_properties.is_subscribed",
+                                    SS.PROPERTY_VALUE_INPUT: [
                                         "organic",
                                         "promo_20off_2020",
                                     ],
                                 },
-                                1: {"property_name_dropdown": None},
+                                1: {SS.PROPERTY_NAME_DROPDOWN: None},
                             },
                         },
-                        1: {"event_name_dropdown": None},
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
                     },
-                    "complex_segment_group_by": None,
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
                 }
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker": None,
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[0][0])
+    res = to_json(res[MS.METRIC_SEGMENTS][0])
 
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
     )
     first_property_value_input = find_component_by_id(
-        {"index": "0-0-0", "type": "property_value_input"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_VALUE_INPUT}, res
     )
 
     assert first_property_operator_dd is not None
@@ -245,44 +259,41 @@ def test_empty_page_with_project(
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
-        "metric_segments": {
-            "children": {0: {"children": {0: {"event_name_dropdown": None}}}}
+        MS.METRIC_SEGMENTS: {
+            "children": {0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: None}}}}
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project?",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": None,
-        "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_segs = to_json(res[0])
-    metric_confs = to_json(res[1])
+    metric_segs = to_json(res[MS.METRIC_SEGMENTS])
+    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
     second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, metric_segs
+        {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, metric_segs
     )
     first_event_dd = find_component_by_id(
-        {"index": "0-0", "type": "event_name_dropdown"}, metric_segs
+        {"index": "0-0", "type": ES.EVENT_NAME_DROPDOWN}, metric_segs
     )
     first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, metric_segs
+        {"index": "0-0-0", "type": SS.PROPERTY_NAME_DROPDOWN}, metric_segs
     )
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, metric_segs
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, metric_segs
     )
     first_property_value_input = find_component_by_id(
-        {"index": "0-0-0", "type": "property_value_input"}, metric_segs
+        {"index": "0-0-0", "type": SS.PROPERTY_VALUE_INPUT}, metric_segs
     )
 
     assert first_event_dd is not None
@@ -293,9 +304,9 @@ def test_empty_page_with_project(
 
     # Metric Configuration Part
 
-    lookback_dd = find_component_by_id("lookback_window_dropdown", metric_confs)
-    timegroup_dd = find_component_by_id("timegroup_dropdown", metric_confs)
-    timegroup_dd = find_component_by_id("timegroup_dropdown", metric_confs)
+    lookback_dd = find_component_by_id(DS.LOOKBACK_WINDOW_DROPDOWN, metric_confs)
+    timegroup_dd = find_component_by_id(DS.TIME_GROUP_DROPDOWN, metric_confs)
+    timegroup_dd = find_component_by_id(DS.TIME_GROUP_DROPDOWN, metric_confs)
 
     assert lookback_dd is not None
     assert lookback_dd["value"] == "1 month"
@@ -305,233 +316,230 @@ def test_empty_page_with_project(
 
 def test_custom_date_selected(discovered_project: M.DiscoveredProject):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
                 0: {
                     "children": {
                         0: {
-                            "event_name_dropdown": "page_visit",
-                            "children": {0: {"property_name_dropdown": None}},
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {0: {SS.PROPERTY_NAME_DROPDOWN: None}},
                         },
-                        1: {"event_name_dropdown": None},
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
                     },
-                    "complex_segment_group_by": None,
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
                 }
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project?",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": None,
-        "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": "_custom_date",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "_custom_date",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[1])
+    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
-    date_picker = find_component_by_id("custom_date_picker", metric_confs)
+    date_picker = find_component_by_id(DS.CUSTOM_DATE_PICKER, metric_confs)
 
     assert date_picker is not None
-    assert date_picker["style"] == {"display": "inline"}
+    assert date_picker["style"] == {"width": "180px", "display": "inline-block"}
 
 
 def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredProject):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
                 0: {
                     "children": {
                         0: {
-                            "event_name_dropdown": "page_visit",
-                            "children": {0: {"property_name_dropdown": None}},
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {0: {SS.PROPERTY_NAME_DROPDOWN: None}},
                         },
-                        1: {"event_name_dropdown": None},
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
                     },
-                    "complex_segment_group_by": None,
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
                 }
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project?",
-        "metric-type-dropdown": "segmentation",
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": "2021-12-01T00:00:00",
-        "custom_date_picker_end_date": "2022-01-01T00:00:00",
-        "lookback_window_dropdown": "_custom_date",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: ["2021-12-01T00:00:00", "2022-01-01T00:00:00"],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "_custom_date",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[1])
+    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
-    date_picker = find_component_by_id("custom_date_picker", metric_confs)
+    date_picker = find_component_by_id(DS.CUSTOM_DATE_PICKER, metric_confs)
 
     assert date_picker is not None
-    assert date_picker["style"] == {"display": "inline"}
-    assert date_picker["start_date"] == datetime(2021, 12, 1, 0, 0)
-    assert date_picker["end_date"] == datetime(2022, 1, 1, 0, 0)
+    assert date_picker["style"]["display"] == "inline-block"
+    assert date_picker["value"] == [
+        datetime(2021, 12, 1, 0, 0),
+        datetime(2022, 1, 1, 0, 0),
+    ]
 
 
 def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProject):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
                 0: {
                     "children": {
                         0: {
-                            "event_name_dropdown": "page_visit",
-                            "children": {0: {"property_name_dropdown": None}},
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {0: {SS.PROPERTY_NAME_DROPDOWN: None}},
                         },
-                        1: {"event_name_dropdown": None},
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
                     },
-                    "complex_segment_group_by": None,
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
                 }
             }
         },
-        "mitzu_location": "http://127.0.0.1:8082/trino_test_project",
-        "metric-type-dropdown": "segmentation",
-        "event_name_dropdown": ["page_visit", None],
-        "property_operator_dropdown": [],
-        "property_name_dropdown": [None],
-        "property_value_input": [],
-        "complex_segment_group_by": [None],
-        "timegroup_dropdown": 5,
-        "custom_date_picker_start_date": "2021-12-01T00:00:00",
-        "custom_date_picker_end_date": "2022-01-01T00:00:00",
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 5,
-        "time_window_interval": 1,
-        "aggregation_type": "user_count",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        ES.EVENT_NAME_DROPDOWN: ["page_visit", None],
+        SS.PROPERTY_OPERATOR_DROPDOWN: [],
+        SS.PROPERTY_NAME_DROPDOWN: [None],
+        SS.PROPERTY_VALUE_INPUT: [],
+        CS.COMPLEX_SEGMENT_GROUP_BY: [None],
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: ["2021-12-01T00:00:00", "2022-01-01T00:00:00"],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[1])
+    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
-    date_picker = find_component_by_id("custom_date_picker", metric_confs)
-    lookback_days_dd = find_component_by_id("lookback_window_dropdown", metric_confs)
+    date_picker = find_component_by_id(DS.CUSTOM_DATE_PICKER, metric_confs)
+    lookback_days_dd = find_component_by_id(DS.LOOKBACK_WINDOW_DROPDOWN, metric_confs)
 
     assert date_picker is not None
-    assert date_picker["style"] == {"display": "none"}
-    assert date_picker["start_date"] is None
-    assert date_picker["end_date"] is None
+    assert date_picker["style"] == {"width": "180px", "display": "none"}
+    assert date_picker["value"] == [None, None]
 
     assert lookback_days_dd is not None
     assert lookback_days_dd["value"] == "1 month"
 
 
-def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject):
-    query_params = {
-        "m": unquote(
-            "eNolTEsKgCAUvIrMulXLLiOm"
-            "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
+def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject, dependencies):
+    import flask
+
+    app = flask.Flask("_test_app_")
+    with app.app_context():
+        flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
+
+        query_params = {
+            "m": unquote(
+                "eNolTEsKgCAUvIrMulXLLiOm"
+                "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
+            )
+        }
+        res = EXP.create_explore_page(query_params, discovered_project)
+
+        explore_page = to_json(res)
+
+        # Metric Segments Part
+
+        first_event_dd = find_component_by_id(
+            {"index": "0-0", "type": ES.EVENT_NAME_DROPDOWN}, explore_page
         )
-    }
-    res = EXP.create_explore_page(query_params, discovered_project)
 
-    explore_page = to_json(res)
+        second_event_dd = find_component_by_id(
+            {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, explore_page
+        )
+        first_property_dd = find_component_by_id(
+            {"index": "0-0-0", "type": SS.PROPERTY_NAME_DROPDOWN}, explore_page
+        )
+        first_property_operator_dd = find_component_by_id(
+            {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, explore_page
+        )
 
-    # Metric Segments Part
+        assert first_event_dd is not None
+        assert first_event_dd["value"] == "page_visit"
+        assert second_event_dd is not None
+        assert first_property_dd is not None
+        assert set([option["value"] for option in first_property_dd["options"]]) == set(
+            [
+                "page_visit.event_name",
+                "page_visit.event_properties.url",
+                "page_visit.event_time",
+                "page_visit.user_id",
+                "page_visit.user_properties.country_code",
+                "page_visit.user_properties.is_subscribed",
+                "page_visit.user_properties.locale",
+            ]
+        )
+        assert first_property_operator_dd is None
 
-    first_event_dd = find_component_by_id(
-        {"index": "0-0", "type": "event_name_dropdown"}, explore_page
-    )
+        # Metric confs Part
 
-    second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, explore_page
-    )
-    first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, explore_page
-    )
-    first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, explore_page
-    )
+        date_picker = find_component_by_id(DS.CUSTOM_DATE_PICKER, explore_page)
+        lookback_days_dd = find_component_by_id(
+            DS.LOOKBACK_WINDOW_DROPDOWN, explore_page
+        )
 
-    assert first_event_dd is not None
-    assert first_event_dd["value"] == "page_visit"
-    assert second_event_dd is not None
-    assert first_property_dd is not None
-    assert set([option["value"] for option in first_property_dd["options"]]) == set(
-        [
-            "page_visit.event_name",
-            "page_visit.event_properties.url",
-            "page_visit.event_time",
-            "page_visit.user_id",
-            "page_visit.user_properties.country_code",
-            "page_visit.user_properties.is_subscribed",
-            "page_visit.user_properties.locale",
-        ]
-    )
-    assert first_property_operator_dd is None
-
-    # Metric confs Part
-
-    date_picker = find_component_by_id("custom_date_picker", explore_page)
-    lookback_days_dd = find_component_by_id("lookback_window_dropdown", explore_page)
-
-    assert date_picker is not None
-    assert date_picker["style"] == {"display": "none"}
-    assert date_picker["start_date"] is None
-    assert date_picker["end_date"] is None
-    assert lookback_days_dd is not None
-    assert lookback_days_dd["value"] == "2 months"
+        assert date_picker is not None
+        assert date_picker["style"]["display"] == "none"
+        assert date_picker["value"] == [None, None]
+        assert lookback_days_dd is not None
+        assert lookback_days_dd["value"] == "2 months"
 
 
 def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
     all_inputs = {
-        "metric_segments": {
+        MS.METRIC_SEGMENTS: {
             "children": {
-                0: {"children": {0: {"event_name_dropdown": "page_visit"}}},
-                1: {"children": {0: {"event_name_dropdown": "checkout"}}},
+                0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "page_visit"}}},
+                1: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "checkout"}}},
             }
         },
-        "metric-type-dropdown": "retention",
-        "timegroup_dropdown": 1,
-        "custom_date_picker_start_date": None,
-        "custom_date_picker_end_date": None,
-        "lookback_window_dropdown": "1 month",
-        "time_window_interval_steps": 1,
-        "time_window_interval": 1,
-        "aggregation_type": "retention_rate",
-        "graph_refresh_button": None,
-        "chart_button": None,
-        "table_button": None,
-        "sql_button": None,
+        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "retention",
+        DS.TIME_GROUP_DROPDOWN: 1,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 1,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "retention_rate",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[0][0])
+    res = to_json(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
-        {"index": "0-1", "type": "event_name_dropdown"}, res
+        {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
     )
     first_property_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_name_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_NAME_DROPDOWN}, res
     )
     first_property_operator_dd = find_component_by_id(
-        {"index": "0-0-0", "type": "property_operator_dropdown"}, res
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
     )
 
     assert second_event_dd is not None

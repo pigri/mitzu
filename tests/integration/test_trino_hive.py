@@ -6,6 +6,7 @@ from tests.helper import assert_row
 
 def test_trino_complex_data():
     target = M.Project(
+        project_name="trino_project",
         event_data_tables=[
             M.EventDataTable.create(
                 table_name="sub_events",
@@ -25,6 +26,7 @@ def test_trino_complex_data():
             end_dt=datetime(2021, 1, 4),
         ),
         connection=M.Connection(
+            connection_name="trino_connection",
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
             secret_resolver=None,
@@ -57,6 +59,7 @@ def test_trino_complex_data():
 
 def test_trino_map_types_discovery():
     target = M.Project(
+        project_name="trino_project",
         event_data_tables=[
             M.EventDataTable.create(
                 table_name="sub_events",
@@ -76,6 +79,7 @@ def test_trino_map_types_discovery():
             end_dt=datetime(2021, 1, 4),
         ),
         connection=M.Connection(
+            connection_name="trino_project",
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
             secret_resolver=None,

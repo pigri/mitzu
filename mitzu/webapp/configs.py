@@ -4,7 +4,6 @@ import os
 
 # base
 LAUNCH_UID = str(uuid4())
-MITZU_BASEPATH = os.getenv("BASEPATH", "mitzu-webapp")
 HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 
 
@@ -16,7 +15,6 @@ DASH_ASSETS_URL_PATH = os.getenv("DASH_ASSETS_URL_PATH", "assets")
 DASH_SERVE_LOCALLY = bool(os.getenv("DASH_SERVE_LOCALLY", True))
 DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
 DASH_FAVICON_PATH = os.getenv("DASH_FAVICON_PATH", "assets/favicon.ico")
-DASH_COMPONENTS_CSS = os.getenv("DASH_COMPONENTS_CSS", "assets/components.css")
 DASH_COMPRESS_RESPONSES = bool(os.getenv("DASH_COMPRESS_RESPONSES", True))
 DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "/assets/mitzu-logo-light.svg")
 

@@ -52,13 +52,16 @@ def assert_row(df: pd.DataFrame, **kwargs):
 def ingest_test_file_data(
     source_project: Project,
     target_connection: Connection,
+    schema: str,
     transform_dt_col: bool = True,
     dtype: Dict[str, Any] = None,
 ) -> SQLAlchemyAdapter:
     source_adapter = cast(FileAdapter, source_project.get_adapter())
 
     target_source = Project(
-        connection=target_connection, event_data_tables=source_project.event_data_tables
+        connection=target_connection,
+        event_data_tables=source_project.event_data_tables,
+        project_name=source_project.project_name,
     )
     target_adapter = cast(SQLAlchemyAdapter, target_source.get_adapter())
     target_engine = target_adapter.get_engine()
@@ -73,6 +76,7 @@ def ingest_test_file_data(
         pdf.to_sql(
             con=target_engine,
             name=ed_table.table_name,
+            schema=schema,
             index=False,
             dtype=dtype,
             if_exists="replace",

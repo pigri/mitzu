@@ -3,13 +3,19 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import mitzu.model as M
-from dash import html
+from dash import html, dcc
 from mitzu.helper import value_to_label
-
+import dash_bootstrap_components as dbc
+import dash.development.base_component as bc
 
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
 MITZU_LOCATION = "mitzu_location"
+
+
+TBL_CLS = "small text mh-0 "
+TBL_CLS_WARNING = "small text-danger mh-0 fw-bold"
+TBL_HEADER_CLS = "small mh-0 text-nowrap fw-bold"
 
 
 def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:
@@ -87,3 +93,43 @@ def get_final_all_inputs(
                     raise ValueError(f"Invalid sub-input type: {type(sub_input)}")
 
     return res
+
+
+def create_form_property_input(
+    property: str,
+    index_type: str,
+    icon_cls: Optional[str] = None,
+    component_type: bc.Component = dbc.Input,
+    input_lg: int = 3,
+    input_sm: int = 12,
+    label_lg: int = 3,
+    label_sm: int = 12,
+    **kwargs,
+):
+    if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
+        kwargs["size"] = "sm"
+    if component_type in [dbc.Input, dbc.Textarea]:
+        kwargs["placeholder"] = value_to_label(property)
+
+    if icon_cls is not None:
+        label_children = [
+            html.B(className=f"{icon_cls} me-1"),
+            value_to_label(property),
+            "*" if kwargs.get("required") else "",
+        ]
+    else:
+        label_children = [value_to_label(property)]
+    return dbc.Row(
+        [
+            dbc.Label(label_children, class_name="fw-bold", sm=label_sm, lg=label_lg),
+            dbc.Col(
+                component_type(
+                    id={"type": index_type, "index": property},
+                    **kwargs,
+                ),
+                sm=input_sm,
+                lg=input_lg,
+            ),
+        ],
+        class_name="mb-3",
+    )

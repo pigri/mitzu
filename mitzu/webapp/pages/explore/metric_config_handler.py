@@ -6,9 +6,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+
 import mitzu.webapp.pages.explore.dates_selector_handler as DS
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
-from dash import dcc, html
+import mitzu.webapp.pages.explore.toolbar_handler as TH
+from dash import html
+import dash_mantine_components as dmc
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
 
@@ -133,51 +136,41 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         tw_value = 1
         tg_value = M.TimeGroup.DAY
 
-    aggregation_comp = dbc.InputGroup(
-        children=[
-            dbc.InputGroupText("Aggregation", style={"width": "100px"}),
-            dcc.Dropdown(
-                id=AGGREGATION_TYPE,
-                className=AGGREGATION_TYPE,
-                clearable=False,
-                multi=False,
-                value=M.AggType.to_agg_str(agg_type, agg_param),
-                options=get_agg_type_options(metric),
-                style={
-                    "width": "180px",
-                    "border-radius": "0px 0.25rem 0.25rem 0px",
-                },
-            ),
-        ],
+    aggregation_comp = dmc.Select(
+        id=AGGREGATION_TYPE,
+        label="Aggregation",
+        className=AGGREGATION_TYPE + " rounded-right",
+        clearable=False,
+        value=M.AggType.to_agg_str(agg_type, agg_param),
+        size="xs",
+        data=get_agg_type_options(metric),
+        style={
+            "width": "204px",
+        },
     )
 
-    tw_label = "Ret. Period" if isinstance(metric, M.RetentionMetric) else "Within"
+    tw_label = "Retention Period" if isinstance(metric, M.RetentionMetric) else "Within"
 
-    time_window = dbc.InputGroup(
-        id=TIME_WINDOW,
-        children=[
-            dbc.InputGroupText(tw_label, style={"width": "100px"}),
-            dbc.Input(
+    time_window = html.Div(
+        [
+            dmc.NumberInput(
                 id=TIME_WINDOW_INTERVAL,
-                className=TIME_WINDOW_INTERVAL,
+                label=tw_label,
+                className="me-1",
                 type="number",
                 max=10000,
                 min=1,
                 value=tw_value,
-                size="sm",
-                style={"max-width": "60px"},
+                size="xs",
+                style={"width": "100px", "display": "inline-block"},
             ),
-            dcc.Dropdown(
+            dmc.Select(
                 id=TIME_WINDOW_INTERVAL_STEPS,
-                className=TIME_WINDOW_INTERVAL_STEPS,
                 clearable=False,
-                multi=False,
                 value=tg_value.value,
-                options=get_time_group_options(),
-                style={
-                    "width": "121px",
-                    "border-radius": "0px 0.25rem 0.25rem 0px",
-                },
+                size="xs",
+                data=get_time_group_options(),
+                style={"width": "100px", "display": "inline-block"},
             ),
         ],
         style={
@@ -194,32 +187,26 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         else str(metric._resolution).lower()
     )
 
-    resolution_ig = dbc.InputGroup(
-        id=RESOLUTION_IG,
-        children=[
-            dbc.InputGroupText("Resolution", style={"width": "100px"}),
-            dcc.Dropdown(
-                id=RESOLUTION_DD,
-                className=RESOLUTION_DD,
-                clearable=False,
-                multi=False,
-                value=res_value,
-                options=[
-                    {"label": "Every event", "value": EVERY_EVENT_RESOLUTION},
-                    {"label": "Single user event hourly", "value": "hour"},
-                    {"label": "Single user event daily", "value": "day"},
-                ],
-                style={
-                    "width": "180px",
-                    "border-radius": "0px 0.25rem 0.25rem 0px",
-                },
-            ),
+    resolution_ig = dmc.Select(
+        id=RESOLUTION_DD,
+        className="rounded-right",
+        clearable=False,
+        value=res_value,
+        size="xs",
+        label="Resolution",
+        data=[
+            {"label": "Every event", "value": EVERY_EVENT_RESOLUTION},
+            {"label": "Single user event hourly", "value": "hour"},
+            {"label": "Single user event daily", "value": "day"},
         ],
         style={
-            "visibility": "visible"
-            if isinstance(metric, M.ConversionMetric)
-            or isinstance(metric, M.RetentionMetric)
-            else "hidden"
+            "width": "204px",
+            "visibility": (
+                "visible"
+                if isinstance(metric, M.ConversionMetric)
+                or isinstance(metric, M.RetentionMetric)
+                else "hidden"
+            ),
         },
     )
 
@@ -273,6 +260,9 @@ def from_all_inputs(
     if res_val != EVERY_EVENT_RESOLUTION:
         resolution = M.TimeGroup.parse(res_val)
 
+    chart_type_val = all_inputs.get(TH.CHART_TYPE_DD, None)
+    chart_type = M.SimpleChartType.parse(chart_type_val)
+
     dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
     res_config = M.MetricConfig(
         start_dt=dates_conf.start_dt,
@@ -281,6 +271,7 @@ def from_all_inputs(
         time_group=dates_conf.time_group,
         agg_type=agg_type,
         agg_param=agg_param,
+        chart_type=chart_type,
         resolution=resolution,
     )
     return res_config, res_tw

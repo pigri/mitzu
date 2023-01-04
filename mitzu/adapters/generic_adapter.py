@@ -36,14 +36,6 @@ class GenericDatasetAdapter(ABC):
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         raise NotImplementedError()
 
-    def get_map_field_keys(
-        self,
-        event_data_table: M.EventDataTable,
-        map_field: M.Field,
-        event_specific: bool,
-    ) -> Dict[str, List[M.Field]]:
-        raise NotImplementedError()
-
     def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
         raise NotImplementedError()
 
@@ -53,6 +45,15 @@ class GenericDatasetAdapter(ABC):
         fields: List[M.Field],
         event_specific: bool,
     ) -> Dict[str, M.EventDef]:
+        raise NotImplementedError()
+
+    def list_schemas(self) -> List[str]:
+        raise NotImplementedError()
+
+    def list_tables(self, schema: str) -> List[str]:
+        raise NotImplementedError()
+
+    def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_conversion_sql(self, metric: M.ConversionMetric) -> str:

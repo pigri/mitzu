@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
 import pandas as pd
-from typing import Any, Union, Optional, Callable
+from typing import Any, Callable, Optional
 import mitzu.model as M
 
 
@@ -25,28 +24,17 @@ def retention_period_label(val: int, metric: M.Metric) -> str:
     return str(val)
 
 
-class SimpleChartType(Enum):
-    BAR = auto()
-    HORIZONTAL_BAR = auto()
-    STACKED_BAR = auto()
-    HORIZONTAL_STACKED_BAR = auto()
-    LINE = auto()
-    STACKED_AREA = auto()
-    HEATMAP = auto()
-
-    @classmethod
-    def parse(cls, value: Union[str, SimpleChartType]) -> SimpleChartType:
-        if type(value) == SimpleChartType:
-            return value
-        elif type(value) == str:
-            for key, enm in SimpleChartType._member_map_.items():
-                if key.lower() == value.lower():
-                    return SimpleChartType[key]
-            raise ValueError(
-                f"Unknown chart type {value} supported are {[k.lower() for k in SimpleChartType._member_names_]}"
-            )
-        else:
-            raise ValueError("Parse should only be str or SimpleChartType")
+def fix_date_label(val: pd.Timestamp, metric: M.Metric) -> str:
+    if metric._time_group not in (
+        M.TimeGroup.SECOND,
+        M.TimeGroup.MINUTE,
+        M.TimeGroup.HOUR,
+    ):
+        res = str(val.date())
+        if metric._chart_type == M.SimpleChartType.HEATMAP:
+            res = res + "."
+        return res
+    return val
 
 
 @dataclass(frozen=True)
@@ -58,7 +46,7 @@ class SimpleChart:
     color_label: str
     yaxis_ticksuffix: str
     hover_mode: str
-    chart_type: SimpleChartType
+    chart_type: M.SimpleChartType
     dataframe: pd.DataFrame
     x_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
     y_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None

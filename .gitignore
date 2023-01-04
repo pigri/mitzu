@@ -82,3 +82,5 @@ release/app/cache/
 release/requirements.txt
 cache/
 cache.db*
+
+examples/notebook/*ipynb.py

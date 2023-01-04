@@ -17,13 +17,14 @@ import sys
 def ingest_dataframe(
     engine: SA.engine.Engine,
     table_name: str,
+    schema: str,
     df: pd.DataFrame,
     recreate: bool,
     show_progress: bool = False,
     chunk_size: int = 10000,
 ):
     ins = SA.inspect(engine)
-    if ins.dialect.has_table(engine.connect(), table_name):
+    if ins.dialect.has_table(engine.connect(), table_name, schema=schema):
         LOGGER.warning(f"Table {table_name} already exists")
         if not recreate:
             return
@@ -42,6 +43,7 @@ def ingest_dataframe(
         df.to_sql(
             con=engine,
             name=table_name,
+            schema=schema,
             index=False,
             if_exists=mode,
         )
@@ -63,29 +65,32 @@ def flatten_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_and_ingest_sample_project(
     connection: M.Connection,
+    schema: str = "main",
     event_count: int = 100000,
     number_of_users: int = 1000,
     overwrite_records: bool = True,
     show_progress: bool = False,
-    chunk_size: int = 100000,
+    chunk_size: int = 10000,
     seed: Optional[int] = 100,
 ) -> M.Project:
     dfs = create_all_funnels(
         event_count=event_count, user_count=number_of_users, seed=seed
     )
     event_data_tables = []
-    for key, df in dfs.items():
+    for table_name, df in dfs.items():
         event_data_tables.append(
             M.EventDataTable.create(
-                table_name=key,
+                table_name=table_name,
+                schema=schema,
                 event_time_field="event_time",
                 user_id_field="user_id",
-                event_name_alias=key if "event_name" not in df.columns else None,
+                event_name_alias=table_name if "event_name" not in df.columns else None,
                 event_name_field="event_name" if "event_name" in df.columns else None,
             )
         )
     project = M.Project(
         connection=connection,
+        project_name="Sample ecommerce warehouse",
         event_data_tables=event_data_tables,
         discovery_settings=M.DiscoverySettings(
             lookback_days=365,
@@ -93,10 +98,18 @@ def create_and_ingest_sample_project(
         ),
     )
 
-    for key, df in dfs.items():
+    for table_name, df in dfs.items():
         adapter = project.get_adapter()
         engine = cast(SQLAlchemyAdapter, adapter).get_engine()
-        ingest_dataframe(engine, key, df, overwrite_records, show_progress, chunk_size)
+        ingest_dataframe(
+            engine,
+            table_name=table_name,
+            schema=schema,
+            df=df,
+            recreate=overwrite_records,
+            show_progress=show_progress,
+            chunk_size=chunk_size,
+        )
 
     return project
 

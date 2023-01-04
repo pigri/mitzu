@@ -47,7 +47,7 @@ def create_event_name_dropdown(
         options=options,
         value=value,
         multi=False,
-        className=EVENT_NAME_DROPDOWN,
+        className=EVENT_NAME_DROPDOWN + " border-0",
         placeholder=placeholder,
         id={
             "type": EVENT_NAME_DROPDOWN,

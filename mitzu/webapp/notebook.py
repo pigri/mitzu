@@ -20,13 +20,12 @@ import warnings
 
 class SingleProjectMitzuStorage(S.MitzuStorage):
     def __init__(self, project: M.DiscoveredProject) -> None:
-        super().__init__()
         self.sample_project = project
 
-    def list_projects(self) -> List[str]:
+    def list_discovered_projects(self) -> List[str]:
         return [S.SAMPLE_PROJECT_NAME]
 
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
+    def get_discovered_project(self, key: str) -> Optional[M.DiscoveredProject]:
         return self.sample_project
 
 

@@ -66,7 +66,6 @@ def create_group_by_dropdown(
         multi=False,
         className=COMPLEX_SEGMENT_GROUP_BY,
         placeholder="+ Break Down",
-        style={"width": "100%"},
     )
 
 
@@ -100,10 +99,7 @@ def from_segment(
     else:
         title = "Events"
 
-    header = dbc.CardHeader(
-        title,
-        style={"font-size": "14px", "padding": "6px", "font-weight": "bold"},
-    )
+    header = dbc.CardHeader(title, class_name="p-2 fw-bold")
 
     body_children = []
 
@@ -133,12 +129,12 @@ def from_segment(
 
     card_body = dbc.CardBody(
         children=body_children,
-        className=COMPLEX_SEGMENT_BODY,
+        className=COMPLEX_SEGMENT_BODY + " fw-normal p-0",
     )
     return dbc.Card(
         id={"type": COMPLEX_SEGMENT, "index": type_index},
         children=[header, card_body],
-        className=COMPLEX_SEGMENT,
+        className=COMPLEX_SEGMENT + " p-0",
     )
 
 

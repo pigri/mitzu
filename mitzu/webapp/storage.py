@@ -1,23 +1,23 @@
 from __future__ import annotations
 
-import os
-from abc import ABC
-from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Dict
+import mitzu.webapp.cache as C
 
 import mitzu.model as M
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
-import boto3
-from urllib import parse
-import functools
 
-PROJECTS_SUB_PATH = "projects"
-PROJECT_SUFFIX = ".mitzu"
 SAMPLE_PROJECT_NAME = "sample_project"
+
+PROJECT_PREFIX = "__project__"
+CONNECTION_PREFIX = "__conn__"
+SEPC_PROJECT_PREFIX = "__spec_project__"
+TABLE_DEFIONITION_PREFIX = "__table_definition__"
+TABLE_PREFIX = "__table__"
 
 
 def create_sample_project() -> M.DiscoveredProject:
     connection = M.Connection(
+        connection_name="Sample project",
         connection_type=M.ConnectionType.SQLITE,
     )
     project = create_and_ingest_sample_project(
@@ -26,118 +26,72 @@ def create_sample_project() -> M.DiscoveredProject:
     return project.discover_project()
 
 
-class MitzuStorage(ABC):
-    def __init__(self) -> None:
+class MitzuStorage:
+    def __init__(self, mitzu_cache: C.MitzuCache) -> None:
         super().__init__()
         self.sample_project: Optional[M.DiscoveredProject] = None
+        self.mitzu_cache = mitzu_cache
 
-    def list_projects(self) -> List[str]:
-        return [SAMPLE_PROJECT_NAME]
-
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        if key == SAMPLE_PROJECT_NAME:
+    def get_discovered_project(self, project_id: str) -> Optional[M.DiscoveredProject]:
+        if project_id == SAMPLE_PROJECT_NAME:
             if self.sample_project is None:
                 self.sample_project = create_sample_project()
             return self.sample_project
         else:
-            return None
+            project = self.get_project(project_id)
+            tbl_defs = project.event_data_tables
+            definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
+            for edt in tbl_defs:
+                defs = self.get_event_data_table_definition(
+                    project_id, edt.get_full_name()
+                )
+                definitions[edt] = defs if defs is not None else {}
 
-class CachingMitzuStorage(MitzuStorage):
-    def __init__(self, mitzu_storage: MitzuStorage):
-        super().__init__()
+            return M.DiscoveredProject(definitions, project)
 
-        self.mitzu_storage = mitzu_storage
+    def set_project(self, project_id: str, project: M.Project):
+        # TBD Project now have project_id
+        return self.mitzu_cache.put(PROJECT_PREFIX + project_id, project)
 
-    @functools.cache
-    def list_projects(self) -> List[str]:
-        return self.mitzu_storage.list_projects()
+    def get_project(self, project_id: str) -> M.Project:
+        return self.mitzu_cache.get(PROJECT_PREFIX + project_id)
 
-    @functools.cache
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        return self.mitzu_storage.get_project(key)
-
-
-class FileSystemStorage(MitzuStorage):
-    def __init__(self, base_path: str = "./", projects_path: str = PROJECTS_SUB_PATH):
-        super().__init__()
-        if base_path.endswith("/"):
-            base_path = base_path[:-1]
-        self.base_path = base_path
-        self.projects_path = projects_path
+    def delete_project(self, project_id: str):
+        self.mitzu_cache.clear(PROJECT_PREFIX + project_id)
 
     def list_projects(self) -> List[str]:
-        folder = Path(f"{self.base_path}/{self.projects_path}/")
-        folder.mkdir(parents=True, exist_ok=True)
-        res = os.listdir(folder)
-        res = [
-            os.path.basename(r)[: -len(PROJECT_SUFFIX)]
-            for r in res
-            if r.endswith(PROJECT_SUFFIX)
-        ]
+        return self.mitzu_cache.list_keys(PROJECT_PREFIX)
 
-        if len(res) == 0:
-            return super().list_projects()
-        return res
+    def set_connection(self, connection_id: str, connection: M.Connection):
+        self.mitzu_cache.put(CONNECTION_PREFIX + connection_id, connection)
 
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        if key == SAMPLE_PROJECT_NAME:
-            return super().get_project(key)
+    def get_connection(self, connection_id: str) -> M.Connection:
+        return self.mitzu_cache.get(CONNECTION_PREFIX + connection_id)
 
-        folder = Path(f"{self.base_path}/{self.projects_path}/")
-        folder.mkdir(parents=True, exist_ok=True)
+    def delete_connection(self, connection_id: str):
+        self.mitzu_cache.clear(CONNECTION_PREFIX + connection_id)
 
-        path = f"{folder}/{key}{PROJECT_SUFFIX}"
-        with open(path, "rb") as f:
-            res = M.DiscoveredProject.deserialize(f.read())
-            res.project._discovered_project.set_value(res)
-            return res
+    def list_connections(self) -> List[str]:
+        return self.mitzu_cache.list_keys(CONNECTION_PREFIX)
 
+    def set_event_data_table_definition(
+        self, project_id: str, edt_full_name: str, definitions: Dict[str, M.EventDef]
+    ):
+        self.mitzu_cache.put(
+            SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
+            definitions,
+        )
 
-class S3MitzuStorage(MitzuStorage):
-    def __init__(self, base_path: str, projects_path: str = PROJECTS_SUB_PATH):
-        super().__init__()
-        if base_path.endswith("/"):
-            base_path = base_path[:-1]
-        self.base_path = base_path
-        self.projects_path = projects_path
+    def get_event_data_table_definition(
+        self, project_id: str, edt_full_name: str
+    ) -> Dict[str, M.EventDef]:
+        return self.mitzu_cache.get(
+            SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
+            {},
+        )
 
-    def get_project_bucket_and_path(self) -> Tuple[str, str]:
-        s3_url = parse.urlparse(self.base_path)
-        paths = s3_url.path.split("/")
-        bucket = paths[0]
-        path = "/".join(paths[1:] + [self.projects_path]) + "/"
-        return bucket, path
-
-    def list_projects(self) -> List[str]:
-        bucket, prefix = self.get_project_bucket_and_path()
-        conn = boto3.client("s3")
-        res = [
-            key["Key"]
-            for key in conn.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
-        ]
-
-        res = [
-            os.path.basename(r)[: -len(PROJECT_SUFFIX)]
-            for r in res
-            if r.endswith(PROJECT_SUFFIX)
-        ]
-        if len(res) == 0:
-            return super().list_projects()
-        return res
-
-    def get_project(self, key: str) -> Optional[M.DiscoveredProject]:
-        if key == SAMPLE_PROJECT_NAME:
-            return super().get_project(key)
-
-        bucket, prefix = self.get_project_bucket_and_path()
-        conn = boto3.client("s3")
-
-        full_key = prefix + key + PROJECT_SUFFIX
-
-        obj = conn.get_object(Bucket=bucket, Key=full_key)
-        raw_discovered_project = obj["Body"].read()
-        res = M.DiscoveredProject.deserialize(raw_discovered_project)
-
-        res.project._discovered_project.set_value(res)
-        return res
+    def delete_event_data_table_definition(self, project_id: str, edt_full_name: str):
+        self.mitzu_cache.clear(
+            SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name
+        )

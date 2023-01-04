@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
-from urllib.parse import quote
+from typing import Any, Dict, Optional, Union, cast
+from urllib.parse import quote, urlparse
 
 import dash_bootstrap_components as dbc
 import dash.development.base_component as bc
@@ -21,13 +21,13 @@ import mitzu.webapp.pages.explore.toolbar_handler as TH
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.helper as H
-
+import mitzu.webapp.pages.paths as P
 import flask
+
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
 
 
-from mitzu.helper import LOGGER
 from mitzu.webapp.helper import (
     CHILDREN,
     METRIC_SEGMENTS,
@@ -60,22 +60,24 @@ ALL_INPUT_COMPS = {
             {"type": CS.COMPLEX_SEGMENT_GROUP_BY, "index": ALL}, "value"
         ),
         DS.TIME_GROUP_DROPDOWN: Input(DS.TIME_GROUP_DROPDOWN, "value"),
-        DS.CUSTOM_DATE_PICKER_START_DATE: Input(DS.CUSTOM_DATE_PICKER, "start_date"),
-        DS.CUSTOM_DATE_PICKER_END_DATE: Input(DS.CUSTOM_DATE_PICKER, "end_date"),
+        DS.CUSTOM_DATE_PICKER: Input(DS.CUSTOM_DATE_PICKER, "value"),
         DS.LOOKBACK_WINDOW_DROPDOWN: Input(DS.LOOKBACK_WINDOW_DROPDOWN, "value"),
         MC.TIME_WINDOW_INTERVAL_STEPS: Input(MC.TIME_WINDOW_INTERVAL_STEPS, "value"),
         MC.TIME_WINDOW_INTERVAL: Input(MC.TIME_WINDOW_INTERVAL, "value"),
         MC.AGGREGATION_TYPE: Input(MC.AGGREGATION_TYPE, "value"),
         MC.RESOLUTION_DD: Input(MC.RESOLUTION_DD, "value"),
         TH.GRAPH_REFRESH_BUTTON: Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
-        TH.CHART_BUTTON: Input(TH.CHART_BUTTON, "n_clicks"),
-        TH.TABLE_BUTTON: Input(TH.TABLE_BUTTON, "n_clicks"),
-        TH.SQL_BUTTON: Input(TH.SQL_BUTTON, "n_clicks"),
+        TH.CHART_TYPE_DD: Input(TH.CHART_TYPE_DD, "value"),
+        TH.GRAPH_CONTENT_TYPE: Input(TH.GRAPH_CONTENT_TYPE, "value"),
     }
 }
 
 
-def create_navbar(metric: Optional[M.Metric], notebook_mode: bool) -> dbc.Navbar:
+def create_navbar(
+    metric: Optional[M.Metric],
+    notebook_mode: bool,
+    project_name: str,
+) -> dbc.Navbar:
     navbar_children = [
         MNB.from_metric_type(MNB.MetricType.from_metric(metric)),
         dbc.Button(
@@ -99,7 +101,7 @@ def create_navbar(metric: Optional[M.Metric], notebook_mode: bool) -> dbc.Navbar
     return NB.create_mitzu_navbar(
         NAVBAR_ID,
         navbar_children,
-        not notebook_mode,
+        off_canvas_toggler_visible=not notebook_mode,
     )
 
 
@@ -117,7 +119,9 @@ def create_explore_page(
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
     graph_container = create_graph_container(metric)
-    navbar = create_navbar(metric, notebook_mode)
+    navbar = create_navbar(
+        metric, notebook_mode, discovered_project.project.project_name
+    )
     res = html.Div(
         children=[
             navbar,
@@ -145,7 +149,7 @@ def create_explore_page(
 def create_graph_container(metric: Optional[M.Metric]):
     metrics_config_card = MC.from_metric(metric)
     graph_handler = GH.create_graph_container()
-    toolbar_handler = TH.create_toolbar_handler()
+    toolbar_handler = TH.from_metric(metric)
 
     graph_container = dbc.Card(
         children=[
@@ -207,6 +211,7 @@ def create_metric_from_all_inputs(
             lookback_days=metric_config.lookback_days,
             start_dt=metric_config.start_dt,
             end_dt=metric_config.end_dt,
+            chart_type=metric_config.chart_type,
             resolution=metric_config.resolution,
             custom_title="",
             aggregation=agg_str,
@@ -218,6 +223,7 @@ def create_metric_from_all_inputs(
             lookback_days=metric_config.lookback_days,
             start_dt=metric_config.start_dt,
             end_dt=metric_config.end_dt,
+            chart_type=metric_config.chart_type,
             custom_title="",
             aggregation=agg_str,
         )
@@ -229,6 +235,7 @@ def create_metric_from_all_inputs(
             start_dt=metric_config.start_dt,
             end_dt=metric_config.end_dt,
             retention_window=res_tw,
+            chart_type=metric_config.chart_type,
             resolution=metric_config.resolution,
             custom_title="",
             aggregation=agg_str,
@@ -238,13 +245,17 @@ def create_metric_from_all_inputs(
 
 
 def handle_input_changes(
-    all_inputs: Dict[str, Any], discovered_project: M.DiscoveredProject
-) -> Tuple[List[html.Div], List[html.Div], str, str]:
+    all_inputs: Dict[str, Any],
+    discovered_project: M.DiscoveredProject,
+) -> Dict[str, Any]:
     metric = create_metric_from_all_inputs(all_inputs, discovered_project)
     if metric is not None:
         url_params = "?m=" + quote(SE.to_compressed_string(metric))
     else:
         url_params = ""
+
+    url = urlparse(all_inputs[H.MITZU_LOCATION])
+    url = f"{url.scheme}://{url.hostname}/{url.path}{url_params}"
 
     metric_segments = MS.from_metric(
         discovered_project=discovered_project,
@@ -258,43 +269,59 @@ def handle_input_changes(
         # This is the case when the url query is not parseable
         metric_type_val = all_inputs[MNB.METRIC_TYPE_DROPDOWN]
 
-    return (metric_segments, mc_children, url_params, metric_type_val)
+    chart_type_dd = TH.create_chart_type_dropdown(metric)
+
+    return {
+        MS.METRIC_SEGMENTS: metric_segments,
+        MC.METRICS_CONFIG_CONTAINER: mc_children,
+        CLIPBOARD: url,
+        H.MITZU_LOCATION: url_params,
+        MNB.METRIC_TYPE_DROPDOWN: metric_type_val,
+        TH.CHART_TYPE_CONTAINER: chart_type_dd,
+    }
 
 
 def create_callbacks():
     GH.create_callbacks()
-    TH.create_callbacks()
     SS.create_callbacks()
 
     @callback(
-        output=[
-            Output(MS.METRIC_SEGMENTS, "children"),
-            Output(MC.METRICS_CONFIG_CONTAINER, "children"),
-            Output(H.MITZU_LOCATION, "search"),
-            Output(CLIPBOARD, "content"),
-            Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
-        ],
+        output={
+            MS.METRIC_SEGMENTS: Output(MS.METRIC_SEGMENTS, "children"),
+            MC.METRICS_CONFIG_CONTAINER: Output(
+                MC.METRICS_CONFIG_CONTAINER, "children"
+            ),
+            H.MITZU_LOCATION: Output(H.MITZU_LOCATION, "search"),
+            CLIPBOARD: Output(CLIPBOARD, "content"),
+            MNB.METRIC_TYPE_DROPDOWN: Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
+            TH.CHART_TYPE_CONTAINER: Output(TH.CHART_TYPE_CONTAINER, "children"),
+        },
         inputs=ALL_INPUT_COMPS,
         state=dict(
-            pathname=State(H.MITZU_LOCATION, "pathname"),
+            href=State(H.MITZU_LOCATION, "href"),
         ),
         prevent_initial_call=True,
     )
-    def on_inputs_change(
-        all_inputs: Dict[str, Any], pathname: str
-    ) -> Tuple[List[html.Div], List[html.Div], str, str, str]:
-        project_name = pathname.split("/")[-1]
+    def on_inputs_change(all_inputs: Dict[str, Any], href: str) -> Dict[str, Any]:
+        url = urlparse(href)
+        project_id = P.get_path_value(
+            P.PROJECTS_EXPLORE_PATH, url.path, P.PROJECT_ID_PATH_PART
+        )
         depenedencies: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        discovered_project = depenedencies.storage.get_project(project_name)
+        discovered_project = depenedencies.storage.get_discovered_project(project_id)
 
         if discovered_project is None:
-            return no_update, no_update, no_update, no_update, no_update  # noqa
+            return {
+                MS.METRIC_SEGMENTS: no_update,
+                MC.METRICS_CONFIG_CONTAINER: no_update,
+                CLIPBOARD: no_update,
+                H.MITZU_LOCATION: no_update,
+                MNB.METRIC_TYPE_DROPDOWN: no_update,
+                TH.CHART_TYPE_CONTAINER: no_update,
+            }
         all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
-        LOGGER.debug(all_inputs)
-        segs, configs, url_params, type_dd_val = handle_input_changes(
-            all_inputs, discovered_project
-        )
-        url = f"{flask.request.host_url}/{flask.request.path}{url_params}"
-        return segs, configs, url_params, url, type_dd_val
+        all_inputs[H.MITZU_LOCATION] = href
+
+        return handle_input_changes(all_inputs, discovered_project)

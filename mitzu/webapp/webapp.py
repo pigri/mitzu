@@ -7,7 +7,7 @@ import dash.development.base_component as bc
 import mitzu.webapp.dependencies as DEPS
 from dash import CeleryManager, Dash, DiskcacheManager, html, page_container, dcc
 from dash.long_callback.managers import BaseLongCallbackManager
-from typing import cast
+from typing import cast, Optional
 from mitzu.helper import LOGGER
 from mitzu.webapp.helper import MITZU_LOCATION
 
@@ -17,10 +17,15 @@ import mitzu.webapp.configs as configs
 
 MAIN = "main"
 
+MDB_CSS = "https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.0.1/mdb.min.css"
+DCC_DBC_CSS = (
+    "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.min.css"
+)
 
-def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
-    LOGGER.info("Initializing WebApp")
-    offcanvas = OC.create_offcanvas(dependencies)
+
+def create_webapp_layout() -> bc.Component:
+    LOGGER.debug("Initializing WebApp")
+    offcanvas = OC.create_offcanvas()
     location = dcc.Location(id=MITZU_LOCATION, refresh=False)
     return html.Div(
         children=[location, offcanvas, page_container],
@@ -51,9 +56,10 @@ def get_callback_manager(dependencies: DEPS.Dependencies) -> BaseLongCallbackMan
         )
 
 
-def create_dash_app() -> Dash:
+def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
     server = flask.Flask(__name__)
-    dependencies = DEPS.Dependencies.from_configs(server)
+    if dependencies is None:
+        dependencies = DEPS.Dependencies.from_configs(server)
 
     with server.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
@@ -63,21 +69,24 @@ def create_dash_app() -> Dash:
         compress=configs.DASH_COMPRESS_RESPONSES,
         server=server,
         external_stylesheets=[
-            dbc.themes.ZEPHYR,
+            MDB_CSS,
             dbc.icons.BOOTSTRAP,
-            configs.DASH_COMPONENTS_CSS,
+            # dbc.themes.ZEPHRY,
+            "assets/explore_page.css",
+            "assets/dropdown.css",
+            "assets/date_input.css",
         ],
         assets_folder=configs.DASH_ASSETS_FOLDER,
         assets_url_path=configs.DASH_ASSETS_URL_PATH,
         serve_locally=configs.DASH_SERVE_LOCALLY,
         title=configs.DASH_TITLE,
-        update_title=f"{configs.DASH_TITLE}...",
+        update_title=None,
         suppress_callback_exceptions=True,
         use_pages=True,
         long_callback_manager=get_callback_manager(dependencies),
     )
     app._favicon = configs.DASH_FAVICON_PATH
-    app.layout = create_webapp_layout(dependencies)
+    app.layout = create_webapp_layout()
 
     @server.route(configs.HEALTH_CHECK_PATH)
     def healthcheck():

@@ -1,7 +1,7 @@
 import mitzu.webapp.configs as configs
 import redis
 import diskcache
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 from abc import ABC
 from dataclasses import dataclass, field
 
@@ -20,7 +20,7 @@ class MitzuCache(ABC):
         for key in self.list_keys(prefix):
             self.clear(key)
 
-    def list_keys(self, prefix: Optional[str]) -> List[str]:
+    def list_keys(self, prefix: Optional[str], strip_prefix: bool = True) -> List[str]:
         raise NotImplementedError()
 
 
@@ -40,12 +40,41 @@ class DiskMitzuCache(MitzuCache):
     def clear(self, key: str) -> None:
         self._disk_cache.pop(key)
 
-    def list_keys(self, prefix: Optional[str] = None) -> List[str]:
+    def list_keys(
+        self, prefix: Optional[str] = None, strip_prefix: bool = True
+    ) -> List[str]:
         keys = self._disk_cache.iterkeys()
-        return [k for k in keys if k.startswith(prefix) or prefix is None]
+        start_pos = len(prefix) if strip_prefix and prefix is not None else 0
+        return [k[start_pos:] for k in keys if k.startswith(prefix) or prefix is None]
 
     def get_disk_cache(self) -> diskcache.Cache:
         return self._disk_cache
+
+
+@dataclass(frozen=True)
+class InMemoryCache(MitzuCache):
+    """For testing only"""
+
+    _cache: Dict[str, Any] = field(default_factory=dict)
+
+    def put(self, key: str, val: Any, expire: Optional[float] = None):
+        self._cache[key] = val
+
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        res = self._cache.get(key)
+        if res is None:
+            return default
+        return res
+
+    def clear(self, key: str) -> None:
+        self._cache.pop(key)
+
+    def list_keys(
+        self, prefix: Optional[str] = None, strip_prefix: bool = True
+    ) -> List[str]:
+        keys = self._cache.keys()
+        start_pos = len(prefix) if strip_prefix and prefix is not None else 0
+        return [k[start_pos:] for k in keys if prefix is None or k.startswith(prefix)]
 
 
 @dataclass(init=False, frozen=True)
@@ -81,7 +110,10 @@ class RedisMitzuCache(MitzuCache):
     def clear(self, key: str) -> None:
         self._redis.delete(key)
 
-    def list_keys(self, prefix: Optional[str] = None) -> List[str]:
+    def list_keys(
+        self, prefix: Optional[str] = None, strip_prefix: bool = True
+    ) -> List[str]:
         if not prefix:
             prefix = "*"
-        return [k for k in self._redis.scan_iter(f"prefix:{prefix}")]
+        start_pos = len(prefix) if strip_prefix and prefix != "*" else 0
+        return [k[start_pos:] for k in self._redis.scan_iter(f"prefix:{prefix}")]

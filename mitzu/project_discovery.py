@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional, Callable
 
 import mitzu.model as M
 from mitzu.helper import LOGGER
@@ -13,8 +13,9 @@ class ProjectDiscoveryError(Exception):
 
 
 class ProjectDiscovery:
-    def __init__(self, project: M.Project):
+    def __init__(self, project: M.Project, callback: Optional[Callable] = None):
         self.project = project
+        self.callback = callback
 
     def _get_field_values(
         self,
@@ -111,14 +112,18 @@ class ProjectDiscovery:
                 event_specific_field_values = self._get_field_values(
                     ed_table, specific_fields, True
                 )
-                definitions[ed_table] = self._merge_generic_and_specific_definitions(
+                defs = self._merge_generic_and_specific_definitions(
                     ed_table,
                     any_event_field_values,
                     event_specific_field_values,
                 )
+                definitions[ed_table] = defs
             except Exception as exc:
                 LOGGER.error(f"{ed_table.table_name} failed to discover: {str(exc)}")
                 errors[ed_table.table_name] = exc
+
+            if self.callback is not None:
+                self.callback(ed_table, defs, errors.get(ed_table.table_name))
 
         dd = M.DiscoveredProject(
             definitions=definitions,

@@ -61,7 +61,7 @@ def create_property_dropdown(
         multi=False,
         placeholder=placeholder,
         searchable=True,
-        className=PROPERTY_NAME_DROPDOWN,
+        className=PROPERTY_NAME_DROPDOWN + " border-0",
         id={
             "type": PROPERTY_NAME_DROPDOWN,
             "index": type_index,
@@ -108,7 +108,7 @@ def create_value_input(
         clearable=False,
         searchable=True,
         placeholder=placeholder,
-        className=PROPERTY_VALUE_INPUT,
+        className=PROPERTY_VALUE_INPUT + " border-0",
         id={
             "type": PROPERTY_VALUE_INPUT,
             "index": type_index,
@@ -160,7 +160,7 @@ def create_property_operator_dropdown(
         multi=False,
         searchable=False,
         clearable=False,
-        className=PROPERTY_OPERATOR_DROPDOWN,
+        className=PROPERTY_OPERATOR_DROPDOWN + " border-0",
         id={
             "type": PROPERTY_OPERATOR_DROPDOWN,
             "index": type_index,
