@@ -234,7 +234,9 @@ def handle_project_discovery(
         else:
 
             def edt_callback(
-                edt: M.EventDataTable, defs: Dict[str, M.EventDef], exc: Exception
+                edt: M.EventDataTable,
+                defs: Dict[str, M.EventDef],
+                exc: Optional[Exception],
             ):
                 if exc is None:
                     storage.set_event_data_table_definition(
@@ -243,7 +245,7 @@ def handle_project_discovery(
                     for df in defs.values():
                         rows.append(create_table_row(edt, df))
                 else:
-                    traceback.print_exception(exc)
+                    traceback.print_exception(type(exc), exc, exc.__traceback__)
                     rows.append(create_failed_table_row(edt, exc))
                 set_progress((rows, f"Discovering tables ({len(rows)}/{all_rows})"))
 
