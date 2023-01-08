@@ -75,12 +75,14 @@ class OAuthAuthorizer:
     _config: AuthConfig = field(default_factory=lambda: AuthConfig())
     _tokens: Dict[str, Dict[str, str]] = field(default_factory=dict)
     _unauthorized_page_content: str = field(default_factory=lambda: "")
+    _allowed_email_domain: Optional[str] = field(default_factory=lambda: None)
 
     @classmethod
     def create(
         cls,
         oauth_config: OAuthConfig,
         token_validator: Optional[TokenValidator] = None,
+        allowed_email_domain: Optional[str] = None,
     ) -> OAuthAuthorizer:
         if token_validator is None:
             token_validator = JWTTokenValidator(
@@ -100,13 +102,8 @@ class OAuthAuthorizer:
             _oauth_config=oauth_config,
             _token_validator=token_validator,
             _unauthorized_page_content=unauthorized_page_content,
+            _allowed_email_domain=allowed_email_domain,
         )
-
-    def get_user_email(self, encoded_token: str) -> Optional[str]:
-        val = self._tokens.get(encoded_token, {})
-        if val is not None:
-            return val.get("email")
-        return None
 
     def _get_unauthenticated_response(
         self, redirect: Optional[str] = None
@@ -170,8 +167,20 @@ class OAuthAuthorizer:
             if decoded_token is None:
                 return None
 
+            user_email = decoded_token.get("email")
+            if user_email is None:
+                LOGGER.warning("Email field is missing from the identity token")
+                return None
+
+            if self._allowed_email_domain is not None and not user_email.endswith(
+                self._allowed_email_domain
+            ):
+                LOGGER.warning(
+                    f"User tried to login with not allowed email address: {user_email}"
+                )
+                return None
+
             self._tokens[token] = decoded_token
-            user_email = self.get_user_email(token)
             LOGGER.info(f"Identity token stored for user: {user_email}")
 
             return decoded_token
