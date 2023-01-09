@@ -1,5 +1,6 @@
 import json
 import flask
+import pytest
 from unittest.mock import patch, MagicMock
 from requests.models import Response
 
@@ -35,6 +36,12 @@ config = OAuthConfig(
 token_validator = MagicMock()
 authorizer = OAuthAuthorizer.create(config, token_validator)
 authorizer.setup_authorizer(app)
+
+
+@pytest.fixture(autouse=True)
+def before_and_after_test():
+    token_validator.return_value = None
+    token_validator.side_effect = None
 
 
 def get_cookie_by_name(cookie_name, resp: flask.Response) -> Optional[str]:
@@ -235,7 +242,7 @@ def test_authenticated_session_survives_mitzu_restart():
 
 def test_invalid_forged_tokens_are_rejected():
     token = "invalid-token"
-    token_validator.validate_token.side_effect = Exception()
+    token_validator.validate_token.side_effect = Exception("token rejected")
     with app.test_request_context(
         "/", headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"}
     ):
@@ -278,3 +285,44 @@ def test_sign_out_with_sign_out_url():
         assert resp.status_code == 307
         assert resp.headers["Location"] == config.sign_out_url
         assert_auth_token_removed(resp)
+
+
+@patch("requests.post")
+def test_rejects_not_allowed_email_domains_when_configured(req_mock):
+    response = Response()
+    response.code = "success"
+    response.status_code = 200
+    response._content = json.dumps(
+        {
+            "id_token": auth_token,
+        }
+    ).encode("utf-8")
+
+    req_mock.return_value = response
+    token_validator.validate_token.return_value = {"email": "user@email.com"}
+
+    app = flask.Flask(__name__)
+    authorizer = OAuthAuthorizer.create(
+        oauth_config=config,
+        token_validator=token_validator,
+        allowed_email_domain="allowed.com",
+    )
+    authorizer.setup_authorizer(app)
+
+    code = "1234567890"
+    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert_redirected_to_unauthorized_page(resp)
