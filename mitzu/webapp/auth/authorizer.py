@@ -29,6 +29,18 @@ class AuthConfig:
 
 @dataclass(frozen=True)
 class OAuthConfig:
+    """
+    Contains the minimal configuration for an OAuth backend.
+
+    :param client_id: Client ID, used for validing the JWT token claim and for fetching the identity token
+    :param client_secret: Client secret, used for fetching the identity toke
+    :param jwks_url: URL to fetch the JSON Web Key Set (JWKS)
+    :param sign_in_url: URL to where the user is redirected at the beginning of the sign in flow
+    :param sign_out_url: default is None, if set then the user is redirected to this URL at the nd of the sing out flow
+    :param token_url: URL where the tokens can be fetched during the sign in flow
+    :param jwt_algorithms: List of supported signing algorithms for the JWT tokens
+    """
+
     client_id: str
     client_secret: str
     jwks_url: str

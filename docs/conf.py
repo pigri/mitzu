@@ -22,6 +22,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx_autodoc_typehints',
+    'sphinx.ext.autosectionlabel',
 ]
 
 # make sure the mitzu root is in the path

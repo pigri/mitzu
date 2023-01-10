@@ -15,6 +15,6 @@ You can find the source on github: https://github.com/mitzu-io/mitzu
    quickstart
    connection
    project
-   
+   webapp
 
 .. .. autosummary::

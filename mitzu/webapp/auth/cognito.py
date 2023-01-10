@@ -8,14 +8,6 @@ from mitzu.webapp.auth.authorizer import (
 
 
 class Cognito:
-    _client_id: str
-    _client_secret: str
-    _domain: str
-    _region: str
-    _pool_id: str
-    _redirect_url: str
-    _jwt_algo: List[str]
-
     @classmethod
     def get_config(
         cls,
@@ -27,6 +19,25 @@ class Cognito:
         redirect_url: Optional[str] = None,
         jwt_algo: List[str] = ["RS256"],
     ) -> OAuthConfig:
+        """
+        Creates a new OAuthConfig instance using the Cognito specific settings.
+
+        :param pool_id: ID of the AWS Cognito User Pool (something like ``<aws region>_xxxxxxxxx``),
+            if it's not set then the ``COGNITO_POOL_ID`` environmental variable will be used
+        :param region: AWS region of the AWS Cognito User Pool (eg. eu-west-1),
+            if it's not set then the ``COGNITO_REGION`` environmental variable will be used
+        :param domain: AWS Cognito domain set for the App integrations
+            (``xxxxx`` from the ``https://xxxxx.auth.eu-west-1.amazoncognito.com``),
+            if it's not set the the ``COGNITO_DOMAIN`` environmental variable will be used
+        :param client_id: Client ID of the configured App,
+            if it's not set then the ``COGNITO_CLIENT_ID`` environmental variable will be used
+        :param client_secret: Client secret of the configured App,
+            if it's not set then the ``COGNITO_CLIENT_SECRET`` environmental variable will be used
+        :param redirect_url: OAuth redirection URL, it's ``<your Mitzu base URL>/auth/oauth`` eg. ``http://localhost:8082/auth/oauth``,
+            if it's not set then the ``COGNITO_REDIRECT_URL`` environmental variable will be used
+        :param jwt_algo: List of accepted JWT token signing algorithms, by default it's ``["RS256"]``
+            it can be overwritted with the ``COGNITO_JWT_ALGORITHMS`` environmental variable
+        """
         pool_id = cls.fallback_to_env_var(pool_id, "COGNITO_POOL_ID")
         region = cls.fallback_to_env_var(region, "COGNITO_REGION")
         domain = cls.fallback_to_env_var(domain, "COGNITO_DOMAIN")
