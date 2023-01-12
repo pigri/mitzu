@@ -1,19 +1,19 @@
 from __future__ import annotations
 
+from typing import Optional, cast
 
-import dash_bootstrap_components as dbc
-import mitzu.webapp.offcanvas as OC
 import dash.development.base_component as bc
-import mitzu.webapp.dependencies as DEPS
-from dash import CeleryManager, Dash, DiskcacheManager, html, page_container, dcc
+import dash_bootstrap_components as dbc
+import flask
+from dash import CeleryManager, Dash, DiskcacheManager, dcc, html, page_container
 from dash.long_callback.managers import BaseLongCallbackManager
-from typing import cast, Optional
+
+import mitzu.webapp.configs as configs
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.storage as S
+import mitzu.webapp.offcanvas as OC
 from mitzu.helper import LOGGER
 from mitzu.webapp.helper import MITZU_LOCATION
-
-import flask
-import mitzu.webapp.configs as configs
-
 
 MAIN = "main"
 
@@ -23,9 +23,9 @@ DCC_DBC_CSS = (
 )
 
 
-def create_webapp_layout() -> bc.Component:
+def create_webapp_layout(storage: S.MitzuStorage) -> bc.Component:
     LOGGER.debug("Initializing WebApp")
-    offcanvas = OC.create_offcanvas()
+    offcanvas = OC.create_offcanvas(storage)
     location = dcc.Location(id=MITZU_LOCATION, refresh=False)
     return html.Div(
         children=[location, offcanvas, page_container],
@@ -84,9 +84,12 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         suppress_callback_exceptions=True,
         use_pages=True,
         long_callback_manager=get_callback_manager(dependencies),
+        external_scripts=[
+            "https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.2/dragula.min.js"
+        ],
     )
     app._favicon = configs.DASH_FAVICON_PATH
-    app.layout = create_webapp_layout()
+    app.layout = create_webapp_layout(dependencies.storage)
 
     @server.route(configs.HEALTH_CHECK_PATH)
     def healthcheck():

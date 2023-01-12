@@ -56,6 +56,7 @@ UPDATE_INTERVAL = 100
 
 
 def create_table_row(edt: M.EventDataTable) -> html.Tr:
+
     return html.Tr(
         [
             html.Td(
@@ -830,32 +831,33 @@ def manage_event_data_table_body(
                     for f in field.get_all_subfields():
                         field_names[f._get_name()] = f
 
-                ignore_fields = (
-                    [
-                        field_names[ic]._get_name()
-                        for ic in edt_properties[4]
-                        if ic in field_names
-                    ]  # noqa
-                    if edt_properties[4] is not None
-                    else []
+                user_id_field_name = edt_properties[0]
+                evnet_time_field_name = edt_properties[1]
+                event_name_field_name = edt_properties[2]
+                date_partition_field_name = edt_properties[3]
+                ignored_fields_names = edt_properties[4]
+                ignored_fields_names = (
+                    ignored_fields_names if ignored_fields_names is not None else []
                 )
 
                 edt = M.EventDataTable(
                     table_name=table_name,
                     schema=schema,
-                    user_id_field=field_names.get(edt_properties[0], MISSING_FIELD),
-                    event_time_field=field_names.get(edt_properties[1], MISSING_FIELD),
+                    user_id_field=field_names.get(user_id_field_name, MISSING_FIELD),
+                    event_time_field=field_names.get(
+                        evnet_time_field_name, MISSING_FIELD
+                    ),
                     event_name_field=(
-                        field_names.get(edt_properties[2])
-                        if edt_properties[2] is not None
+                        field_names.get(event_name_field_name)
+                        if event_name_field_name is not None
                         else None
                     ),
                     date_partition_field=(
-                        field_names.get(edt_properties[3])
-                        if edt_properties[3] is not None
+                        field_names.get(date_partition_field_name)
+                        if date_partition_field_name is not None
                         else None
                     ),
-                    ignored_fields=ignore_fields,
+                    ignored_fields=ignored_fields_names,
                 )
                 results_tbl_children.append(create_table_row(edt))
             else:

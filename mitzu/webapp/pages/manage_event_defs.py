@@ -42,9 +42,7 @@ def create_table_row(edt: M.EventDataTable, event_def: M.EventDef) -> html.Tr:
     all_fields: List[str] = []
     for f in fields:
         all_fields.extend(sf._get_name() for sf in f.get_all_subfields())
-    properties = ", ".join(all_fields)
-    if len(properties) > 200:
-        properties = properties[:200] + "..."
+    properties = f"{len(all_fields)} properties"
 
     return html.Tr(
         [
@@ -117,7 +115,6 @@ def layout(project_id: Optional[str]) -> bc.Component:
                                     data=options,
                                     value=project_id,
                                     searchable=True,
-                                    size="xs",
                                     placeholder="Select project",
                                 ),
                                 width="2",
@@ -130,10 +127,35 @@ def layout(project_id: Optional[str]) -> bc.Component:
                                     ],
                                     id=MANAGE_PROJECT_BUTTON,
                                     external_link=True,
+                                    color="light",
                                     disabled=project_id is None,
-                                    size="sm",
                                 ),
-                                width="2",
+                                width="auto me-auto",
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [
+                                        html.B(className="bi bi-x-circle me-1"),
+                                        "Cancel",
+                                    ],
+                                    id=DISCOVER_CANCEL_BUTTON,
+                                    color="light",
+                                    class_name="d-inline-block mb-3",
+                                ),
+                                width="auto",
+                                class_name="invisible",
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [
+                                        html.B(className="bi bi-search me-1"),
+                                        "Discover project",
+                                    ],
+                                    id=DISCOVER_PROJECT_BUTTON,
+                                    disabled=project_id is None,
+                                    class_name="d-inline-block mb-3 me-3",
+                                ),
+                                width="auto",
                             ),
                         ],
                     ),
@@ -157,19 +179,6 @@ def layout(project_id: Optional[str]) -> bc.Component:
                         storage,
                     ),
                     html.Hr(),
-                    dbc.Button(
-                        [html.B(className="bi bi-search me-1"), "Discover project"],
-                        id=DISCOVER_PROJECT_BUTTON,
-                        disabled=project_id is None,
-                        class_name="d-inline-block mb-3 me-3",
-                    ),
-                    dbc.Button(
-                        [html.B(className="bi bi-x-circle me-1"), "Cancel Discovery"],
-                        id=DISCOVER_CANCEL_BUTTON,
-                        disabled=True,
-                        color="light",
-                        class_name="d-inline-block mb-3",
-                    ),
                 ],
             ),
         ],
@@ -199,7 +208,7 @@ def manage_project_disabled(project_id: str) -> Tuple[bool, str]:
     running=[
         (Output(DISCOVER_PROJECT_BUTTON, "disabled"), True, False),
         (Output(SELECT_PROJECT_DD, "disabled"), True, False),
-        (Output(DISCOVER_CANCEL_BUTTON, "disabled"), False, True),
+        (Output(DISCOVER_CANCEL_BUTTON, "class_name"), "visible", "invisible"),
         (
             Output(DISCOVERY_SPINNER, "spinner_class_name"),
             "me-1 d-inline-block",

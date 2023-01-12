@@ -1,26 +1,27 @@
-import dash_bootstrap_components as dbc
-from dash import (
-    html,
-    register_page,
-    callback,
-    Output,
-    Input,
-    State,
-    ALL,
-    no_update,
-    ctx,
-)
-import dash.development.base_component as bc
-import mitzu.webapp.navbar as NB
-from mitzu.webapp.helper import MITZU_LOCATION
-import mitzu.webapp.pages.paths as P
-import mitzu.webapp.pages.connections.manage_connections_component as MCC
 from typing import Any, List, Optional, cast
-import mitzu.webapp.dependencies as DEPS
-import flask
-import mitzu.model as M
-import mitzu.helper as H
 
+import dash.development.base_component as bc
+import dash_bootstrap_components as dbc
+import flask
+from dash import (
+    ALL,
+    Input,
+    Output,
+    State,
+    callback,
+    ctx,
+    html,
+    no_update,
+    register_page,
+)
+
+import mitzu.helper as H
+import mitzu.model as M
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.navbar as NB
+import mitzu.webapp.pages.connections.manage_connections_component as MCC
+import mitzu.webapp.pages.paths as P
+from mitzu.webapp.helper import MITZU_LOCATION
 
 CONNECTION_SAVE_BUTTON = "connection_save_button"
 CONNECTION_CLOSE_BUTTON = "connection_close_button"

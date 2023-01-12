@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import pathlib
 import pickle
@@ -13,6 +14,7 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
     List,
@@ -21,10 +23,10 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    Callable,
 )
-
 import pandas as pd
+from uuid import uuid4
+
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
@@ -33,11 +35,9 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.helper as helper
 import mitzu.notebook.model_loader as ML
 import mitzu.project_discovery as D
-import mitzu.visualization.titles as TI
-import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
-from uuid import uuid4
-import logging
+import mitzu.visualization.plot as PLT
+import mitzu.visualization.titles as TI
 
 ANY_EVENT_NAME = "any_event"
 
@@ -453,13 +453,13 @@ class Connection:
         res = parse.parse_qs(self.url_params).get(param)
         if res is not None and len(res) == 1:
             return res[0]
-        raise ValueError(f"Expected 1 value for {param} in {self.url_params}")
+        return None
 
 
 @dataclass(frozen=True)
 class DiscoverySettings:
     max_enum_cardinality: int = 300
-    max_map_key_cardinality: int = 500
+    max_map_key_cardinality: int = 1000
 
     end_dt: Optional[datetime] = None
     property_sample_rate: int = 0
@@ -497,7 +497,7 @@ class EventDataTable:
     ignored_fields: List[str] = field(default_factory=lambda: [])
 
     # TBD change to Field type
-    event_specific_fields: List[str] = field(default_factory=lambda: [])
+    event_specific_fields: Optional[List[str]] = None
 
     # TBD remove
     description: Optional[str] = None
@@ -529,9 +529,7 @@ class EventDataTable:
             event_name_alias=event_name_alias,
             description=description,
             ignored_fields=([] if ignored_fields is None else ignored_fields),
-            event_specific_fields=(
-                [] if event_specific_fields is None else event_specific_fields
-            ),
+            event_specific_fields=event_specific_fields,
             event_name_field=Field(_name=event_name_field, _type=DataType.STRING)
             if event_name_field is not None
             else None,
@@ -703,9 +701,7 @@ class Project:
     event_data_tables: List[EventDataTable]
     discovery_settings: DiscoverySettings
     webapp_settings: WebappSettings
-
     description: Optional[str]
-
     id: str = field(default_factory=lambda: str(uuid4())[-12:])
     _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
         default_factory=lambda: ProtectedState()
@@ -1040,7 +1036,7 @@ DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
 DEF_TIME_GROUP = TimeGroup.DAY
 
 
-@dataclass(frozen=True)
+@dataclass()
 class MetricConfig:
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
@@ -1053,14 +1049,17 @@ class MetricConfig:
     agg_param: Optional[Any] = None
     chart_type: Optional[SimpleChartType] = None
     resolution: Optional[TimeGroup] = None
+    metric_name: Optional[str] = None
 
 
 @dataclass(init=False, frozen=True)
 class Metric(ABC):
     _config: MetricConfig
+    _id: str
 
-    def __init__(self, config: MetricConfig):
+    def __init__(self, config: MetricConfig, id: Optional[str] = None):
         object.__setattr__(self, "_config", config)
+        object.__setattr__(self, "_id", id if id is not None else str(uuid4())[-12:])
 
     @property
     def _max_group_count(self) -> int:
@@ -1151,6 +1150,9 @@ class Metric(ABC):
         chart = CHRT.get_simple_chart(self)
         return PLT.plot_chart(chart, self)
 
+    def get_id(self):
+        return self._id
+
     def __repr__(self) -> str:
         fig = self.get_figure()
         fig.show(config={"displayModeBar": False})
@@ -1166,8 +1168,9 @@ class ConversionMetric(Metric):
         conversion: Conversion,
         config: MetricConfig,
         conv_window: TimeWindow = DEF_CONV_WINDOW,
+        id: Optional[str] = None,
     ):
-        super().__init__(config)
+        super().__init__(config, id)
         self._conversion = conversion
         self._conv_window = conv_window
 
@@ -1200,8 +1203,10 @@ class ConversionMetric(Metric):
 class SegmentationMetric(Metric):
     _segment: Segment
 
-    def __init__(self, segment: Segment, config: MetricConfig):
-        super().__init__(config)
+    def __init__(
+        self, segment: Segment, config: MetricConfig, id: Optional[str] = None
+    ):
+        super().__init__(config, id)
         object.__setattr__(self, "_segment", segment)
 
     def get_df(self) -> pd.DataFrame:
@@ -1238,8 +1243,9 @@ class RetentionMetric(Metric):
         retaining_segment: Segment,
         retention_window: TimeWindow,
         config: MetricConfig,
+        id: Optional[str] = None,
     ):
-        super().__init__(config)
+        super().__init__(config, id)
         object.__setattr__(self, "_initial_segment", initial_segment)
         object.__setattr__(self, "_retaining_segment", retaining_segment)
         object.__setattr__(self, "_retention_window", retention_window)
@@ -1257,6 +1263,8 @@ class RetentionMetric(Metric):
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
+        metric_name: Optional[str] = None,
+        id: Optional[str] = None,
     ) -> RetentionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1288,12 +1296,14 @@ class RetentionMetric(Metric):
             agg_type=agg_type,
             agg_param=agg_param,
             resolution=resolution,
+            metric_name=metric_name,
             chart_type=(
                 SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
 
         return RetentionMetric(
+            id=id,
             initial_segment=self._initial_segment,
             retaining_segment=self._retaining_segment,
             retention_window=(
@@ -1348,6 +1358,8 @@ class Conversion(ConversionMetric):
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
+        metric_name: Optional[str] = None,
+        id: Optional[str] = None,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1374,12 +1386,15 @@ class Conversion(ConversionMetric):
             agg_type=agg_type,
             agg_param=agg_param,
             resolution=resolution,
+            metric_name=metric_name,
             chart_type=(
                 SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
         if conv_window is not None:
-            conv_res = ConversionMetric(conversion=self._conversion, config=config)
+            conv_res = ConversionMetric(
+                conversion=self._conversion, config=config, id=id
+            )
             conv_res._conv_window = TimeWindow.parse(conv_window)
             return conv_res
         else:
@@ -1421,6 +1436,8 @@ class Segment(SegmentationMetric):
         custom_title: Optional[str] = None,
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
+        metric_name: Optional[str] = None,
+        id: Optional[str] = None,
     ) -> SegmentationMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1442,12 +1459,13 @@ class Segment(SegmentationMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
+            metric_name=metric_name,
             chart_type=SimpleChartType.parse(chart_type)
             if chart_type is not None
             else None,
         )
 
-        return SegmentationMetric(segment=self, config=config)
+        return SegmentationMetric(segment=self, config=config, id=id)
 
     def __repr__(self) -> str:
         return super().__repr__()

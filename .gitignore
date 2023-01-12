@@ -70,6 +70,7 @@ dmypy.json
 .dbs/
 
 docker/minio/data/.minio.sys/*
+docker/minio/data/.writable-check*
 
 *.mitzu
 serverless/.aws-sam/*
@@ -84,3 +85,4 @@ cache/
 cache.db*
 
 examples/notebook/*ipynb.py
+.cognito.env

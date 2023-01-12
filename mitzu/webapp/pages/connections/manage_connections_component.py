@@ -1,19 +1,17 @@
-import dash_bootstrap_components as dbc
-from dash import ALL, Input, Output, State, callback, ctx, html, no_update
-import dash.development.base_component as bc
-from typing import List, Optional, cast, Dict, Any
-import mitzu.model as M
-import mitzu.webapp.pages.paths as P
-import mitzu.webapp.dependencies as DEPS
-import dash_mantine_components as dmc
-
-import flask
-from mitzu.webapp.helper import (
-    MITZU_LOCATION,
-    create_form_property_input,
-)
-from mitzu.helper import value_to_label
+from typing import Any, Dict, List, Optional, cast
 from uuid import uuid4
+
+import dash.development.base_component as bc
+import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
+import flask
+from dash import ALL, Input, Output, State, callback, ctx, html, no_update
+
+import mitzu.model as M
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.pages.paths as P
+from mitzu.helper import value_to_label
+from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
 CONNECTION_DELETE_BUTTON = "connection_delete_button"
@@ -41,8 +39,8 @@ PROP_PORT = "port"
 PROP_HOST = "host"
 PROP_USERNAME = "username"
 PROP_PASSWORD = "password"
-
 NOT_REQUIRED_PROPERTIES = [PROP_CATALOG, PROP_PORT, PROP_PASSWORD, PROP_USERNAME]
+
 
 MIN_LENGTH = 4
 MAX_LENGTH = 100

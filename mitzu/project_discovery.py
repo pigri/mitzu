@@ -31,10 +31,29 @@ class ProjectDiscovery:
 
     def _get_specific_fields(
         self, ed_table: M.EventDataTable, all_fields: List[M.Field]
-    ):
+    ) -> List[M.Field]:
         res = []
-        for spec_field in ed_table.event_specific_fields:
-            res.extend([f for f in all_fields if f._get_name().startswith(spec_field)])
+        if ed_table.event_name_field is None:
+            return []
+        if ed_table.event_specific_fields is None:
+            res = [
+                f
+                for f in all_fields
+                if (
+                    f
+                    not in (
+                        ed_table.event_name_field,
+                        ed_table.event_time_field,
+                        ed_table.user_id_field,
+                    )
+                    and f._get_name() not in ed_table.ignored_fields
+                )
+            ]
+        else:
+            for spec_field in ed_table.event_specific_fields:
+                res.extend(
+                    [f for f in all_fields if f._get_name().startswith(spec_field)]
+                )
         return res
 
     def _copy_gen_field_def_to_spec(
@@ -94,12 +113,13 @@ class ProjectDiscovery:
         for ed_table in tables:
             try:
                 LOGGER.debug(f"Discovering {ed_table.get_full_name()}")
-                fields = self.project.get_adapter().list_fields(
+                all_fields = self.project.get_adapter().list_fields(
                     event_data_table=ed_table
                 )
-                fields = self.flatten_fields(fields)
+                fields = self.flatten_fields(all_fields)
 
                 specific_fields = self._get_specific_fields(ed_table, fields)
+
                 generic_fields = [c for c in fields if c not in specific_fields]
                 generic_field_values = self._get_field_values(
                     ed_table, generic_fields, False

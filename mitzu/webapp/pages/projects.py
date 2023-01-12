@@ -112,7 +112,7 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
                     ),
                     html.Hr(),
                     html.Img(
-                        src=f"/assets/warehouse/{str(project.connection.connection_type.value).lower()}.png",
+                        src=f"/assets/warehouse/{str(project.connection.connection_type.name).lower()}.png",
                         height=40,
                     ),
                     html.P(f"This project has {events} events in {tables} datasets."),
@@ -157,7 +157,6 @@ def store_discovered_project(
     deps.storage.set_connection(dp.project.connection.id, dp.project.connection)
     for edt, defs in dp.definitions.items():
         edt_full_name = edt.get_full_name()
-        deps.storage.set_event_data_table(dp.project.id, edt_full_name, edt)
         deps.storage.set_event_data_table_definition(dp.project.id, edt_full_name, defs)
 
 

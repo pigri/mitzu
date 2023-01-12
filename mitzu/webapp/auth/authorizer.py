@@ -123,7 +123,6 @@ class OAuthAuthorizer:
         resp = self._redirect(UNAUTHORIZED_URL)
         resp.set_cookie(self._config.token_cookie_name, "", expires=0)
         if redirect:
-            print(redirect)
             resp.set_cookie(self._config.redirect_cookie_name, redirect)
         return resp
 

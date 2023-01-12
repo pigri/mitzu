@@ -1,10 +1,10 @@
 PROJECT_ID_PATH_PART = "project_id"
 CONNECTION_ID_PATH_PART = "connection_id"
 USER_PATH_PART = "user_id"
+DASHBOARD_ID = "dashboard_id"
 
 EVENTS_AND_PROPERTIES_PATH = "/events"
 EVENTS_AND_PROPERTIES_PROJECT_PATH = f"/events/<{PROJECT_ID_PATH_PART}>"
-
 
 PROJECTS_PATH = "/projects"
 PROJECTS_CREATE_PATH = "/projects/create/"
@@ -19,7 +19,13 @@ USERS_PATH = "/users/"
 USERS_HOME_PATH = f"/users/<{USER_PATH_PART}>"
 
 DASHBOARDS_PATH = "/dashboards"
+DASHBOARDS_CREATE_PATH = "/dashboards/create"
+DASHBOARDS_EDIT_PATH = f"/dashboards/<{DASHBOARD_ID}>/edit"
+DASHBOARDS_VIEW_PATH = f"/dashboards/<{DASHBOARD_ID}>/view"
+
 HOME_PATH = "/"
+
+SAVED_METRICS = "/saved_metrics"
 
 
 class PathException(Exception):

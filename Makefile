@@ -14,12 +14,14 @@ format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
 	$(POETRY) run black mitzu tests release *.ipynb
 
+format_notebooks: 
+	$(POETRY) run black  *.ipynb
+
 lint: ## lints and checks formatting all python code
 	$(POETRY) run black --exclude .dbs --check mitzu tests release
 	$(POETRY) run flake8 mitzu tests release
-
-mypy:
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
+	
 
 test_units:
 	$(POETRY) run pytest -sv tests/unit/
@@ -55,7 +57,7 @@ trino_setup_test_data:
 test_coverage:
 	$(POETRY) run pytest --cov=mitzu --cov-report=html --cov-report=xml tests/
 
-check: lint mypy test_coverage test_notebooks
+check: lint test_coverage test_notebooks
 	@echo 'done'
 
 notebook: 

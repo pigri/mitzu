@@ -88,6 +88,8 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
         TH.GRAPH_CONTENT_TYPE: TH.CHART_VAL,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -151,6 +153,8 @@ def test_event_property_chosen_for_segmentation(
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -236,6 +240,8 @@ def test_event_property_operator_changed_with_values_already_chosen(
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -272,6 +278,8 @@ def test_empty_page_with_project(
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -340,6 +348,8 @@ def test_custom_date_selected(discovered_project: M.DiscoveredProject):
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -379,6 +389,8 @@ def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredPro
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -427,6 +439,8 @@ def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProj
         MC.AGGREGATION_TYPE: "user_count",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
@@ -527,6 +541,8 @@ def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
         MC.AGGREGATION_TYPE: "retention_rate",
         TH.GRAPH_REFRESH_BUTTON: None,
         TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)

@@ -70,9 +70,13 @@ class DatabricksAdapter(SQLAlchemyAdapter):
         )
         df = self.execute_query(q)
         if df.shape[0] == 0:
+            # The map typa has no values
             return M.Field(_name=name, _type=M.DataType.MAP)
-
-        keys = df.iat[0, 0].tolist()
+        if df.iat[0, 0] is None:
+            # The total amount of map keys are more than the allowed from the EDT
+            keys = []
+        else:
+            keys = df.iat[0, 0].tolist()
 
         sf_type = self.map_type(map.value_type)
         sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]

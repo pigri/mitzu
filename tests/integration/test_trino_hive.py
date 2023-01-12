@@ -10,12 +10,14 @@ def test_trino_complex_data():
         event_data_tables=[
             M.EventDataTable.create(
                 table_name="sub_events",
+                schema="tiny",
                 event_name_alias="user_subscribe",
                 event_time_field="subscription_time",
                 user_id_field="subscriber_id",
             ),
             M.EventDataTable.create(
                 table_name="web_events",
+                schema="tiny",
                 event_name_field="event_name",
                 event_time_field="event_time",
                 user_id_field="user_id",
@@ -30,7 +32,6 @@ def test_trino_complex_data():
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
             secret_resolver=None,
-            schema="tiny",
             catalog="minio",
             host="localhost",
         ),
@@ -63,12 +64,14 @@ def test_trino_map_types_discovery():
         event_data_tables=[
             M.EventDataTable.create(
                 table_name="sub_events",
+                schema="tiny",
                 event_name_alias="user_subscribe",
                 event_time_field="subscription_time",
                 user_id_field="subscriber_id",
             ),
             M.EventDataTable.create(
                 table_name="web_events",
+                schema="tiny",
                 event_name_field="event_name",
                 event_time_field="event_time",
                 user_id_field="user_id",
@@ -83,7 +86,6 @@ def test_trino_map_types_discovery():
             connection_type=M.ConnectionType.TRINO,
             user_name="test",
             secret_resolver=None,
-            schema="tiny",
             catalog="minio",
             host="localhost",
         ),

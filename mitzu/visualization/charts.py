@@ -10,6 +10,7 @@ import mitzu.visualization.titles as TI
 import mitzu.visualization.transform_conv as TC
 import mitzu.visualization.transform_retention as TR
 from mitzu.helper import value_to_label
+from typing import Optional
 
 STEP_COL = "_step"
 
@@ -96,8 +97,9 @@ def get_preprocessed_conversion_dataframe(
     return pdf
 
 
-def get_preprocessed_segmentation_dataframe(metric: M.SegmentationMetric):
-    pdf = metric.get_df()
+def get_preprocessed_segmentation_dataframe(
+    pdf: pd.DataFrame, metric: M.SegmentationMetric
+):
     pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("n/a").astype(str).fillna("n/a")
     pdf = filter_top_groups(pdf, metric, order_by_col=GA.AGG_VALUE_COL)
     pdf = pdf.rename(
@@ -133,7 +135,7 @@ def get_preprocessed_retention_dataframe(
 
 
 def get_simple_chart(
-    metric: M.Metric,
+    metric: M.Metric, result_df: Optional[pd.DataFrame] = None
 ) -> C.SimpleChart:
     if metric._chart_type is None:
         chart_type = get_default_chart_type(metric)
@@ -155,8 +157,11 @@ def get_simple_chart(
     else:
         x_axis_label_func = None
 
+    if result_df is None:
+        result_df = metric.get_df()
+
     if isinstance(metric, M.SegmentationMetric):
-        pdf = get_preprocessed_segmentation_dataframe(metric)
+        pdf = get_preprocessed_segmentation_dataframe(result_df, metric)
         return C.SimpleChart(
             x_axis_label="",
             y_axis_label=y_axis_label,
@@ -170,9 +175,8 @@ def get_simple_chart(
         )
 
     if isinstance(metric, M.ConversionMetric):
-        pdf = metric.get_df()
-        suffix = TC.get_conversion_value_suffix(pdf, metric)
-        pdf = get_preprocessed_conversion_dataframe(pdf, metric, suffix)
+        suffix = TC.get_conversion_value_suffix(result_df, metric)
+        pdf = get_preprocessed_conversion_dataframe(result_df, metric, suffix)
         return C.SimpleChart(
             x_axis_label="",
             y_axis_label=y_axis_label,
@@ -186,8 +190,7 @@ def get_simple_chart(
         )
 
     if isinstance(metric, M.RetentionMetric):
-        pdf = metric.get_df()
-        pdf = get_preprocessed_retention_dataframe(pdf, metric)
+        pdf = get_preprocessed_retention_dataframe(result_df, metric)
         return C.SimpleChart(
             x_axis_label="",
             y_axis_label=y_axis_label,

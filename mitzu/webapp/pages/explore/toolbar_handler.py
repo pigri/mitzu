@@ -26,7 +26,6 @@ TABLE_VAL = "Table"
 SQL_VAL = "SQL"
 
 
-COPY_BUTTON = "copy_button"
 CONTENT_CLIPBOARD = "content_clipboard"
 
 
@@ -119,15 +118,6 @@ def from_metric(metric: Optional[M.Metric]) -> bc.Component:
                         id=GRAPH_CONTENT_TYPE,
                         className="me-1 bg-transparent",
                         value=CHART_VAL,
-                    ),
-                    dbc.Button(
-                        [
-                            html.B(className="bi bi-link-45deg me-1"),
-                            "Copy",
-                        ],
-                        id=COPY_BUTTON,
-                        color="light",
-                        size="sm",
                     ),
                 ],
             ),

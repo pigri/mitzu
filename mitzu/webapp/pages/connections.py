@@ -1,15 +1,16 @@
-from dash import register_page
-import dash_bootstrap_components as dbc
-from dash import html
+import traceback
+from typing import List
+
 import dash.development.base_component as bc
+import dash_bootstrap_components as dbc
 import flask
+from dash import html, register_page
+
+import mitzu.helper as H
+import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
-import mitzu.model as M
-from typing import List
-import mitzu.helper as H
-import traceback
 
 register_page(
     __name__,
@@ -96,7 +97,7 @@ def create_connection_selector(connection: M.Connection) -> bc.Component:
                     ),
                     html.Hr(),
                     html.Img(
-                        src=f"/assets/warehouse/{str(connection.connection_type.value).lower()}.png",
+                        src=f"/assets/warehouse/{str(connection.connection_type.name).lower()}.png",
                         height=40,
                     ),
                     *[html.Div(d) for d in details],

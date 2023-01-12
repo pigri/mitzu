@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import dash_bootstrap_components as dbc
-import mitzu.webapp.navbar as NB
-from dash import ctx, html, callback
+from dash import callback, ctx, html, dcc
 from dash.dependencies import ALL, Input, Output
-import mitzu.webapp.configs as configs
 
+import mitzu.webapp.configs as configs
+import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.authorizer import SIGN_OUT_URL
+import mitzu.webapp.storage as S
 
 OFF_CANVAS = "off-canvas-id"
 BUTTON_COLOR = "light"
@@ -17,7 +18,8 @@ BUTTON_COLOR = "light"
 CLOSE_BUTTON = "close-button"
 SEARCH_INPUT = "search-input"
 
-FAVORITE_QUERIES_BUTTON = "favorite_queries_button"
+EXPLORE_BUTTON = "explore_button"
+SAVED_METRICS_BUTTON = "saved_metrics"
 DASHBOARDS_BUTTON = "dashboards_button"
 
 EVENTS_PROPERTIES_BUTTON = "events_and_properties_button"
@@ -25,21 +27,21 @@ PROJECTS_BUTTON = "projects_button"
 CONNECTIONS_BUTTON = "connections_button"
 
 USERS_BUTTON = "users_button"
-SETTINGS_BUTTON = "settings_button"
 
 
 MENU_ITEM_CSS = "mb-1 w-100 border-0 text-start"
 EXPLORE_MENU_ITEM_CSS = "mb-1 w-100 text-start"
 
 
-def create_offcanvas() -> dbc.Offcanvas:
-
+def create_offcanvas(storage: S.MitzuStorage) -> dbc.Offcanvas:
+    project_ids = storage.list_projects()
+    project_id = project_ids[0] if len(project_ids) > 0 else None
     res = dbc.Offcanvas(
         children=[
             dbc.Row(
                 [
                     dbc.Col(
-                        html.A(
+                        dcc.Link(
                             html.Img(
                                 src=configs.DASH_LOGO_PATH,
                                 height="40px",
@@ -55,7 +57,7 @@ def create_offcanvas() -> dbc.Offcanvas:
                             id=CLOSE_BUTTON,
                             size="sm",
                             outline=True,
-                            className="border-0",
+                            className="border-0 card-title pt-0",
                         ),
                         className="text-end",
                     ),
@@ -71,11 +73,22 @@ def create_offcanvas() -> dbc.Offcanvas:
             ),
             html.Hr(className="mb-3"),
             dbc.Button(
-                [html.B(className="bi bi-star-fill me-1"), "Favorite queries"],
+                [html.B(className="bi bi-search me-1"), "Explore"],
+                color="info",
+                class_name=MENU_ITEM_CSS,
+                href=(
+                    P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project_id)
+                    if project_id is not None
+                    else P.PROJECTS_PATH
+                ),
+                id=EXPLORE_BUTTON,
+            ),
+            dbc.Button(
+                [html.B(className="bi bi-star-fill me-1"), "Saved metrics"],
                 color=BUTTON_COLOR,
                 class_name=MENU_ITEM_CSS,
-                href=P.DASHBOARDS_PATH,
-                id=FAVORITE_QUERIES_BUTTON,
+                href=P.SAVED_METRICS,
+                id=SAVED_METRICS_BUTTON,
             ),
             dbc.Button(
                 [html.B(className="bi bi-columns-gap me-1"), "Dashboards"],
@@ -114,13 +127,6 @@ def create_offcanvas() -> dbc.Offcanvas:
                 href=P.USER_PATH_PART,
                 id=USERS_BUTTON,
             ),
-            dbc.Button(
-                [html.B(className="bi bi-gear me-1"), "Settings"],
-                color=BUTTON_COLOR,
-                class_name=MENU_ITEM_CSS,
-                href=P.USER_PATH_PART,
-                id=SETTINGS_BUTTON,
-            ),
             html.Hr(className="mb-3"),
             dbc.Button(
                 [html.B(className="bi bi-box-arrow-right me-1"), "Sign out"],
@@ -143,10 +149,6 @@ def create_offcanvas() -> dbc.Offcanvas:
                     {"type": NB.OFF_CANVAS_TOGGLER, "index": ALL}, "n_clicks"
                 ),
                 CLOSE_BUTTON: Input(CLOSE_BUTTON, "n_clicks"),
-                DASHBOARDS_BUTTON: Input(DASHBOARDS_BUTTON, "n_clicks"),
-                PROJECTS_BUTTON: Input(PROJECTS_BUTTON, "n_clicks"),
-                USERS_BUTTON: Input(USERS_BUTTON, "n_clicks"),
-                CONNECTIONS_BUTTON: Input(CONNECTIONS_BUTTON, "n_clicks"),
             }
         },
         prevent_initial_call=True,

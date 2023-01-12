@@ -1,19 +1,20 @@
-import dash_bootstrap_components as dbc
-from dash import html, register_page, callback, Input, Output, State, ALL, ctx
+import traceback
+from typing import Any, Dict, List, Optional, cast
+
 import dash.development.base_component as bc
+import dash_bootstrap_components as dbc
+import flask
+from dash import ALL, Input, Output, State, callback, ctx, html, register_page
+
+import mitzu.helper as H
+import mitzu.model as M
+import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.helper as WH
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
-import mitzu.webapp.pages.projects.manage_project_component as MPC
-import mitzu.webapp.pages.projects.helper as MPH
 import mitzu.webapp.pages.projects.event_tables_tab as ET
-from typing import Optional, List, Dict, Any
-import mitzu.webapp.dependencies as DEPS
-import flask
-import mitzu.model as M
-import mitzu.helper as H
-import mitzu.webapp.helper as WH
-from typing import cast
-import traceback
+import mitzu.webapp.pages.projects.helper as MPH
+import mitzu.webapp.pages.projects.manage_project_component as MPC
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 SAVE_BUTTON = "project_save_button"
@@ -138,7 +139,7 @@ def save_button_clicked(
             event_time_column = MPH.get_value_from_row(tr, 3)
             event_name_column = MPH.get_value_from_row(tr, 4)
             date_partition_col = MPH.get_value_from_row(tr, 5)
-            ignore_cols = MPH.get_value_from_row(tr, 5)
+            ignore_cols = MPH.get_value_from_row(tr, 6)
 
             schema, table_name = tuple(full_table_name.split("."))
 

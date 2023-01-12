@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
+
+from flask import Flask
+
 import mitzu.webapp.auth.authorizer as A
-import mitzu.webapp.storage as S
 import mitzu.webapp.cache as C
 import mitzu.webapp.configs as configs
-from flask import Flask
-from typing import Optional
+import mitzu.webapp.storage as S
 
 CONFIG_KEY = "dependencies"
 

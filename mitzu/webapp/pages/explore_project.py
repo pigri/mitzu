@@ -1,9 +1,11 @@
-from dash import register_page, html
-import mitzu.webapp.pages.explore.explore_page as EXP
+from typing import cast
+
 import dash.development.base_component as bc
 import flask
+from dash import html, register_page
+
 import mitzu.webapp.dependencies as DEPS
-from typing import cast
+import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.pages.paths as P
 
 

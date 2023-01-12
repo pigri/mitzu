@@ -29,16 +29,20 @@ def test_definition_to_json():
         time_group="total",
         group_by=m.view.category_id,
         aggregation="user_count",
+        id="test_id",
+        metric_name="test_name",
     )
 
     res_dict = to_dict(res)
     assert res_dict == {
+        "id": "test_id",
         "seg": {
             "l": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
             "bop": "OR",
             "r": {"l": {"en": "cart"}},
         },
         "co": {
+            "mn": "test_name",
             "sdt": "2020-01-01T00:00:00",
             "edt": "2021-01-01T00:00:00",
             "tg": "total",
@@ -58,10 +62,13 @@ def test_definition_to_json():
         custom_title="test_title",
         aggregation="conversion",
         resolution="day",
+        id="test_id",
+        metric_name="test_name",
     )
 
     res_dict = to_dict(res)
     assert res_dict == {
+        "id": "test_id",
         "conv": {
             "segs": [
                 {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
@@ -77,6 +84,7 @@ def test_definition_to_json():
             "ct": "test_title",
             "at": "conversion",
             "res": "day",
+            "mn": "test_name",
         },
     }
 
@@ -97,10 +105,12 @@ def test_definition_to_json():
         group_by=m.view.category_id,
         custom_title="test_title",
         aggregation="ttc_p75",
+        id="test_id",
     )
 
     res_dict = to_dict(res)
     assert res_dict == {
+        "id": "test_id",
         "conv": {
             "segs": [
                 {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
@@ -126,11 +136,13 @@ def test_definition_to_json():
         retention_window="1 week",
         custom_title="test_title",
         aggregation="retention_rate",
+        id="test_id",
     )
 
     res_dict = to_dict(res)
     verify(res, eds)
     assert res_dict == {
+        "id": "test_id",
         "seg_1": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
         "seg_2": {"l": {"en": "cart"}},
         "rw": "1 week",

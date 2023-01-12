@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import plotly.express as px
 import plotly.figure_factory as ff
+
 import pandas as pd
 import mitzu.model as M
 import mitzu.visualization.common as C
 from typing import Dict, List
+from base64 import b64encode
 
 
 PRISM2 = [
@@ -143,7 +145,7 @@ def plot_chart(
         raise Exception(
             f"Too many data points to visualize ({size}), try reducing the scope."
         )
-    pdf = simple_chart.dataframe
+    pdf = simple_chart.dataframe.copy()
     if simple_chart.x_axis_labels_func is not None:
         pdf[C.X_AXIS_COL] = pdf[C.X_AXIS_COL].apply(
             lambda val: simple_chart.x_axis_labels_func(val, metric)
@@ -224,3 +226,12 @@ def plot_chart(
     fig = set_figure_style(fig, simple_chart, metric)
 
     return fig
+
+
+def figure_to_base64_image(figure, scale: float = 1.0) -> str:
+    img_bytes = figure.to_image(
+        format="png",
+        scale=scale,
+    )
+    encoding = b64encode(img_bytes).decode()
+    return "data:image/png;base64," + encoding

@@ -13,7 +13,7 @@ CHILDREN = "children"
 MITZU_LOCATION = "mitzu_location"
 
 
-TBL_CLS = "small text mh-0 "
+TBL_CLS = "small text mh-0"
 TBL_CLS_WARNING = "small text-danger mh-0 fw-bold"
 TBL_HEADER_CLS = "small mh-0 text-nowrap fw-bold"
 

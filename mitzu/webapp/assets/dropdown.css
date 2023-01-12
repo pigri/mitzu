@@ -53,3 +53,12 @@
   min-height: 29px;
   height: 29px;
 }
+
+.name-input input {
+  border: 1px solid transparent;
+  font-size: 30px;
+}
+
+.name-input input:hover {
+  border: 1px solid lightgray;
+}
