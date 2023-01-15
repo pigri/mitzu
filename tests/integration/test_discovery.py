@@ -1,8 +1,15 @@
 import pytest
+from unittest.mock import MagicMock
 from datetime import datetime
 
-from mitzu.model import DiscoverySettings, InvalidProjectError, Project, Segment
-from mitzu.project_discovery import ProjectDiscovery
+from mitzu.model import (
+    DiscoverySettings,
+    EventDataTable,
+    InvalidProjectError,
+    Project,
+    Segment,
+)
+from mitzu.project_discovery import ProjectDiscovery, ProjectDiscoveryError
 from tests.helper import assert_row
 from tests.samples.sources import (
     get_project_with_missing_table,
@@ -15,8 +22,23 @@ from tests.samples.sources import (
 def test_simple_big_data_discovery():
     project = get_simple_big_data()
 
-    discovery = ProjectDiscovery(project)
+    callback = MagicMock()
+    discovery = ProjectDiscovery(project, callback=callback)
     m = discovery.discover_project().create_notebook_class_model()
+
+    callback.assert_called_once()
+    assert isinstance(callback.call_args[0][0], EventDataTable)
+    assert set(callback.call_args[0][1].keys()) == set(
+        [
+            "app_install",
+            "app_launched",
+            "new_subscription",
+            "trial_started",
+            "user_signed_up",
+            "workspace_opened",
+        ]
+    )
+    assert callback.call_args[0][2] is None
 
     seg: Segment = m.app_install.config(
         start_dt="2021-01-01",
@@ -40,10 +62,15 @@ def test_simple_big_data_discovery():
 
 def test_data_discovery_without_data():
     project = get_project_without_records()
-    discovery = ProjectDiscovery(project)
+    callback = MagicMock()
+    discovery = ProjectDiscovery(project, callback=callback)
 
     dp = discovery.discover_project()
     assert len(dp.get_all_events()) == 0
+    callback.assert_called_once()
+    assert isinstance(callback.call_args[0][0], EventDataTable)
+    assert callback.call_args[0][1] == {}
+    assert isinstance(callback.call_args[0][2], ProjectDiscoveryError)
 
 
 def test_data_discovery_with_missing_table():
