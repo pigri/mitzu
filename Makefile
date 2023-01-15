@@ -12,13 +12,10 @@ init:
 
 format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
-	$(POETRY) run black mitzu tests release *.ipynb
-
-format_notebooks: 
-	$(POETRY) run black  *.ipynb
+	$(POETRY) run black mitzu tests release examples/notebook/*.ipynb
 
 lint: ## lints and checks formatting all python code
-	$(POETRY) run black --exclude .dbs --check mitzu tests release
+	$(POETRY) run black --exclude .dbs --check mitzu tests release examples/notebook/*.ipynb
 	$(POETRY) run flake8 mitzu tests release
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
 	
