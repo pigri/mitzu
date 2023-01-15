@@ -111,6 +111,7 @@ class ProjectDiscovery:
             )
         errors = {}
         for ed_table in tables:
+            defs = {}
             try:
                 LOGGER.debug(f"Discovering {ed_table.get_full_name()}")
                 all_fields = self.project.get_adapter().list_fields(
