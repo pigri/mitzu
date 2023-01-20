@@ -10,7 +10,6 @@ from dash.long_callback.managers import BaseLongCallbackManager
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
-import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
 from mitzu.helper import LOGGER
 from mitzu.webapp.helper import MITZU_LOCATION
@@ -23,9 +22,9 @@ DCC_DBC_CSS = (
 )
 
 
-def create_webapp_layout(storage: S.MitzuStorage) -> bc.Component:
+def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
     LOGGER.debug("Initializing WebApp")
-    offcanvas = OC.create_offcanvas(storage)
+    offcanvas = OC.create_offcanvas(dependencies)
     location = dcc.Location(id=MITZU_LOCATION, refresh=False)
     return html.Div(
         children=[location, offcanvas, page_container],
@@ -72,9 +71,8 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
             MDB_CSS,
             dbc.icons.BOOTSTRAP,
             # dbc.themes.ZEPHRY,
-            "assets/explore_page.css",
-            "assets/dropdown.css",
-            "assets/date_input.css",
+            "/assets/explore_page.css",
+            "/assets/dropdown.css",
         ],
         assets_folder=configs.DASH_ASSETS_FOLDER,
         assets_url_path=configs.DASH_ASSETS_URL_PATH,
@@ -89,7 +87,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         ],
     )
     app._favicon = configs.DASH_FAVICON_PATH
-    app.layout = create_webapp_layout(dependencies.storage)
+    app.layout = create_webapp_layout(dependencies)
 
     @server.route(configs.HEALTH_CHECK_PATH)
     def healthcheck():

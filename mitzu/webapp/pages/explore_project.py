@@ -7,6 +7,7 @@ from dash import html, register_page
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted_layout
 
 
 register_page(
@@ -16,6 +17,7 @@ register_page(
 )
 
 
+@restricted_layout
 def layout(project_id: str, **query_params) -> bc.Component:
     depenednecies: DEPS.Dependencies = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)

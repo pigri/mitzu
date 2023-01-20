@@ -18,6 +18,7 @@ import mitzu.webapp.storage as S
 import mitzu.webapp.model as WM
 from typing import List
 import mitzu.webapp.dependencies as DEPS
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import flask
 import mitzu.model as M
 from typing import cast
@@ -218,6 +219,7 @@ def list_saved_metrics(storage: S.MitzuStorage) -> List[bc.Component]:
     ]
 
 
+@restricted_layout
 def layout() -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -259,6 +261,7 @@ register_page(
     Input(CONFIRM_DIALOG_ACCEPT, "n_clicks"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_button_clicked(delete_clicks: List[int], close: int, accept: int):
     if ctx.triggered_id is None or all([v is None for v in delete_clicks]):
         return no_update, no_update, no_update
@@ -298,6 +301,7 @@ def delete_button_clicked(delete_clicks: List[int], close: int, accept: int):
     interval=200,
     prevent_initial_call=True,
 )
+@restricted
 def confirm_button_clicked(close_button: int, metric_id: str) -> List:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)

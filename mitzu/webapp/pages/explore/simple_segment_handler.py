@@ -8,6 +8,7 @@ from dash import dcc, html, callback
 from dash.dependencies import MATCH, Input, Output, State
 from dash.exceptions import PreventUpdate
 from mitzu.webapp.helper import find_event_field_def, get_enums, get_property_name_comp
+from mitzu.webapp.auth.decorator import restricted
 
 SIMPLE_SEGMENT = "simple_segment"
 SIMPLE_SEGMENT_WITH_VALUE = "simple_segment_with_value"
@@ -278,6 +279,7 @@ def create_callbacks():
         State({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "value"),
         prevent_initial_call=True,
     )
+    @restricted
     def update_options(search_value: str, options: List, values: List) -> List[str]:
         if search_value is None or search_value == "":
             raise PreventUpdate

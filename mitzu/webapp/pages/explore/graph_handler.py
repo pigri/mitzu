@@ -20,6 +20,7 @@ from mitzu.webapp.helper import MITZU_LOCATION
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html, callback, no_update
 from mitzu.webapp.helper import get_final_all_inputs
+from mitzu.webapp.auth.decorator import restricted
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
 import json
@@ -188,6 +189,7 @@ def create_callbacks():
         ],
         cancel=[Input(TH.CANCEL_BUTTON, "n_clicks")],
     )
+    @restricted
     def handle_changes_for_graph(
         all_inputs: Dict[str, Any],
         graph_content_type: str,

@@ -11,6 +11,7 @@ from mitzu.webapp.pages.projects.helper import (
     create_empty_edt,
     get_value_from_row,
 )
+from mitzu.webapp.auth.decorator import restricted
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.helper as H
 import flask
@@ -425,6 +426,7 @@ def get_checkbox_value_from_row(tr: html.Tr) -> bool:
     State(EDT_TBL_BODY, "children"),
     prevent_initial_call=True,
 )
+@restricted
 def manage_table_checkboxes(
     header_checkbox: bool, tr_checkboxes: List, tbl_rows: List
 ) -> List:
@@ -454,6 +456,7 @@ def manage_table_checkboxes(
     Input(ADD_TABLES_MODAL_CLOSE, "n_clicks"),
     Input(ADD_TABLES_MODAL_CONFIRM, "n_clicks"),
 )
+@restricted
 def manage_add_table_modal_open(add_tables: int, close: int, confirm: int) -> bool:
     return ctx.triggered_id == ADD_TABLES_BUTTON
 
@@ -464,6 +467,7 @@ def manage_add_table_modal_open(add_tables: int, close: int, confirm: int) -> bo
     Input(CONF_TABLES_MODAL_CONFIRM, "n_clicks"),
     Input(CONFIGURE_TABLES_BUTTON, "n_clicks"),
 )
+@restricted
 def manage_configure_table_modal_open(close: int, confirm: int, configure: int) -> bool:
     return ctx.triggered_id == CONFIGURE_TABLES_BUTTON
 
@@ -498,6 +502,7 @@ def manage_configure_table_modal_open(close: int, confirm: int, configure: int) 
     interval=UPDATE_INTERVAL,
     prevent_initial_call=True,
 )
+@restricted
 def manage_choose_schema_dropdown(
     add_tables: int, close: int, confirm: int, connection_id: Optional[str]
 ) -> Tuple:
@@ -558,6 +563,7 @@ def manage_choose_schema_dropdown(
     cancel=[Input(ADD_TABLES_MODAL_CLOSE, "n_clicks")],
     prevent_initial_call=True,
 )
+@restricted
 def manage_choose_tables_checklist(
     schema: Optional[str],
     select_all_clicks: int,
@@ -618,6 +624,7 @@ def manage_choose_tables_checklist(
     cancel=[Input(CONF_TABLES_MODAL_CLOSE, "n_clicks")],
     prevent_initial_call=True,
 )
+@restricted
 def manage_configure_property_inputs(
     set_progress,
     configure: int,
@@ -728,6 +735,7 @@ def manage_configure_property_inputs(
     progress=Output(TBL_PROGRESS_INFO, "children"),
     interval=UPDATE_INTERVAL,
 )
+@restricted
 def manage_event_data_table_body(
     set_progress: Callable,
     add_tables: int,

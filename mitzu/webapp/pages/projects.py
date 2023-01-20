@@ -7,6 +7,7 @@ import flask
 import mitzu.webapp.dependencies as DEPS
 import mitzu.model as M
 import mitzu.webapp.navbar as NB
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import mitzu.webapp.pages.paths as P
 from dash import Input, Output, callback, dcc
 from typing import List
@@ -25,6 +26,7 @@ register_page(
 )
 
 
+@restricted_layout
 def layout() -> bc.Component:
     projects = create_projects_children()
     return html.Div(
@@ -166,6 +168,7 @@ def store_discovered_project(
     Input(UPLOAD_BUTTON, "contents"),
     prevent_initial_call=True,
 )
+@restricted
 def update_output(content: str):
     if content is not None:
         try:

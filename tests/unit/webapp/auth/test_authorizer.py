@@ -3,15 +3,12 @@ import flask
 import pytest
 from unittest.mock import patch, MagicMock
 from requests.models import Response
-
+import mitzu.webapp.configs as configs
+import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.authorizer import (
     OAuthAuthorizer,
     OAuthConfig,
-    OAUTH_CODE_URL,
     HOME_URL,
-    REDIRECT_TO_LOGIN_URL,
-    UNAUTHORIZED_URL,
-    SIGN_OUT_URL,
 )
 
 from typing import Optional
@@ -63,7 +60,7 @@ def assert_redirected_to_unauthorized_page(
 ):
     assert resp is not None
     assert resp.status_code == 307
-    assert resp.headers["Location"] == UNAUTHORIZED_URL
+    assert resp.headers["Location"] == P.UNAUTHORIZED_URL
     assert_auth_token_removed(resp)
 
     redirect_cookie = authorizer._config.redirect_cookie_name
@@ -99,16 +96,10 @@ def test_request_with_cached_token_is_allowed():
 
 
 def test_redirects_to_sign_in_url():
-    with app.test_request_context(REDIRECT_TO_LOGIN_URL):
+    with app.test_request_context(P.REDIRECT_TO_LOGIN_URL):
         resp = app.preprocess_request()
         assert resp.status_code == 307
         assert resp.headers["Location"] == config.sign_in_url
-
-
-def test_oauth_code_url_called_without_code():
-    with app.test_request_context(OAUTH_CODE_URL):
-        resp = app.preprocess_request()
-        assert_request_authorized(resp)
 
 
 @patch("requests.post")
@@ -125,7 +116,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
     req_mock.return_value = response
 
     code = "1234567890"
-    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
         resp = app.preprocess_request()
         req_mock.assert_called_with(
             "https://token_url/",
@@ -149,7 +140,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         )
 
 
-@patch("requests.post")
+@patch("mitzu.webapp.auth.authorizer.requests.post")
 def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
     response = Response()
     response.code = "success"
@@ -165,7 +156,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
 
     code = "1234567890"
     with app.test_request_context(
-        f"{OAUTH_CODE_URL}?code={code}",
+        f"{P.OAUTH_CODE_URL}?code={code}",
         headers={
             "Cookie": f"{authorizer._config.redirect_cookie_name}={redirect_after_login}"
         },
@@ -196,7 +187,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
         ).startswith(f"{authorizer._config.redirect_cookie_name}=;")
 
 
-@patch("requests.post")
+@patch("mitzu.webapp.auth.authorizer.requests.post")
 def test_oauth_code_url_called_with_invalid_code(req_mock):
     response = Response()
     response.code = "success"
@@ -211,7 +202,7 @@ def test_oauth_code_url_called_with_invalid_code(req_mock):
     token_validator.validate_token.return_value = None
 
     code = "1234567890"
-    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
         resp = app.preprocess_request()
         req_mock.assert_called_with(
             "https://token_url/",
@@ -251,15 +242,8 @@ def test_invalid_forged_tokens_are_rejected():
         assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/")
 
 
-def test_unauthorized_page_is_shown_for_unauthorized_requests():
-    with app.test_request_context(UNAUTHORIZED_URL):
-        resp = app.preprocess_request()
-        assert resp.status_code == 200
-        assert resp.data.decode("utf-8") == authorizer._unauthorized_page_content
-
-
 def test_sign_out_without_sign_out_url():
-    with app.test_request_context(SIGN_OUT_URL):
+    with app.test_request_context(P.SIGN_OUT_URL):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(resp)
 
@@ -279,7 +263,7 @@ def test_sign_out_with_sign_out_url():
     authorizer = OAuthAuthorizer.create(config)
     authorizer.setup_authorizer(app)
 
-    with app.test_request_context(SIGN_OUT_URL):
+    with app.test_request_context(P.SIGN_OUT_URL):
         resp = app.preprocess_request()
         assert resp is not None
         assert resp.status_code == 307
@@ -287,7 +271,23 @@ def test_sign_out_with_sign_out_url():
         assert_auth_token_removed(resp)
 
 
-@patch("requests.post")
+def test_healthcheck_request():
+    app = flask.Flask(__name__)
+
+    authorizer = OAuthAuthorizer.create(
+        oauth_config=config,
+        token_validator=token_validator,
+        allowed_email_domain="allowed.com",
+    )
+    authorizer.setup_authorizer(app)
+
+    # If healthcheck path wasn't in the allowed list, this would return 307
+    with app.test_request_context(configs.HEALTH_CHECK_PATH):
+        resp = app.preprocess_request()
+        assert resp is None
+
+
+@patch("mitzu.webapp.auth.authorizer.requests.post")
 def test_rejects_not_allowed_email_domains_when_configured(req_mock):
     response = Response()
     response.code = "success"
@@ -310,7 +310,7 @@ def test_rejects_not_allowed_email_domains_when_configured(req_mock):
     authorizer.setup_authorizer(app)
 
     code = "1234567890"
-    with app.test_request_context(f"{OAUTH_CODE_URL}?code={code}"):
+    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
         resp = app.preprocess_request()
         req_mock.assert_called_with(
             "https://token_url/",

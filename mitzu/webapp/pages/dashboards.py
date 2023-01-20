@@ -10,6 +10,7 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.model as WM
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 from typing import cast
 import flask
 from dash_iconify import DashIconify
@@ -32,6 +33,7 @@ DASHBOARD_CONTAINER = "dashboard_container"
 DASHBOARDS_INFO = "dashboard_info"
 
 
+@restricted_layout
 def layout() -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -219,6 +221,7 @@ def create_dashboard_selector(dashboard: WM.Dashboard) -> bc.Component:
     Input(CONFIRM_DIALOG_ACCEPT, "n_clicks"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_button_clicked(delete: int, close: int, accept: int):
     if (
         ctx.triggered_id is None
@@ -262,6 +265,7 @@ def delete_button_clicked(delete: int, close: int, accept: int):
     interval=200,
     prevent_initial_call=True,
 )
+@restricted
 def confirm_button_clicked(accept_button: int, dashboard_id: str) -> List:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)

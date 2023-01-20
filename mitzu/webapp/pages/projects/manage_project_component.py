@@ -6,6 +6,7 @@ import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import flask
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import create_form_property_input, MITZU_LOCATION
 from mitzu.webapp.pages.projects.helper import PROP_CONNECTION, PROJECT_INDEX_TYPE
 import traceback
@@ -283,6 +284,7 @@ def create_explore_settings(project: Optional[M.Project]) -> bc.Component:
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
     if n_clicks:
         project_id = P.get_path_value(
@@ -311,6 +313,7 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
     Input(CONFIRM_DIALOG_CLOSE, "n_clicks"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_button_clicked(delete: int, close: int) -> bool:
     if delete is None:
         return no_update

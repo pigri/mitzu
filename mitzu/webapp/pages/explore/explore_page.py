@@ -30,6 +30,7 @@ from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
 from uuid import uuid4
 from dash_iconify import DashIconify
+from mitzu.webapp.auth.decorator import restricted
 
 
 from mitzu.webapp.helper import (
@@ -337,6 +338,7 @@ def create_callbacks():
         ),
         prevent_initial_call=True,
     )
+    @restricted
     def on_inputs_change(
         all_inputs: Dict[str, Any],
         href: str,
@@ -392,6 +394,7 @@ def create_callbacks():
     ],
     prevent_initial_call=True,
 )
+@restricted
 def handle_metric_name_changed(
     metric_name: str, metric_id: str, pathname: str, search: str
 ) -> str:

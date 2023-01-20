@@ -27,6 +27,11 @@ HOME_PATH = "/"
 
 SAVED_METRICS = "/saved_metrics"
 
+SIGN_OUT_URL = "/auth/logout"
+UNAUTHORIZED_URL = "/auth/unauthorized"
+REDIRECT_TO_LOGIN_URL = "/auth/redirect-to-login"
+OAUTH_CODE_URL = "/auth/oauth"
+
 
 class PathException(Exception):
     pass

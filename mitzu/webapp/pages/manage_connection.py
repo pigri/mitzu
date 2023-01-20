@@ -21,6 +21,7 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.connections.manage_connections_component as MCC
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 from mitzu.webapp.helper import MITZU_LOCATION
 
 CONNECTION_SAVE_BUTTON = "connection_save_button"
@@ -28,10 +29,12 @@ CONNECTION_CLOSE_BUTTON = "connection_close_button"
 SAVE_RESPONSE_CONTAINER = "save_response_container"
 
 
+@restricted_layout
 def no_connection_layout():
     return layout(None)
 
 
+@restricted_layout
 def layout(connection_id: Optional[str] = None) -> bc.Component:
     connection: Optional[M.Connection] = None
     if connection_id is not None:
@@ -100,6 +103,7 @@ register_page(
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
+@restricted
 def save_button_clicked(
     n_clicks: int, values: List[Any], pathname: str
 ) -> List[bc.Component]:

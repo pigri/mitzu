@@ -4,6 +4,7 @@ import dash.development.base_component as bc
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from typing import Dict, List, Tuple, Optional
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.webapp.helper as H
@@ -90,6 +91,7 @@ def no_project_layout():
     return layout(None)
 
 
+@restricted_layout
 def layout(project_id: Optional[str]) -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -190,6 +192,7 @@ def layout(project_id: Optional[str]) -> bc.Component:
     Output(MANAGE_PROJECT_BUTTON, "href"),
     Input(SELECT_PROJECT_DD, "value"),
 )
+@restricted
 def manage_project_disabled(project_id: str) -> Tuple[bool, str]:
     return (
         project_id is None,
@@ -220,6 +223,7 @@ def manage_project_disabled(project_id: str) -> Tuple[bool, str]:
     interval=DEFAULT_INTERVAL,
     cancel=Input(DISCOVER_CANCEL_BUTTON, "n_clicks"),
 )
+@restricted
 def handle_project_discovery(
     set_progress: Callable, discovery_clicks: int, project_id: str
 ):

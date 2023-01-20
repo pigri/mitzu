@@ -14,6 +14,7 @@ import mitzu.visualization.charts as CHRT
 from dash_iconify import DashIconify
 import mitzu.serialization as SE
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted
 from urllib.parse import quote
 
 RESPONSIVE_GRID_LAYOUT = "responsive_grid_layout"
@@ -341,6 +342,7 @@ def create_manage_dashboard_container(
     Input(SAVED_METRICS_SEARCH, "value"),
     prevent_initial_call=True,
 )
+@restricted
 def manage_saved_metrics_off_canvas(button: int, search_value: str):
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -378,6 +380,7 @@ def manage_saved_metrics_off_canvas(button: int, search_value: str):
     State(DASHBOARD_ID, "children"),
     prevent_initial_call=True,
 )
+@restricted
 def manage_dashboard_content(
     link_clicks: List[int],
     delete_clicks: List[int],
@@ -460,6 +463,7 @@ def manage_dashboard_content(
     State(DASHBOARD_ID, "children"),
     prevent_initial_call=True,
 )
+@restricted
 def dashboard_name_changed(name: str, dashboard_id: str) -> str:
     if name is None:
         return no_update
@@ -482,6 +486,7 @@ def dashboard_name_changed(name: str, dashboard_id: str) -> str:
     State(DASHBOARD_ID, "children"),
     prevent_initial_call=True,
 )
+@restricted
 def manage_layout_change(layouts: Dict[str, Dict], dashboard_id: str) -> str:
     if dashboard_id is None:
         return no_update
@@ -523,6 +528,7 @@ def manage_layout_change(layouts: Dict[str, Dict], dashboard_id: str) -> str:
     ],
     background=True,
 )
+@restricted
 def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: str):
     if dashboard_id is None or refresh_button_click is None:
         return no_update, 0

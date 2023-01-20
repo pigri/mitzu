@@ -11,14 +11,11 @@ import base64
 from typing import Any, Dict, Optional, List
 from urllib import parse
 from mitzu.helper import LOGGER
+import mitzu.webapp.pages.paths as P
+import mitzu.webapp.configs as configs
 
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
-
-SIGN_OUT_URL = "/auth/logout"
-UNAUTHORIZED_URL = "/auth/unauthorized"
-REDIRECT_TO_LOGIN_URL = "/auth/redirect-to-login"
-OAUTH_CODE_URL = "/auth/oauth"
 
 
 @dataclass(frozen=True)
@@ -78,15 +75,19 @@ class OAuthAuthorizer:
     _oauth_config: OAuthConfig
     _token_validator: TokenValidator
 
-    _unauthorized_url_prefixes: List[str] = field(
+    _authorized_url_prefixes: List[str] = field(
         default_factory=lambda: [
-            "/auth/",
+            P.UNAUTHORIZED_URL,
+            configs.HEALTH_CHECK_PATH,
             "/assets/",
+            "/_dash-update-component",
+            "/_dash-component-suites/",
+            "/_dash-layout",
+            "/_dash-dependencies",
         ]
     )
     _config: AuthConfig = field(default_factory=lambda: AuthConfig())
     _tokens: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    _unauthorized_page_content: str = field(default_factory=lambda: "")
     _allowed_email_domain: Optional[str] = field(default_factory=lambda: None)
 
     @classmethod
@@ -103,26 +104,23 @@ class OAuthAuthorizer:
                 oauth_config.client_id,
             )
 
-        unauthorized_html_path = os.path.join(
-            os.path.dirname(__file__), "../assets/unauthorized.html"
-        )
-        page_content = open(unauthorized_html_path, "r").read()
-        unauthorized_page_content = page_content.replace(
-            "LOGIN_URL", REDIRECT_TO_LOGIN_URL
-        )
         return OAuthAuthorizer(
             _oauth_config=oauth_config,
             _token_validator=token_validator,
-            _unauthorized_page_content=unauthorized_page_content,
             _allowed_email_domain=allowed_email_domain,
         )
 
     def _get_unauthenticated_response(
         self, redirect: Optional[str] = None
     ) -> werkzeug.wrappers.response.Response:
-        resp = self._redirect(UNAUTHORIZED_URL)
+        resp = self._redirect(P.UNAUTHORIZED_URL)
         resp.set_cookie(self._config.token_cookie_name, "", expires=0)
-        if redirect:
+        if (
+            redirect
+            and not redirect.startswith("/assets/")
+            and not redirect.startswith("/_dash")
+            and not redirect.startswith(configs.HEALTH_CHECK_PATH)
+        ):
             resp.set_cookie(self._config.redirect_cookie_name, redirect)
         return resp
 
@@ -155,7 +153,7 @@ class OAuthAuthorizer:
             "grant_type": "authorization_code",
             "client_id": self._oauth_config.client_id,
             "code": auth_code,
-            "redirect_uri": f"{HOME_URL}{OAUTH_CODE_URL}",
+            "redirect_uri": f"{HOME_URL}{P.OAUTH_CODE_URL}",
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -165,6 +163,7 @@ class OAuthAuthorizer:
         resp = requests.post(
             self._oauth_config.token_url, params=payload, headers=headers
         )
+
         if resp.status_code != 200:
             raise Exception(
                 f"Unexpected response: {resp.status_code}, {resp.content.decode('utf-8')}"
@@ -204,11 +203,11 @@ class OAuthAuthorizer:
         def authorize_request():
             request = flask.request
 
-            if request.path == REDIRECT_TO_LOGIN_URL:
+            if request.path == P.REDIRECT_TO_LOGIN_URL:
                 resp = self._redirect(self._oauth_config.sign_in_url)
                 return resp
 
-            if request.path == OAUTH_CODE_URL:
+            if request.path == P.OAUTH_CODE_URL:
                 code = self._get_oauth_code()
                 if code is not None:
                     LOGGER.debug(f"Redirected with code={code}")
@@ -233,7 +232,7 @@ class OAuthAuthorizer:
 
             auth_token = flask.request.cookies.get(self._config.token_cookie_name)
 
-            if request.path == SIGN_OUT_URL:
+            if request.path == P.SIGN_OUT_URL:
                 if auth_token in self._tokens.keys():
                     self._tokens.pop(auth_token)
 
@@ -243,11 +242,7 @@ class OAuthAuthorizer:
                     return resp
                 return self._get_unauthenticated_response()
 
-            if request.path == UNAUTHORIZED_URL:
-                resp = flask.Response(self._unauthorized_page_content, 200)
-                return resp
-
-            for prefix in self._unauthorized_url_prefixes:
+            for prefix in self._authorized_url_prefixes:
                 if request.path.startswith(prefix):
                     return None
 
@@ -261,3 +256,7 @@ class OAuthAuthorizer:
             if len(request.query_string) > 0:
                 redirect_url += "?" + request.query_string.decode("utf-8")
             return self._get_unauthenticated_response(redirect_url)
+
+    def is_request_authorized(self, request: flask.Request) -> bool:
+        auth_token = request.cookies.get(self._config.token_cookie_name)
+        return auth_token in self._tokens.keys()

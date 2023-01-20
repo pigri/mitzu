@@ -11,6 +11,7 @@ import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted_layout
 
 register_page(
     __name__,
@@ -19,6 +20,7 @@ register_page(
 )
 
 
+@restricted_layout
 def layout() -> bc.Component:
     depenednecies: DEPS.Dependencies = flask.current_app.config.get(DEPS.CONFIG_KEY)
     connection_ids = depenednecies.storage.list_connections()

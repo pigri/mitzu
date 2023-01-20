@@ -15,6 +15,7 @@ import mitzu.webapp.pages.paths as P
 import mitzu.webapp.pages.projects.event_tables_tab as ET
 import mitzu.webapp.pages.projects.helper as MPH
 import mitzu.webapp.pages.projects.manage_project_component as MPC
+from mitzu.webapp.auth.decorator import restricted, restricted_layout
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 SAVE_BUTTON = "project_save_button"
@@ -22,10 +23,12 @@ CLOSE_BUTTON = "project_close_button"
 MANAGE_PROJECT_INFO = "manage_project_info"
 
 
+@restricted_layout
 def layout_create() -> bc.Component:
     return layout(None)
 
 
+@restricted_layout
 def layout(project_id: Optional[str] = None) -> bc.Component:
     project: Optional[M.Project] = None
     dependencies: DEPS.Dependencies = cast(
@@ -105,6 +108,7 @@ def layout(project_id: Optional[str] = None) -> bc.Component:
     State(WH.MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
+@restricted
 def save_button_clicked(
     save_clicks: int, edt_table_rows: List, prop_values: List, pathname: str
 ):

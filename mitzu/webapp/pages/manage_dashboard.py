@@ -9,12 +9,15 @@ import mitzu.webapp.model as WM
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.dashboards.manage_dashboards_component as MDC
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted_layout
 
 
+@restricted_layout
 def no_connection_layout():
     return layout(None)
 
 
+@restricted_layout
 def layout(dashboard_id: Optional[str] = None) -> bc.Component:
     dashboard: Optional[WM.Dashboard] = None
     if dashboard_id is not None:

@@ -1,16 +1,17 @@
 from typing import Any, Dict, List, Optional, cast
+import flask
 from uuid import uuid4
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
-import flask
 from dash import ALL, Input, Output, State, callback, ctx, html, no_update
 
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.paths as P
 from mitzu.helper import value_to_label
+from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
@@ -319,6 +320,7 @@ def create_manage_connection_component(
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
+@restricted
 def connection_type_changed(connection_type: str, pathname: str) -> List[bc.Component]:
     deps: DEPS.Dependencies = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -340,6 +342,7 @@ def connection_type_changed(connection_type: str, pathname: str) -> List[bc.Comp
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_confirmed_clicked(n_clicks: int, pathname: str) -> int:
     if n_clicks is None:
         return no_update
@@ -359,6 +362,7 @@ def delete_confirmed_clicked(n_clicks: int, pathname: str) -> int:
     Input(CONFIRM_DIALOG_CLOSE, "n_clicks"),
     prevent_initial_call=True,
 )
+@restricted
 def delete_button_clicked(delete: int, close: int) -> bool:
     if delete is None:
         return no_update
@@ -390,9 +394,11 @@ def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
     ],
     interval=100,
 )
+@restricted
 def test_connection_clicked(
     n_clicks: int, values: Dict[str, Any], pathname: str
 ) -> List[bc.Component]:
+    print("test_connection_clicked")
     if n_clicks is None:
         return no_update
 

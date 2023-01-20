@@ -4,6 +4,7 @@ from dash import html
 import mitzu.webapp.configs as configs
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
+from mitzu.webapp.auth.decorator import restricted_layout
 
 
 register_page(
@@ -13,6 +14,7 @@ register_page(
 )
 
 
+@restricted_layout
 def layout():
     return html.Div(
         [

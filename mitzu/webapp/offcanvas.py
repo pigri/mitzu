@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from typing import Any, Dict
 
 import dash_bootstrap_components as dbc
@@ -7,10 +8,10 @@ from dash import callback, ctx, html, dcc
 from dash.dependencies import ALL, Input, Output
 
 import mitzu.webapp.configs as configs
+import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
-from mitzu.webapp.auth.authorizer import SIGN_OUT_URL
-import mitzu.webapp.storage as S
+from mitzu.webapp.auth.decorator import restricted
 
 OFF_CANVAS = "off-canvas-id"
 BUTTON_COLOR = "light"
@@ -33,9 +34,10 @@ MENU_ITEM_CSS = "mb-1 w-100 border-0 text-start"
 EXPLORE_MENU_ITEM_CSS = "mb-1 w-100 text-start"
 
 
-def create_offcanvas(storage: S.MitzuStorage) -> dbc.Offcanvas:
-    project_ids = storage.list_projects()
+def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
+    project_ids = dependencies.storage.list_projects()
     project_id = project_ids[0] if len(project_ids) > 0 else None
+
     res = dbc.Offcanvas(
         children=[
             dbc.Row(
@@ -132,9 +134,11 @@ def create_offcanvas(storage: S.MitzuStorage) -> dbc.Offcanvas:
                 [html.B(className="bi bi-box-arrow-right me-1"), "Sign out"],
                 color="light",
                 class_name=MENU_ITEM_CSS,
-                href=SIGN_OUT_URL,
+                href=P.SIGN_OUT_URL,
                 external_link=True,
-            ),
+            )
+            if dependencies.authorizer is not None
+            else None,
         ],
         close_button=False,
         is_open=False,
@@ -153,6 +157,7 @@ def create_offcanvas(storage: S.MitzuStorage) -> dbc.Offcanvas:
         },
         prevent_initial_call=True,
     )
+    @restricted
     def off_canvas_toggled(items: Dict[str, Any]) -> bool:
         for off_c in ctx.args_grouping["items"][NB.OFF_CANVAS_TOGGLER]:
             if off_c.get("triggered", False) and off_c.get("value") is not None:
