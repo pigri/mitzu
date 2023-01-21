@@ -10,6 +10,7 @@ from dash import ALL, Input, Output, State, callback, ctx, html, no_update
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.paths as P
+import mitzu.webapp.configs as CO
 from mitzu.helper import value_to_label
 from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
@@ -25,7 +26,6 @@ CONFIRM_DIALOG_INDEX = "connection_confirm"
 CONFIRM_DIALOG_CLOSE = "conn_confirm_dialog_close"
 CONFIRM_DIALOG_ACCEPT = "conn_confirm_dialog_accept"
 
-CON_TYPE_BLACKLIST = [M.ConnectionType.FILE, M.ConnectionType.SQLITE]
 
 PROP_CONNECTION_ID = "connecion_id"
 PROP_CONNECTION_NAME = "connection_name"
@@ -41,6 +41,7 @@ PROP_HOST = "host"
 PROP_USERNAME = "username"
 PROP_PASSWORD = "password"
 NOT_REQUIRED_PROPERTIES = [PROP_CATALOG, PROP_PORT, PROP_PASSWORD, PROP_USERNAME]
+CON_TYPE_BLACKLIST = [M.ConnectionType.FILE, M.ConnectionType.SQLITE]
 
 
 MIN_LENGTH = 4
@@ -203,6 +204,13 @@ def create_manage_connection_component(
         for ct in M.ConnectionType
         if ct not in CON_TYPE_BLACKLIST
     ]
+    if CO.SETUP_SAMPLE_PROJECT:
+        con_type_opts.append(
+            {
+                "label": M.ConnectionType.SQLITE.name.title(),
+                "value": M.ConnectionType.SQLITE.name,
+            }
+        )
     def_con_type = M.ConnectionType.SNOWFLAKE
     return html.Div(
         [

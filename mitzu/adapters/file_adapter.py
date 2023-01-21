@@ -38,7 +38,9 @@ class FileAdapter(SQLiteAdapter):
         elif extension.endswith("json"):
             df = pd.read_json(file_loc)
         elif extension.endswith("parquet"):
-            df = pd.read_parquet(file_loc)
+            df = pd.read_parquet(
+                file_loc,
+            )
         else:
             raise Exception("Extension not supported: " + extension)
         df[event_data_table.event_time_field._get_name()] = pd.to_datetime(

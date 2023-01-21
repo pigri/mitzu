@@ -33,3 +33,8 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 # disk cache
 DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
+
+# storage
+SETUP_SAMPLE_PROJECT = bool(
+    os.getenv("SETUP_SAMPLE_PROJECT", "true").lower() != "false"
+)

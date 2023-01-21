@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import base64
-import json
 import logging
 import os
 import pathlib
-import pickle
 from urllib import parse
 from abc import ABC
 from copy import copy
@@ -25,7 +22,7 @@ from typing import (
     cast,
 )
 import pandas as pd
-from uuid import uuid4
+
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
@@ -38,6 +35,8 @@ import mitzu.project_discovery as D
 import mitzu.visualization.charts as CHRT
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.titles as TI
+import mitzu.project_serialization as PSE
+
 
 ANY_EVENT_NAME = "any_event"
 
@@ -336,8 +335,6 @@ class State(Generic[T]):
     def set_value(self, value: Optional[T]):
         self._val = value
 
-
-class ProtectedState(State[T]):
     def __getstate__(self):
         """Override so pickle doesn't store state"""
         return None
@@ -424,7 +421,7 @@ class Connection:
 
     connection_name: str
     connection_type: ConnectionType
-    id: str = field(default_factory=lambda: str(uuid4())[-12:])
+    id: str = field(default_factory=helper.create_unique_id)
     user_name: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
@@ -436,7 +433,7 @@ class Connection:
     url_params: Optional[str] = None
     # Used for adapter configuration
     extra_configs: Dict[str, Any] = field(default_factory=dict)
-    _secret: ProtectedState[str] = field(default_factory=ProtectedState)
+    _secret: State[str] = field(default_factory=State)
     secret_resolver: Optional[SecretResolver] = None
 
     @property
@@ -503,6 +500,7 @@ class EventDataTable:
     description: Optional[str] = None
 
     discovery_settings: Optional[DiscoverySettings] = None
+    project: State[Project] = field(default_factory=State)
 
     @classmethod
     def create(
@@ -702,14 +700,9 @@ class Project:
     discovery_settings: DiscoverySettings
     webapp_settings: WebappSettings
     description: Optional[str]
-    id: str = field(default_factory=lambda: str(uuid4())[-12:])
-    _adapter_cache: ProtectedState[GA.GenericDatasetAdapter] = field(
-        default_factory=lambda: ProtectedState()
-    )
-
-    _discovered_project: State[DiscoveredProject] = field(
-        default_factory=lambda: State()
-    )
+    id: str = field(default_factory=helper.create_unique_id)
+    _adapter_cache: State[GA.GenericDatasetAdapter] = field(default_factory=State)
+    _discovered_project: State[DiscoveredProject] = field(default_factory=State)
 
     def __init__(
         self,
@@ -727,6 +720,7 @@ class Project:
         if discovery_settings is None:
             discovery_settings = DiscoverySettings()
         for edt in event_data_tables:
+            edt.project.set_value(self)
             if edt.discovery_settings is None:
                 edt_with_discovery_settings.append(
                     edt.update_discovery_settings(discovery_settings)
@@ -738,7 +732,7 @@ class Project:
             webapp_settings = WebappSettings()
 
         if project_id is None:
-            project_id = str(uuid4())[-12:]
+            project_id = helper.create_unique_id()
 
         object.__setattr__(self, "event_data_tables", edt_with_discovery_settings)
         object.__setattr__(self, "discovery_settings", discovery_settings)
@@ -746,7 +740,7 @@ class Project:
         object.__setattr__(self, "project_name", project_name)
         object.__setattr__(self, "description", description)
         object.__setattr__(self, "id", project_id)
-        object.__setattr__(self, "_adapter_cache", ProtectedState())
+        object.__setattr__(self, "_adapter_cache", State())
         object.__setattr__(self, "_discovered_project", State())
 
     def get_adapter(self) -> GA.GenericDatasetAdapter:
@@ -803,13 +797,6 @@ class DatasetModel:
         for k, v in cls.__dict__.items():
             if k != "_to_globals":
                 glbs[k] = v
-
-
-DISCOVERED_PROJECT_FILE_VERSION = 2
-
-
-class DiscoveredProjectSerializationError(Exception):
-    pass
 
 
 @dataclass(frozen=True, init=False)
@@ -896,38 +883,12 @@ class DiscoveredProject:
         else:
             return pathlib.Path(folder, f"{project_name}.{extension}")
 
-    def serialize(self) -> str:
-        data = {
-            "version": DISCOVERED_PROJECT_FILE_VERSION,
-            "project": base64.b64encode(self.dump_project_to_binary()).decode("UTF-8"),
-        }
-        return json.dumps(data)
-
-    @classmethod
-    def deserialize(cls, raw_data: bytes) -> DiscoveredProject:
-        try:
-            data = json.loads(raw_data)
-            if data["version"] != DISCOVERED_PROJECT_FILE_VERSION:
-                raise DiscoveredProjectSerializationError(
-                    "Invalid discovered project version. Please discover the project again."
-                )
-        except Exception as e:
-            raise DiscoveredProjectSerializationError(
-                "Something went wrong, cannot deserialize discovered project file.\n"
-                "Try discovering the project again."
-            ) from e
-
-        return DiscoveredProject.load_from_project_binary(
-            base64.b64decode(data["project"])
-        )
-
     def save_to_project_file(
         self, project_name: str, folder: str = "./", extension="mitzu"
     ):
         path = self._get_path(project_name, folder, extension)
-
         with path.open(mode="w") as file:
-            file.write(self.serialize())
+            file.write(PSE.serialize_discovered_project(self))
 
     @classmethod
     def load_from_project_file(
@@ -935,16 +896,7 @@ class DiscoveredProject:
     ) -> DiscoveredProject:
         path = cls._get_path(project_name, folder, extension)
         with path.open(mode="rb") as file:
-            return cls.deserialize(file.read())
-
-    def dump_project_to_binary(self) -> bytes:
-        return pickle.dumps(self)
-
-    @classmethod
-    def load_from_project_binary(cls, project_binary: bytes) -> DiscoveredProject:
-        res: DiscoveredProject = pickle.loads(project_binary)
-        res.project._discovered_project.set_value(res)
-        return res
+            return PSE.deserialize_discovered_project(file.read())
 
 
 @dataclass(frozen=True, init=False)
@@ -1004,27 +956,25 @@ class Field:
 class EventFieldDef:
     _event_name: str
     _field: Field
-
-    # TBD remove project
-    _project: Project
-
-    # TBD remove EDT
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
     _enums: Optional[List[Any]] = None
+
+    @property
+    def _project(self):
+        return self._event_data_table.project.get_value()
 
 
 @dataclass(frozen=True)
 class EventDef:
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
-
-    # TBD remove project
-    _project: Project
-
-    # TBD remove EDT
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
+
+    @property
+    def _project(self):
+        return self._event_data_table.project.get_value()
 
 
 # =========================================== Metric definitions ===========================================
@@ -1059,7 +1009,9 @@ class Metric(ABC):
 
     def __init__(self, config: MetricConfig, id: Optional[str] = None):
         object.__setattr__(self, "_config", config)
-        object.__setattr__(self, "_id", id if id is not None else str(uuid4())[-12:])
+        object.__setattr__(
+            self, "_id", id if id is not None else helper.create_unique_id()
+        )
 
     @property
     def _max_group_count(self) -> int:

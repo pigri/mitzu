@@ -29,42 +29,54 @@ TABLE_PREFIX = "__table__"
 SIMPLE_CHART_PREFIX = "__simple_chart__"
 SAVED_METRIC_PREFIX = "__saved_metric__"
 DASHBOARD_PREFIX = "__dashboard__"
+SAMPLE_PROJECT_ID = "sample_project_id"
 
 
-def create_sample_project() -> M.DiscoveredProject:
+def setup_sample_project(storage: MitzuStorage):
     connection = M.Connection(
+        id=SAMPLE_PROJECT_ID,
         connection_name="Sample project",
         connection_type=M.ConnectionType.SQLITE,
+        host="sample_project",
     )
     project = create_and_ingest_sample_project(
-        connection, event_count=20000, number_of_users=100
+        connection,
+        event_count=200000,
+        number_of_users=300,
+        schema="main",
+        overwrite_records=False,
+        project_id=SAMPLE_PROJECT_ID,
     )
-    return project.discover_project()
+    storage.set_connection(project.connection.id, project.connection)
+    storage.set_project(project_id=project.id, project=project)
+
+    dp = project.discover_project()
+
+    for edt, defs in dp.definitions.items():
+        storage.set_event_data_table_definition(
+            project_id=project.id, definitions=defs, edt_full_name=edt.get_full_name()
+        )
 
 
 class MitzuStorage:
     def __init__(self, mitzu_cache: C.MitzuCache) -> None:
         super().__init__()
-        self.sample_project: Optional[M.DiscoveredProject] = None
         self.mitzu_cache = mitzu_cache
 
     def get_discovered_project(self, project_id: str) -> Optional[M.DiscoveredProject]:
-        if project_id == SAMPLE_PROJECT_NAME:
-            if self.sample_project is None:
-                self.sample_project = create_sample_project()
-            return self.sample_project
-        else:
-            project = self.get_project(project_id)
-            tbl_defs = project.event_data_tables
-            definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
+        project = self.get_project(project_id)
+        tbl_defs = project.event_data_tables
+        definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
-            for edt in tbl_defs:
-                defs = self.get_event_data_table_definition(
-                    project_id, edt.get_full_name()
-                )
-                definitions[edt] = defs if defs is not None else {}
-            dp = M.DiscoveredProject(definitions, project)
-            return dp
+        for edt in tbl_defs:
+            edt.project.set_value(project)
+            defs = self.get_event_data_table_definition(project_id, edt.get_full_name())
+            for ed in defs.values():
+                ed._event_data_table.project.set_value(project)
+            definitions[edt] = defs if defs is not None else {}
+
+        dp = M.DiscoveredProject(definitions, project)
+        return dp
 
     def set_project(self, project_id: str, project: M.Project):
         return self.mitzu_cache.put(PROJECT_PREFIX + project_id, project)
@@ -101,10 +113,12 @@ class MitzuStorage:
     def get_event_data_table_definition(
         self, project_id: str, edt_full_name: str
     ) -> Dict[str, M.EventDef]:
-        return self.mitzu_cache.get(
+        res = self.mitzu_cache.get(
             SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
             {},
         )
+
+        return res
 
     def delete_event_data_table_definition(self, project_id: str, edt_full_name: str):
         self.mitzu_cache.clear(
@@ -137,7 +151,11 @@ class MitzuStorage:
         self.mitzu_cache.put(SAVED_METRIC_PREFIX + metric_id, saved_metric)
 
     def get_saved_metric(self, metric_id: str) -> WM.SavedMetric:
-        return self.mitzu_cache.get(SAVED_METRIC_PREFIX + metric_id)
+        res: WM.SavedMetric = self.mitzu_cache.get(SAVED_METRIC_PREFIX + metric_id)
+        if res is not None:
+            for edt in res.project.event_data_tables:
+                edt.project.set_value(res.project)
+        return res
 
     def clear_saved_metric(self, metric_id: str):
         return self.mitzu_cache.clear(SAVED_METRIC_PREFIX + metric_id)

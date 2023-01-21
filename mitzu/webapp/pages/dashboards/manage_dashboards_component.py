@@ -543,6 +543,7 @@ def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: st
     for index, dm in enumerate(dashboard.dashboard_metrics):
         if dm.saved_metric is not None:
             metric = dm.saved_metric.metric
+
             simple_chart = CHRT.get_simple_chart(metric)
             fig = PLT.plot_chart(simple_chart, metric)
             sm = WM.SavedMetric(

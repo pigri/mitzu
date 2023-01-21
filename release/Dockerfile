@@ -5,4 +5,4 @@ RUN pip3 install $ADDITIONAL_DEPENDENCIES
 
 COPY ./app/ ./
 EXPOSE 8080
-ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:8080", "--workers=1", "app:server"]
+ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:8080", "--workers=2", "app:server"]

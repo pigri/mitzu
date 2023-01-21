@@ -62,7 +62,6 @@ class ProjectDiscovery:
         return M.EventFieldDef(
             _event_name=spec_event_name,
             _field=gen_evt_field_def._field,
-            _project=gen_evt_field_def._project,
             _event_data_table=gen_evt_field_def._event_data_table,
             _enums=gen_evt_field_def._enums,
         )
@@ -81,7 +80,6 @@ class ProjectDiscovery:
             }
 
             new_def = M.EventDef(
-                _project=self.project,
                 _event_data_table=event_data_table,
                 _event_name=evt_name,
                 _fields={**spec_evt_def._fields, **copied_gen_fields},

@@ -48,5 +48,7 @@ class Dependencies:
 
         # Adding cache layer over storage
         storage = S.MitzuStorage(cache)
+        if configs.SETUP_SAMPLE_PROJECT:
+            S.setup_sample_project(storage)
 
         return Dependencies(authorizer=authorizer, cache=cache, storage=storage)

@@ -1,4 +1,3 @@
-import os
 from typing import Any, Dict, Optional, Union
 
 import dash.development.base_component as bc
@@ -58,14 +57,45 @@ def find_component_by_id(
 
 @fixture(scope="module")
 def discovered_project():
-    path = os.path.dirname(os.path.abspath(__file__))
-    return M.DiscoveredProject.load_from_project_file(
-        project_name="trino_test_project", folder=path
+    p = M.Project(
+        project_name="trino_test_project",
+        event_data_tables=[
+            M.EventDataTable.create(
+                table_name="sub_events",
+                schema="tiny",
+                event_name_alias="user_subscribe",
+                event_time_field="subscription_time",
+                user_id_field="subscriber_id",
+            ),
+            M.EventDataTable.create(
+                table_name="web_events",
+                schema="tiny",
+                event_name_field="event_name",
+                event_time_field="event_time",
+                date_partition_field="event_time",
+                user_id_field="user_id",
+                event_specific_fields=["event_properties"],
+            ),
+        ],
+        discovery_settings=M.DiscoverySettings(
+            end_dt=datetime(2021, 4, 1),
+            lookback_days=10,
+            property_sample_rate=10,
+        ),
+        connection=M.Connection(
+            connection_name="trino_hive_connection",
+            connection_type=M.ConnectionType.TRINO,
+            user_name="test",
+            secret_resolver=None,
+            catalog="minio",
+            host="localhost",
+        ),
     )
+    return p.discover_project()
 
 
 @fixture(scope="module")
-def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
+def dependencies() -> DEPS.Dependencies:
     cache = C.InMemoryCache()
     return DEPS.Dependencies(
         authorizer=None, storage=S.MitzuStorage(cache), cache=cache

@@ -5,7 +5,6 @@ import json
 import zlib
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
-
 import mitzu.model as M
 
 EFD_OR_ED_TYPE = Union[M.EventFieldDef, M.EventDef]
@@ -239,7 +238,6 @@ def _from_dict(
             _field=_from_dict(
                 value.get("f"), project, M.Field, path + ".f", other_hint=event_name
             ),
-            _project=project,
             _event_data_table=edt,
         )
     if type_hint == M.EventDef:
@@ -248,7 +246,6 @@ def _from_dict(
         return M.EventDef(
             _event_name=_from_dict(event_name, project, str, path + ".en"),
             _fields={},
-            _project=project,
             _event_data_table=edt,
         )
     if type_hint == EFD_OR_ED_TYPE:

@@ -8,7 +8,7 @@ import mitzu.model as M
 import pandas as pd
 import sqlalchemy as SA
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
-from mitzu.helper import LOGGER
+from mitzu.helper import LOGGER, create_unique_id
 from mitzu.samples.sample_data_generator import create_all_funnels
 from tqdm import tqdm
 import sys
@@ -72,6 +72,7 @@ def create_and_ingest_sample_project(
     show_progress: bool = False,
     chunk_size: int = 10000,
     seed: Optional[int] = 100,
+    project_id: Optional[str] = None,
 ) -> M.Project:
     dfs = create_all_funnels(
         event_count=event_count, user_count=number_of_users, seed=seed
@@ -96,6 +97,7 @@ def create_and_ingest_sample_project(
             lookback_days=365,
             end_dt=datetime(2022, 1, 1),
         ),
+        project_id=project_id if project_id is not None else create_unique_id(),
     )
 
     for table_name, df in dfs.items():

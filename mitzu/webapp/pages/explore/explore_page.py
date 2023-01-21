@@ -231,6 +231,9 @@ def create_metric_from_all_inputs(
     metric_name = all_inputs[METRIC_NAME_INPUT]
     metric_id = all_inputs[METRIC_ID_VALUE]
 
+    metric_name = all_inputs[METRIC_NAME_INPUT]
+    metric_id = all_inputs[METRIC_ID_VALUE]
+
     if isinstance(metric, M.Conversion):
         return metric.config(
             id=metric_id,

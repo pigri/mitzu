@@ -12,7 +12,10 @@ init:
 
 format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
-	$(POETRY) run black mitzu tests release examples/notebook/*.ipynb
+	$(POETRY) run black mitzu tests release 
+
+format_notebooks: 
+	$(POETRY) run black  ./examples/notebook/
 
 lint: ## lints and checks formatting all python code
 	$(POETRY) run black --exclude .dbs --check mitzu tests release examples/notebook/*.ipynb
@@ -65,9 +68,6 @@ serve_cognito_sso:
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	MANAGE_PROJECTS_LINK="http://localhost:8081" \
-	MITZU_WEBAPP_URL="http://localhost:8082" \
-	HOME_URL="http://localhost:8082" \
 	OAUTH_BACKEND="cognito" \
 	COGNITO_CLIENT_ID="1bqlja23lfmniv7bm703aid9o0" \
 	COGNITO_CLIENT_SECRET="${COGNITO_CLIENT_SECRET}" \
@@ -81,9 +81,6 @@ serve_google_sso:
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	MANAGE_PROJECTS_LINK="http://localhost:8081" \
-	MITZU_WEBAPP_URL="http://localhost:8082" \
-	HOME_URL="http://localhost:8082" \
 	OAUTH_BACKEND="google" \
 	GOOGLE_CLIENT_ID="669095060108-42hhm4rgo8cjseumiu47saq2g8690ehh.apps.googleusercontent.com" \
 	GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
@@ -95,9 +92,7 @@ serve:
 	cd release/app/ && \
 	LOG_LEVEL=WARN \
 	LOG_HANDLER=stdout \
-	MANAGE_PROJECTS_LINK="http://localhost:8081" \
-	HOME_URL="http://localhost:8082/" \
-	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=8
 
 run:
 	$(POETRY) run python mitzu/webapp/webapp.py

@@ -22,7 +22,10 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         return False
 
     def _get_connection_url(self, con: M.Connection):
-        return "sqlite://?check_same_thread=False"
+        if not con.host:
+            return "sqlite://?check_same_thread=False"
+        else:
+            return f"sqlite:///{con.host}.db?check_same_thread=False"
 
     def keep_alive_connection(self) -> bool:
         return True

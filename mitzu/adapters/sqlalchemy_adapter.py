@@ -513,7 +513,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     f: M.EventFieldDef(
                         _event_name=evt,
                         _field=f,
-                        _project=self.project,
                         _event_data_table=event_data_table,
                         _enums=values[f._get_name()],
                     )
@@ -523,7 +522,6 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     # Empty list are the result of field not having any value
                     if values[f._get_name()] is None or len(values[f._get_name()]) > 0
                 },
-                _project=self.project,
                 _event_data_table=event_data_table,
             )
         return res

@@ -8,6 +8,7 @@ from typing import Any, Optional, Dict
 import inspect
 
 import mitzu.model as M
+from uuid import uuid4
 
 LOGGER = logging.getLogger(name="mitzu_logger")
 LOGGER.addHandler(logging.StreamHandler(sys.stdout))
@@ -53,3 +54,7 @@ def get_segment_project(segment: M.Segment) -> M.Project:
         return get_segment_project(segment._left)
     else:
         raise ValueError(f"Segment is of invalid type: {type(segment)}")
+
+
+def create_unique_id():
+    return str(uuid4())[-12:]

@@ -191,7 +191,6 @@ class ModelLoader:
             class_instance = field_class(
                 _event_name=event._event_name,
                 _field=event_field,
-                _project=project,
                 _event_data_table=event_field_def._event_data_table,
             )
 

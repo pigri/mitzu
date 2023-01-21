@@ -6,8 +6,6 @@ from unittest.mock import MagicMock
 from mitzu.model import (
     Connection,
     ConnectionType,
-    DiscoveredProject,
-    DiscoveredProjectSerializationError,
     EventDataTable,
     Project,
     InvalidProjectError,
@@ -15,6 +13,7 @@ from mitzu.model import (
     Field,
     DataType,
 )
+import mitzu.project_serialization as PSE
 
 WD = os.path.dirname(os.path.abspath(__file__))
 
@@ -136,10 +135,10 @@ def test_event_data_table_with_uppercase_fields():
 
 
 def test_deserialize_junk_legacy_format():
-    with pytest.raises(DiscoveredProjectSerializationError):
-        DiscoveredProject.deserialize(pickle.dumps("some pickled project"))
+    with pytest.raises(PSE.DiscoveredProjectSerializationError):
+        PSE.deserialize_discovered_project(pickle.dumps("some pickled project"))
 
 
 def test_deserialize_invalid_json():
-    with pytest.raises(DiscoveredProjectSerializationError):
-        DiscoveredProject.deserialize('{"key": "value"}')
+    with pytest.raises(PSE.DiscoveredProjectSerializationError):
+        PSE.deserialize_discovered_project('{"key": "value"}')

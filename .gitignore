@@ -77,7 +77,7 @@ serverless/.aws-sam/*
 .mutmut-cache
 
 
-!**/**/trino_test_project.*
+!tests/**/trino_test_project.*
 
 release/app/cache/
 release/requirements.txt
@@ -85,4 +85,7 @@ cache/
 cache.db*
 
 examples/notebook/*ipynb.py
+private_notebooks/
+
+sample_project.db
 .cognito.env
