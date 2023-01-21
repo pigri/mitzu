@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import pandas as pd
 
@@ -8,7 +8,6 @@ import mitzu.model as M
 import mitzu.webapp.cache as C
 import mitzu.webapp.model as WM
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
-from datetime import datetime
 
 SAMPLE_PROJECT_NAME = "sample_project"
 
@@ -63,16 +62,16 @@ class MitzuStorage:
         super().__init__()
         self.mitzu_cache = mitzu_cache
 
-    def get_discovered_project(self, project_id: str) -> Optional[M.DiscoveredProject]:
+    def get_discovered_project(self, project_id: str) -> M.DiscoveredProject:
         project = self.get_project(project_id)
         tbl_defs = project.event_data_tables
         definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
 
         for edt in tbl_defs:
-            edt.project.set_value(project)
+            edt.set_project(project)
             defs = self.get_event_data_table_definition(project_id, edt.get_full_name())
             for ed in defs.values():
-                ed._event_data_table.project.set_value(project)
+                ed._event_data_table.set_project(project)
             definitions[edt] = defs if defs is not None else {}
 
         dp = M.DiscoveredProject(definitions, project)
@@ -82,7 +81,16 @@ class MitzuStorage:
         return self.mitzu_cache.put(PROJECT_PREFIX + project_id, project)
 
     def get_project(self, project_id: str) -> M.Project:
-        return self.mitzu_cache.get(PROJECT_PREFIX + project_id)
+        res: M.Project = self.mitzu_cache.get(PROJECT_PREFIX + project_id)
+        if res is not None:
+            con_id = res.get_connection_id()
+            if con_id is not None:
+                con = self.get_connection(con_id)
+                res.set_connection(con)
+
+            for edt in res.event_data_tables:
+                edt.set_project(res)
+        return res
 
     def delete_project(self, project_id: str):
         self.mitzu_cache.clear(PROJECT_PREFIX + project_id)
@@ -153,8 +161,8 @@ class MitzuStorage:
     def get_saved_metric(self, metric_id: str) -> WM.SavedMetric:
         res: WM.SavedMetric = self.mitzu_cache.get(SAVED_METRIC_PREFIX + metric_id)
         if res is not None:
-            for edt in res.project.event_data_tables:
-                edt.project.set_value(res.project)
+            discovered_project = self.get_discovered_project(res.get_project_id())
+            res.set_project(discovered_project.project)
         return res
 
     def clear_saved_metric(self, metric_id: str):
@@ -168,33 +176,15 @@ class MitzuStorage:
 
     def get_dashboard(self, dashboard_id: str) -> WM.Dashboard:
         dashboard: WM.Dashboard = self.mitzu_cache.get(DASHBOARD_PREFIX + dashboard_id)
-        if dashboard is None:
-            return None
-        for dm in dashboard.dashboard_metrics:
-            if dm.saved_metric is None:
-                dm.saved_metric = self.get_saved_metric(dm.saved_metric_id)
+        if dashboard is not None:
+            for dm in dashboard.dashboard_metrics:
+                sm = self.get_saved_metric(dm.get_saved_metric_id())
+                dm.set_saved_metric(sm)
+
         return dashboard
 
     def set_dashboard(self, dashboard_id: str, dashboard: WM.Dashboard):
-        metrics = [
-            WM.DashboardMetric(
-                saved_metric_id=dm.saved_metric_id,
-                x=dm.x,
-                y=dm.y,
-                width=dm.width,
-                height=dm.height,
-                saved_metric=None,  # we don't want to save the SaveMetric to the dashboard object
-            )
-            for dm in dashboard.dashboard_metrics
-        ]
-        new_dashboard = WM.Dashboard(
-            name=dashboard.name,
-            id=dashboard.id,
-            dashboard_metrics=metrics,
-            created_on=dashboard.created_on,
-            last_modified=datetime.now(),
-        )
-        return self.mitzu_cache.put(DASHBOARD_PREFIX + dashboard_id, new_dashboard)
+        return self.mitzu_cache.put(DASHBOARD_PREFIX + dashboard_id, dashboard)
 
     def clear_dashboard(self, dashboard_id: str):
         return self.mitzu_cache.clear(DASHBOARD_PREFIX + dashboard_id)

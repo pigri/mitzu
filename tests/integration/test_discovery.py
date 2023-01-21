@@ -83,10 +83,13 @@ def test_data_discovery_with_missing_table():
 
 
 def test_event_data_table_discovery_settings_used():
-    project_config = get_simple_csv().__dict__
+    simples_csv_project = get_simple_csv()
+    project_config = simples_csv_project.__dict__
     project_config.update(
-        discovery_settings=DiscoverySettings(end_dt=datetime(2010, 1, 1))
+        discovery_settings=DiscoverySettings(end_dt=datetime(2010, 1, 1)),
+        connection=simples_csv_project.connection,
     )
+
     for key in [key for key in project_config.keys() if key.startswith("_")]:
         del project_config[key]
 

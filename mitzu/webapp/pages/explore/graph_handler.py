@@ -63,6 +63,7 @@ def create_graph_container() -> bc.Component:
 
 def create_metric_hash_key(metric: M.Metric) -> str:
     metric_dict = SE.to_dict(metric)
+    #  We need to remove these keys from the metric dict as changes in these shouldn't trigger reexecution
     metric_dict["co"]["mn"] = None
     metric_dict["co"]["mgc"] = None
     metric_dict["co"]["ct"] = None
@@ -147,9 +148,9 @@ def store_saved_metric(
     image_b64 = PLT.figure_to_base64_image(fig, 1.0)
     small_image_b64 = PLT.figure_to_base64_image(fig, 0.5)
     saved_metric = WM.SavedMetric(
-        metric,
-        simple_chart,
-        project,
+        metric=metric,
+        chart=simple_chart,
+        project=project,
         image_base64=image_b64,
         small_base64=small_image_b64,
     )

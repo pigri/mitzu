@@ -25,7 +25,7 @@ class SingleProjectMitzuStorage(S.MitzuStorage):
     def list_discovered_projects(self) -> List[str]:
         return [S.SAMPLE_PROJECT_NAME]
 
-    def get_discovered_project(self, key: str) -> Optional[M.DiscoveredProject]:
+    def get_discovered_project(self, key: str) -> M.DiscoveredProject:
         return self.sample_project
 
 

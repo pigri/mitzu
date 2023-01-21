@@ -38,6 +38,6 @@ def deserialize_discovered_project(raw_data: bytes) -> M.DiscoveredProject:
     res: M.DiscoveredProject = pickle.loads(base64.b64decode(data["project"]))
     res.project._discovered_project.set_value(res)
     for edt in res.project.event_data_tables:
-        edt.project.set_value(res.project)
-
+        edt.set_project(res.project)
+    res.project.set_connection(res.connection)
     return res

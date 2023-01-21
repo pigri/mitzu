@@ -7,7 +7,8 @@ from tests.samples.sources import get_simple_csv
 
 
 def test_discovered_dataset_pickle():
-    discovery = ProjectDiscovery(project=get_simple_csv())
+    simple_csv = get_simple_csv()
+    discovery = ProjectDiscovery(project=simple_csv)
     dd1 = discovery.discover_project()
     dd1.save_to_project_file("test_app", folder="./examples/data/projects/")
 

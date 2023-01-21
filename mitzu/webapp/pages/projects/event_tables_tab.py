@@ -521,7 +521,6 @@ def manage_choose_schema_dropdown(
         adapter = dummy_project.get_adapter()
         try:
             schemas = [{"label": s, "value": s} for s in adapter.list_schemas()]
-
             return (schemas, no_update, "Select schema")
         except Exception:
             traceback.print_exc()

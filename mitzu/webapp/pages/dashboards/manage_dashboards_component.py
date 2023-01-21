@@ -133,7 +133,7 @@ def create_saved_metrics_off_canvas() -> bc.Component:
 
 
 def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
-    index = f"{DASHBOARD_ITEM_PREFIX}_{dm.saved_metric_id}"
+    index = f"{DASHBOARD_ITEM_PREFIX}_{dm.get_saved_metric_id()}"
     if dm.saved_metric is None:
         component = html.Div(
             "Missing chart",
@@ -144,7 +144,7 @@ def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
         edit_href = None
     else:
         component = dcc.Graph(
-            id={"type": DASHBOARD_METRIC_GRAPH_TYPE, "index": dm.saved_metric_id},
+            id={"type": DASHBOARD_METRIC_GRAPH_TYPE, "index": dm.get_saved_metric_id()},
             className="w-100 h-100",
             figure=PLT.plot_chart(dm.saved_metric.chart, dm.saved_metric.metric),
             config={"displayModeBar": False},
@@ -209,7 +209,7 @@ def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
                                             color="red",
                                             id={
                                                 "type": DELETE_SAVED_METRICS_TYPE,
-                                                "index": dm.saved_metric_id,
+                                                "index": dm.get_saved_metric_id(),
                                             },
                                         ),
                                     ]
@@ -233,7 +233,7 @@ def create_responsive_layouts(dashboard: WM.Dashboard) -> Dict:
     layouts: Dict[str, List] = {"lg": [], "md": [], "sm": [], "xs": [], "xxs": []}
     for dm in dashboard.dashboard_metrics:
         lt = create_layout_item(
-            id=f"{DASHBOARD_ITEM_PREFIX}_{dm.saved_metric_id}",
+            id=f"{DASHBOARD_ITEM_PREFIX}_{dm.get_saved_metric_id()}",
             x=dm.x,
             y=dm.y,
             w=dm.width,
@@ -406,7 +406,7 @@ def manage_dashboard_content(
         dashboard.dashboard_metrics = [
             dm
             for dm in dashboard.dashboard_metrics
-            if dm.saved_metric_id != delete_metric_id
+            if dm.get_saved_metric_id() != delete_metric_id
         ]
         storage.clear_dashboard(dashboard.id)
         storage.set_dashboard(dashboard.id, dashboard)
@@ -416,15 +416,15 @@ def manage_dashboard_content(
         layouts = create_responsive_layouts(dashboard)
         return children, layouts, True
     if ctx.triggered_id.get("type") == ADD_SAVED_METRICS_TYPE:
-        new_matric_id = ctx.triggered_id.get("index")
+        new_metric_id = ctx.triggered_id.get("index")
         if (
             link_clicks is None
             or all([c is None for c in link_clicks])
-            or new_matric_id is None
+            or new_metric_id is None
         ):
             return no_update, no_update, no_update
 
-        saved_metric = storage.get_saved_metric(new_matric_id)
+        saved_metric = storage.get_saved_metric(new_metric_id)
         dashboard = storage.get_dashboard(dashboard_id)
         max_y = 0
         if dashboard is None:
@@ -435,15 +435,14 @@ def manage_dashboard_content(
             max_y = max(dashboard.dashboard_metrics, key=lambda dm: dm.y).y + DEF_HEIGHT
 
         new_dm = WM.DashboardMetric(
-            new_matric_id,
+            saved_metric=saved_metric,
             x=0,
             y=max_y,
             width=2,
             height=DEF_HEIGHT,
-            saved_metric=saved_metric,
         )
         for dm in dashboard.dashboard_metrics:
-            if dm.saved_metric_id == new_matric_id:
+            if dm.get_saved_metric_id() == new_metric_id:
                 return no_update, no_update, no_update
 
         dashboard.dashboard_metrics.append(new_dm)
@@ -503,7 +502,7 @@ def manage_layout_change(layouts: Dict[str, Dict], dashboard_id: str) -> str:
         prefix = len(DASHBOARD_ITEM_PREFIX) + 1
         id = lt["i"][prefix:]
         for dm in dashboard.dashboard_metrics:
-            if dm.saved_metric_id == id:
+            if dm.get_saved_metric_id() == id:
                 dm.x = lt["x"]
                 dm.y = lt["y"]
                 dm.width = lt["w"]
@@ -555,7 +554,7 @@ def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: st
             )
             storage.clear_saved_metric(sm.metric.get_id())
             storage.set_saved_metric(sm.metric.get_id(), sm)
-            dm.saved_metric = sm
+            dm.set_saved_metric(sm)
             figures.append(fig)
         progress = int((index + 1) * 100.0 / total)
         set_progress(progress)

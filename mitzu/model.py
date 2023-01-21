@@ -20,6 +20,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    Protocol,
 )
 import pandas as pd
 
@@ -322,7 +323,17 @@ class TimeWindow:
         raise Exception(f"Unsupported relative delta value: {self.period}")
 
 
+class Identifiable(Protocol):
+    def get_id(self) -> str:
+        pass
+
+
 T = TypeVar("T")
+ID = TypeVar("ID", bound=Identifiable)
+
+
+class InvalidReferenceException(Exception):
+    pass
 
 
 @dataclass
@@ -339,11 +350,36 @@ class State(Generic[T]):
         """Override so pickle doesn't store state"""
         return None
 
-    def __str__(self) -> str:
-        return ""
 
-    def __repr__(self) -> str:
-        return ""
+@dataclass(init=False)
+class Reference(Generic[ID]):
+    """We need the Reference class to support multitenant Objects. E.g.
+    If the Connection or Project objects are reused we don't want to store them in the DB
+    multiple times. The reference protected _id must be the id of the object
+    """
+
+    _value_state: State[ID]
+    _id: Optional[str]
+
+    def __init__(self, value: Optional[ID]):
+        self._value_state = State(value)
+        if value is None:
+            self._id = None
+        else:
+            self._id = value.get_id()
+
+    def get_id(self) -> Optional[str]:
+        return self._id
+
+    def get_value(self) -> Optional[ID]:
+        return self._value_state.get_value()
+
+    def set_value(self, value: Optional[ID]):
+        self._value_state.set_value(value)
+        if value is None:
+            self._id = None
+        else:
+            self._id = value.get_id()
 
 
 class SecretResolver(ABC):
@@ -404,7 +440,7 @@ class EnvVarSecretResolver(SecretResolver):
 
 
 @dataclass(frozen=True)
-class Connection:
+class Connection(Identifiable):
     """
     Contains all details needed to connect to a data warehouse.
 
@@ -451,6 +487,9 @@ class Connection:
         if res is not None and len(res) == 1:
             return res[0]
         return None
+
+    def get_id(self) -> str:
+        return self.id
 
 
 @dataclass(frozen=True)
@@ -500,7 +539,7 @@ class EventDataTable:
     description: Optional[str] = None
 
     discovery_settings: Optional[DiscoverySettings] = None
-    project: State[Project] = field(default_factory=State)
+    _project_state: State[Project] = field(default_factory=State)
 
     @classmethod
     def create(
@@ -678,13 +717,23 @@ class EventDataTable:
                     f"Event data table '{self.table_name}' does not have '{field_to_validate._get_name()}' field"
                 )
 
+    @property
+    def project(self) -> Project:
+        res = self._project_state.get_value()
+        if res is None:
+            raise InvalidReferenceException("EventDataTable doesn't have a Project")
+        return res
+
+    def set_project(self, project: Project):
+        self._project_state.set_value(project)
+
 
 class InvalidProjectError(Exception):
     pass
 
 
 @dataclass(init=False, frozen=True)
-class Project:
+class Project(Identifiable):
     """
     Defines a Mitzu project
 
@@ -695,14 +744,14 @@ class Project:
     """
 
     project_name: str
-    connection: Connection
     event_data_tables: List[EventDataTable]
     discovery_settings: DiscoverySettings
     webapp_settings: WebappSettings
     description: Optional[str]
-    id: str = field(default_factory=helper.create_unique_id)
-    _adapter_cache: State[GA.GenericDatasetAdapter] = field(default_factory=State)
-    _discovered_project: State[DiscoveredProject] = field(default_factory=State)
+    id: str
+    _connection_ref: Reference[Connection]
+    _adapter_cache: State[GA.GenericDatasetAdapter]
+    _discovered_project: State[DiscoveredProject]
 
     def __init__(
         self,
@@ -714,13 +763,12 @@ class Project:
         discovery_settings: Optional[DiscoverySettings] = None,
         webapp_settings: Optional[WebappSettings] = None,
     ):
-        object.__setattr__(self, "connection", connection)
 
         edt_with_discovery_settings = []
         if discovery_settings is None:
             discovery_settings = DiscoverySettings()
         for edt in event_data_tables:
-            edt.project.set_value(self)
+            edt.set_project(self)
             if edt.discovery_settings is None:
                 edt_with_discovery_settings.append(
                     edt.update_discovery_settings(discovery_settings)
@@ -740,6 +788,7 @@ class Project:
         object.__setattr__(self, "project_name", project_name)
         object.__setattr__(self, "description", description)
         object.__setattr__(self, "id", project_id)
+        object.__setattr__(self, "_connection_ref", Reference(connection))
         object.__setattr__(self, "_adapter_cache", State())
         object.__setattr__(self, "_discovered_project", State())
 
@@ -751,6 +800,22 @@ class Project:
             return adp
         else:
             return val
+
+    @property
+    def connection(self) -> Connection:
+        res = self._connection_ref.get_value()
+        if res is None:
+            raise InvalidReferenceException("Connection is missing from the Project")
+        return res
+
+    def get_connection_id(self) -> str:
+        res = self._connection_ref.get_id()
+        if res is None:
+            raise InvalidReferenceException("Project has not Connection ID")
+        return res
+
+    def set_connection(self, connection: Optional[Connection]):
+        self._connection_ref.set_value(connection)
 
     def get_default_end_dt(self) -> datetime:
         if self.discovery_settings.end_dt is None:
@@ -790,6 +855,9 @@ class Project:
         for edt in self.event_data_tables:
             edt.validate(self.get_adapter())
 
+    def get_id(self) -> str:
+        return self.id
+
 
 class DatasetModel:
     @classmethod
@@ -803,6 +871,7 @@ class DatasetModel:
 class DiscoveredProject:
     definitions: Dict[EventDataTable, Dict[str, EventDef]]
     project: Project
+    connection: Connection
 
     def __init__(
         self,
@@ -811,6 +880,7 @@ class DiscoveredProject:
     ) -> None:
         object.__setattr__(self, "definitions", definitions)
         object.__setattr__(self, "project", project)
+        object.__setattr__(self, "connection", project.connection)
         project._discovered_project.set_value(self)
 
     def __post_init__(self):
@@ -961,8 +1031,8 @@ class EventFieldDef:
     _enums: Optional[List[Any]] = None
 
     @property
-    def _project(self):
-        return self._event_data_table.project.get_value()
+    def _project(self) -> Project:
+        return self._event_data_table.project
 
 
 @dataclass(frozen=True)
@@ -973,8 +1043,8 @@ class EventDef:
     _description: Optional[str] = ""
 
     @property
-    def _project(self):
-        return self._event_data_table.project.get_value()
+    def _project(self) -> Project:
+        return self._event_data_table.project
 
 
 # =========================================== Metric definitions ===========================================
