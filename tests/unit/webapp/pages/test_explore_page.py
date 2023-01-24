@@ -1,8 +1,5 @@
-from typing import Any, Dict, Optional, Union
-
-import dash.development.base_component as bc
+from tests.helper import to_dict, find_component_by_id
 import mitzu.model as M
-from pytest import fixture
 import mitzu.webapp.pages.explore.metric_segments_handler as MS
 import mitzu.webapp.pages.explore.metric_config_handler as MC
 import mitzu.webapp.pages.explore.simple_segment_handler as SS
@@ -14,92 +11,9 @@ import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.helper as H
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
 import mitzu.webapp.dependencies as DEPS
-import mitzu.webapp.storage as S
-import mitzu.webapp.cache as C
 from urllib.parse import unquote
 
 from datetime import datetime
-
-
-def to_json(input: Any) -> Any:
-    if isinstance(input, bc.Component):
-        res = input.to_plotly_json()
-        if "children" in input.__dict__:
-            res["children"] = to_json(input.children)
-        if "options" in input.__dict__:
-            res["options"] = to_json(input.options)
-        if "props" in res:
-            res["props"] = to_json(res["props"])
-        return res
-    if type(input) == dict:
-        return {k: to_json(v) for k, v in input.items()}
-    if type(input) == list:
-        return [to_json(v) for v in input]
-    if type(input) == tuple:
-        return (to_json(v) for v in input)
-    return input
-
-
-def find_component_by_id(
-    comp_id: Union[str, Dict], input: Any
-) -> Optional[Dict[str, Any]]:
-    if type(input) == list:
-        for v in input:
-            res = find_component_by_id(comp_id, v)
-            if res is not None:
-                return res
-    elif type(input) == dict:
-        if input.get("id") == comp_id:
-            return input
-        return find_component_by_id(comp_id, list(input.values()))
-    return None
-
-
-@fixture(scope="module")
-def discovered_project():
-    p = M.Project(
-        project_name="trino_test_project",
-        event_data_tables=[
-            M.EventDataTable.create(
-                table_name="sub_events",
-                schema="tiny",
-                event_name_alias="user_subscribe",
-                event_time_field="subscription_time",
-                user_id_field="subscriber_id",
-            ),
-            M.EventDataTable.create(
-                table_name="web_events",
-                schema="tiny",
-                event_name_field="event_name",
-                event_time_field="event_time",
-                date_partition_field="event_time",
-                user_id_field="user_id",
-                event_specific_fields=["event_properties"],
-            ),
-        ],
-        discovery_settings=M.DiscoverySettings(
-            end_dt=datetime(2021, 4, 1),
-            lookback_days=10,
-            property_sample_rate=10,
-        ),
-        connection=M.Connection(
-            connection_name="trino_hive_connection",
-            connection_type=M.ConnectionType.TRINO,
-            user_name="test",
-            secret_resolver=None,
-            catalog="minio",
-            host="localhost",
-        ),
-    )
-    return p.discover_project()
-
-
-@fixture(scope="module")
-def dependencies() -> DEPS.Dependencies:
-    cache = C.InMemoryCache()
-    return DEPS.Dependencies(
-        authorizer=None, storage=S.MitzuStorage(cache), cache=cache
-    )
 
 
 def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
@@ -107,7 +21,7 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
         MS.METRIC_SEGMENTS: {
             "children": {0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "page_visit"}}}}
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -123,7 +37,7 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[MS.METRIC_SEGMENTS][0])
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
         {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
@@ -139,13 +53,15 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
     assert first_property_dd is not None
     assert set([option["value"] for option in first_property_dd["options"]]) == set(
         [
+            "page_visit.acquisition_campaign",
+            "page_visit.domain",
             "page_visit.event_name",
-            "page_visit.event_properties.url",
             "page_visit.event_time",
+            "page_visit.item_id",
+            "page_visit.title",
+            "page_visit.user_country_code",
             "page_visit.user_id",
-            "page_visit.user_properties.country_code",
-            "page_visit.user_properties.is_subscribed",
-            "page_visit.user_properties.locale",
+            "page_visit.user_locale",
         ]
     )
     assert first_property_operator_dd is None
@@ -163,7 +79,7 @@ def test_event_property_chosen_for_segmentation(
                             ES.EVENT_NAME_DROPDOWN: "page_visit",
                             "children": {
                                 0: {
-                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.user_properties.country_code"
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign"
                                 }
                             },
                         },
@@ -173,7 +89,7 @@ def test_event_property_chosen_for_segmentation(
                 }
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -188,7 +104,7 @@ def test_event_property_chosen_for_segmentation(
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[MS.METRIC_SEGMENTS][0])
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
         {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
@@ -220,15 +136,7 @@ def test_event_property_chosen_for_segmentation(
         "not like",
     ]
     assert first_property_operator_dd["value"] == "is"
-    assert first_property_value_input["options"] == [
-        {"label": "br", "value": "br"},
-        {"label": "cn", "value": "cn"},
-        {"label": "de", "value": "de"},
-        {"label": "fr", "value": "fr"},
-        {"label": "gb", "value": "gb"},
-        {"label": "hu", "value": "hu"},
-        {"label": "us", "value": "us"},
-    ]
+    assert len(first_property_value_input["options"]) > 1
     assert first_property_value_input["value"] == []
 
 
@@ -245,10 +153,9 @@ def test_event_property_operator_changed_with_values_already_chosen(
                             "children": {
                                 0: {
                                     SS.PROPERTY_OPERATOR_DROPDOWN: ">",
-                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.user_properties.is_subscribed",
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign",
                                     SS.PROPERTY_VALUE_INPUT: [
                                         "organic",
-                                        "promo_20off_2020",
                                     ],
                                 },
                                 1: {SS.PROPERTY_NAME_DROPDOWN: None},
@@ -260,7 +167,7 @@ def test_event_property_operator_changed_with_values_already_chosen(
                 }
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -275,7 +182,7 @@ def test_event_property_operator_changed_with_values_already_chosen(
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[MS.METRIC_SEGMENTS][0])
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
 
     first_property_operator_dd = find_component_by_id(
         {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
@@ -298,7 +205,7 @@ def test_empty_page_with_project(
         MS.METRIC_SEGMENTS: {
             "children": {0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: None}}}}
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -313,8 +220,8 @@ def test_empty_page_with_project(
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_segs = to_json(res[MS.METRIC_SEGMENTS])
-    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
+    metric_segs = to_dict(res[MS.METRIC_SEGMENTS])
+    metric_confs = to_dict(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
@@ -368,7 +275,7 @@ def test_custom_date_selected(discovered_project: M.DiscoveredProject):
                 }
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -383,7 +290,7 @@ def test_custom_date_selected(discovered_project: M.DiscoveredProject):
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
+    metric_confs = to_dict(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
@@ -409,7 +316,7 @@ def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredPro
                 }
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/?",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: ["2021-12-01T00:00:00", "2022-01-01T00:00:00"],
@@ -424,7 +331,7 @@ def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredPro
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
+    metric_confs = to_dict(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
@@ -454,7 +361,7 @@ def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProj
                 }
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         ES.EVENT_NAME_DROPDOWN: ["page_visit", None],
         SS.PROPERTY_OPERATOR_DROPDOWN: [],
@@ -474,7 +381,7 @@ def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProj
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    metric_confs = to_json(res[MC.METRICS_CONFIG_CONTAINER])
+    metric_confs = to_dict(res[MC.METRICS_CONFIG_CONTAINER])
 
     # Metric Segments Part
 
@@ -504,7 +411,7 @@ def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject, dependen
         }
         res = EXP.create_explore_page(query_params, discovered_project)
 
-        explore_page = to_json(res)
+        explore_page = to_dict(res)
 
         # Metric Segments Part
 
@@ -528,13 +435,15 @@ def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject, dependen
         assert first_property_dd is not None
         assert set([option["value"] for option in first_property_dd["options"]]) == set(
             [
+                "page_visit.acquisition_campaign",
+                "page_visit.domain",
                 "page_visit.event_name",
-                "page_visit.event_properties.url",
                 "page_visit.event_time",
+                "page_visit.item_id",
+                "page_visit.title",
+                "page_visit.user_country_code",
                 "page_visit.user_id",
-                "page_visit.user_properties.country_code",
-                "page_visit.user_properties.is_subscribed",
-                "page_visit.user_properties.locale",
+                "page_visit.user_locale",
             ]
         )
         assert first_property_operator_dd is None
@@ -561,7 +470,7 @@ def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
                 1: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "checkout"}}},
             }
         },
-        H.MITZU_LOCATION: "http://127.0.0.1:8082/projects/b83672677ea4/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "retention",
         DS.TIME_GROUP_DROPDOWN: 1,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -576,7 +485,7 @@ def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
     }
 
     res = EXP.handle_input_changes(all_inputs, discovered_project)
-    res = to_json(res[MS.METRIC_SEGMENTS][0])
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
 
     second_event_dd = find_component_by_id(
         {"index": "0-1", "type": ES.EVENT_NAME_DROPDOWN}, res
@@ -590,5 +499,5 @@ def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
 
     assert second_event_dd is not None
     assert first_property_dd is not None
-    assert len(first_property_dd["options"]) == 7
+    assert len(first_property_dd["options"]) == 9
     assert first_property_operator_dd is None

@@ -34,7 +34,7 @@ SAMPLE_PROJECT_ID = "sample_project_id"
 def setup_sample_project(storage: MitzuStorage):
     connection = M.Connection(
         id=SAMPLE_PROJECT_ID,
-        connection_name="Sample project",
+        connection_name="Sample connection",
         connection_type=M.ConnectionType.SQLITE,
         host="sample_project",
     )

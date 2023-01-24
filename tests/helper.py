@@ -1,11 +1,15 @@
 import re
 from datetime import datetime
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, cast, Optional, Union
 
 import pandas as pd
 from mitzu.adapters.file_adapter import FileAdapter
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 from mitzu.model import Connection, Project
+import dash.development.base_component as bc
+from collections import namedtuple
+
+FlaskMockApp = namedtuple("FlaskMockApp", ["config"])
 
 
 def assert_sql(expected: str, actual: str):
@@ -83,3 +87,37 @@ def ingest_test_file_data(
         )
 
     return target_adapter
+
+
+def to_dict(input: Any) -> Any:
+    if isinstance(input, bc.Component):
+        res = input.to_plotly_json()
+        if "children" in input.__dict__:
+            res["children"] = to_dict(input.children)
+        if "options" in input.__dict__:
+            res["options"] = to_dict(input.options)
+        if "props" in res:
+            res["props"] = to_dict(res["props"])
+        return res
+    if type(input) == dict:
+        return {k: to_dict(v) for k, v in input.items()}
+    if type(input) == list:
+        return [to_dict(v) for v in input]
+    if type(input) == tuple:
+        return (to_dict(v) for v in input)
+    return input
+
+
+def find_component_by_id(
+    comp_id: Union[str, Dict], input: Any
+) -> Optional[Dict[str, Any]]:
+    if type(input) == list:
+        for v in input:
+            res = find_component_by_id(comp_id, v)
+            if res is not None:
+                return res
+    elif type(input) == dict:
+        if input.get("id") == comp_id:
+            return input
+        return find_component_by_id(comp_id, list(input.values()))
+    return None

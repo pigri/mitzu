@@ -1,5 +1,5 @@
 import traceback
-from typing import List
+from typing import List, cast
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
@@ -13,16 +13,15 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted_layout
 
-register_page(
-    __name__,
-    path=P.CONNECTIONS_PATH,
-    title="Mitzu - Connections",
-)
+CONNECTIONS_CONTAINER = "connections_container"
+CONNECTION_TITLE = "connection_title"
 
 
 @restricted_layout
 def layout() -> bc.Component:
-    depenednecies: DEPS.Dependencies = flask.current_app.config.get(DEPS.CONFIG_KEY)
+    depenednecies: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
     connection_ids = depenednecies.storage.list_connections()
 
     connections: List[M.Connection] = []
@@ -74,11 +73,10 @@ def create_connections_container(connections: List[M.Connection]):
             "You don't have any connections yet...", className="card-title text-center"
         )
 
-    return dbc.Row(children=children)
+    return dbc.Row(children=children, id=CONNECTIONS_CONTAINER)
 
 
 def create_connection_selector(connection: M.Connection) -> bc.Component:
-
     details: List[str] = []
     if connection.host is not None:
         details.append(f"Host: {connection.host}")
@@ -96,6 +94,7 @@ def create_connection_selector(connection: M.Connection) -> bc.Component:
                     html.H4(
                         H.value_to_label(connection.connection_name),
                         className="card-title",
+                        id=CONNECTION_TITLE,
                     ),
                     html.Hr(),
                     html.Img(
@@ -124,3 +123,10 @@ def create_connection_selector(connection: M.Connection) -> bc.Component:
         sm=12,
     )
     return project_jumbotron
+
+
+register_page(
+    __name__,
+    path=P.CONNECTIONS_PATH,
+    title="Mitzu - Connections",
+)
