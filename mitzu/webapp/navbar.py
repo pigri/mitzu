@@ -14,12 +14,7 @@ import mitzu.webapp.dependencies as DEPS
 OFF_CANVAS_TOGGLER = "off-canvas-toggler"
 
 
-def create_mitzu_navbar(
-    id: str,
-    children: List[bc.Component],
-    storage: Optional[S.MitzuStorage] = None,
-    off_canvas_toggler_visible: bool = True,
-) -> dbc.Navbar:
+def create_explore_button_col(storage: Optional[S.MitzuStorage] = None):
     if storage is None:
         storage = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -27,6 +22,31 @@ def create_mitzu_navbar(
 
     project_ids = storage.list_projects()
     projects = [storage.get_project(p_id) for p_id in project_ids]
+    return dbc.Col(
+        dbc.DropdownMenu(
+            children=[
+                dbc.DropdownMenuItem(
+                    children=p.project_name,
+                    href=P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=p.id),
+                )
+                for p in projects
+            ],
+            size="sm",
+            color="light",
+            label="explore",
+            class_name="d-inline-block",
+        ),
+        width="auto",
+    )
+
+
+def create_mitzu_navbar(
+    id: str,
+    children: List[bc.Component] = [],
+    storage: Optional[S.MitzuStorage] = None,
+    create_explore_button: bool = True,
+    off_canvas_toggler_visible: bool = True,
+) -> dbc.Navbar:
 
     navbar_children = [
         dbc.Col(
@@ -42,23 +62,10 @@ def create_mitzu_navbar(
             ),
             width="auto",
         ),
-        dbc.Col(
-            dbc.DropdownMenu(
-                children=[
-                    dbc.DropdownMenuItem(
-                        children=p.project_name,
-                        href=P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=p.id),
-                    )
-                    for p in projects
-                ],
-                size="sm",
-                color="light",
-                label="explore",
-                class_name="d-inline-block",
-            ),
-            width="auto",
-        ),
     ]
+    if create_explore_button:
+        navbar_children.append(create_explore_button_col(storage))
+
     navbar_children.extend([dbc.Col(comp) for comp in children])
     res = dbc.Navbar(
         dbc.Container(

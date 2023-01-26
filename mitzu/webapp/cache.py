@@ -4,6 +4,7 @@ import diskcache
 from typing import Any, Optional, List, Dict
 from abc import ABC
 from dataclasses import dataclass, field
+import pickle
 
 
 class MitzuCache(ABC):
@@ -16,11 +17,13 @@ class MitzuCache(ABC):
     def clear(self, key: str) -> None:
         raise NotImplementedError()
 
-    def clear_all(self, prefix: Optional[str]) -> None:
+    def clear_all(self, prefix: Optional[str] = None) -> None:
         for key in self.list_keys(prefix):
             self.clear(key)
 
-    def list_keys(self, prefix: Optional[str], strip_prefix: bool = True) -> List[str]:
+    def list_keys(
+        self, prefix: Optional[str] = None, strip_prefix: bool = True
+    ) -> List[str]:
         raise NotImplementedError()
 
 
@@ -45,7 +48,7 @@ class DiskMitzuCache(MitzuCache):
     ) -> List[str]:
         keys = self._disk_cache.iterkeys()
         start_pos = len(prefix) if strip_prefix and prefix is not None else 0
-        return [k[start_pos:] for k in keys if k.startswith(prefix) or prefix is None]
+        return [k[start_pos:] for k in keys if prefix is None or k.startswith(prefix)]
 
     def get_disk_cache(self) -> diskcache.Cache:
         return self._disk_cache
@@ -77,6 +80,10 @@ class InMemoryCache(MitzuCache):
         return [k[start_pos:] for k in keys if prefix is None or k.startswith(prefix)]
 
 
+class RedisException(Exception):
+    pass
+
+
 @dataclass(init=False, frozen=True)
 class RedisMitzuCache(MitzuCache):
 
@@ -88,24 +95,33 @@ class RedisMitzuCache(MitzuCache):
         if redis_cache is not None:
             object.__setattr__(self, "_redis", redis_cache)
         else:
-            if configs.REDIS_URL is None:
+            if configs.STORAGE_REDIS_HOST is None:
                 raise ValueError(
-                    "REDIS_URL env variable is not set, can't create redis cache."
+                    "STORAGE_REDIS_HOST env variable is not set, can't create redis cache."
                 )
             object.__setattr__(
                 self,
                 "_redis",
-                redis.Redis(host=configs.REDIS_URL, port=configs.REDIS_PORT),
+                redis.Redis(
+                    host=configs.STORAGE_REDIS_HOST,
+                    port=configs.STORAGE_REDIS_PORT,
+                    password=configs.STORAGE_REDIS_PASSWORD,
+                ),
             )
 
     def put(self, key: str, val: Any, expire: Optional[float] = None):
-        self._redis.set(name=key, value=val, ex=expire)
+        pickled_value = pickle.dumps(val)
+        res = self._redis.set(name=key, value=pickled_value, ex=expire)
+        if not res:
+            raise RedisException(f"Couldn't set {key}")
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         res = self._redis.get(name=key)
         if res is None and default is not None:
             return default
-        return res
+        if res is None:
+            return None
+        return pickle.loads(res)
 
     def clear(self, key: str) -> None:
         self._redis.delete(key)
@@ -114,6 +130,7 @@ class RedisMitzuCache(MitzuCache):
         self, prefix: Optional[str] = None, strip_prefix: bool = True
     ) -> List[str]:
         if not prefix:
-            prefix = "*"
-        start_pos = len(prefix) if strip_prefix and prefix != "*" else 0
-        return [k[start_pos:] for k in self._redis.scan_iter(f"prefix:{prefix}")]
+            prefix = ""
+        keys = self._redis.keys(f"{prefix}*")
+        start_pos = len(prefix) if strip_prefix else 0
+        return [k.decode()[start_pos:] for k in keys]

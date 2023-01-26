@@ -89,3 +89,5 @@ private_notebooks/
 
 sample_project.db
 .cognito.env
+
+*.rdb

@@ -49,6 +49,7 @@ def external_dashboard(
         authorizer=None,
         storage=SingleProjectMitzuStorage(discovered_project),
         cache=C.DiskMitzuCache(),
+        queue=C.DiskMitzuCache(),
     )
 
     app = Dash(

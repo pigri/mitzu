@@ -348,7 +348,10 @@ class State(Generic[T]):
 
     def __getstate__(self):
         """Override so pickle doesn't store state"""
-        return None
+        return {}
+
+    def __setstate__(self, state):
+        """Override so pickle doesn't store state"""
 
 
 @dataclass(init=False)

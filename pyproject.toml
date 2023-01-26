@@ -40,6 +40,7 @@ dash-mantine-components = "^0.11.0"
 kaleido = {version =  "0.2.1", optional=true}
 dash-iconify = {version =  "^0.1.2", optional=true}
 dash-draggable = {version="^0.1.2", optional=true}
+jsonpickle = {version="^3.0.1", optional=true}
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]
@@ -48,7 +49,18 @@ trinodwh = ["trino"]
 databricks = ["databricks-sql-connector"]
 athena = ["PyAthena"]
 snowflake = ["snowflake-sqlalchemy"]
-webapp = ["orjson", "PyJWT", "dash-bootstrap-components", "dash", "dash-iconify", "gunicorn", "redis", "dependency-injector", "kaleido", "dash-draggable"]
+webapp = [
+    "orjson", 
+    "PyJWT", 
+    "dash-bootstrap-components", 
+    "dash", 
+    "dash-iconify", 
+    "gunicorn", 
+    "redis", 
+    "kaleido", 
+    "dash-draggable", 
+    "jsonpickle"
+    ]
 doc = ["sphinx", "sphinx-autodoc-typehints"]
 
 

@@ -1,35 +1,23 @@
 services:
-  # This example is a complex one with SSO enabled, that is based on AWS Cognito  
   mitzu-webapp:
-    image: imeszaros/mitzu-webapp:latest
+    image: mitzuio/mitzu:latest
     restart: always
-    entrypoint: gunicorn -b 0.0.0.0:80 --workers=2 app:server 
+    entrypoint: gunicorn -b 0.0.0.0:8080 --workers=2 app:server
     environment:
-      BASEPATH: /var/task/basepath/
-      MANAGE_PROJECTS_LINK: http://127.0.0.1:8888/lab/tree/work/projects
-      HOME_URL: http://localhost:8082/
-      NOT_FOUND_URL: http://localhost:8082/not_found
-      SIGN_OUT_URL: http://localhost:8082/sign_out
-      OAUTH_JWT_COOKIE: access_token
-      OAUTH_JWT_AUDIENCE: 5ksa8so5q08si2na2k959k9bd6
-      OAUTH_REDIRECT_URI: http://localhost:8082/redirect/
-      OAUTH_CLIENT_ID: 5ksa8so5q08si2na2k959k9bd6
-      OAUTH_CLIENT_SECRET: ${OUATH_CLIENT_SECRET}
-      OAUTH_TOKEN_URL: https://auth.mitzu.io/oauth2/token
-      OAUTH_JWKS_URL: https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_Xqij4gHQA/.well-known/jwks.json
-      UNAUTHORIZED_URL: https://auth.mitzu.io/oauth2/authorize?client_id=5ksa8so5q08si2na2k959k9bd6&response_type=code&scope=email+openid&redirect_uri=http://localhost:8082/redirect/
-      OAUTH_SIGN_OUT_REDIRECT_URL: https://auth.mitzu.io/logout
+      STORAGE_REDIS_HOST: "localhost"
+      STORAGE_REDIS_PORT: 6379
     ports:
-      - 8082:80
+      - 8082:8080
     depends_on:
-      - cache
+      - storage
     volumes:
-      - ../data/:/var/task/basepath/
+      - ./data/cache:./cache
 
-  jupyter-notebook:
-    image: jupyter/scipy-notebook
+  storage:
+    image: redis:6.2-alpine
     restart: always
     ports:
-      - 8888:8888
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning
     volumes:
-      - ../data/:/home/jovyan/work
+      - ./data/redis:/data

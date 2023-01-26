@@ -34,11 +34,11 @@ def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
 
 
 def get_callback_manager(dependencies: DEPS.Dependencies) -> BaseLongCallbackManager:
-    if configs.REDIS_URL is not None:
+    if configs.QUEUE_REDIS_HOST is not None:
         from celery import Celery
 
         celery_app = Celery(
-            __name__, broker=configs.REDIS_URL, backend=configs.REDIS_URL
+            __name__, broker=configs.QUEUE_REDIS_HOST, backend=configs.QUEUE_REDIS_HOST
         )
         return CeleryManager(
             celery_app,
@@ -49,7 +49,7 @@ def get_callback_manager(dependencies: DEPS.Dependencies) -> BaseLongCallbackMan
         import mitzu.webapp.cache as C
 
         return DiskcacheManager(
-            cast(C.DiskMitzuCache, dependencies.cache).get_disk_cache(),
+            cast(C.DiskMitzuCache, dependencies.queue).get_disk_cache(),
             cache_by=[lambda: configs.LAUNCH_UID],
             expire=configs.CACHE_EXPIRATION,
         )

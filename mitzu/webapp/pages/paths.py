@@ -3,6 +3,8 @@ CONNECTION_ID_PATH_PART = "connection_id"
 USER_PATH_PART = "user_id"
 DASHBOARD_ID = "dashboard_id"
 
+ADMIN_PAGE = "/admin"
+
 EVENTS_AND_PROPERTIES_PATH = "/events"
 EVENTS_AND_PROPERTIES_PROJECT_PATH = f"/events/<{PROJECT_ID_PATH_PART}>"
 

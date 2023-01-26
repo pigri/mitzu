@@ -12,6 +12,7 @@ from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 @fixture(scope="function")
 def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
     cache = C.InMemoryCache()
+    queue = C.InMemoryCache()
     storage = S.MitzuStorage(cache)
 
     project = discovered_project.project
@@ -23,7 +24,7 @@ def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
             project_id=project.id, definitions=defs, edt_full_name=edt.get_full_name()
         )
 
-    return DEPS.Dependencies(authorizer=None, storage=storage, cache=cache)
+    return DEPS.Dependencies(authorizer=None, storage=storage, cache=cache, queue=queue)
 
 
 @fixture(scope="session")

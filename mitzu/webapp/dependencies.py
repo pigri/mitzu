@@ -18,6 +18,7 @@ class Dependencies:
 
     authorizer: Optional[A.OAuthAuthorizer]
     storage: S.MitzuStorage
+    queue: C.MitzuCache
     cache: C.MitzuCache
 
     @classmethod
@@ -40,8 +41,14 @@ class Dependencies:
             )
             authorizer.setup_authorizer(server)
 
+        queue: C.MitzuCache
+        if configs.QUEUE_REDIS_HOST is not None:
+            queue = C.RedisMitzuCache()
+        else:
+            queue = C.DiskMitzuCache()
+
         cache: C.MitzuCache
-        if configs.REDIS_URL is not None:
+        if configs.STORAGE_REDIS_HOST is not None:
             cache = C.RedisMitzuCache()
         else:
             cache = C.DiskMitzuCache()
@@ -51,4 +58,6 @@ class Dependencies:
         if configs.SETUP_SAMPLE_PROJECT:
             S.setup_sample_project(storage)
 
-        return Dependencies(authorizer=authorizer, cache=cache, storage=storage)
+        return Dependencies(
+            authorizer=authorizer, cache=cache, storage=storage, queue=queue
+        )
