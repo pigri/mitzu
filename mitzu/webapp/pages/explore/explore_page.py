@@ -75,6 +75,7 @@ ALL_INPUT_COMPS = {
         MC.AGGREGATION_TYPE: Input(MC.AGGREGATION_TYPE, "value"),
         MC.RESOLUTION_DD: Input(MC.RESOLUTION_DD, "value"),
         TH.GRAPH_REFRESH_BUTTON: Input(TH.GRAPH_REFRESH_BUTTON, "n_clicks"),
+        TH.GRAPH_RUN_QUERY_BUTTON: Input(TH.GRAPH_RUN_QUERY_BUTTON, "n_clicks"),
         TH.CHART_TYPE_DD: Input(TH.CHART_TYPE_DD, "value"),
         TH.GRAPH_CONTENT_TYPE: Input(TH.GRAPH_CONTENT_TYPE, "value"),
     }
@@ -149,7 +150,8 @@ def create_explore_page(
         metric = saved_metric.metric
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
-    graph_container = create_graph_container(metric)
+
+    graph_container = create_graph_container(metric, discovered_project.project)
     navbar = create_navbar(
         metric=metric,
         saved_metric=saved_metric,
@@ -183,10 +185,10 @@ def create_explore_page(
     return res
 
 
-def create_graph_container(metric: Optional[M.Metric]):
+def create_graph_container(metric: Optional[M.Metric], project: M.Project):
     metrics_config_card = MC.from_metric(metric)
     graph_handler = GH.create_graph_container()
-    toolbar_handler = TH.from_metric(metric)
+    toolbar_handler = TH.from_metric(metric, project)
 
     graph_container = dbc.Card(
         children=[
@@ -311,7 +313,12 @@ def handle_input_changes(
         metric_type_val = all_inputs[MNB.METRIC_TYPE_DROPDOWN]
 
     chart_type_dd = TH.create_chart_type_dropdown(metric)
-
+    auto_refresh = discovered_project.project.webapp_settings.auto_refresh_enabled
+    cancel_button_cls = (
+        ""
+        if (auto_refresh or ctx.triggered_id == TH.GRAPH_RUN_QUERY_BUTTON)
+        else "d-none"
+    )
     return {
         MS.METRIC_SEGMENTS: metric_segments,
         MC.METRICS_CONFIG_CONTAINER: mc_children,
@@ -319,6 +326,7 @@ def handle_input_changes(
         MITZU_LOCATION: url,
         MNB.METRIC_TYPE_DROPDOWN: metric_type_val,
         TH.CHART_TYPE_CONTAINER: chart_type_dd,
+        TH.CANCEL_BUTTON: cancel_button_cls,
     }
 
 
@@ -336,6 +344,7 @@ def create_callbacks():
             CLIPBOARD: Output(CLIPBOARD, "content"),
             MNB.METRIC_TYPE_DROPDOWN: Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             TH.CHART_TYPE_CONTAINER: Output(TH.CHART_TYPE_CONTAINER, "children"),
+            TH.CANCEL_BUTTON: Output(TH.CANCEL_BUTTON, "class_name"),
         },
         inputs=ALL_INPUT_COMPS,
         state=dict(
@@ -366,6 +375,7 @@ def create_callbacks():
                 MITZU_LOCATION: no_update,
                 MNB.METRIC_TYPE_DROPDOWN: no_update,
                 TH.CHART_TYPE_CONTAINER: no_update,
+                TH.CANCEL_BUTTON: no_update,
             }
 
         depenedencies: DEPS.Dependencies = cast(
@@ -380,6 +390,7 @@ def create_callbacks():
                 MITZU_LOCATION: no_update,
                 MNB.METRIC_TYPE_DROPDOWN: no_update,
                 TH.CHART_TYPE_CONTAINER: no_update,
+                TH.CANCEL_BUTTON: no_update,
             }
         all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
         all_inputs[METRIC_NAME_INPUT] = metric_name

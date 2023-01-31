@@ -187,11 +187,6 @@ def create_callbacks():
                 TH.VISIBLE,
                 TH.HIDDEN,
             ),
-            (
-                Output(GRAPH_CONTAINER, "style"),
-                {"opacity": "0.5"},
-                {"opacity": "1"},
-            ),
         ],
         cancel=[Input(TH.CANCEL_BUTTON, "n_clicks")],
     )
@@ -212,7 +207,6 @@ def create_callbacks():
                 DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
             ).storage
             project = storage.get_project(project_id)
-
             if project is None:
                 return no_update
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
@@ -244,8 +238,17 @@ def create_callbacks():
             simple_chart: CO.SimpleChart
 
             hash_key = create_metric_hash_key(metric)
-            if ctx.triggered_id == TH.GRAPH_REFRESH_BUTTON:
+            if ctx.triggered_id in (TH.GRAPH_REFRESH_BUTTON, TH.GRAPH_RUN_QUERY_BUTTON):
                 storage.clear_query_result_dataframe(hash_key)
+
+            if (
+                not project.webapp_settings.auto_refresh_enabled
+                and ctx.triggered_id != TH.GRAPH_RUN_QUERY_BUTTON
+                and storage.get_query_result_dataframe(hash_key) is None
+            ):
+                return html.Div(
+                    "Click run to execute the query", id=GRAPH, className=MESSAGE
+                )
 
             if graph_content_type == TH.CHART_VAL or should_save_metrics:
                 result_df = get_metric_result_df(hash_key, metric, storage)

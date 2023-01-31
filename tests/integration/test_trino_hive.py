@@ -27,6 +27,10 @@ def test_trino_complex_data():
         discovery_settings=M.DiscoverySettings(
             end_dt=datetime(2021, 1, 4),
         ),
+        webapp_settings=M.WebappSettings(
+            end_date_config=M.WebappEndDateConfig.CUSTOM_DATE,
+            custom_end_date=datetime(2021, 1, 4),
+        ),
         connection=M.Connection(
             connection_name="trino_connection",
             connection_type=M.ConnectionType.TRINO,
@@ -80,6 +84,10 @@ def test_trino_map_types_discovery():
         ],
         discovery_settings=M.DiscoverySettings(
             end_dt=datetime(2021, 1, 4),
+        ),
+        webapp_settings=M.WebappSettings(
+            end_date_config=M.WebappEndDateConfig.CUSTOM_DATE,
+            custom_end_date=datetime(2021, 1, 4),
         ),
         connection=M.Connection(
             connection_name="trino_project",

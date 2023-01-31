@@ -16,6 +16,7 @@ import mitzu.webapp.pages.projects.event_tables_tab as ET
 import mitzu.webapp.pages.projects.helper as MPH
 import mitzu.webapp.pages.projects.manage_project_component as MPC
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
+from datetime import datetime
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 SAVE_BUTTON = "project_save_button"
@@ -132,6 +133,16 @@ def save_button_clicked(
         autorefresh_enabled = cast(
             bool, project_props.get(MPC.PROP_EXPLORE_AUTO_REFRESH)
         )
+        end_date_config = M.WebappEndDateConfig[
+            project_props.get(
+                MPC.PROP_END_DATE_CONFIG, M.WebappEndDateConfig.NOW.name
+            ).upper()
+        ]
+        custom_end_date_str = project_props.get(MPC.PROP_CUSTOM_END_DATE_CONFIG)
+        if custom_end_date_str is not None:
+            custom_end_date = datetime.strptime(custom_end_date_str[:10], "%Y-%m-%d")
+        else:
+            custom_end_date = None
 
         connection = storage.get_connection(connection_id)
         event_data_tables = []
@@ -164,7 +175,11 @@ def save_button_clicked(
             project_id=project_id,
             connection=connection,
             description=description,
-            webapp_settings=M.WebappSettings(auto_refresh_enabled=autorefresh_enabled),
+            webapp_settings=M.WebappSettings(
+                auto_refresh_enabled=autorefresh_enabled,
+                end_date_config=end_date_config,
+                custom_end_date=custom_end_date,
+            ),
             discovery_settings=M.DiscoverySettings(
                 min_property_sample_size=min_sample_size,
                 lookback_days=disc_lookback_days,

@@ -8,6 +8,7 @@ import flask
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import create_form_property_input, MITZU_LOCATION
+from mitzu.helper import value_to_label
 from mitzu.webapp.pages.projects.helper import PROP_CONNECTION, PROJECT_INDEX_TYPE
 import traceback
 import dash_mantine_components as dmc
@@ -26,6 +27,8 @@ PROP_DISC_LOOKBACK_DAYS = "lookback_days"
 PROP_DISC_SAMPLE_SIZE = "sample_size"
 
 PROP_EXPLORE_AUTO_REFRESH = "auto_refresh"
+PROP_END_DATE_CONFIG = "default_end_date_config"
+PROP_CUSTOM_END_DATE_CONFIG = "custom_default_end_date"
 
 CONFIRM_DIALOG_INDEX = "project_delete_confirm"
 CONFIRM_DIALOG_CLOSE = "project_delete_confirm_dialog_close"
@@ -274,8 +277,46 @@ def create_explore_settings(project: Optional[M.Project]) -> bc.Component:
                 value=webapp_settings.auto_refresh_enabled,
                 component_type=dbc.Checkbox,
             ),
+            create_form_property_input(
+                property=PROP_END_DATE_CONFIG,
+                index_type=PROJECT_INDEX_TYPE,
+                icon_cls="bi bi-calendar2-check",
+                value=webapp_settings.end_date_config.name.upper(),
+                component_type=dmc.Select,
+                data=[
+                    {"label": value_to_label(v.name), "value": v.name.upper()}
+                    for v in M.WebappEndDateConfig
+                ],
+                size="xs",
+            ),
+            create_form_property_input(
+                property=PROP_CUSTOM_END_DATE_CONFIG,
+                index_type=PROJECT_INDEX_TYPE,
+                icon_cls="bi bi-calendar3",
+                inputFormat="YYYY-MM-DD",
+                value=webapp_settings.custom_end_date,
+                disabled=(
+                    webapp_settings.end_date_config is None
+                    or webapp_settings.end_date_config
+                    != M.WebappEndDateConfig.CUSTOM_DATE
+                ),
+                component_type=dmc.DatePicker,
+                size="xs",
+            ),
         ]
     )
+
+
+@callback(
+    Output(
+        {"type": PROJECT_INDEX_TYPE, "index": PROP_CUSTOM_END_DATE_CONFIG}, "disabled"
+    ),
+    Input({"type": PROJECT_INDEX_TYPE, "index": PROP_END_DATE_CONFIG}, "value"),
+    prevent_initial_call=True,
+)
+@restricted
+def end_date_config_changed(config_value: str):
+    return config_value.upper() != M.WebappEndDateConfig.CUSTOM_DATE.name.upper()
 
 
 @callback(

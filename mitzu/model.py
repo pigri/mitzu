@@ -516,10 +516,19 @@ class DiscoverySettings:
     min_property_sample_size: int = 1000
 
 
+class WebappEndDateConfig(Enum):
+    CUSTOM_DATE = auto()
+    NOW = auto()
+    START_OF_CURRENT_DAY = auto()
+    END_OF_CURRENT_DAY = auto()
+
+
 @dataclass(frozen=True)
 class WebappSettings:
     lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     auto_refresh_enabled: bool = True
+    end_date_config: WebappEndDateConfig = WebappEndDateConfig.START_OF_CURRENT_DAY
+    custom_end_date: Optional[datetime] = None
 
 
 class InvalidEventDataTableError(Exception):
@@ -833,9 +842,24 @@ class Project(Identifiable):
         self._connection_ref.restore_value(connection)
 
     def get_default_end_dt(self) -> datetime:
-        if self.discovery_settings.end_dt is None:
-            return datetime.now()
-        return self.discovery_settings.end_dt
+        if (
+            self.webapp_settings.end_date_config == WebappEndDateConfig.CUSTOM_DATE
+            and self.webapp_settings.custom_end_date is not None
+        ):
+            return self.webapp_settings.custom_end_date
+        if (
+            self.webapp_settings.end_date_config
+            == WebappEndDateConfig.START_OF_CURRENT_DAY
+        ):
+            return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if (
+            self.webapp_settings.end_date_config
+            == WebappEndDateConfig.END_OF_CURRENT_DAY
+        ):
+            return datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
+        return datetime.now()
 
     def get_default_discovery_start_dt(self) -> datetime:
         return self.get_default_end_dt() - timedelta(

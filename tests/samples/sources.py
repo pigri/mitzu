@@ -7,6 +7,8 @@ from mitzu.model import (
     DiscoverySettings,
     EventDataTable,
     Project,
+    WebappSettings,
+    WebappEndDateConfig,
 )
 
 WD = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +27,10 @@ def get_simple_csv() -> Project:
                 date_partition_field="event_time",
             )
         ],
+        webapp_settings=WebappSettings(
+            end_date_config=WebappEndDateConfig.CUSTOM_DATE,
+            custom_end_date=datetime(2022, 1, 1),
+        ),
         discovery_settings=DiscoverySettings(
             max_enum_cardinality=300,
             max_map_key_cardinality=300,
@@ -54,6 +60,10 @@ def get_simple_big_data() -> Project:
                 event_time_field="event_time",
             )
         ],
+        webapp_settings=WebappSettings(
+            end_date_config=WebappEndDateConfig.CUSTOM_DATE,
+            custom_end_date=datetime(2022, 1, 1),
+        ),
         discovery_settings=DiscoverySettings(
             max_enum_cardinality=300,
             max_map_key_cardinality=300,

@@ -8,7 +8,7 @@ HEALTH_CHECK_PATH = os.getenv("HEALTH_CHECK_PATH", "/_health")
 
 
 # dash
-GRAPH_POLL_INTERVAL_MS = int(os.getenv("GRAPH_POLL_INTERVAL_MS", 200))
+GRAPH_POLL_INTERVAL_MS = int(os.getenv("GRAPH_POLL_INTERVAL_MS", 100))
 BACKGROUND_CALLBACK = bool(os.getenv("BACKGROUND_CALLBACK", "true").lower() != "false")
 DASH_ASSETS_FOLDER = os.getenv("DASH_ASSETS_FOLDER", "assets")
 DASH_ASSETS_URL_PATH = os.getenv("DASH_ASSETS_URL_PATH", "assets")

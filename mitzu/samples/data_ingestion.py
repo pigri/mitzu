@@ -97,6 +97,10 @@ def create_and_ingest_sample_project(
             lookback_days=365,
             end_dt=datetime(2022, 1, 1),
         ),
+        webapp_settings=M.WebappSettings(
+            end_date_config=M.WebappEndDateConfig.CUSTOM_DATE,
+            custom_end_date=datetime(2022, 1, 1),
+        ),
         project_id=project_id if project_id is not None else create_unique_id(),
     )
 

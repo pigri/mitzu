@@ -14,6 +14,7 @@ CHART_TYPE_DD = "chart_type_button"
 CHART_TYPE_CONTAINER = "chart_type_container"
 GRAPH_CONTENT_TYPE = "graph_content_type"
 GRAPH_REFRESH_BUTTON = "graph_refresh_button"
+GRAPH_RUN_QUERY_BUTTON = "graph_run_query_button"
 CANCEL_BUTTON = "cancel_button"
 
 TOOLBAR_ROW = "toolbar_row"
@@ -78,7 +79,8 @@ def create_chart_type_dropdown(metric: Optional[M.Metric]) -> dcc.Dropdown:
     )
 
 
-def from_metric(metric: Optional[M.Metric]) -> bc.Component:
+def from_metric(metric: Optional[M.Metric], project: M.Project) -> bc.Component:
+    auto_refresh = project.webapp_settings.auto_refresh_enabled
     comp = dbc.Row(
         id=TOOLBAR_ROW,
         children=[
@@ -91,17 +93,31 @@ def from_metric(metric: Optional[M.Metric]) -> bc.Component:
                         color="primary",
                         id=GRAPH_REFRESH_BUTTON,
                         disabled=False,
-                        class_name="me-1",
+                        class_name="me-1 " + ("" if auto_refresh else "d-none"),
+                    ),
+                    dbc.Button(
+                        children=[html.B(className="bi bi-play-fill me-1"), "Run"],
+                        size="sm",
+                        color="primary",
+                        id=GRAPH_RUN_QUERY_BUTTON,
+                        disabled=False,
+                        class_name="me-1 " + ("d-none" if auto_refresh else ""),
                     ),
                     dbc.Button(
                         children=[
-                            dbc.Spinner(size="sm", color="dark", type="border"),
-                            " Cancel",
+                            dbc.Spinner(
+                                size="sm",
+                                color="dark",
+                                type="border",
+                                spinnerClassName="me-1",
+                            ),
+                            "Cancel",
                         ],
                         size="sm",
                         color="secondary",
                         id=CANCEL_BUTTON,
                         style=HIDDEN,
+                        class_name=("" if auto_refresh else "d-none"),
                     ),
                 ],
             ),

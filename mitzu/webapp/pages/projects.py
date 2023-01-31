@@ -118,9 +118,7 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
                         height=40,
                     ),
                     html.P(f"This project has {events} events in {tables} datasets."),
-                    html.P(
-                        "More description will come here for this project..."
-                    ),  # TBD Support project desc
+                    html.P(project.description),
                     html.Div(
                         [
                             dbc.Button(
