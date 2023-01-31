@@ -20,12 +20,10 @@ from typing import List
 import mitzu.webapp.dependencies as DEPS
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import flask
-import mitzu.model as M
 from typing import cast
 import datetime
+from mitzu.webapp.helper import MISSING_RESOURCE_CSS
 from urllib.parse import quote
-import mitzu.serialization as SE
-from copy import copy
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 SAVE_BUTTON = "project_save_button"
@@ -76,41 +74,23 @@ def create_confirm_dialog():
     )
 
 
-def copy_metric(metric: M.Metric) -> M.Metric:
-    config = copy(metric._config)
-    config.metric_name = None
-    if isinstance(metric, M.SegmentationMetric):
-        return M.SegmentationMetric(segment=metric._segment, config=config)
-    if isinstance(metric, M.ConversionMetric):
-        return M.ConversionMetric(
-            conversion=metric._conversion,
-            conv_window=metric._conv_window,
-            config=config,
-        )
-    if isinstance(metric, M.RetentionMetric):
-        return M.RetentionMetric(
-            initial_segment=metric._initial_segment,
-            retaining_segment=metric._retaining_segment,
-            retention_window=metric._retention_window,
-            config=config,
-        )
-    raise NotImplementedError(f"Unknown metric type: {type(metric)}")
-
-
 def create_saved_metric_card(
-    saved_metric: WM.SavedMetric, project: M.Project
+    saved_metric: WM.SavedMetric,
 ) -> bc.Component:
     metric = saved_metric.metric
+    project = saved_metric.project
 
-    # Copying metric without ID and name for further exploration
-    none_saved_params = "?m=" + quote(SE.to_compressed_string(copy_metric(metric)))
-    none_saved_href = f"{P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project.id)}{none_saved_params}"
+    if project is not None and metric is not None:
+        # Copying metric without ID and name for further exploration
+        none_saved_params = f"?m={quote(saved_metric.metric_json)}"
+        none_saved_href = f"{P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project.id)}{none_saved_params}"
 
-    # Creating href for edit button
-    saved_params = "?m=" + quote(SE.to_compressed_string(metric))
-    saved_href = (
-        f"{P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project.id)}{saved_params}"
-    )
+        # Creating href for edit button
+        saved_params = f"?sm={saved_metric.id}"
+        saved_href = f"{P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project.id)}{saved_params}"
+    else:
+        saved_href = ""
+        none_saved_href = ""
 
     return dbc.Card(
         [
@@ -136,7 +116,7 @@ def create_saved_metric_card(
                                     [
                                         dcc.Link(
                                             html.H5(
-                                                metric._config.metric_name,
+                                                saved_metric.name,
                                                 className="card-title",
                                             ),
                                             href=none_saved_href,
@@ -147,7 +127,7 @@ def create_saved_metric_card(
                                             color="dark",
                                             id={
                                                 "type": SAVED_METRIC_DELETE,
-                                                "index": f"{metric.get_id()}{SEPARATOR}{metric._config.metric_name}",
+                                                "index": f"{saved_metric.id}{SEPARATOR}{saved_metric.name}",
                                             },
                                             size="sm",
                                             outline=True,
@@ -159,11 +139,11 @@ def create_saved_metric_card(
                                 dcc.Link(
                                     children=[
                                         html.P(
-                                            metric.get_title(),
+                                            saved_metric.description,
                                             className="card-text",
                                         ),
                                         html.Small(
-                                            saved_metric.saved_at.strftime("%c"),
+                                            saved_metric.created_at.strftime("%c"),
                                             className="card-text text-muted",
                                         ),
                                     ],
@@ -180,18 +160,20 @@ def create_saved_metric_card(
                         color="light",
                         href=saved_href,
                         class_name="text-align-end",
+                        disabled=project is None,
                     ),
                 ],
                 className="g-0 d-flex align-items-center",
             )
         ],
+        class_name=MISSING_RESOURCE_CSS if project is None else "",
     )
 
 
 def list_saved_metrics(storage: S.MitzuStorage) -> List[bc.Component]:
     saved_metric_ids = storage.list_saved_metrics()
     saved_metrics = [storage.get_saved_metric(s_id) for s_id in saved_metric_ids]
-    saved_metrics.sort(key=lambda m: -datetime.datetime.timestamp(m.saved_at))
+    saved_metrics.sort(key=lambda m: -datetime.datetime.timestamp(m.created_at))
     if len(saved_metrics) == 0:
         return dbc.Col(
             [
@@ -207,7 +189,7 @@ def list_saved_metrics(storage: S.MitzuStorage) -> List[bc.Component]:
 
     return [
         dbc.Col(
-            create_saved_metric_card(sm, sm.project),
+            create_saved_metric_card(sm),
             class_name="mb-3",
             sm=12,
             md=6,
@@ -220,7 +202,7 @@ def list_saved_metrics(storage: S.MitzuStorage) -> List[bc.Component]:
 
 
 @restricted_layout
-def layout() -> bc.Component:
+def layout(**query_params) -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).storage

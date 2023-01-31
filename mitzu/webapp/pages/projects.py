@@ -27,7 +27,7 @@ register_page(
 
 
 @restricted_layout
-def layout() -> bc.Component:
+def layout(**query_params) -> bc.Component:
     projects = create_projects_children()
     return html.Div(
         [
@@ -100,11 +100,11 @@ def create_projects_children() -> List[bc.Component]:
 
 
 def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Component:
-    discovered_project = deps.storage.get_discovered_project(project_id)
-    project = discovered_project.project
+    project = deps.storage.get_project(project_id)
+    discovered_project = project._discovered_project.get_value()
 
     tables = len(project.event_data_tables)
-    events = len(discovered_project.get_all_events())
+    events = len(discovered_project.get_all_events()) if discovered_project else 0
     project_jumbotron = dbc.Col(
         dbc.Card(
             dbc.CardBody(

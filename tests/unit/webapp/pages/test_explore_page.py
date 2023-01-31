@@ -396,7 +396,9 @@ def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProj
     assert lookback_days_dd["value"] == "1 month"
 
 
-def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject, dependencies):
+def test_mitzu_link_redirected(
+    discovered_project: M.DiscoveredProject, dependencies: DEPS.Dependencies
+):
     import flask
 
     app = flask.Flask("_test_app_")
@@ -409,7 +411,9 @@ def test_mitzu_link_redirected(discovered_project: M.DiscoveredProject, dependen
                 "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
             )
         }
-        res = EXP.create_explore_page(query_params, discovered_project)
+        res = EXP.create_explore_page(
+            query_params, discovered_project, storage=dependencies.storage
+        )
 
         explore_page = to_dict(res)
 

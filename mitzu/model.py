@@ -384,6 +384,15 @@ class Reference(Generic[ID]):
         else:
             self._id = value.get_id()
 
+    def restore_value(self, value: Optional[ID]):
+        if self._id is None:
+            raise InvalidReferenceException("Restoring reference without ID.")
+        self._value_state.set_value(value)
+        if value is not None and value.get_id() != self._id:
+            raise InvalidReferenceException(
+                "Restored reference value has different ID."
+            )
+
 
 class SecretResolver(ABC):
     """
@@ -820,6 +829,9 @@ class Project(Identifiable):
     def set_connection(self, connection: Optional[Connection]):
         self._connection_ref.set_value(connection)
 
+    def restore_connection(self, connection: Optional[Connection]):
+        self._connection_ref.restore_value(connection)
+
     def get_default_end_dt(self) -> datetime:
         if self.discovery_settings.end_dt is None:
             return datetime.now()
@@ -1072,19 +1084,14 @@ class MetricConfig:
     agg_param: Optional[Any] = None
     chart_type: Optional[SimpleChartType] = None
     resolution: Optional[TimeGroup] = None
-    metric_name: Optional[str] = None
 
 
 @dataclass(init=False, frozen=True)
 class Metric(ABC):
     _config: MetricConfig
-    _id: str
 
-    def __init__(self, config: MetricConfig, id: Optional[str] = None):
+    def __init__(self, config: MetricConfig):
         object.__setattr__(self, "_config", config)
-        object.__setattr__(
-            self, "_id", id if id is not None else helper.create_unique_id()
-        )
 
     @property
     def _max_group_count(self) -> int:
@@ -1175,9 +1182,6 @@ class Metric(ABC):
         chart = CHRT.get_simple_chart(self)
         return PLT.plot_chart(chart, self)
 
-    def get_id(self):
-        return self._id
-
     def __repr__(self) -> str:
         fig = self.get_figure()
         fig.show(config={"displayModeBar": False})
@@ -1193,9 +1197,8 @@ class ConversionMetric(Metric):
         conversion: Conversion,
         config: MetricConfig,
         conv_window: TimeWindow = DEF_CONV_WINDOW,
-        id: Optional[str] = None,
     ):
-        super().__init__(config, id)
+        super().__init__(config)
         self._conversion = conversion
         self._conv_window = conv_window
 
@@ -1228,10 +1231,8 @@ class ConversionMetric(Metric):
 class SegmentationMetric(Metric):
     _segment: Segment
 
-    def __init__(
-        self, segment: Segment, config: MetricConfig, id: Optional[str] = None
-    ):
-        super().__init__(config, id)
+    def __init__(self, segment: Segment, config: MetricConfig):
+        super().__init__(config)
         object.__setattr__(self, "_segment", segment)
 
     def get_df(self) -> pd.DataFrame:
@@ -1268,9 +1269,8 @@ class RetentionMetric(Metric):
         retaining_segment: Segment,
         retention_window: TimeWindow,
         config: MetricConfig,
-        id: Optional[str] = None,
     ):
-        super().__init__(config, id)
+        super().__init__(config)
         object.__setattr__(self, "_initial_segment", initial_segment)
         object.__setattr__(self, "_retaining_segment", retaining_segment)
         object.__setattr__(self, "_retention_window", retention_window)
@@ -1288,8 +1288,6 @@ class RetentionMetric(Metric):
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
-        metric_name: Optional[str] = None,
-        id: Optional[str] = None,
     ) -> RetentionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1321,14 +1319,12 @@ class RetentionMetric(Metric):
             agg_type=agg_type,
             agg_param=agg_param,
             resolution=resolution,
-            metric_name=metric_name,
             chart_type=(
                 SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
 
         return RetentionMetric(
-            id=id,
             initial_segment=self._initial_segment,
             retaining_segment=self._retaining_segment,
             retention_window=(
@@ -1384,7 +1380,6 @@ class Conversion(ConversionMetric):
         chart_type: Optional[Union[str, SimpleChartType]] = None,
         resolution: Optional[Union[str, TimeGroup]] = None,
         metric_name: Optional[str] = None,
-        id: Optional[str] = None,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1411,15 +1406,12 @@ class Conversion(ConversionMetric):
             agg_type=agg_type,
             agg_param=agg_param,
             resolution=resolution,
-            metric_name=metric_name,
             chart_type=(
                 SimpleChartType.parse(chart_type) if chart_type is not None else None
             ),
         )
         if conv_window is not None:
-            conv_res = ConversionMetric(
-                conversion=self._conversion, config=config, id=id
-            )
+            conv_res = ConversionMetric(conversion=self._conversion, config=config)
             conv_res._conv_window = TimeWindow.parse(conv_window)
             return conv_res
         else:
@@ -1462,7 +1454,6 @@ class Segment(SegmentationMetric):
         aggregation: Optional[str] = None,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
         metric_name: Optional[str] = None,
-        id: Optional[str] = None,
     ) -> SegmentationMetric:
         if type(lookback_days) == int:
             lbd = TimeWindow(lookback_days, TimeGroup.DAY)
@@ -1484,13 +1475,12 @@ class Segment(SegmentationMetric):
             lookback_days=lbd,
             agg_type=agg_type,
             agg_param=agg_param,
-            metric_name=metric_name,
             chart_type=SimpleChartType.parse(chart_type)
             if chart_type is not None
             else None,
         )
 
-        return SegmentationMetric(segment=self, config=config, id=id)
+        return SegmentationMetric(segment=self, config=config)
 
     def __repr__(self) -> str:
         return super().__repr__()

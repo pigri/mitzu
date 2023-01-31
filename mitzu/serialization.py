@@ -51,7 +51,6 @@ def _to_dict(value: Any) -> Any:
             "ct": _to_dict(value.custom_title),
             "cat": _to_dict(value.chart_type),
             "res": _to_dict(value.resolution),
-            "mn": _to_dict(value.metric_name),
         }
         if value.agg_type is not None:
             res["at"] = value.agg_type.to_agg_str(value.agg_param)
@@ -81,7 +80,6 @@ def _to_dict(value: Any) -> Any:
             "conv": _to_dict(value._conversion),
             "cw": _to_dict(value._conv_window),
             "co": _to_dict(value._config),
-            "id": _to_dict(value._id),
         }
     if isinstance(value, M.RetentionMetric):
         return {
@@ -89,13 +87,11 @@ def _to_dict(value: Any) -> Any:
             "seg_2": _to_dict(value._retaining_segment),
             "rw": _to_dict(value._retention_window),
             "co": _to_dict(value._config),
-            "id": _to_dict(value._id),
         }
     if isinstance(value, M.SegmentationMetric):
         return {
             "seg": _to_dict(value._segment),
             "co": _to_dict(value._config),
-            "id": _to_dict(value._id),
         }
     raise ValueError("Unsupported value type: {}".format(type(value)))
 
@@ -168,13 +164,11 @@ def _from_dict(
             chart_type=_from_dict(
                 value.get("cat"), project, M.SimpleChartType, path + ".cat"
             ),
-            metric_name=_from_dict(value.get("mn"), project, str, path + ".mn"),
             agg_type=at,
             agg_param=ap,
         )
     if type_hint == M.ConversionMetric:
         return M.ConversionMetric(
-            id=_from_dict(value.get("id"), project, str, path + ".id"),
             conversion=_from_dict(
                 value.get("conv"), project, M.Conversion, path + ".conv"
             ),
@@ -191,7 +185,6 @@ def _from_dict(
         )
     if type_hint == M.RetentionMetric:
         return M.RetentionMetric(
-            id=_from_dict(value.get("id"), project, str, path + ".id"),
             initial_segment=_from_dict(
                 value.get("seg_1"), project, M.Segment, path + ".seg_1"
             ),
@@ -205,7 +198,6 @@ def _from_dict(
         )
     if type_hint == M.SegmentationMetric:
         return M.SegmentationMetric(
-            id=_from_dict(value.get("id"), project, str, path + ".id"),
             segment=_from_dict(value.get("seg"), project, M.Segment, path + ".seg"),
             config=_from_dict(value.get("co"), project, M.MetricConfig, path + ".co"),
         )

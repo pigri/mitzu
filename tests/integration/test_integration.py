@@ -320,7 +320,6 @@ def validate_retention(project: M.Project):
 
     dt_1 = datetime(2021, 1, 1)
     dt_2 = datetime(2021, 2, 1)
-    print(retention_df)
 
     expected_retention_df = pd.DataFrame(
         {

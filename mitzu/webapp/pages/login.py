@@ -12,7 +12,7 @@ register_page(
 )
 
 
-def layout():
+def layout(**query_params):
     return dbc.Container(
         children=[
             dbc.Row(

@@ -34,7 +34,7 @@ DASHBOARDS_INFO = "dashboard_info"
 
 
 @restricted_layout
-def layout() -> bc.Component:
+def layout(**query_params) -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).storage
@@ -135,10 +135,10 @@ def list_dashboards(dashboards: List[WM.Dashboard]) -> List[bc.Component]:
 
 def create_dashboard_selector(dashboard: WM.Dashboard) -> bc.Component:
     details: List[str] = []
-    if dashboard.created_on is not None:
-        details.append(f"Created on: {dashboard.created_on}")
-    if dashboard.last_modified is not None:
-        details.append(f"Edited on: {dashboard.last_modified}")
+    if dashboard.created_at is not None:
+        details.append(f"Created at: {dashboard.created_at}")
+    if dashboard.last_updated_at is not None:
+        details.append(f"Edited at: {dashboard.last_updated_at}")
 
     href = P.create_path(P.DASHBOARDS_EDIT_PATH, dashboard_id=dashboard.id)
 
@@ -194,7 +194,7 @@ def create_dashboard_selector(dashboard: WM.Dashboard) -> bc.Component:
                                             className="card-text text-nowrap    ",
                                         ),
                                         html.Small(
-                                            f"Created on {dashboard.created_on.strftime('%c')}",
+                                            f"Created on {dashboard.created_at.strftime('%c')}",
                                             className="card-text text-muted",
                                         ),
                                     ],

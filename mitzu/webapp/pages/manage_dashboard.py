@@ -18,7 +18,7 @@ def no_connection_layout():
 
 
 @restricted_layout
-def layout(dashboard_id: Optional[str] = None) -> bc.Component:
+def layout(dashboard_id: Optional[str] = None, **query_params) -> bc.Component:
     dashboard: Optional[WM.Dashboard] = None
     if dashboard_id is not None:
         depenednecies: DEPS.Dependencies = cast(

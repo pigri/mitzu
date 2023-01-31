@@ -18,6 +18,9 @@ TBL_CLS_WARNING = "small text-danger mh-0 fw-bold"
 TBL_HEADER_CLS = "small mh-0 text-nowrap fw-bold"
 
 
+MISSING_RESOURCE_CSS = "border border-2 border-warning"
+
+
 def get_enums(path: str, discovered_project: M.DiscoveredProject) -> List[Any]:
     event_field_def = find_event_field_def(path, discovered_project)
     if event_field_def is not None:

@@ -16,6 +16,7 @@ import mitzu.serialization as SE
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted
 from urllib.parse import quote
+from mitzu.webapp.helper import MISSING_RESOURCE_CSS
 
 RESPONSIVE_GRID_LAYOUT = "responsive_grid_layout"
 
@@ -47,7 +48,6 @@ def create_grid_width(width: int) -> Dict:
 
 
 def create_saved_metric_card(saved_metric: WM.SavedMetric) -> bc.Component:
-    metric = saved_metric.metric
     return dbc.Card(
         [
             html.A(
@@ -68,18 +68,18 @@ def create_saved_metric_card(saved_metric: WM.SavedMetric) -> bc.Component:
                                         html.Div(
                                             [
                                                 html.H5(
-                                                    metric._config.metric_name,
+                                                    saved_metric.name,
                                                     className="card-title",
                                                 ),
                                             ],
                                             className="d-flex justify-content-between",
                                         ),
                                         html.P(
-                                            metric.get_title(),
+                                            saved_metric.description,
                                             className="card-text",
                                         ),
                                         html.Small(
-                                            saved_metric.saved_at.strftime("%c"),
+                                            saved_metric.created_at.strftime("%c"),
                                             className="card-text text-muted",
                                         ),
                                     ]
@@ -92,7 +92,7 @@ def create_saved_metric_card(saved_metric: WM.SavedMetric) -> bc.Component:
                 ],
                 href="#",
                 className="text-dark",
-                id={"type": ADD_SAVED_METRICS_TYPE, "index": metric.get_id()},
+                id={"type": ADD_SAVED_METRICS_TYPE, "index": saved_metric.id},
             )
         ],
         class_name="mb-3 hover-shadow",
@@ -134,14 +134,20 @@ def create_saved_metrics_off_canvas() -> bc.Component:
 
 def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
     index = f"{DASHBOARD_ITEM_PREFIX}_{dm.get_saved_metric_id()}"
-    if dm.saved_metric is None:
+    if (
+        dm.saved_metric is None
+        or dm.saved_metric.metric is None
+        or dm.saved_metric.project is None
+    ):
         component = html.Div(
             "Missing chart",
             className="lead text-center pt-5 w-100 h-100 d-inline-block",
         )
+        name = dm.saved_metric.name if dm.saved_metric is not None else "Missing chart"
         href = None
-        name = ""
         edit_href = None
+        missing_project = True
+        border_class = "border border-2 border-warning"
     else:
         component = dcc.Graph(
             id={"type": DASHBOARD_METRIC_GRAPH_TYPE, "index": dm.get_saved_metric_id()},
@@ -152,18 +158,20 @@ def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
         )
 
         metric = dm.saved_metric.metric
-        name = metric._config.metric_name if metric._config.metric_name else ""
+        name = dm.saved_metric.name
+        missing_project = dm.saved_metric.project is None
+        if not missing_project:
+            path = P.create_path(
+                P.PROJECTS_EXPLORE_PATH, project_id=dm.saved_metric.get_project_id()
+            )
 
-        path = P.create_path(
-            P.PROJECTS_EXPLORE_PATH, project_id=dm.saved_metric.project.id
-        )
-        edit_href = f"{path}?m={quote(SE.to_compressed_string(metric))}"
-        metric_dict = SE.to_dict(metric)
-        metric_dict["id"] = None
-        metric_dict["co"]["mn"] = None
-        query = quote(SE.dict_to_compressed_string(metric_dict))
-
-        href = f"{path}?m={query}"
+            href = f"{path}?m={quote(SE.to_compressed_string(metric))}"
+            edit_href = f"{path}?sm={dm.saved_metric.id}"
+            border_class = ""
+        else:
+            border_class = MISSING_RESOURCE_CSS
+            href = ""
+            edit_href = ""
 
     return html.Div(
         html.Div(
@@ -195,12 +203,14 @@ def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
                                             ),
                                             href=href,
                                             target="_blank",
+                                            disabled=missing_project,
                                         ),
                                         dmc.MenuItem(
                                             "Edit",
                                             icon=DashIconify(icon="mdi:gear-outline"),
                                             href=edit_href,
                                             target="_blank",
+                                            disabled=missing_project,
                                         ),
                                         dmc.MenuDivider(),
                                         dmc.MenuItem(
@@ -225,7 +235,7 @@ def create_dashboard_metric_card(dm: WM.DashboardMetric) -> bc.Component:
             className="w-100 h-100",
         ),
         id=index,
-        className="w-100 h-100",
+        className="w-100 h-100 " + border_class,
     )
 
 
@@ -353,13 +363,7 @@ def manage_saved_metrics_off_canvas(button: int, search_value: str):
         saved_metrics = [
             sm
             for sm in saved_metrics
-            if (
-                search_value is None
-                or (
-                    sm.metric._config.metric_name is not None
-                    and search_value.lower() in sm.metric._config.metric_name.lower()
-                )
-            )
+            if (not search_value or (search_value.lower() in sm.name.lower()))
         ]
 
     if len(saved_metrics) > 0:
@@ -403,11 +407,13 @@ def manage_dashboard_content(
         ):
             return no_update, no_update, no_update
         dashboard = storage.get_dashboard(dashboard_id)
-        dashboard.dashboard_metrics = [
-            dm
-            for dm in dashboard.dashboard_metrics
-            if dm.get_saved_metric_id() != delete_metric_id
-        ]
+        dashboard = dashboard.update(
+            [
+                dm
+                for dm in dashboard.dashboard_metrics
+                if dm.get_saved_metric_id() != delete_metric_id
+            ]
+        )
         storage.clear_dashboard(dashboard.id)
         storage.set_dashboard(dashboard.id, dashboard)
         children = [
@@ -473,7 +479,7 @@ def dashboard_name_changed(name: str, dashboard_id: str) -> str:
     dashboard = storage.get_dashboard(dashboard_id)
     if dashboard is not None:
         d_name = name if name else "Unnamed dashboard"
-        dashboard.name = d_name
+        dashboard = dashboard.rename(d_name)
         storage.clear_dashboard(dashboard_id)
         dashboard = storage.set_dashboard(dashboard_id, dashboard)
     return name
@@ -542,18 +548,22 @@ def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: st
     for index, dm in enumerate(dashboard.dashboard_metrics):
         if dm.saved_metric is not None:
             metric = dm.saved_metric.metric
-
+            project = dm.saved_metric.project
+            if metric is None or project is None:
+                continue
             simple_chart = CHRT.get_simple_chart(metric)
             fig = PLT.plot_chart(simple_chart, metric)
             sm = WM.SavedMetric(
                 metric=metric,
+                name=dm.saved_metric.name,
                 chart=simple_chart,
-                project=dm.saved_metric.project,
+                project=project,
                 image_base64=PLT.figure_to_base64_image(figure=fig),
                 small_base64=PLT.figure_to_base64_image(figure=fig, scale=0.5),
+                id=dm.saved_metric.id,
             )
-            storage.clear_saved_metric(sm.metric.get_id())
-            storage.set_saved_metric(sm.metric.get_id(), sm)
+            storage.clear_saved_metric(sm.id)
+            storage.set_saved_metric(sm.id, sm)
             dm.set_saved_metric(sm)
             figures.append(fig)
         progress = int((index + 1) * 100.0 / total)

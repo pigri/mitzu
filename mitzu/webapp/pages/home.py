@@ -15,7 +15,7 @@ register_page(
 
 
 @restricted_layout
-def layout():
+def layout(**query_params):
     return html.Div(
         [
             NB.create_mitzu_navbar("home-navbar", []),

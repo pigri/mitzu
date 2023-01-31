@@ -70,7 +70,8 @@ class InMemoryCache(MitzuCache):
         return res
 
     def clear(self, key: str) -> None:
-        self._cache.pop(key)
+        if key in self._cache:
+            self._cache.pop(key)
 
     def list_keys(
         self, prefix: Optional[str] = None, strip_prefix: bool = True

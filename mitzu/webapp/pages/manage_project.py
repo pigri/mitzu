@@ -29,15 +29,13 @@ def layout_create() -> bc.Component:
 
 
 @restricted_layout
-def layout(project_id: Optional[str] = None) -> bc.Component:
+def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
     project: Optional[M.Project] = None
     dependencies: DEPS.Dependencies = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     )
     if project_id is not None:
-        dp = dependencies.storage.get_discovered_project(project_id)
-        if dp is not None:
-            project = dp.project
+        project = dependencies.storage.get_project(project_id)
 
     title = (
         "Create new project"

@@ -62,35 +62,33 @@ class MitzuStorage:
         super().__init__()
         self.mitzu_cache = mitzu_cache
 
-    def get_discovered_project(self, project_id: str) -> M.DiscoveredProject:
-        project = self.get_project(project_id)
-        tbl_defs = project.event_data_tables
-        definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
-
-        for edt in tbl_defs:
-            edt.set_project(project)
-            defs = self.get_event_data_table_definition(project_id, edt.get_full_name())
-            for ed in defs.values():
-                ed._event_data_table.set_project(project)
-            definitions[edt] = defs if defs is not None else {}
-
-        dp = M.DiscoveredProject(definitions, project)
-        return dp
-
     def set_project(self, project_id: str, project: M.Project):
         return self.mitzu_cache.put(PROJECT_PREFIX + project_id, project)
 
     def get_project(self, project_id: str) -> M.Project:
-        res: M.Project = self.mitzu_cache.get(PROJECT_PREFIX + project_id)
-        if res is not None:
-            con_id = res.get_connection_id()
+        project: M.Project = self.mitzu_cache.get(PROJECT_PREFIX + project_id)
+        if project is not None:
+            event_data_tables = project.event_data_tables
+            definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
+            con_id = project.get_connection_id()
             if con_id is not None:
                 con = self.get_connection(con_id)
-                res.set_connection(con)
+                project.restore_connection(con)
 
-            for edt in res.event_data_tables:
-                edt.set_project(res)
-        return res
+            for edt in event_data_tables:
+                edt.set_project(project)
+                defs = self.get_event_data_table_definition(
+                    project_id, edt.get_full_name()
+                )
+                if defs is not None:
+                    definitions[edt] = defs
+                for df in defs.values():
+                    df._event_data_table.set_project(project)
+
+            project._discovered_project.set_value(
+                M.DiscoveredProject(definitions, project)
+            )
+        return project
 
     def delete_project(self, project_id: str):
         self.mitzu_cache.clear(PROJECT_PREFIX + project_id)
@@ -125,7 +123,6 @@ class MitzuStorage:
             SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
             {},
         )
-
         return res
 
     def delete_event_data_table_definition(self, project_id: str, edt_full_name: str):
@@ -161,8 +158,8 @@ class MitzuStorage:
     def get_saved_metric(self, metric_id: str) -> WM.SavedMetric:
         res: WM.SavedMetric = self.mitzu_cache.get(SAVED_METRIC_PREFIX + metric_id)
         if res is not None:
-            discovered_project = self.get_discovered_project(res.get_project_id())
-            res.set_project(discovered_project.project)
+            project = self.get_project(res.get_project_id())
+            res.restore_project(project)
         return res
 
     def clear_saved_metric(self, metric_id: str):
@@ -179,7 +176,7 @@ class MitzuStorage:
         if dashboard is not None:
             for dm in dashboard.dashboard_metrics:
                 sm = self.get_saved_metric(dm.get_saved_metric_id())
-                dm.set_saved_metric(sm)
+                dm.restore_saved_metric(sm)
 
         return dashboard
 

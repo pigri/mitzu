@@ -22,11 +22,22 @@ def layout(project_id: str, **query_params) -> bc.Component:
     depenednecies: DEPS.Dependencies = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     )
-    discovered_project = depenednecies.storage.get_discovered_project(project_id)
-    if discovered_project is None:
+    project = depenednecies.storage.get_project(project_id)
+
+    if project is None:
         return html.Div("Project not found", className="d-flex text-center lead")
 
-    return EXP.create_explore_page(query_params, discovered_project)
+    discovered_project = project._discovered_project.get_value()
+    if discovered_project is None:
+        return html.Div(
+            "Project have not been discovered yet", className="d-flex text-center lead"
+        )
+
+    return EXP.create_explore_page(
+        query_params=query_params,
+        discovered_project=discovered_project,
+        storage=depenednecies.storage,
+    )
 
 
 EXP.create_callbacks()

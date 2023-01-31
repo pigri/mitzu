@@ -91,3 +91,5 @@ sample_project.db
 .cognito.env
 
 *.rdb
+
+*.env

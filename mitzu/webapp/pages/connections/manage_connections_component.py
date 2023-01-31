@@ -5,7 +5,7 @@ from uuid import uuid4
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
-from dash import ALL, Input, Output, State, callback, ctx, html, no_update
+from dash import Input, Output, State, callback, ctx, html, no_update, ALL
 
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
@@ -14,6 +14,7 @@ import mitzu.webapp.configs as CO
 from mitzu.helper import value_to_label
 from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
+import traceback
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
 CONNECTION_DELETE_BUTTON = "connection_delete_button"
@@ -27,7 +28,7 @@ CONFIRM_DIALOG_CLOSE = "conn_confirm_dialog_close"
 CONFIRM_DIALOG_ACCEPT = "conn_confirm_dialog_accept"
 
 
-PROP_CONNECTION_ID = "connecion_id"
+PROP_CONNECTION_ID = "connection_id"
 PROP_CONNECTION_NAME = "connection_name"
 PROP_CONNECTION_TYPE = "connection_type"
 PROP_CATALOG = "catalog"
@@ -72,7 +73,7 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
                 create_url_param(values, PROP_ROLE),
             ]
         )
-    res = M.Connection(
+    return M.Connection(
         connection_name=values[PROP_CONNECTION_NAME],
         connection_type=con_type,
         host=values[PROP_HOST],
@@ -84,7 +85,6 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
         url_params=url_params,
         extra_configs=extra_configs,
     )
-    return res
 
 
 def create_connection_extra_inputs(
@@ -406,7 +406,6 @@ def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
 def test_connection_clicked(
     n_clicks: int, values: Dict[str, Any], pathname: str
 ) -> List[bc.Component]:
-    print("test_connection_clicked")
     if n_clicks is None:
         return no_update
 
@@ -426,4 +425,5 @@ def test_connection_clicked(
         dummy_project.get_adapter().test_connection()
         return html.P("Connected successfully!", className="lead my-3")
     except Exception as exc:
+        traceback.print_exc()
         return html.P(f"Failed to connect: {exc}", className="my-3 text-danger")

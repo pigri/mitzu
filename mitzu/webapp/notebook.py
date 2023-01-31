@@ -25,8 +25,8 @@ class SingleProjectMitzuStorage(S.MitzuStorage):
     def list_discovered_projects(self) -> List[str]:
         return [S.SAMPLE_PROJECT_NAME]
 
-    def get_discovered_project(self, key: str) -> M.DiscoveredProject:
-        return self.sample_project
+    def get_project(self, key: str) -> M.Project:
+        return self.sample_project.project
 
 
 def external_dashboard(
@@ -66,7 +66,12 @@ def external_dashboard(
         long_callback_manager=callback_manager,
     )
 
-    app.layout = EXP.create_explore_page({}, discovered_project, notebook_mode=True)
+    app.layout = EXP.create_explore_page(
+        query_params={},
+        discovered_project=discovered_project,
+        storage=dependencies.storage,
+        notebook_mode=True,
+    )
     EXP.create_callbacks()
 
     os.environ["BACKGROUND_CALLBACK"] = str(results is None)

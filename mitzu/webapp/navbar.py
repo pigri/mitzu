@@ -14,7 +14,9 @@ import mitzu.webapp.dependencies as DEPS
 OFF_CANVAS_TOGGLER = "off-canvas-toggler"
 
 
-def create_explore_button_col(storage: Optional[S.MitzuStorage] = None):
+def create_explore_button_col(
+    storage: Optional[S.MitzuStorage] = None, project_name: Optional[str] = None
+):
     if storage is None:
         storage = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
@@ -33,7 +35,7 @@ def create_explore_button_col(storage: Optional[S.MitzuStorage] = None):
             ],
             size="sm",
             color="light",
-            label="explore",
+            label="explore" if project_name is None else project_name,
             class_name="d-inline-block",
         ),
         width="auto",
@@ -46,6 +48,7 @@ def create_mitzu_navbar(
     storage: Optional[S.MitzuStorage] = None,
     create_explore_button: bool = True,
     off_canvas_toggler_visible: bool = True,
+    project_name: Optional[str] = None,
 ) -> dbc.Navbar:
 
     navbar_children = [
@@ -64,7 +67,7 @@ def create_mitzu_navbar(
         ),
     ]
     if create_explore_button:
-        navbar_children.append(create_explore_button_col(storage))
+        navbar_children.append(create_explore_button_col(storage, project_name))
 
     navbar_children.extend([dbc.Col(comp) for comp in children])
     res = dbc.Navbar(

@@ -7,5 +7,5 @@ register_page(__name__, path_template=P.USER_PATH_PART, title="Mitzu - Users")
 
 
 @restricted_layout
-def layout() -> bc.Component:
+def layout(**query_params) -> bc.Component:
     return "Users"

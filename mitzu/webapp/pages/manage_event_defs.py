@@ -92,7 +92,7 @@ def no_project_layout():
 
 
 @restricted_layout
-def layout(project_id: Optional[str]) -> bc.Component:
+def layout(project_id: Optional[str], **query_params) -> bc.Component:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).storage

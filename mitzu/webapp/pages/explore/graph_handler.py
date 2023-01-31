@@ -25,6 +25,7 @@ import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
 import json
 import hashlib
+from urllib.parse import urlparse
 
 GRAPH = "graph"
 MESSAGE = "lead fw-normal text-center h-100 w-100"
@@ -138,11 +139,13 @@ def create_sql_area(metric: Optional[M.Metric]) -> dbc.Table:
         return html.Div(id=SQL_AREA)
 
 
-def store_saved_metric(
+def store_rendered_saved_metric(
+    metric_name: str,
     metric: M.Metric,
     simple_chart: CO.SimpleChart,
     project: M.Project,
     storage: S.MitzuStorage,
+    metric_id: Optional[str] = None,
 ):
     fig = PLT.plot_chart(simple_chart, metric)
     image_b64 = PLT.figure_to_base64_image(fig, 1.0)
@@ -153,9 +156,11 @@ def store_saved_metric(
         project=project,
         image_base64=image_b64,
         small_base64=small_image_b64,
+        name=metric_name,
+        id=metric_id,
     )
-    storage.clear_saved_metric(metric_id=metric.get_id())
-    storage.set_saved_metric(metric_id=metric.get_id(), saved_metric=saved_metric)
+    storage.clear_saved_metric(metric_id=saved_metric.id)
+    storage.set_saved_metric(metric_id=saved_metric.id, saved_metric=saved_metric)
 
 
 def create_callbacks():
@@ -164,7 +169,7 @@ def create_callbacks():
         inputs=EXP.ALL_INPUT_COMPS,
         state=dict(
             graph_content_type=State(TH.GRAPH_CONTENT_TYPE, "value"),
-            pathname=State(MITZU_LOCATION, "pathname"),
+            href=State(MITZU_LOCATION, "href"),
             metric_name=State(EXP.METRIC_NAME_INPUT, "value"),
             metric_id=State(EXP.METRIC_ID_VALUE, "children"),
         ),
@@ -194,31 +199,44 @@ def create_callbacks():
     def handle_changes_for_graph(
         all_inputs: Dict[str, Any],
         graph_content_type: str,
-        pathname: str,
+        href: str,
         metric_name: Optional[str],
         metric_id: str,
     ) -> bc.Component:
         try:
+            parse_result = urlparse(href)
             project_id = P.get_path_value(
-                P.PROJECTS_EXPLORE_PATH, pathname, P.PROJECT_ID_PATH_PART
+                P.PROJECTS_EXPLORE_PATH, parse_result.path, P.PROJECT_ID_PATH_PART
             )
-        except Exception:
-            traceback.print_exc()
-            return no_update
+            storage = cast(
+                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+            ).storage
+            project = storage.get_project(project_id)
 
-        storage = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        ).storage
-        discovered_project = storage.get_discovered_project(project_id)
-
-        if discovered_project is None:
-            return no_update
-        try:
+            if project is None:
+                return no_update
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             all_inputs[EXP.METRIC_ID_VALUE] = metric_id
             all_inputs[EXP.METRIC_NAME_INPUT] = metric_name
+            all_inputs[EXP.MITZU_LOCATION] = parse_result.query
+            dp = project._discovered_project.get_value()
+            if dp is None:
+                return html.Div(
+                    [
+                        "Your project haven't been discovered yet",
+                        dcc.Link(
+                            f"Discover {project.project_name}",
+                            href=P.create_path(
+                                P.EVENTS_AND_PROPERTIES_PROJECT_PATH,
+                                project_id=project.id,
+                            ),
+                        ),
+                    ],
+                    id=GRAPH,
+                    className=MESSAGE,
+                )
 
-            metric = EXP.create_metric_from_all_inputs(all_inputs, discovered_project)
+            metric = EXP.create_metric_from_all_inputs(all_inputs, dp)
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)
 
@@ -240,9 +258,14 @@ def create_callbacks():
             elif graph_content_type == TH.SQL_VAL:
                 res = create_sql_area(metric)
 
-            if should_save_metrics:
-                store_saved_metric(
-                    metric, simple_chart, discovered_project.project, storage
+            if should_save_metrics and metric_name is not None:
+                store_rendered_saved_metric(
+                    metric_name=metric_name,
+                    metric=metric,
+                    simple_chart=simple_chart,
+                    project=project,
+                    storage=storage,
+                    metric_id=metric_id,
                 )
 
             return res

@@ -35,7 +35,7 @@ def no_connection_layout():
 
 
 @restricted_layout
-def layout(connection_id: Optional[str] = None) -> bc.Component:
+def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
     connection: Optional[M.Connection] = None
     if connection_id is not None:
         depenednecies: DEPS.Dependencies = cast(
@@ -124,8 +124,6 @@ def save_button_clicked(
     invalid = MCC.validate_input_values(values=vals)
     if invalid is not None:
         return html.P(f"Invalid {H.value_to_label(invalid)}", className="lead")
-
-    # TBD investigage why do we need to delete first
     depenednecies.storage.delete_connection(connection.id)
     depenednecies.storage.set_connection(connection.id, connection)
 

@@ -7,7 +7,9 @@ import dash_bootstrap_components as dbc
 import dash.development.base_component as bc
 
 import mitzu.model as M
+import mitzu.webapp.model as WM
 import mitzu.serialization as SE
+import mitzu.helper as H
 
 import mitzu.webapp.pages.explore.complex_segment_handler as CS
 import mitzu.webapp.pages.explore.dates_selector_handler as DS
@@ -21,6 +23,7 @@ import mitzu.webapp.pages.explore.toolbar_handler as TH
 import mitzu.webapp.navbar as NB
 import mitzu.visualization.charts as CHRT
 import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.storage as S
 from mitzu.webapp.helper import MITZU_LOCATION
 import mitzu.webapp.pages.paths as P
 import flask
@@ -28,7 +31,6 @@ import dash_mantine_components as dmc
 import traceback
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
-from uuid import uuid4
 from dash_iconify import DashIconify
 from mitzu.webapp.auth.decorator import restricted
 
@@ -46,7 +48,6 @@ CLIPBOARD = "share_clipboard"
 METRIC_NAME_INPUT = "metric_name_input"
 METRIC_ID_VALUE = "metric_id_value"
 METRIC_NAME_PROGRESS = "metric_name_progress"
-
 EXPLORE_PAGE = "explore_page"
 ALL_INPUT_COMPS = {
     "all_inputs": {
@@ -82,6 +83,8 @@ ALL_INPUT_COMPS = {
 
 def create_navbar(
     metric: Optional[M.Metric],
+    saved_metric: Optional[WM.SavedMetric],
+    project: M.Project,
     notebook_mode: bool,
 ) -> dbc.Navbar:
     navbar_children = [
@@ -90,7 +93,7 @@ def create_navbar(
             id=METRIC_NAME_INPUT,
             debounce=700,
             placeholder="Name your metric",
-            value=metric._config.metric_name if metric is not None else None,
+            value=saved_metric.name if saved_metric is not None else None,
             size="xs",
             icon=DashIconify(icon="material-symbols:star", color="dark"),
             rightSection=dmc.Loader(
@@ -120,29 +123,41 @@ def create_navbar(
     ]
 
     return NB.create_mitzu_navbar(
-        NAVBAR_ID,
-        navbar_children,
+        id=NAVBAR_ID,
+        children=navbar_children,
         off_canvas_toggler_visible=not notebook_mode,
+        project_name=project.project_name,
     )
 
 
 def create_explore_page(
     query_params: Dict[str, str],
     discovered_project: M.DiscoveredProject,
+    storage: S.MitzuStorage,
     notebook_mode: bool = False,
 ) -> bc.Component:
-    if "m" in query_params:
+    metric: Optional[M.Metric] = None
+    saved_metric: Optional[WM.SavedMetric] = None
+    if P.PROJECTS_EXPLORE_METRIC_QUERY in query_params:
         metric = SE.from_compressed_string(
-            query_params["m"], discovered_project.project
+            query_params[P.PROJECTS_EXPLORE_METRIC_QUERY], discovered_project.project
         )
-    else:
-        metric = None
+    elif P.PROJECTS_EXPLORE_SAVED_METRIC_QUERY in query_params:
+        saved_metric = storage.get_saved_metric(
+            query_params[P.PROJECTS_EXPLORE_SAVED_METRIC_QUERY]
+        )
+        metric = saved_metric.metric
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
     graph_container = create_graph_container(metric)
-    navbar = create_navbar(metric, notebook_mode)
+    navbar = create_navbar(
+        metric=metric,
+        saved_metric=saved_metric,
+        project=discovered_project.project,
+        notebook_mode=notebook_mode,
+    )
 
-    metric_id = str(uuid4())[-12:] if metric is None else metric.get_id()
+    metric_id = H.create_unique_id() if saved_metric is None else saved_metric.id
     res = html.Div(
         children=[
             navbar,
@@ -196,7 +211,8 @@ def create_metric_from_all_inputs(
     metric_type = MNB.MetricType(all_inputs[MNB.METRIC_TYPE_DROPDOWN])
     metric: Optional[Union[M.Segment, M.Conversion, M.RetentionMetric]] = None
     if metric_type == MNB.MetricType.CONVERSION:
-        metric = M.Conversion(segments)
+        if len(segments) >= 1:
+            metric = M.Conversion(segments)
     elif metric_type == MNB.MetricType.SEGMENTATION:
         if len(segments) == 1:
             metric = segments[0]
@@ -228,16 +244,8 @@ def create_metric_from_all_inputs(
         if group_by is not None:
             group_by._project._discovered_project.set_value(discovered_project)
 
-    metric_name = all_inputs[METRIC_NAME_INPUT]
-    metric_id = all_inputs[METRIC_ID_VALUE]
-
-    metric_name = all_inputs[METRIC_NAME_INPUT]
-    metric_id = all_inputs[METRIC_ID_VALUE]
-
     if isinstance(metric, M.Conversion):
         return metric.config(
-            id=metric_id,
-            metric_name=metric_name,
             time_group=metric_config.time_group,
             conv_window=res_tw,
             group_by=group_by,
@@ -251,8 +259,6 @@ def create_metric_from_all_inputs(
         )
     elif isinstance(metric, M.Segment):
         return metric.config(
-            id=metric_id,
-            metric_name=metric_name,
             time_group=metric_config.time_group,
             group_by=group_by,
             lookback_days=metric_config.lookback_days,
@@ -264,8 +270,6 @@ def create_metric_from_all_inputs(
         )
     elif isinstance(metric, M.RetentionMetric):
         return metric.config(
-            id=metric_id,
-            metric_name=metric_name,
             time_group=metric_config.time_group,
             group_by=group_by,
             lookback_days=metric_config.lookback_days,
@@ -312,7 +316,7 @@ def handle_input_changes(
         MS.METRIC_SEGMENTS: metric_segments,
         MC.METRICS_CONFIG_CONTAINER: mc_children,
         CLIPBOARD: url,
-        MITZU_LOCATION: url_params,
+        MITZU_LOCATION: url,
         MNB.METRIC_TYPE_DROPDOWN: metric_type_val,
         TH.CHART_TYPE_CONTAINER: chart_type_dd,
     }
@@ -328,7 +332,7 @@ def create_callbacks():
             MC.METRICS_CONFIG_CONTAINER: Output(
                 MC.METRICS_CONFIG_CONTAINER, "children"
             ),
-            MITZU_LOCATION: Output(MITZU_LOCATION, "search"),
+            MITZU_LOCATION: Output(MITZU_LOCATION, "href"),
             CLIPBOARD: Output(CLIPBOARD, "content"),
             MNB.METRIC_TYPE_DROPDOWN: Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
             TH.CHART_TYPE_CONTAINER: Output(TH.CHART_TYPE_CONTAINER, "children"),
@@ -367,9 +371,8 @@ def create_callbacks():
         depenedencies: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        discovered_project = depenedencies.storage.get_discovered_project(project_id)
-
-        if discovered_project is None:
+        project = depenedencies.storage.get_project(project_id)
+        if project is None:
             return {
                 MS.METRIC_SEGMENTS: no_update,
                 MC.METRICS_CONFIG_CONTAINER: no_update,
@@ -382,6 +385,16 @@ def create_callbacks():
         all_inputs[METRIC_NAME_INPUT] = metric_name
         all_inputs[METRIC_ID_VALUE] = metric_id
         all_inputs[MITZU_LOCATION] = href
+        discovered_project = project._discovered_project.get_value()
+        if discovered_project is None:
+            return {
+                MS.METRIC_SEGMENTS: no_update,
+                MC.METRICS_CONFIG_CONTAINER: no_update,
+                CLIPBOARD: no_update,
+                MITZU_LOCATION: no_update,
+                MNB.METRIC_TYPE_DROPDOWN: no_update,
+                TH.CHART_TYPE_CONTAINER: no_update,
+            }
         return handle_input_changes(all_inputs, discovered_project)
 
 
@@ -389,8 +402,7 @@ def create_callbacks():
     Output(METRIC_NAME_PROGRESS, "className"),
     Input(METRIC_NAME_INPUT, "value"),
     State(METRIC_ID_VALUE, "children"),
-    State(MITZU_LOCATION, "pathname"),
-    State(MITZU_LOCATION, "search"),
+    State(MITZU_LOCATION, "href"),
     background=True,
     running=[
         (Output(METRIC_NAME_PROGRESS, "className"), "d-inline-block", "d-none"),
@@ -399,30 +411,39 @@ def create_callbacks():
 )
 @restricted
 def handle_metric_name_changed(
-    metric_name: str, metric_id: str, pathname: str, search: str
+    metric_name: str,
+    metric_id: str,
+    href: str,
 ) -> str:
     storage = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).storage
 
-    saved_metric = storage.get_saved_metric(metric_id)
-    if saved_metric is not None:
-        saved_metric.metric._config.metric_name = metric_name
+    parse_result = urlparse(href)
+    sm = storage.get_saved_metric(metric_id)
+    if sm is not None and sm.project is not None:
         storage.clear_saved_metric(metric_id)
         if metric_name:
-            saved_metric = storage.set_saved_metric(metric_id, saved_metric)
+            storage.set_saved_metric(metric_id, sm.rename(metric_name))
     else:
+
         project_id = P.get_path_value(
-            P.PROJECTS_EXPLORE_PATH, pathname, P.PROJECT_ID_PATH_PART
+            P.PROJECTS_EXPLORE_PATH, parse_result.path, P.PROJECT_ID_PATH_PART
         )
-        project = storage.get_discovered_project(project_id).project
-        metric_v64 = parse_qs(search[1:]).get("m")
+        project = storage.get_project(project_id)
+        metric_v64 = parse_qs(parse_result.query).get(P.PROJECTS_EXPLORE_METRIC_QUERY)
         if metric_v64 is not None:
             metric = SE.from_compressed_string(metric_v64[0], project)
-            metric._config.metric_name = metric_name
             hash_key = GH.create_metric_hash_key(metric)
             result_df = GH.get_metric_result_df(hash_key, metric, storage)
             simple_chart = CHRT.get_simple_chart(metric, result_df)
-            GH.store_saved_metric(metric, simple_chart, project, storage)
+            GH.store_rendered_saved_metric(
+                metric_name=metric_name,
+                metric=metric,
+                simple_chart=simple_chart,
+                project=project,
+                storage=storage,
+                metric_id=metric_id,
+            )
 
     return "d-none"
