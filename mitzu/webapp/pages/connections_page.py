@@ -66,7 +66,7 @@ def create_connections_container(connections: List[M.Connection]):
             comp = create_connection_selector(con)
             children.append(comp)
         except Exception as exc:
-            traceback.print_exception(exc)
+            traceback.print_exception(type(exc), exc, exc.__traceback__)
 
     if len(children) == 0:
         return html.H4(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import time
+import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 import flask
@@ -16,12 +18,7 @@ import mitzu.webapp.configs as configs
 
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
-
-
-@dataclass(frozen=True)
-class AuthConfig:
-    token_cookie_name: str = field(default_factory=lambda: "auth-token")
-    redirect_cookie_name: str = field(default_factory=lambda: "redirect-to")
+JWT_ALGORITHM = "HS256"
 
 
 @dataclass(frozen=True)
@@ -69,11 +66,30 @@ class JWTTokenValidator(TokenValidator):
             audience=self._audience,
         )
 
+    @staticmethod
+    def create_from_oauth_config(oauth_config: OAuthConfig) -> JWTTokenValidator:
+        return JWTTokenValidator(
+            oauth_config.jwks_url,
+            oauth_config.jwt_algorithms,
+            oauth_config.client_id,
+        )
+
+
+@dataclass(frozen=True)
+class AuthConfig:
+    token_cookie_name: str = field(default_factory=lambda: "auth-token")
+    redirect_cookie_name: str = field(default_factory=lambda: "redirect-to")
+
+    session_timeout: int = field(default_factory=lambda: 7 * 24 * 60 * 60)
+    token_signing_key: str = field(default_factory=lambda: configs.AUTH_JWT_SECRET)
+
+    oauth: Optional[OAuthConfig] = None
+    token_validator: Optional[TokenValidator] = None
+    allowed_email_domain: Optional[str] = None
+
 
 @dataclass(frozen=True)
 class OAuthAuthorizer:
-    _oauth_config: OAuthConfig
-    _token_validator: TokenValidator
 
     _authorized_url_prefixes: List[str] = field(
         default_factory=lambda: [
@@ -86,28 +102,20 @@ class OAuthAuthorizer:
             "/_dash-dependencies",
         ]
     )
+    _ignore_token_refresh_prefixes: List[str] = field(
+        default_factory=lambda: [
+            P.UNAUTHORIZED_URL,
+            P.SIGN_OUT_URL,
+            configs.HEALTH_CHECK_PATH,
+            "/assets/",
+        ]
+    )
     _config: AuthConfig = field(default_factory=lambda: AuthConfig())
-    _tokens: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    _allowed_email_domain: Optional[str] = field(default_factory=lambda: None)
 
     @classmethod
-    def create(
-        cls,
-        oauth_config: OAuthConfig,
-        token_validator: Optional[TokenValidator] = None,
-        allowed_email_domain: Optional[str] = None,
-    ) -> OAuthAuthorizer:
-        if token_validator is None:
-            token_validator = JWTTokenValidator(
-                oauth_config.jwks_url,
-                oauth_config.jwt_algorithms,
-                oauth_config.client_id,
-            )
-
+    def create(cls, config: AuthConfig) -> OAuthAuthorizer:
         return OAuthAuthorizer(
-            _oauth_config=oauth_config,
-            _token_validator=token_validator,
-            _allowed_email_domain=allowed_email_domain,
+            _config=config,
         )
 
     def _get_unauthenticated_response(
@@ -144,14 +152,16 @@ class OAuthAuthorizer:
         return None
 
     def _get_identity_token(self, auth_code) -> str:
+        if not self._config.oauth:
+            raise ValueError("OAuth is not configured")
         message = bytes(
-            f"{self._oauth_config.client_id}:{self._oauth_config.client_secret}",
+            f"{self._config.oauth.client_id}:{self._config.oauth.client_secret}",
             "utf-8",
         )
         secret_hash = base64.b64encode(message).decode()
         payload = {
             "grant_type": "authorization_code",
-            "client_id": self._oauth_config.client_id,
+            "client_id": self._config.oauth.client_id,
             "code": auth_code,
             "redirect_uri": f"{HOME_URL}{P.OAUTH_CODE_URL}",
         }
@@ -161,7 +171,7 @@ class OAuthAuthorizer:
         }
 
         resp = requests.post(
-            self._oauth_config.token_url, params=payload, headers=headers
+            self._config.oauth.token_url, params=payload, headers=headers
         )
 
         if resp.status_code != 200:
@@ -171,9 +181,32 @@ class OAuthAuthorizer:
 
         return resp.json()["id_token"]
 
-    def _validate_and_store_token(self, token) -> Optional[Dict[str, Any]]:
+    def _generate_new_token_for_identity(self, identity: str) -> str:
+        now = int(time.time())
+        claims = {
+            "iat": now - 10,
+            "exp": now + self._config.session_timeout,
+            "iss": "mitzu",
+            "sub": identity,
+        }
+        return jwt.encode(
+            claims, key=self._config.token_signing_key, algorithm=JWT_ALGORITHM
+        )
+
+    def _validate_token(self, token: str) -> Optional[Dict]:
         try:
-            decoded_token = self._token_validator.validate_token(token)
+            return jwt.decode(
+                token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
+            )
+        except Exception as e:
+            LOGGER.warning(f"Failed to validate token: {str(e)}")
+            return None
+
+    def _validate_foreign_token(self, token) -> Optional[str]:
+        if not self._config.token_validator:
+            raise ValueError("Token validator is not configured")
+        try:
+            decoded_token = self._config.token_validator.validate_token(token)
             if decoded_token is None:
                 return None
 
@@ -182,18 +215,16 @@ class OAuthAuthorizer:
                 LOGGER.warning("Email field is missing from the identity token")
                 return None
 
-            if self._allowed_email_domain is not None and not user_email.endswith(
-                self._allowed_email_domain
+            if (
+                self._config.allowed_email_domain is not None
+                and not user_email.endswith(self._config.allowed_email_domain)
             ):
                 LOGGER.warning(
                     f"User tried to login with not allowed email address: {user_email}"
                 )
                 return None
 
-            self._tokens[token] = decoded_token
-            LOGGER.info(f"Identity token stored for user: {user_email}")
-
-            return decoded_token
+            return user_email
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
             return None
@@ -203,11 +234,11 @@ class OAuthAuthorizer:
         def authorize_request():
             request = flask.request
 
-            if request.path == P.REDIRECT_TO_LOGIN_URL:
-                resp = self._redirect(self._oauth_config.sign_in_url)
+            if self._config.oauth and request.path == P.REDIRECT_TO_LOGIN_URL:
+                resp = self._redirect(self._config.oauth.sign_in_url)
                 return resp
 
-            if request.path == P.OAUTH_CODE_URL:
+            if self._config.oauth and request.path == P.OAUTH_CODE_URL:
                 code = self._get_oauth_code()
                 if code is not None:
                     LOGGER.debug(f"Redirected with code={code}")
@@ -217,27 +248,28 @@ class OAuthAuthorizer:
                             self._config.redirect_cookie_name, MITZU_WEBAPP_URL
                         )
 
-                        if not self._validate_and_store_token(id_token):
+                        user_email = self._validate_foreign_token(id_token)
+                        if not user_email:
                             raise Exception("Unauthorized (Invalid jwt token)")
 
+                        token = self._generate_new_token_for_identity(user_email)
+
                         resp = self._redirect(redirect_url)
-                        resp.set_cookie(self._config.token_cookie_name, id_token)
+                        resp.set_cookie(self._config.token_cookie_name, token)
                         resp.set_cookie(
                             self._config.redirect_cookie_name, "", expires=0
                         )
                         return resp
-                    except Exception as e:
-                        LOGGER.warning(f"Failed to authenticate: {str(e)}")
+                    except Exception as exc:
+                        traceback.print_exception(type(exc), exc, exc.__traceback__)
+                        LOGGER.warning(f"Failed to authenticate: {str(exc)}")
                         return self._get_unauthenticated_response()
 
             auth_token = flask.request.cookies.get(self._config.token_cookie_name)
 
             if request.path == P.SIGN_OUT_URL:
-                if auth_token in self._tokens.keys():
-                    self._tokens.pop(auth_token)
-
-                if self._oauth_config.sign_out_url:
-                    resp = self._redirect(self._oauth_config.sign_out_url)
+                if self._config.oauth and self._config.oauth.sign_out_url:
+                    resp = self._redirect(self._config.oauth.sign_out_url)
                     resp.set_cookie(self._config.token_cookie_name, "", expires=0)
                     return resp
                 return self._get_unauthenticated_response()
@@ -246,10 +278,7 @@ class OAuthAuthorizer:
                 if request.path.startswith(prefix):
                     return None
 
-            if auth_token in self._tokens.keys():
-                return None
-
-            if auth_token and self._validate_and_store_token(auth_token):
+            if auth_token and self._validate_token(auth_token) is not None:
                 return None
 
             redirect_url = request.path
@@ -257,6 +286,21 @@ class OAuthAuthorizer:
                 redirect_url += "?" + request.query_string.decode("utf-8")
             return self._get_unauthenticated_response(redirect_url)
 
+        @server.after_request
+        def after_request(resp: flask.Response):
+            request = flask.request
+            for prefix in self._ignore_token_refresh_prefixes:
+                if request.path.startswith(prefix):
+                    return resp
+
+            auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+            if auth_token is not None:
+                identity = self._validate_token(auth_token)
+                if identity is not None:
+                    new_token = self._generate_new_token_for_identity(identity["sub"])
+                    resp.set_cookie(self._config.token_cookie_name, new_token)
+            return resp
+
     def is_request_authorized(self, request: flask.Request) -> bool:
         auth_token = request.cookies.get(self._config.token_cookie_name)
-        return auth_token in self._tokens.keys()
+        return auth_token is not None and self._validate_token(auth_token) is not None

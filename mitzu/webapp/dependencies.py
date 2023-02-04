@@ -24,21 +24,27 @@ class Dependencies:
     @classmethod
     def from_configs(cls, server: Flask) -> Dependencies:
         authorizer = None
-        auth_config = None
+        oauth_config = None
         if configs.OAUTH_BACKEND == "cognito":
             from mitzu.webapp.auth.cognito import Cognito
 
-            auth_config = Cognito.get_config()
+            oauth_config = Cognito.get_config()
         elif configs.OAUTH_BACKEND == "google":
             from mitzu.webapp.auth.google import GoogleOAuth
 
-            auth_config = GoogleOAuth.get_config()
+            oauth_config = GoogleOAuth.get_config()
 
-        if auth_config:
-            authorizer = A.OAuthAuthorizer.create(
-                oauth_config=auth_config,
+        if oauth_config:
+            auth_config = A.AuthConfig(
+                oauth=oauth_config,
+                token_validator=A.JWTTokenValidator.create_from_oauth_config(
+                    oauth_config
+                ),
                 allowed_email_domain=configs.AUTH_ALLOWED_EMAIL_DOMAIN,
+                token_signing_key=configs.AUTH_JWT_SECRET,
+                session_timeout=configs.AUTH_SESSION_TIMEOUT,
             )
+            authorizer = A.OAuthAuthorizer.create(auth_config)
             authorizer.setup_authorizer(server)
 
         queue: C.MitzuCache
