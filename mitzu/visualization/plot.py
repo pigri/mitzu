@@ -7,9 +7,10 @@ import plotly.figure_factory as ff
 import pandas as pd
 import mitzu.model as M
 import mitzu.visualization.common as C
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from base64 import b64encode
-
+import plotly.io as pio
+import traceback
 
 PRISM2 = [
     "rgb(95, 70, 144)",
@@ -119,13 +120,13 @@ def pdf_to_heatmap(pdf: pd.DataFrame) -> Dict[str, List]:
     pdf = pd.pivot_table(
         pdf,
         values=[C.TEXT_COL, C.Y_AXIS_COL, C.TOOLTIP_COL],
-        index=[C.COLOR_COL],
-        columns=[C.X_AXIS_COL],
+        index=[C.X_AXIS_COL],
+        columns=[C.COLOR_COL],
         aggfunc="first",
+        sort=False,
     )
-
-    color_vals = [f"{v}." for v in pdf.index.tolist()]
-    x_vals = [*dict.fromkeys([val[1] for val in pdf.columns.tolist()])]
+    color_vals = [v for v in pdf.index.tolist()]
+    x_vals = [*dict.fromkeys([f"{val[1]}." for val in pdf.columns.tolist()])]
 
     return {
         "x": x_vals,
@@ -228,10 +229,20 @@ def plot_chart(
     return fig
 
 
-def figure_to_base64_image(figure, scale: float = 1.0) -> str:
-    img_bytes = figure.to_image(
-        format="png",
-        scale=scale,
-    )
-    encoding = b64encode(img_bytes).decode()
-    return "data:image/png;base64," + encoding
+def figure_to_base64_image(
+    figure, scale: float = 1.0, kaleid_configs: Tuple = None
+) -> str:
+    try:
+        if kaleid_configs is not None:
+            pio.kaleido.scope.mathjax = None
+            pio.kaleido.scope.chromium_args += kaleid_configs
+
+        img_bytes = figure.to_image(
+            format="svg",
+            scale=scale,
+        )
+        return "data:image/svg+xml;base64," + b64encode(img_bytes).decode()
+    except BaseException:
+        traceback.print_exc()
+
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mO8XQ8AAjsBXM7pODsAAAAASUVORK5CYII="

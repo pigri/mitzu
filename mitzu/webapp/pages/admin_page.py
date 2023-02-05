@@ -11,11 +11,11 @@ import mitzu.webapp.navbar as NB
 from mitzu.webapp.auth.decorator import restricted_layout, restricted
 from mitzu.webapp.helper import TBL_CLS, TBL_HEADER_CLS
 import mitzu.webapp.cache as C
-import jsonpickle
+import pickle
 import json
 import traceback
 import base64
-import mitzu.model as M
+
 
 DELETE_BUTTON_TYPE = "admin_delete_button_type"
 STORAGE_TABLE = "admin_storage_table"
@@ -26,18 +26,8 @@ ADMIN_NAVBAR = "admin_navbar"
 
 STORAGE_DOWNLOAD_BUTTON = "admin_storage_download_button"
 STORAGE_RESET_BUTTON = "admin_storage_reset_button"
+CLEAR_LOCAL_CACHE_BUTTON = "clear_local_cache_button"
 STORAGE_INFO = "admin_storage_info"
-
-
-class UnpicklebaleHandler(jsonpickle.handlers.BaseHandler):
-    def flatten(self, obj: M.State, data):
-        return {}
-
-    def restore(self, obj):
-        return M.State(None)
-
-
-jsonpickle.handlers.registry.register(M.State, UnpicklebaleHandler)
 
 
 def create_table_body_rows(mitzu_cache: C.MitzuCache) -> List[html.Td]:
@@ -74,6 +64,12 @@ def layout() -> bc.Component:
     table_header = html.Thead(
         html.Tr([html.Th("key"), html.Th("value")], className=TBL_HEADER_CLS)
     )
+    if isinstance(cache, C.LocalCache):
+        local_cache_disabled = False
+        l_cache_size = f"({len(cache.list_local_cache())})"
+    else:
+        local_cache_disabled = True
+        l_cache_size = ""
 
     rows = create_table_body_rows(cache)
 
@@ -129,6 +125,18 @@ def layout() -> bc.Component:
                                 class_name="mb-1",
                             ),
                             dbc.Col(
+                                dbc.Button(
+                                    f"Clear local cache {l_cache_size}",
+                                    id=CLEAR_LOCAL_CACHE_BUTTON,
+                                    color="light",
+                                    size="sm",
+                                    disabled=local_cache_disabled,
+                                ),
+                                lg="auto",
+                                sm=12,
+                                class_name="mb-1",
+                            ),
+                            dbc.Col(
                                 children=[],
                                 id=STORAGE_INFO,
                             ),
@@ -142,11 +150,11 @@ def layout() -> bc.Component:
     )
 
 
-def validate_input_json(storage: Dict[str, Dict]) -> Dict[str, Any]:
+def validate_input_json(storage: Dict[str, str]) -> Dict[str, Any]:
     res: Dict[str, Any] = {}
     for k, v in storage.items():
-        unpickled = jsonpickle.decode(json.dumps(v))
-        if res is None:
+        unpickled = pickle.loads(base64.b64decode(v.encode("ascii")))
+        if unpickled is None:
             raise ValueError(f"Invalid values for key: {k}")
         res[k] = unpickled
     return res
@@ -211,17 +219,36 @@ def download_button_clicked(n_clicks: int):
         cache = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         ).cache
-        all_keys = cache.list_keys()
+        all_keys = cache.list_keys(prefix="__", strip_prefix=False)
         all_keys = sorted(all_keys)
         res: Dict[str, Any] = {}
-        pickler = jsonpickle.Pickler()
+
         for k in all_keys:
             value = cache.get(k)
-            res[k] = pickler.flatten(value)
+            res[k] = base64.b64encode(pickle.dumps(value)).decode("ascii")
         res_str = json.dumps(res)
         return dict(content=res_str, filename="mitzu_storage.json")
     else:
         return no_update
+
+
+@callback(
+    Output(CLEAR_LOCAL_CACHE_BUTTON, "children"),
+    Input(CLEAR_LOCAL_CACHE_BUTTON, "n_clicks"),
+    prevent_initial_call=True,
+)
+@restricted
+def clear_local_cache_button(n_clicks: int):
+    if n_clicks is not None:
+        cache = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        ).cache
+        if isinstance(cache, C.LocalCache):
+            cache.clear_local_cache()
+            l_cache_size = f"({len(cache.list_local_cache())})"
+            return (f"Clear local cache {l_cache_size}",)
+
+    return no_update
 
 
 register_page(

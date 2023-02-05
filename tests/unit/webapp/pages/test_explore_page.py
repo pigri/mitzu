@@ -89,7 +89,7 @@ def test_event_property_chosen_for_segmentation(
                 }
             }
         },
-        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],
@@ -136,7 +136,7 @@ def test_event_property_chosen_for_segmentation(
         "not like",
     ]
     assert first_property_operator_dd["value"] == "is"
-    assert len(first_property_value_input["options"]) > 1
+    assert len(first_property_value_input["data"]) > 1
     assert first_property_value_input["value"] == []
 
 
@@ -167,7 +167,7 @@ def test_event_property_operator_changed_with_values_already_chosen(
                 }
             }
         },
-        H.MITZU_LOCATION: f"http://127.0.0.1:8082/projects/{discovered_project.project.id}/explore/",
+        H.MITZU_LOCATION: f"http://127.0.0.1/projects/{discovered_project.project.id}/explore/",
         MTH.METRIC_TYPE_DROPDOWN: "segmentation",
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: [None, None],

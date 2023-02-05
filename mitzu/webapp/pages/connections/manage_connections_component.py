@@ -244,6 +244,7 @@ def create_manage_connection_component(
                 value=(
                     con.connection_type.name if con is not None else def_con_type.name
                 ),
+                searchable=True,
                 data=con_type_opts,
                 size="xs",
             ),

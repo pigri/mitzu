@@ -9,6 +9,7 @@ from mitzu.model import Connection, Project
 import dash.development.base_component as bc
 from collections import namedtuple
 
+
 FlaskMockApp = namedtuple("FlaskMockApp", ["config"])
 
 

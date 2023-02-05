@@ -4,11 +4,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import mitzu.model as M
-from dash import dcc, html, callback
-from dash.dependencies import MATCH, Input, Output, State
-from dash.exceptions import PreventUpdate
+from dash import dcc, html
 from mitzu.webapp.helper import find_event_field_def, get_enums, get_property_name_comp
-from mitzu.webapp.auth.decorator import restricted
+import dash_mantine_components as dmc
+
 
 SIMPLE_SEGMENT = "simple_segment"
 SIMPLE_SEGMENT_WITH_VALUE = "simple_segment_with_value"
@@ -102,12 +101,12 @@ def create_value_input(
         if value is None:
             comp_value = []
 
-    return dcc.Dropdown(
-        options=options,
+    return dmc.MultiSelect(
+        data=options,
         value=comp_value,
-        multi=multi,
         clearable=False,
         searchable=True,
+        creatable=True,
         placeholder=placeholder,
         className=PROPERTY_VALUE_INPUT + " border-0",
         id={
@@ -269,35 +268,3 @@ def from_simple_segment(
     )
 
     return component
-
-
-def create_callbacks():
-    @callback(
-        Output({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "options"),
-        Input({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "search_value"),
-        State({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "options"),
-        State({"type": PROPERTY_VALUE_INPUT, "index": MATCH}, "value"),
-        prevent_initial_call=True,
-    )
-    @restricted
-    def update_options(search_value: str, options: List, values: List) -> List[str]:
-        if search_value is None or search_value == "":
-            raise PreventUpdate
-
-        options = [
-            o
-            for o in options
-            if type(o.get("value", "")) != str
-            or not o.get("value", "").startswith(CUSTOM_VAL_PREFIX)
-            or ((type(values) in (list, tuple) and o.get("value", "") in values))
-        ]
-
-        if search_value not in [o["label"] for o in options]:
-            options.insert(
-                0,
-                {
-                    "label": search_value,
-                    "value": f"{CUSTOM_VAL_PREFIX}{search_value}",
-                },
-            )
-        return options

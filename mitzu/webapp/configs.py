@@ -1,6 +1,6 @@
 from uuid import uuid4
 import os
-
+from typing import Tuple, Optional
 
 # base
 LAUNCH_UID = str(uuid4())
@@ -50,3 +50,16 @@ DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
 SETUP_SAMPLE_PROJECT = bool(
     os.getenv("SETUP_SAMPLE_PROJECT", "true").lower() != "false"
 )
+
+LOCAL_CACHING_ENABLED = bool(
+    os.getenv("LOCAL_CACHING_ENABLED", "false").lower() != "false"
+)
+
+KALEIDO_CONFIGS = os.getenv("KALEIDO_CONFIGS", "--disable-gpu-*,--single-process")
+
+
+def get_kaleido_configs() -> Optional[Tuple[str, ...]]:
+    if KALEIDO_CONFIGS:
+        return tuple(KALEIDO_CONFIGS.split(","))
+    else:
+        return None

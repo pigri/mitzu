@@ -3,10 +3,8 @@ from tests.helper import to_dict, find_component_by_id
 import mitzu.webapp.pages.admin_page as ADM
 from unittest.mock import patch
 import base64
-import jsonpickle
-import mitzu.model as M
-
 from mitzu.webapp.dependencies import Dependencies
+from mitzu.webapp.storage import SAMPLE_PROJECT_ID
 
 
 def test_admin_page(server: Flask):
@@ -25,6 +23,9 @@ def test_admin_page(server: Flask):
 def test_download_and_reset_flow(ctx, server: Flask, dependencies: Dependencies):
     with server.test_request_context():
         keys = dependencies.cache.list_keys()
+        p = dependencies.storage.get_project(SAMPLE_PROJECT_ID)
+        # Making sure the adapter is in State - we need to remove it before pickling
+        p.get_adapter()
 
         # Downloading Storage
         res = ADM.download_button_clicked(1)
@@ -46,11 +47,3 @@ def test_download_and_reset_flow(ctx, server: Flask, dependencies: Dependencies)
 
         assert len(tbl_body) == len(keys)
         assert error_message == ""
-
-
-def test_json_pickle():
-    p = jsonpickle.Pickler()
-
-    res = p.flatten(M.State("Test"))
-
-    assert res == {}

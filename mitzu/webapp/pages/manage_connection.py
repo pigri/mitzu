@@ -62,7 +62,6 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
                                 class_name="me-3",
                                 id=CONNECTION_CLOSE_BUTTON,
                                 href=P.CONNECTIONS_PATH,
-                                external_link=True,
                             ),
                             dbc.Button(
                                 [html.B(className="bi bi-check-circle"), " Save"],
@@ -124,7 +123,6 @@ def save_button_clicked(
     invalid = MCC.validate_input_values(values=vals)
     if invalid is not None:
         return html.P(f"Invalid {H.value_to_label(invalid)}", className="lead")
-    depenednecies.storage.delete_connection(connection.id)
     depenednecies.storage.set_connection(connection.id, connection)
 
     return [html.P("Connection saved", className="lead")]

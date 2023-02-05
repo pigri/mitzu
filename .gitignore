@@ -88,8 +88,8 @@ examples/notebook/*ipynb.py
 private_notebooks/
 
 sample_project.db
-.cognito.env
-
+*.env
 *.rdb
 
-*.env
+docker_cache/
+

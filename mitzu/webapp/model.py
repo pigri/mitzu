@@ -24,8 +24,6 @@ class SavedMetric(M.Identifiable):
     :param saved_at: the time of creation
     """
 
-    # TODO: introduce id, name here instead of the Metrci itself.
-
     id: str
     name: str
     description: str

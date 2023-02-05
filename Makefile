@@ -8,7 +8,7 @@ clean:
 	rm -rf .ipynb_checkpoints
 
 init:
-	$(POETRY) install -E mysql -E trinodwh -E webapp -E postgres -E athena -E snowflake  -E databricks
+	$(POETRY) install --all-extras
 
 format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
@@ -69,6 +69,7 @@ serve_cognito_sso:
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	OAUTH_BACKEND="cognito" \
+	HOME_URL="http://localhost:8082/" \
 	COGNITO_CLIENT_ID="1bqlja23lfmniv7bm703aid9o0" \
 	COGNITO_CLIENT_SECRET="${COGNITO_CLIENT_SECRET}" \
 	COGNITO_DOMAIN="signin.mitzu.io" \
@@ -81,6 +82,7 @@ serve_google_sso:
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
+	HOME_URL="http://localhost:8082/"
 	OAUTH_BACKEND="google" \
 	GOOGLE_CLIENT_ID="669095060108-42hhm4rgo8cjseumiu47saq2g8690ehh.apps.googleusercontent.com" \
 	GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
@@ -111,25 +113,43 @@ publish_no_build:
 
 docker_build:	
 	docker image build ./release --platform="linux/amd64" \
-	-t imeszaros/mitzu-webapp:$(shell poetry version -s) \
-	-t imeszaros/mitzu-webapp:latest \
-	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena]==$(shell poetry version -s)" --no-cache
+	-t mitzuio/mitzu:$(shell poetry version -s) \
+	-t mitzuio/mitzu:latest \
+	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena,postgres,mysql,snowflake]==$(shell poetry version -s)" --no-cache
 
-docker_build_local:
+docker_build_amd64_snapshot:
+	$(POETRY) build
 	cp -r ./dist/ ./release/dist/
-	poetry export -E trinodwh -E postgresql -E webapp -E databricks --without-hashes --format=requirements.txt > release/requirements.txt
-	docker image build ./release \
-	--platform="linux/amd64" \
+	poetry export \
+		-E webapp \
+		-E trinodwh \
+		-E postgres \
+		-E databricks \
+		-E athena \
+		-E snowflake \
+		-E mysql \
+		--without-hashes \
+		--format=requirements.txt > release/requirements.txt	
+	docker build ./release \
+	--platform "linux/amd64" \
 	--build-arg MITZU_VERSION=$(shell poetry version -s) \
-	--build-arg DIST_PATH=$(shell pwd)/dist/ \
-	--no-cache -f ./release/LocalDockerfile \
-	-t mitzu-webapp
+	-f ./release/Dockerfile \
+	-t mitzuio/mitzu:snapshot
 
-docker_publish_no_build:
-	docker push imeszaros/mitzu-webapp	
+docker_run_amd64_snapshot:
+	rm -rf ./docker_cache/
+	docker run -v "$(pwd)/docker_cache/:/app/cache" -e SETUP_SAMPLE_PROJECT=false KALEIDO_CONFIGS="" -e LOCAL_CACHING_ENABLED=false -p 8082:8080 mitzuio/mitzu:snapshot
 
 docker_publish: docker_build
-	make docker_publish_no_build
+	docker push mitzuio/mitzu:$(shell poetry version -s)
+	docker push mitzuio/mitzu:latest
+
+docker_publish_no_build:
+	docker push mitzuio/mitzu:$(shell poetry version -s)
+	docker push mitzuio/mitzu:latest
+
+docker_publish_snapshot_no_build:
+	docker push mitzuio/mitzu:snapshot
 
 
 

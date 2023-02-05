@@ -76,7 +76,6 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                                 color="secondary",
                                 class_name="me-3",
                                 href=P.PROJECTS_PATH,
-                                external_link=True,
                                 id=CLOSE_BUTTON,
                             ),
                             dbc.Button(
@@ -186,7 +185,7 @@ def save_button_clicked(
             ),
             event_data_tables=event_data_tables,
         )
-        storage.delete_project(project_id)
+
         storage.set_project(project_id, project)
 
         return "Project succesfully saved"

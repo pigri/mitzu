@@ -70,7 +70,6 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         external_stylesheets=[
             MDB_CSS,
             dbc.icons.BOOTSTRAP,
-            # dbc.themes.ZEPHRY,
             "/assets/explore_page.css",
             "/assets/dropdown.css",
         ],

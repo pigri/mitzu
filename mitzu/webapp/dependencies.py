@@ -59,6 +59,9 @@ class Dependencies:
         else:
             cache = C.DiskMitzuCache()
 
+        if configs.LOCAL_CACHING_ENABLED:
+            cache = C.LocalCache(cache)
+
         # Adding cache layer over storage
         storage = S.MitzuStorage(cache)
         if configs.SETUP_SAMPLE_PROJECT:

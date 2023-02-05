@@ -4,7 +4,6 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import dash_draggable as dd
 from dash import ALL, Input, Output, callback, ctx, html, State, no_update, dcc
-
 import mitzu.webapp.model as WM
 import mitzu.webapp.dependencies as DEPS
 import flask
@@ -414,7 +413,7 @@ def manage_dashboard_content(
                 if dm.get_saved_metric_id() != delete_metric_id
             ]
         )
-        storage.clear_dashboard(dashboard.id)
+
         storage.set_dashboard(dashboard.id, dashboard)
         children = [
             create_dashboard_metric_card(dm) for dm in dashboard.dashboard_metrics
@@ -452,7 +451,6 @@ def manage_dashboard_content(
                 return no_update, no_update, no_update
 
         dashboard.dashboard_metrics.append(new_dm)
-        storage.clear_dashboard(dashboard.id)
         storage.set_dashboard(dashboard.id, dashboard)
 
         children = [
@@ -480,7 +478,6 @@ def dashboard_name_changed(name: str, dashboard_id: str) -> str:
     if dashboard is not None:
         d_name = name if name else "Unnamed dashboard"
         dashboard = dashboard.rename(d_name)
-        storage.clear_dashboard(dashboard_id)
         dashboard = storage.set_dashboard(dashboard_id, dashboard)
     return name
 
@@ -514,7 +511,6 @@ def manage_layout_change(layouts: Dict[str, Dict], dashboard_id: str) -> str:
                 dm.width = lt["w"]
                 dm.height = lt["h"]
 
-    storage.clear_dashboard(dashboard_id)
     dashboard = storage.set_dashboard(dashboard_id, dashboard)
     return no_update
 
@@ -558,17 +554,15 @@ def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: st
                 name=dm.saved_metric.name,
                 chart=simple_chart,
                 project=project,
-                image_base64=PLT.figure_to_base64_image(figure=fig),
-                small_base64=PLT.figure_to_base64_image(figure=fig, scale=0.5),
+                image_base64=dm.saved_metric.small_base64,
+                small_base64=dm.saved_metric.small_base64,
                 id=dm.saved_metric.id,
             )
-            storage.clear_saved_metric(sm.id)
             storage.set_saved_metric(sm.id, sm)
             dm.set_saved_metric(sm)
             figures.append(fig)
         progress = int((index + 1) * 100.0 / total)
         set_progress(progress)
 
-    storage.clear_dashboard(dashboard_id)
     storage.set_dashboard(dashboard_id, dashboard)
     return figures, 0

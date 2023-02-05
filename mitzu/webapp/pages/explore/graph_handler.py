@@ -148,18 +148,19 @@ def store_rendered_saved_metric(
     metric_id: Optional[str] = None,
 ):
     fig = PLT.plot_chart(simple_chart, metric)
-    image_b64 = PLT.figure_to_base64_image(fig, 1.0)
-    small_image_b64 = PLT.figure_to_base64_image(fig, 0.5)
+    small_image_b64 = PLT.figure_to_base64_image(
+        fig, 0.5, kaleid_configs=configs.get_kaleido_configs()
+    )
     saved_metric = WM.SavedMetric(
         metric=metric,
         chart=simple_chart,
         project=project,
-        image_base64=image_b64,
+        image_base64=small_image_b64,
         small_base64=small_image_b64,
         name=metric_name,
         id=metric_id,
     )
-    storage.clear_saved_metric(metric_id=saved_metric.id)
+
     storage.set_saved_metric(metric_id=saved_metric.id, saved_metric=saved_metric)
 
 

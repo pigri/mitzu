@@ -35,10 +35,6 @@
   margin-bottom: 5px;
 }
 
-.complex_segment .event_name_dropdown.has-value {
-  background: rgba(39, 128, 227, 0.2);
-}
-
 .complex_segment .simple_segment {
   width: 100%;
   display: flex;
@@ -101,4 +97,16 @@
   height: var(--mdb-body-font-size);
   width: var(--mdb-body-font-size);
   border-width: 1px;
+}
+
+.complex_segment .mantine-1e8dll4 {
+  background: transparent;
+  border: none;
+}
+
+.complex_segment .mantine-fqghar {
+  font-size: var(--mdb-body-font-size) !important;
+  font-weight: var(--mdb-body-font-weight);
+  font: var(--mdb-font-roboto);
+  background: rgba(39, 128, 227, 0.2);
 }

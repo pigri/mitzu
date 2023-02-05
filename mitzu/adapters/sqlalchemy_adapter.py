@@ -505,8 +505,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     and len(values[field_name]) == 1
                     and values[field_name][0] is None
                 ):
+                    # Cardinality is too high or only empty values are
                     values[field_name] = []
-
             res[evt] = M.EventDef(
                 _event_name=evt,
                 _fields={

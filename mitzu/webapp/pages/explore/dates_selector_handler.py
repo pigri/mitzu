@@ -114,6 +114,7 @@ def from_metric(
                         clearable=False,
                         size="xs",
                         label="Time horizon",
+                        searchable=True,
                         style={"width": "120px", "display": "inline-block"},
                     ),
                     dmc.DateRangePicker(

@@ -1,6 +1,6 @@
 services:
   mitzu-webapp:
-    image: mitzuio/mitzu:latest
+    image: mitzuio/mitzu:snapshot
     restart: always
     entrypoint: gunicorn -b 0.0.0.0:8080 --workers=2 app:server
     environment:

@@ -292,13 +292,12 @@ def handle_input_changes(
     discovered_project: M.DiscoveredProject,
 ) -> Dict[str, Any]:
     metric = create_metric_from_all_inputs(all_inputs, discovered_project)
-    if metric is not None:
-        url_params = "?m=" + quote(SE.to_compressed_string(metric))
-    else:
-        url_params = ""
 
-    url = urlparse(all_inputs[MITZU_LOCATION])
-    url = f"{url.scheme}://{url.hostname}:{url.port}{url.path}{url_params}"
+    parse_result = urlparse(all_inputs[MITZU_LOCATION])
+    if metric is not None:
+        url_params = "m=" + quote(SE.to_compressed_string(metric))
+        parse_result = parse_result._replace(query=url_params)
+    url = parse_result.geturl()
 
     metric_segments = MS.from_metric(
         discovered_project=discovered_project,
@@ -332,7 +331,6 @@ def handle_input_changes(
 
 def create_callbacks():
     GH.create_callbacks()
-    SS.create_callbacks()
 
     @callback(
         output={
@@ -361,11 +359,41 @@ def create_callbacks():
         metric_name: Optional[str],
         metric_id: str,
     ) -> Dict[str, Any]:
-        url = urlparse(href)
         try:
+            url = urlparse(href)
             project_id = P.get_path_value(
                 P.PROJECTS_EXPLORE_PATH, url.path, P.PROJECT_ID_PATH_PART
             )
+            depenedencies: DEPS.Dependencies = cast(
+                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+            )
+            project = depenedencies.storage.get_project(project_id)
+            if project is None:
+                return {
+                    MS.METRIC_SEGMENTS: no_update,
+                    MC.METRICS_CONFIG_CONTAINER: no_update,
+                    CLIPBOARD: no_update,
+                    MITZU_LOCATION: no_update,
+                    MNB.METRIC_TYPE_DROPDOWN: no_update,
+                    TH.CHART_TYPE_CONTAINER: no_update,
+                    TH.CANCEL_BUTTON: no_update,
+                }
+            all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
+            all_inputs[METRIC_NAME_INPUT] = metric_name
+            all_inputs[METRIC_ID_VALUE] = metric_id
+            all_inputs[MITZU_LOCATION] = href
+            discovered_project = project._discovered_project.get_value()
+            if discovered_project is None:
+                return {
+                    MS.METRIC_SEGMENTS: no_update,
+                    MC.METRICS_CONFIG_CONTAINER: no_update,
+                    CLIPBOARD: no_update,
+                    MITZU_LOCATION: no_update,
+                    MNB.METRIC_TYPE_DROPDOWN: no_update,
+                    TH.CHART_TYPE_CONTAINER: no_update,
+                    TH.CANCEL_BUTTON: no_update,
+                }
+            return handle_input_changes(all_inputs, discovered_project)
         except Exception:
             traceback.print_exc()
             return {
@@ -377,36 +405,6 @@ def create_callbacks():
                 TH.CHART_TYPE_CONTAINER: no_update,
                 TH.CANCEL_BUTTON: no_update,
             }
-
-        depenedencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
-        project = depenedencies.storage.get_project(project_id)
-        if project is None:
-            return {
-                MS.METRIC_SEGMENTS: no_update,
-                MC.METRICS_CONFIG_CONTAINER: no_update,
-                CLIPBOARD: no_update,
-                MITZU_LOCATION: no_update,
-                MNB.METRIC_TYPE_DROPDOWN: no_update,
-                TH.CHART_TYPE_CONTAINER: no_update,
-                TH.CANCEL_BUTTON: no_update,
-            }
-        all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
-        all_inputs[METRIC_NAME_INPUT] = metric_name
-        all_inputs[METRIC_ID_VALUE] = metric_id
-        all_inputs[MITZU_LOCATION] = href
-        discovered_project = project._discovered_project.get_value()
-        if discovered_project is None:
-            return {
-                MS.METRIC_SEGMENTS: no_update,
-                MC.METRICS_CONFIG_CONTAINER: no_update,
-                CLIPBOARD: no_update,
-                MITZU_LOCATION: no_update,
-                MNB.METRIC_TYPE_DROPDOWN: no_update,
-                TH.CHART_TYPE_CONTAINER: no_update,
-            }
-        return handle_input_changes(all_inputs, discovered_project)
 
 
 @callback(

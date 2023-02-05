@@ -10,13 +10,7 @@ import mitzu.webapp.model as WM
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
 SAMPLE_PROJECT_NAME = "sample_project"
-
-PROJECT_PREFIX = "__project__"
-CONNECTION_PREFIX = "__conn__"
-SEPC_PROJECT_PREFIX = "__spec_project__"
-TABLE_DEFIONITION_PREFIX = "__table_definition__"
-TABLE_PREFIX = "__table__"
-
+SAMPLE_PROJECT_ID = "sample_project_id"
 
 DEFAULT_EXPIRE_TIME = 600  # 10 minutes
 
@@ -28,10 +22,11 @@ TABLE_PREFIX = "__table__"
 SIMPLE_CHART_PREFIX = "__simple_chart__"
 SAVED_METRIC_PREFIX = "__saved_metric__"
 DASHBOARD_PREFIX = "__dashboard__"
-SAMPLE_PROJECT_ID = "sample_project_id"
 
 
 def setup_sample_project(storage: MitzuStorage):
+    if storage.get_project(SAMPLE_PROJECT_ID) is not None:
+        return
     connection = M.Connection(
         id=SAMPLE_PROJECT_ID,
         connection_name="Sample connection",
@@ -119,11 +114,10 @@ class MitzuStorage:
     def get_event_data_table_definition(
         self, project_id: str, edt_full_name: str
     ) -> Dict[str, M.EventDef]:
-        res = self.mitzu_cache.get(
+        return self.mitzu_cache.get(
             SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
             {},
         )
-        return res
 
     def delete_event_data_table_definition(self, project_id: str, edt_full_name: str):
         self.mitzu_cache.clear(

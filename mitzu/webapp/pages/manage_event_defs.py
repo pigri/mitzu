@@ -6,7 +6,6 @@ import mitzu.webapp.pages.paths as P
 from typing import Dict, List, Tuple, Optional
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import mitzu.webapp.dependencies as DEPS
-import mitzu.webapp.storage as S
 import mitzu.webapp.helper as H
 import flask
 import mitzu.model as M
@@ -39,10 +38,9 @@ def create_failed_table_row(edt: M.EventDataTable, exc: Exception) -> html.Tr:
 
 
 def create_table_row(edt: M.EventDataTable, event_def: M.EventDef) -> html.Tr:
-    fields = event_def._fields
     all_fields: List[str] = []
-    for f in fields:
-        all_fields.extend(sf._get_name() for sf in f.get_all_subfields())
+    for field in event_def._fields.keys():
+        all_fields.extend(sf._get_name() for sf in field.get_all_subfields())
     properties = f"{len(all_fields)} properties"
 
     return html.Tr(
@@ -54,17 +52,14 @@ def create_table_row(edt: M.EventDataTable, event_def: M.EventDef) -> html.Tr:
     )
 
 
-def create_event_table_component(
-    project: Optional[M.Project], storage: S.MitzuStorage
-) -> bc.Component:
+def create_event_table_component(project: Optional[M.Project]) -> bc.Component:
     rows = []
     if project is not None:
-        for edt in project.event_data_tables:
-            defs = storage.get_event_data_table_definition(
-                project.id, edt.get_full_name()
-            )
-            for df in defs.values():
-                rows.append(create_table_row(edt, df))
+        dp = project._discovered_project.get_value()
+        if dp is not None:
+            for edt, df in dp.definitions.items():
+                for evt_df in df.values():
+                    rows.append(create_table_row(edt, evt_df))
 
     return dbc.Table(
         children=[
@@ -128,7 +123,6 @@ def layout(project_id: Optional[str], **query_params) -> bc.Component:
                                         "Manage project",
                                     ],
                                     id=MANAGE_PROJECT_BUTTON,
-                                    external_link=True,
                                     color="light",
                                     disabled=project_id is None,
                                 ),
@@ -178,7 +172,6 @@ def layout(project_id: Optional[str], **query_params) -> bc.Component:
                     ),
                     create_event_table_component(
                         projects.get(project_id) if project_id is not None else None,
-                        storage,
                     ),
                     html.Hr(),
                 ],
@@ -237,13 +230,11 @@ def handle_project_discovery(
         if ctx.triggered_id == SELECT_PROJECT_DD:
             set_progress(([], ""))
             project = storage.get_project(project_id)
-
-            for edt in project.event_data_tables:
-                defs = storage.get_event_data_table_definition(
-                    project_id, edt.get_full_name()
-                )
-                for df in defs.values():
-                    rows.append(create_table_row(edt, df))
+            dp = project._discovered_project.get_value()
+            if dp is not None:
+                for edt, df in dp.definitions.items():
+                    for evt_df in df.values():
+                        rows.append(create_table_row(edt, evt_df))
         else:
 
             def edt_callback(
@@ -265,7 +256,11 @@ def handle_project_discovery(
             project = storage.get_project(project_id)
             all_rows = len(project.event_data_tables)
             set_progress(([], f"Discovering tables ({len(rows)}/{all_rows})"))
-            project.discover_project(False, edt_callback)
+            discovered_project = project.discover_project(False, edt_callback)
+            storage.set_project(
+                project_id=discovered_project.project.id,
+                project=discovered_project.project,
+            )
         if rows is None or len(rows) == 0:
             rows = []
 

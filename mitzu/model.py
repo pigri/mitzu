@@ -1012,12 +1012,10 @@ class DiscoveredProject:
 class Field:
     _name: str
     _type: DataType = field(repr=False)
-    _sub_fields: Optional[Tuple[Field, ...]] = None
+    _sub_fields: Optional[Tuple[Field, ...]] = field(hash=False, compare=False)
     _parent: Optional[Field] = field(
         repr=False,
-        hash=False,
         default=None,
-        compare=False,
     )
 
     def __init__(

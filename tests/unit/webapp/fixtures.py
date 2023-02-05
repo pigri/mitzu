@@ -1,18 +1,45 @@
 from pytest import fixture
-
-
+from typing import Any, Dict, Optional, List
+from dataclasses import dataclass, field
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
-import mitzu.webapp.cache as C
 import mitzu.model as M
+from mitzu.webapp.cache import LocalCache, MitzuCache
 import flask
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
 
+@dataclass(frozen=True)
+class InMemoryCache(MitzuCache):
+    """For testing only"""
+
+    _cache: Dict[str, Any] = field(default_factory=dict)
+
+    def put(self, key: str, val: Any, expire: Optional[float] = None):
+        self._cache[key] = val
+
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        res = self._cache.get(key)
+        if res is None:
+            return default
+        return res
+
+    def clear(self, key: str) -> None:
+        if key in self._cache:
+            self._cache.pop(key)
+
+    def list_keys(
+        self, prefix: Optional[str] = None, strip_prefix: bool = True
+    ) -> List[str]:
+        keys = self._cache.keys()
+        start_pos = len(prefix) if strip_prefix and prefix is not None else 0
+        return [k[start_pos:] for k in keys if prefix is None or k.startswith(prefix)]
+
+
 @fixture(scope="function")
 def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
-    cache = C.InMemoryCache()
-    queue = C.InMemoryCache()
+    cache = LocalCache(InMemoryCache())
+    queue = InMemoryCache()
     storage = S.MitzuStorage(cache)
 
     project = discovered_project.project

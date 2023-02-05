@@ -153,6 +153,7 @@ def create_add_tables_modal() -> dbc.Modal:
                                 placeholder="Loading...",
                                 data=[],
                                 size="xs",
+                                searchable=True,
                             ),
                         ]
                     ),
