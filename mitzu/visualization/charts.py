@@ -32,11 +32,14 @@ def filter_top_groups(
 
 
 def get_color_label(metric: M.Metric):
-    return (
-        value_to_label(metric._group_by._field._get_name())
-        if metric._group_by is not None
-        else ""
-    )
+    if metric._group_by is not None:
+        return value_to_label(metric._group_by._field._get_name())
+    elif (
+        isinstance(metric, M.RetentionMetric)
+        and metric._chart_type == M.SimpleChartType.LINE
+    ):
+        return "Cohort"
+    return ""
 
 
 def get_hover_mode(pdf: pd.DataFrame, metric: M.Metric) -> str:

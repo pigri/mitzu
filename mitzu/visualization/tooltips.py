@@ -81,7 +81,7 @@ def get_retention_tooltip(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.Da
             .apply(lambda val: C.retention_period_label(val, metric))
             .astype(str)
         )
-        + "<br /><b>Group: </b>"
+        + "<br /><b>Cohort: </b>"
         + pdf[C.COLOR_COL].astype(str)
         + f"<br /><br /><b>{agg_type_str}: </b>"
         + round(pdf[C.Y_AXIS_COL], 2).astype(str)

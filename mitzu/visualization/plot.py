@@ -79,7 +79,7 @@ def set_figure_style(fig, simple_chart: C.SimpleChart, metric: M.Metric):
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode=simple_chart.hover_mode,
         legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left"),
-        showlegend=metric._group_by is not None,
+        showlegend=len(fig.data) > 1,
     )
     return fig
 
