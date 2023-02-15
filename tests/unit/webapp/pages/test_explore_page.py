@@ -12,7 +12,7 @@ import mitzu.webapp.helper as H
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
 import mitzu.webapp.dependencies as DEPS
 from urllib.parse import unquote
-
+from typing import cast
 from datetime import datetime
 
 
@@ -51,7 +51,7 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
 
     assert second_event_dd is not None
     assert first_property_dd is not None
-    assert set([option["value"] for option in first_property_dd["options"]]) == set(
+    assert set([option["value"] for option in first_property_dd["data"]]) == set(
         [
             "page_visit.acquisition_campaign",
             "page_visit.domain",
@@ -123,7 +123,7 @@ def test_event_property_chosen_for_segmentation(
     assert first_property_dd is not None
     assert first_property_operator_dd is not None
     assert first_property_value_input is not None
-    assert first_property_operator_dd["options"] == [
+    assert first_property_operator_dd["data"] == [
         "is",
         "is not",
         ">",
@@ -156,6 +156,7 @@ def test_event_property_operator_changed_with_values_already_chosen(
                                     SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign",
                                     SS.PROPERTY_VALUE_INPUT: [
                                         "organic",
+                                        "aaa",
                                     ],
                                 },
                                 1: {SS.PROPERTY_NAME_DROPDOWN: None},
@@ -195,7 +196,64 @@ def test_event_property_operator_changed_with_values_already_chosen(
     assert first_property_value_input is not None
 
     assert first_property_operator_dd["value"] == ">"
-    assert first_property_value_input["value"] is None
+    assert first_property_value_input["value"] == "organic"
+
+
+def test_event_property_operator_changed_creates_correct_metric(
+    discovered_project: M.DiscoveredProject,
+):
+    all_inputs = {
+        MS.METRIC_SEGMENTS: {
+            "children": {
+                0: {
+                    "children": {
+                        0: {
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {
+                                0: {
+                                    SS.PROPERTY_OPERATOR_DROPDOWN: ">",
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign",
+                                    SS.PROPERTY_VALUE_INPUT: ["a"],
+                                },
+                                1: {SS.PROPERTY_NAME_DROPDOWN: None},
+                            },
+                        },
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
+                    },
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
+                }
+            }
+        },
+        H.MITZU_LOCATION: f"http://127.0.0.1/projects/{discovered_project.project.id}/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
+    }
+
+    metric = EXP.create_metric_from_all_inputs(all_inputs, discovered_project)
+    ss = cast(M.SimpleSegment, cast(M.SegmentationMetric, metric)._segment)
+    assert ss._left._event_name == "page_visit"
+    assert cast(M.EventFieldDef, ss._left)._field._get_name() == "acquisition_campaign"
+    assert ss._operator == M.Operator.GT
+    assert ss._right == "a"
+
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
+    metric_segs = to_dict(res[MS.METRIC_SEGMENTS])
+
+    first_property_value_input = find_component_by_id(
+        {"index": "0-0-0", "type": SS.PROPERTY_VALUE_INPUT}, metric_segs
+    )
+
+    assert first_property_value_input is not None
+    assert first_property_value_input["value"] == "a"
 
 
 def test_empty_page_with_project(
@@ -437,7 +495,7 @@ def test_mitzu_link_redirected(
         assert first_event_dd["value"] == "page_visit"
         assert second_event_dd is not None
         assert first_property_dd is not None
-        assert set([option["value"] for option in first_property_dd["options"]]) == set(
+        assert set([option["value"] for option in first_property_dd["data"]]) == set(
             [
                 "page_visit.acquisition_campaign",
                 "page_visit.domain",
@@ -503,5 +561,5 @@ def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
 
     assert second_event_dd is not None
     assert first_property_dd is not None
-    assert len(first_property_dd["options"]) == 9
+    assert len(first_property_dd["data"]) == 9
     assert first_property_operator_dd is None

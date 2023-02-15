@@ -9,7 +9,6 @@ import dash_mantine_components as dmc
 
 
 METRIC_TYPE_DROPDOWN = "metric-type-dropdown"
-METRIC_TYPE_DROPDOWN_OPTION = "metric-type-dropdown-option"
 
 
 class MetricType(Enum):

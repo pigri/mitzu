@@ -19,7 +19,7 @@ CANCEL_BUTTON = "cancel_button"
 
 TOOLBAR_ROW = "toolbar_row"
 
-VISIBLE = {"display": "inline-block", "margin-left": "8px"}
+VISIBLE = {"display": "inline-block", "marginLeft": "8px"}
 HIDDEN = {"display": "none"}
 
 CHART_VAL = "Chart"
@@ -73,7 +73,7 @@ def create_chart_type_dropdown(metric: Optional[M.Metric]) -> dcc.Dropdown:
         size="xs",
         className="me-1 btn-secondary",
         style={
-            "max-width": "120px",
+            "maxWidth": "120px",
             "display": "inline-block",
         },
     )

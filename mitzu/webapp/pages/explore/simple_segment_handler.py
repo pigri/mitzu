@@ -4,10 +4,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import mitzu.model as M
-from dash import dcc, html
-from mitzu.webapp.helper import find_event_field_def, get_enums, get_property_name_comp
+from dash import Input, MATCH, Output, callback, dcc, html
+from mitzu.webapp.helper import (
+    find_event_field_def,
+    get_enums,
+    get_property_name_label,
+    WITH_VALUE_CLS,
+)
 import dash_mantine_components as dmc
-
+from mitzu.webapp.auth.decorator import restricted
 
 SIMPLE_SEGMENT = "simple_segment"
 SIMPLE_SEGMENT_WITH_VALUE = "simple_segment_with_value"
@@ -40,7 +45,7 @@ def create_property_dropdown(
     discovered_project: M.DiscoveredProject,
     simple_segment_index: int,
     type_index: str,
-) -> dcc.Dropdown:
+) -> dmc.Select:
     event_name = simple_segment._left._event_name
     field_name: Optional[str] = None
     if type(simple_segment._left) == M.EventFieldDef:
@@ -48,20 +53,23 @@ def create_property_dropdown(
 
     event = discovered_project.get_event_def(event_name)
     placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
-    fields_names = [f._get_name() for f in event._fields.keys()]
-    fields_names.sort()
+    fields_names = list(event._fields.keys())
+    fields_names.sort(key=lambda f: f._get_name())
     options = [
-        {"label": get_property_name_comp(f), "value": f"{event_name}.{f}"}
+        {
+            "label": get_property_name_label(f._get_name()),
+            "value": f"{event_name}.{f._get_name()}",
+        }
         for f in fields_names
     ]
 
-    return dcc.Dropdown(
-        options=options,
+    return dmc.Select(
+        data=options,
         value=None if field_name is None else f"{event_name}.{field_name}",
-        multi=False,
         placeholder=placeholder,
         searchable=True,
-        className=PROPERTY_NAME_DROPDOWN + " border-0",
+        clearable=True,
+        className=PROPERTY_NAME_DROPDOWN,
         id={
             "type": PROPERTY_NAME_DROPDOWN,
             "index": type_index,
@@ -107,6 +115,7 @@ def create_value_input(
         clearable=False,
         searchable=True,
         creatable=True,
+        maxSelectedValues=(100 if multi else 1),
         placeholder=placeholder,
         className=PROPERTY_VALUE_INPUT + " border-0",
         id={
@@ -150,15 +159,14 @@ def create_property_operator_dropdown(
         else:
             options = [k for k in OPERATOR_MAPPING.values()]
 
-    return dcc.Dropdown(
-        options=options,
+    return dmc.Select(
+        data=options,
         value=(
             OPERATOR_MAPPING[M.Operator.ANY_OF]
             if simple_segment._operator is None
             else OPERATOR_MAPPING[simple_segment._operator]
         ),
-        multi=False,
-        searchable=False,
+        searchable=True,
         clearable=False,
         className=PROPERTY_OPERATOR_DROPDOWN + " border-0",
         id={
@@ -170,10 +178,7 @@ def create_property_operator_dropdown(
 
 def fix_custom_value(val: Any, data_type: M.DataType):
     if type(val) == str:
-        if val.startswith(CUSTOM_VAL_PREFIX):
-            prefix_length = len(CUSTOM_VAL_PREFIX)
-            val = val[prefix_length:]
-        val = data_type.from_string(val)
+        return data_type.from_string(val)
     return val
 
 
@@ -225,7 +230,10 @@ def from_all_inputs(
         )
     else:
         if type(property_value) == list:
-            property_value = None
+            if len(property_value) >= 1:
+                property_value = property_value[0]
+            else:
+                property_value = None
         for op, op_str in OPERATOR_MAPPING.items():
             if op_str == property_operator:
                 fixed_val = fix_custom_value(property_value, data_type)
@@ -261,10 +269,45 @@ def from_simple_segment(
         children=children,
         className=(
             SIMPLE_SEGMENT
-            if simple_segment._left is None
-            or isinstance(simple_segment._left, M.EventDef)
-            else SIMPLE_SEGMENT_WITH_VALUE
+            + " "
+            + ("" if prop_dd.value is None else WITH_VALUE_CLS)
+            + " border border-0 rounded-2"
         ),
     )
 
     return component
+
+
+@callback(
+    Output(
+        {
+            "type": PROPERTY_NAME_DROPDOWN,
+            "index": MATCH,
+        },
+        "style",
+    ),
+    Input(
+        {
+            "type": PROPERTY_NAME_DROPDOWN,
+            "index": MATCH,
+        },
+        "searchValue",
+    ),
+    Input(
+        {
+            "type": PROPERTY_NAME_DROPDOWN,
+            "index": MATCH,
+        },
+        "value",
+    ),
+    prevent_initial_call=True,
+)
+@restricted
+def property_name_style_update(search_value: str, value: str):
+    # If the user is searching this search value and value is not equal.
+    # In that case we need to do LTR
+    if value is not None:
+        fixed_value = get_property_name_label(".".join(value.split(".")[1:]))
+        return {"direction": "ltr" if fixed_value != search_value else "rtl"}
+    else:
+        return {"direction": "ltr"}

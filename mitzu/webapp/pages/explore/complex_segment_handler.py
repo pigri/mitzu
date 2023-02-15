@@ -7,8 +7,14 @@ import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.pages.explore.event_segment_handler as ES
 import mitzu.webapp.pages.explore.metric_type_handler as MNB
-from dash import dcc, html
-from mitzu.webapp.helper import CHILDREN, get_event_names, get_property_name_comp
+from dash import html
+from mitzu.webapp.helper import (
+    CHILDREN,
+    get_event_names,
+    get_property_name_label,
+    WITH_VALUE_CLS,
+)
+import dash_mantine_components as dmc
 
 COMPLEX_SEGMENT = "complex_segment"
 COMPLEX_SEGMENT_BODY = "complex_segment_body"
@@ -32,7 +38,7 @@ def get_group_by_options(
             if not should_break:
                 options.append(
                     {
-                        "label": get_property_name_comp(field._get_name()),
+                        "label": get_property_name_label(field._get_name()),
                         "value": final_field_value,
                     }
                 )
@@ -45,7 +51,7 @@ def create_group_by_dropdown(
     metric: Optional[M.Metric],
     segment: M.Segment,
     discovered_project: M.DiscoveredProject,
-) -> dcc:
+) -> dmc.Select:
     event_names = get_event_names(segment)
     group_by_efd = metric._config.group_by if metric is not None else None
 
@@ -57,14 +63,18 @@ def create_group_by_dropdown(
     if value not in [v["value"] for v in options]:
         value = None
 
-    return dcc.Dropdown(
+    return dmc.Select(
         id={"type": COMPLEX_SEGMENT_GROUP_BY, "index": index},
-        options=options,
+        data=options,
         value=value,
         clearable=True,
         searchable=True,
-        multi=False,
-        className=COMPLEX_SEGMENT_GROUP_BY,
+        className=(
+            COMPLEX_SEGMENT_GROUP_BY
+            + " "
+            + ("" if value is None else WITH_VALUE_CLS)
+            + " border border-0 border-top-1 m-2 rounded-2"
+        ),
         placeholder="+ Break Down",
     )
 

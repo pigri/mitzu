@@ -150,7 +150,6 @@ def create_explore_page(
         metric = saved_metric.metric
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
-
     graph_container = create_graph_container(metric, discovered_project.project)
     navbar = create_navbar(
         metric=metric,

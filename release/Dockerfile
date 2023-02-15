@@ -1,4 +1,5 @@
 FROM python:3.10.6-slim
+
 ARG MITZU_VERSION
 
 WORKDIR /app

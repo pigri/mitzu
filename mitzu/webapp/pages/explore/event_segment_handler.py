@@ -5,9 +5,10 @@ from typing import Any, Dict, List, Optional
 import dash.development.base_component as bc
 import mitzu.model as M
 import mitzu.webapp.pages.explore.simple_segment_handler as SS
-from dash import dcc, html
-from mitzu.webapp.helper import CHILDREN, get_event_names
+from dash import html
+from mitzu.webapp.helper import CHILDREN, get_event_names, WITH_VALUE_CLS
 from mitzu.helper import value_to_label
+import dash_mantine_components as dmc
 
 EVENT_SEGMENT = "event_segment"
 EVENT_NAME_DROPDOWN = "event_name_dropdown"
@@ -20,7 +21,7 @@ def create_event_name_dropdown(
     step: int,
     event_segment_index: int,
     segment: Optional[M.Segment],
-) -> dcc.Dropdown:
+) -> dmc.Select:
     options = (
         [
             {"label": value_to_label(v), "value": v}
@@ -43,11 +44,17 @@ def create_event_name_dropdown(
         raise Exception("Multiple event complex segment for EventSegmentHandler")
     value = None if len(segment_event_names) == 0 else segment_event_names[0]
 
-    return dcc.Dropdown(
-        options=options,
+    return dmc.Select(
+        data=options,
         value=value,
-        multi=False,
-        className=EVENT_NAME_DROPDOWN + " border-0",
+        searchable=True,
+        clearable=True,
+        className=(
+            EVENT_NAME_DROPDOWN
+            + " "
+            + ("" if value is None else WITH_VALUE_CLS)
+            + " border border-0 rounded-2"
+        ),
         placeholder=placeholder,
         id={
             "type": EVENT_NAME_DROPDOWN,

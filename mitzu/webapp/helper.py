@@ -11,7 +11,7 @@ import dash.development.base_component as bc
 METRIC_SEGMENTS = "metric_segments"
 CHILDREN = "children"
 MITZU_LOCATION = "mitzu_location"
-
+WITH_VALUE_CLS = "with_value"
 
 TBL_CLS = "small text mh-0"
 TBL_CLS_WARNING = "small text-danger mh-0 fw-bold"
@@ -56,18 +56,12 @@ def get_event_names(segment: Optional[M.Segment]) -> List[str]:
         raise Exception(f"Unsupported Segment Type: {type(segment)}")
 
 
-def get_property_name_comp(field_name: str) -> html.Div:
-    parts = field_name.split(".")
-    if len(parts) == 1:
-        return html.Div(value_to_label(field_name), className="property_name")
-    return html.Div(
-        [
-            html.Div(
-                value_to_label(".".join(parts[:-1])), className="property_name_prefix"
-            ),
-            html.Div(value_to_label(parts[-1]), className="property_name"),
-        ],
-    )
+def get_property_name_label(field_name: str, max_length: int = 100) -> str:
+    field_name = field_name
+    res = field_name.replace("_", " ").replace(".", " > ").title()
+    if len(res) > max_length:
+        res = f"... {res[-max_length:]}"
+    return res
 
 
 def get_final_all_inputs(

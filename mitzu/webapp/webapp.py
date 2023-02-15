@@ -71,7 +71,6 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
             MDB_CSS,
             dbc.icons.BOOTSTRAP,
             "/assets/explore_page.css",
-            "/assets/dropdown.css",
         ],
         assets_folder=configs.DASH_ASSETS_FOLDER,
         assets_url_path=configs.DASH_ASSETS_URL_PATH,
