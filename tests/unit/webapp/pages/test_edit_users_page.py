@@ -118,11 +118,17 @@ def test_update_or_delete_user(server: flask.Flask):
 def test_change_password(server: flask.Flask):
     with RequestContextLoggedInAsRootUser(server) as deps:
         user_service = deps.user_service
-        password = "new-password"
-        res = U.update_password(0, [configs.AUTH_ROOT_USER_EMAIL, password, password])
-        updated_user = user_service.get_user_by_email_and_password(
-            configs.AUTH_ROOT_USER_EMAIL, password
+        email = "test@local"
+        old_password = "password"
+        new_password = "new-password"
+
+        user_id = user_service.new_user(email, old_password, old_password)
+        res = U.update_password(
+            0,
+            [email, new_password, new_password],
+            P.create_path(P.USERS_HOME_PATH, user_id=user_id),
         )
+        updated_user = user_service.get_user_by_email_and_password(email, new_password)
 
         assert res[U.CHANGE_PASSWORD_RESPONSE_CONTAINER] == "Password changed"
         assert updated_user is not None
