@@ -57,7 +57,7 @@ def layout(user_id: Optional[str] = None, **query_params) -> bc.Component:
 
     show_password_fields = user_id == "new"
     show_change_password = False
-    show_delete_button = True
+    show_delete_button = user_id != "new"
 
     if user_id is not None and user_id != "new":
         if user_id == "my-account":
@@ -67,7 +67,11 @@ def layout(user_id: Optional[str] = None, **query_params) -> bc.Component:
             user_id == logged_in_user.id or logged_in_user.role == US.Role.ADMIN
         )
         user = user_service.get_user_by_id(user_id)
-        show_delete_button = current_user_id != user_id and user is not None
+        show_delete_button = (
+            logged_in_user.role == US.Role.ADMIN
+            and user is not None
+            and user.id != logged_in_user.id
+        )
     else:
         user = None
 
