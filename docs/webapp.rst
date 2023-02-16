@@ -19,7 +19,7 @@ Authentication
 
 By default the Mitzu webapp does not have any authentication and everyone can access it.
 
-By setting the ``OAUTH_BACKEND`` environmental variable the OAuth backend can be selected and configured with the backend specific environmental variables.
+By setting the ``AUTH_BACKEND`` environmental variable the OAuth backend can be selected and configured with the backend specific environmental variables.
 
 As of now the following authentication backends can be selected:
  - :ref:`AWS Cognito`
@@ -48,7 +48,7 @@ Configure AWS Cognito for Mitzu
 Configure Mitzu to use AWS Cognito
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once AWS Cognito User Pool is configured the Mitzu webapp can be easily configured. The ``OAUTH_BACKEND`` environmental variable should be set to ``cognito``,
+Once AWS Cognito User Pool is configured the Mitzu webapp can be easily configured. The ``AUTH_BACKEND`` environmental variable should be set to ``cognito``,
 this will configure the authorizer layer using the Cognito specific settings using the :meth:`Cognito.get_config <mitzu.webapp.auth.cognito.Cognito.get_config>` method.
 
 .. autoclass:: mitzu.webapp.auth.cognito.Cognito
@@ -75,7 +75,7 @@ Configure Google OAuth for Mitzu
 Configure Mitzu to use Google OAuth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once the Google project is configured the Mitzu webapp can be easily configured. The ``OAUTH_BACKEND`` environmental variable should be set to ``google``,
+Once the Google project is configured the Mitzu webapp can be easily configured. The ``AUTH_BACKEND`` environmental variable should be set to ``google``,
 this will configure the authorizer layer using the Cognito specific settings using the :meth:`GoogleOAuth.get_config <mitzu.webapp.auth.google.GoogleOAuth.get_config>` method.
 
 .. autoclass:: mitzu.webapp.auth.google.GoogleOAuth

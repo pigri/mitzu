@@ -68,8 +68,8 @@ serve_cognito_sso:
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	OAUTH_BACKEND="cognito" \
-	HOME_URL="http://localhost:8082/" \
+	AUTH_BACKEND="cognito" \
+	HOME_URL="http://localhost:8082" \
 	COGNITO_CLIENT_ID="1bqlja23lfmniv7bm703aid9o0" \
 	COGNITO_CLIENT_SECRET="${COGNITO_CLIENT_SECRET}" \
 	COGNITO_DOMAIN="signin.mitzu.io" \
@@ -82,21 +82,33 @@ serve_google_sso:
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	HOME_URL="http://localhost:8082/"
-	OAUTH_BACKEND="google" \
+	HOME_URL="http://localhost:8082"
+	AUTH_BACKEND="google" \
 	GOOGLE_CLIENT_ID="669095060108-42hhm4rgo8cjseumiu47saq2g8690ehh.apps.googleusercontent.com" \
 	GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
 	GOOGLE_PROJECT_ID="mitzu-test" \
 	GOOGLE_REDIRECT_URL="http://localhost:8082/auth/oauth" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
+serve_local_auth:
+	cd release/app/ && \
+	LOG_LEVEL=WARN \
+	LOG_HANDLER=stdout \
+	AUTH_BACKEND="local" \
+	AUTH_ROOT_PASSWORD="test" \
+	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=1
+	
 serve:
 	cd release/app/ && \
 	LOG_LEVEL=WARN \
 	LOG_HANDLER=stdout \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=8
 
-run:
+run:	
+	LOG_LEVEL=WARN \
+	LOG_HANDLER=stdout \
+	AUTH_BACKEND="local" \
+	AUTH_ROOT_PASSWORD="test" \
 	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check

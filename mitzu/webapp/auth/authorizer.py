@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dash
 import os
 import time
 import traceback
@@ -15,6 +16,7 @@ from urllib import parse
 from mitzu.helper import LOGGER
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.configs as configs
+import mitzu.webapp.service.user_service as U
 
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
@@ -86,6 +88,8 @@ class AuthConfig:
     oauth: Optional[OAuthConfig] = None
     token_validator: Optional[TokenValidator] = None
     allowed_email_domain: Optional[str] = None
+
+    user_service: Optional[U.UserService] = None
 
 
 @dataclass(frozen=True)
@@ -304,3 +308,24 @@ class OAuthAuthorizer:
     def is_request_authorized(self, request: flask.Request) -> bool:
         auth_token = request.cookies.get(self._config.token_cookie_name)
         return auth_token is not None and self._validate_token(auth_token) is not None
+
+    def login_local_user(self, email: str, password: str) -> bool:
+        if self._config.user_service is None:
+            raise ValueError("User service is not set for local auth")
+
+        user = self._config.user_service.get_user_by_email_and_password(email, password)
+        if user is None:
+            return False
+
+        token = self._generate_new_token_for_identity(user.id)
+        dash.callback_context.response.set_cookie(self._config.token_cookie_name, token)
+        return True
+
+    def get_current_user_id(self) -> Optional[str]:
+        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        if auth_token is None:
+            return None
+        token_claims = self._validate_token(auth_token)
+        if token_claims is None:
+            return None
+        return token_claims.get("sub")

@@ -20,10 +20,12 @@ DASH_LOGO_PATH = os.getenv("DASH_LOGO_PATH", "/assets/mitzu-logo-light.svg")
 
 
 # auth
-OAUTH_BACKEND = os.getenv("OAUTH_BACKEND")
+AUTH_BACKEND = os.getenv("AUTH_BACKEND")
 AUTH_ALLOWED_EMAIL_DOMAIN = os.getenv("AUTH_ALLOWED_EMAIL_DOMAIN")
 AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", "mitzu-dev-env")
 AUTH_SESSION_TIMEOUT = os.getenv("AUTH_SESSION_TIMEOUT", 7 * 24 * 60 * 60)
+AUTH_ROOT_PASSWORD = os.getenv("AUTH_ROOT_PASSWORD", "test")
+AUTH_ROOT_USER_EMAIL = os.getenv("AUTH_ROOT_USER_EMAIL", "root@local")
 
 
 # cache

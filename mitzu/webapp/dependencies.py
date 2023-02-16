@@ -9,6 +9,7 @@ import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.cache as C
 import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
+import mitzu.webapp.service.user_service as U
 
 CONFIG_KEY = "dependencies"
 
@@ -20,29 +21,48 @@ class Dependencies:
     storage: S.MitzuStorage
     queue: C.MitzuCache
     cache: C.MitzuCache
+    user_service: Optional[U.UserService] = None
 
     @classmethod
     def from_configs(cls, server: Flask) -> Dependencies:
+        cache: C.MitzuCache
+        if configs.STORAGE_REDIS_HOST is not None:
+            cache = C.RedisMitzuCache()
+        else:
+            cache = C.DiskMitzuCache()
+
+        if configs.LOCAL_CACHING_ENABLED:
+            cache = C.LocalCache(cache)
+
         authorizer = None
         oauth_config = None
-        if configs.OAUTH_BACKEND == "cognito":
+        user_service = None
+        if configs.AUTH_BACKEND == "cognito":
             from mitzu.webapp.auth.cognito import Cognito
 
             oauth_config = Cognito.get_config()
-        elif configs.OAUTH_BACKEND == "google":
+        elif configs.AUTH_BACKEND == "google":
             from mitzu.webapp.auth.google import GoogleOAuth
 
             oauth_config = GoogleOAuth.get_config()
 
-        if oauth_config:
+        elif configs.AUTH_BACKEND == "local":
+            user_service = U.UserService(
+                cache, root_password=configs.AUTH_ROOT_PASSWORD
+            )
+
+        if oauth_config or user_service:
             auth_config = A.AuthConfig(
                 oauth=oauth_config,
                 token_validator=A.JWTTokenValidator.create_from_oauth_config(
                     oauth_config
-                ),
+                )
+                if oauth_config is not None
+                else None,
                 allowed_email_domain=configs.AUTH_ALLOWED_EMAIL_DOMAIN,
                 token_signing_key=configs.AUTH_JWT_SECRET,
                 session_timeout=configs.AUTH_SESSION_TIMEOUT,
+                user_service=user_service,
             )
             authorizer = A.OAuthAuthorizer.create(auth_config)
             authorizer.setup_authorizer(server)
@@ -53,20 +73,15 @@ class Dependencies:
         else:
             queue = C.DiskMitzuCache()
 
-        cache: C.MitzuCache
-        if configs.STORAGE_REDIS_HOST is not None:
-            cache = C.RedisMitzuCache()
-        else:
-            cache = C.DiskMitzuCache()
-
-        if configs.LOCAL_CACHING_ENABLED:
-            cache = C.LocalCache(cache)
-
         # Adding cache layer over storage
         storage = S.MitzuStorage(cache)
         if configs.SETUP_SAMPLE_PROJECT:
             S.setup_sample_project(storage)
 
         return Dependencies(
-            authorizer=authorizer, cache=cache, storage=storage, queue=queue
+            authorizer=authorizer,
+            cache=cache,
+            storage=storage,
+            queue=queue,
+            user_service=user_service,
         )

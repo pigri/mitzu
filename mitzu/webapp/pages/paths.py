@@ -19,7 +19,7 @@ CONNECTIONS_PATH = "/connections"
 CONNECTIONS_CREATE_PATH = "/connections/create/"
 CONNECTIONS_MANAGE_PATH = f"/connections/<{CONNECTION_ID_PATH_PART}>/manage"
 
-USERS_PATH = "/users/"
+USERS_PATH = "/users"
 USERS_HOME_PATH = f"/users/<{USER_PATH_PART}>"
 
 DASHBOARDS_PATH = "/dashboards"

@@ -28,6 +28,7 @@ PROJECTS_BUTTON = "projects_button"
 CONNECTIONS_BUTTON = "connections_button"
 
 USERS_BUTTON = "users_button"
+MY_ACCOUNT_BUTTON = "my_account_button"
 
 
 MENU_ITEM_CSS = "mb-1 w-100 border-0 text-start"
@@ -37,6 +38,12 @@ EXPLORE_MENU_ITEM_CSS = "mb-1 w-100 text-start"
 def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
     project_ids = dependencies.storage.list_projects()
     project_id = project_ids[0] if len(project_ids) > 0 else None
+
+    show_users = False
+    show_sign_out = False
+    if dependencies.authorizer is not None:
+        show_sign_out = True
+        show_users = dependencies.authorizer._config.oauth is None
 
     res = dbc.Offcanvas(
         children=[
@@ -125,10 +132,21 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
             dbc.Button(
                 [html.B(className="bi bi-person-circle me-1"), "Users"],
                 color=BUTTON_COLOR,
-                class_name=MENU_ITEM_CSS + " d-none",
-                href=P.USER_PATH_PART,
+                class_name=MENU_ITEM_CSS,
+                href=P.USERS_PATH,
                 id=USERS_BUTTON,
-            ),
+            )
+            if show_users
+            else None,
+            dbc.Button(
+                [html.B(className="bi bi-person-circle me-1"), "My Account"],
+                color=BUTTON_COLOR,
+                class_name=MENU_ITEM_CSS,
+                href=P.create_path(P.USERS_HOME_PATH, user_id="my-account"),
+                id=MY_ACCOUNT_BUTTON,
+            )
+            if show_users
+            else None,
             html.Hr(className="mb-3 d-none"),
             dbc.Button(
                 [html.B(className="bi bi-box-arrow-right me-1"), "Sign out"],
@@ -137,7 +155,7 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
                 href=P.SIGN_OUT_URL,
                 external_link=True,
             )
-            if dependencies.authorizer is not None
+            if show_sign_out
             else None,
         ],
         close_button=False,

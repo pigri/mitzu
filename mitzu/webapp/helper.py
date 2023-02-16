@@ -13,9 +13,9 @@ CHILDREN = "children"
 MITZU_LOCATION = "mitzu_location"
 WITH_VALUE_CLS = "with_value"
 
-TBL_CLS = "small text mh-0"
-TBL_CLS_WARNING = "small text-danger mh-0 fw-bold"
-TBL_HEADER_CLS = "small mh-0 text-nowrap fw-bold"
+TBL_CLS = "small text mh-0 align-middle"
+TBL_CLS_WARNING = "small text-danger mh-0 fw-bold align-middle"
+TBL_HEADER_CLS = "small mh-0 text-nowrap fw-bold align-middle"
 
 
 MISSING_RESOURCE_CSS = "border border-2 border-warning"
@@ -101,6 +101,7 @@ def create_form_property_input(
     input_sm: int = 12,
     label_lg: int = 3,
     label_sm: int = 12,
+    justify: Optional[str] = None,
     **kwargs,
 ):
     if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
@@ -129,4 +130,5 @@ def create_form_property_input(
             ),
         ],
         class_name="mb-3",
+        justify=justify,
     )
