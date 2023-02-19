@@ -91,7 +91,7 @@ def create_and_ingest_sample_project(
         )
     project = M.Project(
         connection=connection,
-        project_name="Sample ecommerce warehouse",
+        project_name="Sample ecommerce project",
         event_data_tables=event_data_tables,
         discovery_settings=M.DiscoverySettings(
             lookback_days=365,

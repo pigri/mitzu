@@ -1,6 +1,7 @@
 from flask import Flask
 from tests.helper import to_dict, find_component_by_id
 from mitzu.webapp.dependencies import Dependencies
+from mitzu.webapp.storage import SAMPLE_PROJECT_ID
 import mitzu.webapp.pages.connections.manage_connections_component as MCC
 import mitzu.webapp.pages.manage_connection as CON
 from unittest.mock import patch
@@ -131,6 +132,68 @@ def test_delete_confirmed(ctx, server: Flask, dependencies: Dependencies):
         assert res == 1
 
         assert len(dependencies.storage.list_connections()) == 0
+
+
+@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+def test_delete_button_clicked_connection_is_used(
+    ctx, server: Flask, dependencies: Dependencies
+):
+    with server.test_request_context():
+        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
+        con_id = dependencies.storage.list_connections()[0]
+        res, info = MCC.delete_button_clicked(
+            1,
+            0,
+            P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id=con_id),
+        )
+        # Dummy response from callback
+        assert res is False
+        info_component = to_dict(info)["children"]
+        assert info_component is not None
+        assert (
+            info_component[0]["children"]
+            == "You can't delete this connection because it is used by  "
+        )
+        assert info_component[1]["children"] == "Sample ecommerce project"
+        assert (
+            info_component[1]["props"]["href"] == "/projects/sample_project_id/manage"
+        )
+
+
+@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+def test_delete_button_clicked_connection_is_not_used(
+    ctx, server: Flask, dependencies: Dependencies
+):
+    dependencies.storage.delete_project(SAMPLE_PROJECT_ID)
+    with server.test_request_context():
+        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
+        con_id = dependencies.storage.list_connections()[0]
+        res, info = MCC.delete_button_clicked(
+            1,
+            0,
+            P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id=con_id),
+        )
+        # Dummy response from callback
+        assert res is True
+        assert info == ""
+
+
+@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+def test_delete_button_clicked_for_non_existing_connection(
+    ctx, server: Flask, dependencies: Dependencies
+):
+    cons = dependencies.storage.list_connections()
+    with server.test_request_context():
+        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
+        res, info = MCC.delete_button_clicked(
+            1,
+            0,
+            P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id="none-existing"),
+        )
+        # Dummy response from callback
+        assert res is True
+        assert info == ""
+        assert cons == dependencies.storage.list_connections()
 
 
 @patch("mitzu.webapp.pages.manage_connection.ctx")

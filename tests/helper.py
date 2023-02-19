@@ -95,10 +95,6 @@ def to_dict(input: Any) -> Any:
         res = input.to_plotly_json()
         if "children" in input.__dict__:
             res["children"] = to_dict(input.children)
-        if "options" in input.__dict__:
-            res["options"] = to_dict(input.options)
-        if "props" in res:
-            res["props"] = to_dict(res["props"])
         return res
     if type(input) == dict:
         return {k: to_dict(v) for k, v in input.items()}

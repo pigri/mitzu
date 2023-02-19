@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast, Tuple
 import flask
 from uuid import uuid4
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
-from dash import Input, Output, State, callback, ctx, html, no_update, ALL
+from dash import Input, Output, State, callback, ctx, html, no_update, ALL, dcc
 
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
@@ -21,6 +21,7 @@ CONNECTION_DELETE_BUTTON = "connection_delete_button"
 CONNECTION_TEST_BUTTON = "connection_test_button"
 INDEX_TYPE = "connection_property"
 TEST_CONNECTION_RESULT = "test_connection_result"
+DELETE_CONNECTION_RESULT = "delete_connection_result"
 TEST_CONNECTION_LOADING = "test_connection_loading"
 
 CONFIRM_DIALOG_INDEX = "connection_confirm"
@@ -318,6 +319,7 @@ def create_manage_connection_component(
                 style={"display": "none"},
             ),
             html.Div(children=[], id=TEST_CONNECTION_RESULT),
+            html.Div(children=[], id=DELETE_CONNECTION_RESULT),
             create_confirm_dialog(),
         ],
     )
@@ -367,15 +369,42 @@ def delete_confirmed_clicked(n_clicks: int, pathname: str) -> int:
 
 @callback(
     Output(CONFIRM_DIALOG_INDEX, "is_open"),
+    Output(DELETE_CONNECTION_RESULT, "children"),
     Input(CONNECTION_DELETE_BUTTON, "n_clicks"),
     Input(CONFIRM_DIALOG_CLOSE, "n_clicks"),
+    State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
 @restricted
-def delete_button_clicked(delete: int, close: int) -> bool:
+def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool, str]:
     if delete is None:
-        return no_update
-    return ctx.triggered_id == CONNECTION_DELETE_BUTTON
+        return no_update, no_update
+    deps: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
+    if ctx.triggered_id == CONNECTION_DELETE_BUTTON:
+        connection_id = P.get_path_value(
+            P.CONNECTIONS_MANAGE_PATH, pathname, P.CONNECTION_ID_PATH_PART
+        )
+        project_ids = deps.storage.list_projects()
+        for p_id in project_ids:
+            prj = deps.storage.get_project(p_id)
+            if prj.get_connection_id() == connection_id:
+                return False, html.Div(
+                    children=[
+                        html.Span(
+                            "You can't delete this connection because it is used by  "
+                        ),
+                        dcc.Link(
+                            prj.project_name,
+                            P.create_path(P.PROJECTS_MANAGE_PATH, project_id=p_id),
+                        ),
+                    ],
+                    className="my-3 text-danger lead",
+                )
+        return True, ""
+
+    return False, ""
 
 
 def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
