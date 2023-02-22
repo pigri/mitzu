@@ -16,6 +16,7 @@ import dash.development.base_component as bc
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
+import mitzu.webapp.service.user_service as US
 from mitzu.webapp.helper import create_form_property_input
 from mitzu.webapp.auth.decorator import restricted_layout, restricted
 from mitzu.webapp.webapp import MITZU_LOCATION
@@ -44,18 +45,33 @@ def layout(user_id: Optional[str] = None, **query_params) -> bc.Component:
     if user_service is None:
         raise ValueError("User service is not set")
 
+    if deps.authorizer is None:
+        raise ValueError("Authorizer is not set")
+
+    logged_in_user_id = deps.authorizer.get_current_user_id()
+    if logged_in_user_id is None:
+        raise ValueError("Cannot determine logged in user id")
+    logged_in_user = user_service.get_user_by_id(logged_in_user_id)
+    if logged_in_user is None:
+        raise ValueError("Logged in user is not found")
+
     show_password_fields = user_id == "new"
     show_change_password = False
-    show_delete_button = True
+    show_delete_button = user_id != "new"
 
-    if user_id is not None and deps.authorizer is not None:
-        current_user_id = deps.authorizer.get_current_user_id()
+    if user_id is not None and user_id != "new":
         if user_id == "my-account":
-            user_id = current_user_id
+            user_id = logged_in_user.id
 
-        show_change_password = user_id == current_user_id
+        show_change_password = (
+            user_id == logged_in_user.id or logged_in_user.role == US.Role.ADMIN
+        )
         user = user_service.get_user_by_id(user_id)
-        show_delete_button = current_user_id != user_id and user is not None
+        show_delete_button = (
+            logged_in_user.role == US.Role.ADMIN
+            and user is not None
+            and user.id != logged_in_user.id
+        )
     else:
         user = None
 
@@ -242,11 +258,12 @@ def update_or_save_user(n_clicks: int, values: List[Any] = [], pathname: str = "
     },
     state={
         "values": State({"type": INDEX_TYPE, "index": ALL}, "value"),
+        "pathname": State(MITZU_LOCATION, "pathname"),
     },
     prevent_initial_call=True,
 )
 @restricted
-def update_password(n_clicks: int, values: List[Any] = []):
+def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
 
     user_service = deps.user_service
@@ -258,7 +275,14 @@ def update_password(n_clicks: int, values: List[Any] = []):
         raise ValueError("Authorizer is not set")
 
     try:
-        user_id = deps.authorizer.get_current_user_id()
+        logged_in_user_id = deps.authorizer.get_current_user_id()
+        logged_in_user = user_service.get_user_by_id(logged_in_user_id)
+
+        user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
+
+        if logged_in_user.role != US.Role.ADMIN and logged_in_user.id != user_id:
+            raise Exception("User is not authorized to change this password")
+
         user_service.update_password(user_id, values[1], values[2])
         return {CHANGE_PASSWORD_RESPONSE_CONTAINER: "Password changed"}
     except Exception as e:
