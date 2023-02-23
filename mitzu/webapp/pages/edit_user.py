@@ -95,7 +95,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
             ]
         )
 
-    editing = user is not None
+    user is not None
 
     return html.Div(
         [
@@ -110,7 +110,8 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         icon_cls="bi bi-envelope",
                         type="text",
                         required=True,
-                        value=user.email if user and editing else "",
+                        value=user.email if user is not None else "",
+                        read_only=user is not None,
                     ),
                     create_form_property_input(
                         index_type=INDEX_TYPE,
@@ -132,33 +133,44 @@ def layout(user_id: str, **query_params) -> bc.Component:
                     )
                     if show_password_fields
                     else None,
-                    html.Hr(),
-                    html.Div(
-                        [
-                            dbc.Button(
-                                [html.B(className="bi bi-check-circle me-1"), "Save"],
-                                color="success",
-                                class_name="me-3",
-                                id=USER_SAVE_BUTTON,
-                            ),
-                            dbc.Button(
-                                [html.B(className="bi bi-x me-1"), "Delete"],
-                                color="danger",
-                                class_name="me-3",
-                                id=USER_DELETE_BUTTON,
-                                external_link=True,
-                                href=P.create_path(P.USERS_PATH),
-                            )
-                            if show_delete_button
-                            else None,
-                        ],
-                        className="mb-3",
-                    ),
-                    html.Div(children=[], id=SAVE_RESPONSE_CONTAINER, className="lead"),
-                    html.Div(
-                        children=[], id=DELETE_RESPONSE_CONTAINER, className="lead"
-                    ),
                 ]
+                + (
+                    [
+                        html.Hr(),
+                        html.Div(
+                            [
+                                dbc.Button(
+                                    [
+                                        html.B(className="bi bi-check-circle me-1"),
+                                        "Save",
+                                    ],
+                                    color="success",
+                                    class_name="me-3",
+                                    id=USER_SAVE_BUTTON,
+                                ),
+                                dbc.Button(
+                                    [html.B(className="bi bi-x me-1"), "Delete"],
+                                    color="danger",
+                                    class_name="me-3",
+                                    id=USER_DELETE_BUTTON,
+                                    external_link=True,
+                                    href=P.create_path(P.USERS_PATH),
+                                )
+                                if show_delete_button
+                                else None,
+                            ],
+                            className="mb-3",
+                        ),
+                        html.Div(
+                            children=[], id=SAVE_RESPONSE_CONTAINER, className="lead"
+                        ),
+                        html.Div(
+                            children=[], id=DELETE_RESPONSE_CONTAINER, className="lead"
+                        ),
+                    ]
+                    if user is None
+                    else []
+                )
                 + (change_password_form() if show_change_password else [])
                 + [
                     html.Hr(),
@@ -214,13 +226,11 @@ def change_password_form():
     },
     state={
         "values": State({"type": INDEX_TYPE, "index": ALL}, "value"),
-        "pathname": State(MITZU_LOCATION, "pathname"),
     },
     prevent_initial_call=True,
 )
 @restricted
-def update_or_save_user(n_clicks: int, values: List[Any] = [], pathname: str = ""):
-    user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
+def create_new_user(n_clicks: int, values: List[Any] = []):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
@@ -228,19 +238,10 @@ def update_or_save_user(n_clicks: int, values: List[Any] = [], pathname: str = "
         raise ValueError("User service is not set")
 
     try:
-        if user_id == "new":
-            user_id = user_service.new_user(values[0], values[1], values[2])
-            return {
-                SAVE_RESPONSE_CONTAINER: "User created!",
-            }
-        else:
-            if user_id == "my-account" and deps.authorizer is not None:
-                user_id = deps.authorizer.get_current_user_id()
-            user_service.update_user_email(user_id, values[0])
-            return {
-                SAVE_RESPONSE_CONTAINER: "User updated!",
-            }
-
+        user_service.new_user(values[0], values[1], values[2])
+        return {
+            SAVE_RESPONSE_CONTAINER: "User created!",
+        }
     except Exception as e:
         return {
             SAVE_RESPONSE_CONTAINER: str(e),
@@ -280,10 +281,16 @@ def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
 
         user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
 
+        if user_id == "my-account":
+            user_id = logged_in_user_id
+
+        if logged_in_user is None:
+            raise Exception("User is not signed in")
+
         if logged_in_user.role != US.Role.ADMIN and logged_in_user.id != user_id:
             raise Exception("User is not authorized to change this password")
 
-        user_service.update_password(user_id, values[1], values[2])
+        user_service.update_password(user_id, values[0], values[1])
         return {CHANGE_PASSWORD_RESPONSE_CONTAINER: "Password changed"}
     except Exception as e:
         return {

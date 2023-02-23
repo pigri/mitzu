@@ -102,6 +102,7 @@ def create_form_property_input(
     label_lg: int = 3,
     label_sm: int = 12,
     justify: Optional[str] = None,
+    read_only: bool = False,
     **kwargs,
 ):
     if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
@@ -116,16 +117,20 @@ def create_form_property_input(
         label_children = [
             html.B(className=f"{icon_cls} me-1"),
             value_to_label(property),
-            "*" if kwargs.get("required") else "",
+            "*" if kwargs.get("required") and not read_only else "",
         ]
     else:
         label_children = [value_to_label(property)]
+    if read_only:
+        kwargs["readonly"] = True
+        kwargs["disabled"] = True
+    else:
+        kwargs["id"] = {"type": index_type, "index": property}
     return dbc.Row(
         [
             dbc.Label(label_children, class_name="fw-bold", sm=label_sm, lg=label_lg),
             dbc.Col(
                 component_type(
-                    id={"type": index_type, "index": property},
                     **kwargs,
                 ),
                 sm=input_sm,

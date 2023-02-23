@@ -80,35 +80,30 @@ def test_my_account_user_page_layout(server: flask.Flask):
         users_comp = U.layout(user_id="my-account")
         page = to_dict(users_comp)
 
-        assert find_component_by_id(comp_id=U.USER_SAVE_BUTTON, input=page) is not None
+        assert find_component_by_id(comp_id=U.USER_SAVE_BUTTON, input=page) is None
         assert find_component_by_id(comp_id=U.USER_CLOSE_BUTTON, input=page) is not None
 
-        assert_input_field_with_value(U.PROP_EMAIL, configs.AUTH_ROOT_USER_EMAIL, page)
+        assert (
+            find_component_by_id(
+                comp_id={"type": U.INDEX_TYPE, "index": U.PROP_EMAIL}, input=page
+            )
+            is None
+        )
         assert_input_field_with_value(U.PROP_PASSWORD, "", page)
         assert_input_field_with_value(U.PROP_CONFIRM_PASSWORD, "", page)
 
 
-def test_update_or_delete_user(server: flask.Flask):
+def test_delete_user(server: flask.Flask):
     with RequestContextLoggedInAsRootUser(server) as deps:
         user_service = deps.user_service
-        res = U.update_or_save_user(
+        res = U.create_new_user(
             0,
             ["a@b", "password", "password"],
-            P.create_path(P.USERS_HOME_PATH, user_id="new"),
         )
         user = user_service.get_user_by_email_and_password("a@b", "password")
         assert user is not None
 
         assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
-
-        res = U.update_or_save_user(
-            0, ["a-2@b"], P.create_path(P.USERS_HOME_PATH, user_id=user.id)
-        )
-        updated_user = user_service.get_user_by_email_and_password("a-2@b", "password")
-
-        assert updated_user is not None
-        assert updated_user.id == user.id
-        assert res[U.SAVE_RESPONSE_CONTAINER] == "User updated!"
 
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
         deleted_user = user_service.get_user_by_email("a@b")
@@ -125,7 +120,7 @@ def test_change_password(server: flask.Flask):
         user_id = user_service.new_user(email, old_password, old_password)
         res = U.update_password(
             0,
-            [email, new_password, new_password],
+            [new_password, new_password],
             P.create_path(P.USERS_HOME_PATH, user_id=user_id),
         )
         updated_user = user_service.get_user_by_email_and_password(email, new_password)

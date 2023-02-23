@@ -107,14 +107,6 @@ class UserService:
             self._cache.clear(key)
         self._cache.put(key, user)
 
-    def update_user_email(self, user_id: str, email: str):
-        user = self.get_user_by_id(user_id)
-        if user is None:
-            raise UserNotFoundException()
-
-        user.email = email
-        self._store_user(user)
-
     def update_password(self, user_id: str, password: str, password_confirmation: str):
         user = self.get_user_by_id(user_id)
         if user is None:

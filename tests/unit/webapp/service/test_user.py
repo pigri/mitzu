@@ -59,21 +59,6 @@ def test_user_lookup_with_password():
     assert service.get_user_by_email_and_password(email, "wrong password") is None
 
 
-def test_update_user():
-    service = UserService(InMemoryCache())
-    email = "a@b.c"
-    new_email = "a2@b.c"
-
-    with pytest.raises(UserNotFoundException):
-        service.update_user_email("id", email)
-
-    user_id = service.new_user(email, "password", "password")
-    assert service.get_user_by_id(user_id).email == email
-
-    service.update_user_email(user_id, new_email)
-    assert service.get_user_by_id(user_id).email == new_email
-
-
 def test_root_user_cannot_be_deleted():
     service = UserService(InMemoryCache(), root_password="password")
     root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
