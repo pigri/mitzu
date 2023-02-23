@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.model as M
-from mitzu.webapp.cache import LocalCache, MitzuCache
+from mitzu.webapp.cache import MitzuCache
 import flask
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
@@ -38,7 +38,7 @@ class InMemoryCache(MitzuCache):
 
 @fixture(scope="function")
 def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
-    cache = LocalCache(InMemoryCache())
+    cache = InMemoryCache()
     queue = InMemoryCache()
     storage = S.MitzuStorage(cache)
 

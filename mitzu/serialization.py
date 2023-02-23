@@ -256,7 +256,7 @@ def _from_dict(
         if dd is None:
             raise Exception(f"Couldn't find {event_name} in any of the datasources.")
 
-        event_def: M.EventDef = dd.definitions[edt][event_name]
+        event_def: M.EventDef = dd.definitions[edt][event_name].get_value_if_exists()
         fields = event_def._fields.keys()
         for f in fields:
             if f._get_name() == value:

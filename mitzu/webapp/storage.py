@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pandas as pd
 
 import mitzu.model as M
 import mitzu.webapp.cache as C
+import mitzu.helper as H
 import mitzu.webapp.model as WM
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
@@ -24,6 +25,72 @@ TABLE_PREFIX = "__table__"
 SIMPLE_CHART_PREFIX = "__simple_chart__"
 SAVED_METRIC_PREFIX = "__saved_metric__"
 DASHBOARD_PREFIX = "__dashboard__"
+EVENT_DEF_PREFIX = "__event_def__"
+
+
+class InvalidStorageReference(Exception):
+    pass
+
+
+class StorageReference(M.Reference[M.ID]):
+    def __init__(self, id: str, storage: MitzuStorage, prefix: str):
+        super().__init__(None)
+        self._id = id
+        self.storage = storage
+        self.prefix = prefix
+
+    def get_id(self) -> Optional[str]:
+        return super().get_id()
+
+    def get_value(self) -> Optional[M.ID]:
+        res = self._value_state.get_value()
+        if self._id is None:
+            return None
+
+        if res is None:
+            res = self.storage.mitzu_cache.get(self.prefix + self._id)
+            H.LOGGER.debug(f"Restoring storage-ref value: {self.prefix + self._id}")
+            self.restore_value(res)
+        return res
+
+    def get_value_if_exists(self) -> M.ID:
+        return super().get_value_if_exists()
+
+    def store_value(self):
+        if self._id is not None:
+            self.storage.mitzu_cache.clear(self.prefix + self._id)
+        value = self._value_state.get_value()
+        if value is not None:
+            self.storage.mitzu_cache.put(self.prefix + value.get_id(), value)
+
+    def set_value(self, value: Optional[M.ID]):
+        super().set_value(value)
+        self.store_value()
+
+    def restore_value(self, value: Optional[M.ID]):
+        super().restore_value(value)
+
+    @classmethod
+    def from_reference(
+        cls,
+        reference: M.Reference[M.ID],
+        storage: MitzuStorage,
+        prefix: str,
+    ):
+        if isinstance(reference, StorageReference):
+            return reference
+
+        ref_id = reference.get_id()
+        if ref_id is None:
+            return InvalidStorageReference(
+                "Trying to convert Reference to StorageReference without an ID."
+            )
+
+        res: StorageReference[M.ID] = StorageReference(
+            id=ref_id, storage=storage, prefix=prefix
+        )
+        res.restore_value(reference.get_value())
+        return res
 
 
 def setup_sample_project(storage: MitzuStorage):
@@ -60,27 +127,26 @@ class MitzuStorage:
         self.mitzu_cache = mitzu_cache
 
     def set_project(self, project_id: str, project: M.Project):
+        for edt in project.event_data_tables:
+            edt.project_reference = StorageReference.from_reference(
+                edt.project_reference, self, PROJECT_PREFIX
+            )
+
+        project._connection_ref = StorageReference.from_reference(
+            project._connection_ref, self, CONNECTION_PREFIX
+        )
         return self.mitzu_cache.put(PROJECT_PREFIX + project_id, project)
 
     def get_project(self, project_id: str) -> M.Project:
         project: M.Project = self.mitzu_cache.get(PROJECT_PREFIX + project_id)
         if project is not None:
-            event_data_tables = project.event_data_tables
-            definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
-            con_id = project.get_connection_id()
-            if con_id is not None:
-                con = self.get_connection(con_id)
-                project.restore_connection(con)
-
-            for edt in event_data_tables:
-                edt.set_project(project)
+            definitions: Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]] = {}
+            for edt in project.event_data_tables:
                 defs = self.get_event_data_table_definition(
                     project_id, edt.get_full_name()
                 )
                 if defs is not None:
                     definitions[edt] = defs
-                for df in defs.values():
-                    df._event_data_table.set_project(project)
 
             project._discovered_project.set_value(
                 M.DiscoveredProject(definitions, project)
@@ -106,20 +172,33 @@ class MitzuStorage:
         return self.mitzu_cache.list_keys(CONNECTION_PREFIX)
 
     def set_event_data_table_definition(
-        self, project_id: str, edt_full_name: str, definitions: Dict[str, M.EventDef]
+        self,
+        project_id: str,
+        edt_full_name: str,
+        definitions: Dict[str, M.Reference[M.EventDef]],
     ):
+        # Refernece can't be stored so we store the real values
+        storage_refs: Dict[str, StorageReference[M.EventDef]] = {}
+        for k, ref in definitions.items():
+            st_ref = StorageReference.from_reference(
+                reference=ref, storage=self, prefix=EVENT_DEF_PREFIX
+            )
+            storage_refs[k] = st_ref
+            st_ref.store_value()
+
         self.mitzu_cache.put(
             SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
-            definitions,
+            storage_refs,
         )
 
     def get_event_data_table_definition(
         self, project_id: str, edt_full_name: str
-    ) -> Dict[str, M.EventDef]:
-        return self.mitzu_cache.get(
-            SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name,
-            {},
+    ) -> Dict[str, M.Reference[M.EventDef]]:
+        res = self.mitzu_cache.get(
+            SEPC_PROJECT_PREFIX + project_id + TABLE_DEFIONITION_PREFIX + edt_full_name
         )
+
+        return res
 
     def delete_event_data_table_definition(self, project_id: str, edt_full_name: str):
         self.mitzu_cache.clear(

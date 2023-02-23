@@ -25,14 +25,12 @@ class Dependencies:
 
     @classmethod
     def from_configs(cls, server: Flask) -> Dependencies:
-        cache: C.MitzuCache
+        delegate_cache: C.MitzuCache
         if configs.STORAGE_REDIS_HOST is not None:
-            cache = C.RedisMitzuCache()
+            delegate_cache = C.RedisMitzuCache()
         else:
-            cache = C.DiskMitzuCache()
-
-        if configs.LOCAL_CACHING_ENABLED:
-            cache = C.LocalCache(cache)
+            delegate_cache = C.DiskMitzuCache()
+        cache = C.RequestCache(delegate_cache)
 
         authorizer = None
         oauth_config = None

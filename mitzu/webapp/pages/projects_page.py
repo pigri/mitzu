@@ -4,7 +4,6 @@ from dash import html
 import dash.development.base_component as bc
 import flask
 import mitzu.webapp.dependencies as DEPS
-import mitzu.model as M
 import mitzu.webapp.navbar as NB
 from mitzu.webapp.auth.decorator import restricted_layout
 import mitzu.webapp.pages.paths as P
@@ -143,16 +142,3 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
         sm=12,
     )
     return project_jumbotron
-
-
-def store_discovered_project(
-    dp: M.DiscoveredProject,
-):
-    deps: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
-    deps.storage.set_project(dp.project.id, dp.project)
-    deps.storage.set_connection(dp.project.connection.id, dp.project.connection)
-    for edt, defs in dp.definitions.items():
-        edt_full_name = edt.get_full_name()
-        deps.storage.set_event_data_table_definition(dp.project.id, edt_full_name, defs)

@@ -25,7 +25,7 @@ def create_event_name_dropdown(
     options = (
         [
             {"label": value_to_label(v), "value": v}
-            for v in discovered_project.get_all_events()
+            for v in discovered_project.get_all_event_names()
         ]
         if discovered_project is not None
         else []

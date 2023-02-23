@@ -377,6 +377,14 @@ class Reference(Generic[ID]):
     def get_value(self) -> Optional[ID]:
         return self._value_state.get_value()
 
+    def get_value_if_exists(self) -> ID:
+        res = self.get_value()
+        if res is None:
+            raise InvalidReferenceException(
+                f"Missing reference value for id: {self._id}"
+            )
+        return res
+
     def set_value(self, value: Optional[ID]):
         self._value_state.set_value(value)
         if value is None:
@@ -535,8 +543,8 @@ class InvalidEventDataTableError(Exception):
     pass
 
 
-@dataclass(frozen=True)
-class EventDataTable:
+@dataclass(unsafe_hash=False)
+class EventDataTable(Identifiable):
     """
     Refers to a single table in the data warehouse or data lake.
     """
@@ -544,6 +552,8 @@ class EventDataTable:
     table_name: str
     event_time_field: Field
     user_id_field: Field
+
+    id: str = field(default_factory=helper.create_unique_id)
     schema: Optional[str] = None
     catalog: Optional[str] = None
     event_name_field: Optional[Field] = None
@@ -560,7 +570,9 @@ class EventDataTable:
     description: Optional[str] = None
 
     discovery_settings: Optional[DiscoverySettings] = None
-    _project_state: State[Project] = field(default_factory=State)
+    project_reference: Reference[Project] = field(
+        default_factory=lambda: Reference(None)
+    )
 
     @classmethod
     def create(
@@ -695,10 +707,10 @@ class EventDataTable:
         )
 
     def __hash__(self):
-        return hash(
-            f"{self.table_name}{self.event_time_field}{self.user_id_field}"
-            f"{self.event_name_field}{self.event_name_alias}"
-        )
+        return self.id.__hash__()
+
+    def get_id(self) -> str:
+        return self.id
 
     def get_full_name(self) -> str:
         schema = "" if self.schema is None else self.schema + "."
@@ -742,20 +754,20 @@ class EventDataTable:
 
     @property
     def project(self) -> Project:
-        res = self._project_state.get_value()
+        res = self.project_reference.get_value()
         if res is None:
             raise InvalidReferenceException("EventDataTable doesn't have a Project")
         return res
 
     def set_project(self, project: Project):
-        self._project_state.set_value(project)
+        self.project_reference = Reference(project)
 
 
 class InvalidProjectError(Exception):
     pass
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(init=False)
 class Project(Identifiable):
     """
     Defines a Mitzu project
@@ -786,7 +798,7 @@ class Project(Identifiable):
         discovery_settings: Optional[DiscoverySettings] = None,
         webapp_settings: Optional[WebappSettings] = None,
     ):
-
+        object.__setattr__(self, "id", project_id)
         edt_with_discovery_settings = []
         if discovery_settings is None:
             discovery_settings = DiscoverySettings()
@@ -810,7 +822,6 @@ class Project(Identifiable):
         object.__setattr__(self, "webapp_settings", webapp_settings)
         object.__setattr__(self, "project_name", project_name)
         object.__setattr__(self, "description", description)
-        object.__setattr__(self, "id", project_id)
         object.__setattr__(self, "_connection_ref", Reference(connection))
         object.__setattr__(self, "_adapter_cache", State())
         object.__setattr__(self, "_discovered_project", State())
@@ -910,18 +921,16 @@ class DatasetModel:
 
 @dataclass(frozen=True, init=False)
 class DiscoveredProject:
-    definitions: Dict[EventDataTable, Dict[str, EventDef]]
+    definitions: Dict[EventDataTable, Dict[str, Reference[EventDef]]]
     project: Project
-    connection: Connection
 
     def __init__(
         self,
-        definitions: Dict[EventDataTable, Dict[str, EventDef]],
+        definitions: Dict[EventDataTable, Dict[str, Reference[EventDef]]],
         project: Project,
     ) -> None:
         object.__setattr__(self, "definitions", definitions)
         object.__setattr__(self, "project", project)
-        object.__setattr__(self, "connection", project.connection)
         project._discovered_project.set_value(self)
 
     def __post_init__(self):
@@ -974,7 +983,7 @@ class DiscoveredProject:
         for val in self.definitions.values():
             res = val.get(event_name)
             if res is not None:
-                return res
+                return res.get_value_if_exists()
         raise Exception(
             f"Invalid state, {event_name} is not present in Discovered Datasource."
         )
@@ -982,7 +991,13 @@ class DiscoveredProject:
     def get_all_events(self) -> Dict[str, EventDef]:
         res: Dict[str, EventDef] = {}
         for val in self.definitions.values():
-            res = {**res, **val}
+            res = {**res, **{k: v.get_value_if_exists() for k, v in val.items()}}
+        return res
+
+    def get_all_event_names(self) -> List[str]:
+        res: List[str] = []
+        for val in self.definitions.values():
+            res.extend(val.keys())
         return res
 
     @staticmethod
@@ -1075,7 +1090,7 @@ class EventFieldDef:
 
 
 @dataclass(frozen=True)
-class EventDef:
+class EventDef(Identifiable):
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
     _event_data_table: EventDataTable
@@ -1084,6 +1099,9 @@ class EventDef:
     @property
     def _project(self) -> Project:
         return self._event_data_table.project
+
+    def get_id(self) -> str:
+        return self._event_data_table.id + f"_{self._event_name}"
 
 
 # =========================================== Metric definitions ===========================================

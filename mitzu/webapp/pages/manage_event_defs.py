@@ -37,16 +37,18 @@ def create_failed_table_row(edt: M.EventDataTable, exc: Exception) -> html.Tr:
     )
 
 
-def create_table_row(edt: M.EventDataTable, event_def: M.EventDef) -> html.Tr:
+def create_table_row(
+    edt: M.EventDataTable, event_def: M.Reference[M.EventDef]
+) -> html.Tr:
     all_fields: List[str] = []
-    for field in event_def._fields.keys():
+    for field in event_def.get_value_if_exists()._fields.keys():
         all_fields.extend(sf._get_name() for sf in field.get_all_subfields())
     properties = f"{len(all_fields)} properties"
 
     return html.Tr(
         [
             html.Td(edt.get_full_name(), H.TBL_CLS),
-            html.Td(event_def._event_name, className=H.TBL_CLS),
+            html.Td(event_def.get_value_if_exists()._event_name, className=H.TBL_CLS),
             html.Td(properties, className=H.TBL_CLS + " w-50"),
         ]
     )
@@ -236,10 +238,13 @@ def handle_project_discovery(
                     for evt_df in df.values():
                         rows.append(create_table_row(edt, evt_df))
         else:
+            project = storage.get_project(project_id)
+            edt_count = len(project.event_data_tables)
+            processed_edts = []
 
             def edt_callback(
                 edt: M.EventDataTable,
-                defs: Dict[str, M.EventDef],
+                defs: Dict[str, M.Reference[M.EventDef]],
                 exc: Optional[Exception],
             ):
                 if exc is None:
@@ -251,11 +256,15 @@ def handle_project_discovery(
                 else:
                     traceback.print_exception(type(exc), exc, exc.__traceback__)
                     rows.append(create_failed_table_row(edt, exc))
-                set_progress((rows, f"Discovering tables ({len(rows)}/{all_rows})"))
+                processed_edts.append(edt)
+                set_progress(
+                    (
+                        rows,
+                        f"Discovering tables {len(processed_edts)*100/edt_count:.0f}%",
+                    )
+                )
 
-            project = storage.get_project(project_id)
-            all_rows = len(project.event_data_tables)
-            set_progress(([], f"Discovering tables ({len(rows)}/{all_rows})"))
+            set_progress(([], "Discovering tables 0%"))
             discovered_project = project.discover_project(False, edt_callback)
             storage.set_project(
                 project_id=discovered_project.project.id,

@@ -53,9 +53,6 @@ SETUP_SAMPLE_PROJECT = bool(
     os.getenv("SETUP_SAMPLE_PROJECT", "true").lower() != "false"
 )
 
-LOCAL_CACHING_ENABLED = bool(
-    os.getenv("LOCAL_CACHING_ENABLED", "false").lower() != "false"
-)
 
 KALEIDO_CONFIGS = os.getenv("KALEIDO_CONFIGS", "--disable-gpu-*,--single-process")
 

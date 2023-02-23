@@ -15,6 +15,7 @@ def test_discovered_dataset_pickle():
     dd2 = DiscoveredProject.load_from_project_file(
         "test_app", folder="./examples/data/projects/"
     )
+
     m = dd2.create_notebook_class_model()
 
     seg: Segment = m.cart.config(

@@ -5,8 +5,8 @@ from typing import Any, Optional, List, Dict
 from abc import ABC
 from dataclasses import dataclass, field
 import pickle
-from datetime import datetime, timedelta
 import mitzu.helper as H
+import flask
 
 
 class MitzuCache(ABC):
@@ -82,69 +82,40 @@ class DiskMitzuCache(MitzuCache):
 
 
 @dataclass(frozen=True)
-class LocalCache(MitzuCache):
+class RequestCache(MitzuCache):
     """This cache is in-memory however it is ephemeral, it only stores values until the end of the request
     This is because it is not picklable.
     """
 
     delegate: MitzuCache
-    _cache: Dict[str, Any] = field(default_factory=dict)
-    _expirations: Dict[str, datetime] = field(default_factory=dict)
+
+    def _get_request_cache(self) -> Dict[str, Any]:
+        if flask.has_app_context():
+            if "request_cache" not in flask.g:
+                flask.g.request_cache = {}
+            return flask.g.get("request_cache")
+        return {}
 
     def put(self, key: str, val: Any, expire: Optional[float] = None):
-        self._cache[key] = val
-        if expire is not None:
-            self._expirations[key] = datetime.now() + timedelta(seconds=expire)
         self.delegate.put(key, val, expire)
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
-        expires_at = self._expirations.get(key)
-
-        if expires_at is not None and expires_at < datetime.now():
-            self._expirations.pop(key)
-            self._cache.pop(key)
-
-        res = self._cache.get(key)
+        res = self._get_request_cache().get(key)
         if res is None:
             res = self.delegate.get(key, default)
-            self._cache[key] = res
-            return res
+
         return res
 
     def clear(self, key: str) -> None:
-        if key in self._cache:
-            self._cache.pop(key)
-        if key in self._expirations:
-            self._expirations.pop(key)
+        cache = self._get_request_cache()
+        if key in cache:
+            cache.pop(key)
         self.delegate.clear(key)
 
     def list_keys(
         self, prefix: Optional[str] = None, strip_prefix: bool = True
     ) -> List[str]:
-        current_time = datetime.now()
-        for key, expiration_date in dict(self._expirations).items():
-            if expiration_date < current_time:
-                if key in self._cache:
-                    self._cache.pop(key)
-                self._expirations.pop(key)
-
         return self.delegate.list_keys(prefix, strip_prefix)
-
-    def clear_local_cache(self):
-        H.LOGGER.info("Clearing all local caches")
-        self._cache.clear()
-        self._expirations.clear()
-
-    def list_local_cache(self) -> List[str]:
-        return list(self._cache.keys())
-
-    def __getstate__(self):
-        # Local cache is not preserved across multiple requests
-        return None
-
-    def __setstate__(self, state):
-        # Local cache is not preserved across multiple requests
-        return None
 
 
 class RedisException(Exception):

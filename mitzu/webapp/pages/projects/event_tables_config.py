@@ -472,7 +472,7 @@ def _get_unioned_table_fields(
 
             count += 1
             set_progress(
-                f"Loading table columns {count*100/all_selected_tables_count}%"
+                f"Loading table columns {count*100/all_selected_tables_count:.0f}%"
             )
     return unioned_table_fields, collected_prop_values
 

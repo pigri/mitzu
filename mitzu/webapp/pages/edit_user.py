@@ -280,6 +280,8 @@ def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
         logged_in_user = user_service.get_user_by_id(logged_in_user_id)
 
         user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
+        if logged_in_user is None:
+            raise Exception("User is not signed in")
 
         if user_id == "my-account":
             user_id = logged_in_user_id

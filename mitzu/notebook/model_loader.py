@@ -179,7 +179,7 @@ class ModelLoader:
             res.insert(0, curr._name)
         return res
 
-    def _create_event_instance(self, event: M.EventDef, project: M.Project):
+    def _create_event_instance(self, event: M.EventDef):
         fields = event._fields
 
         class_def: Dict[str, Any] = {}
@@ -220,7 +220,9 @@ class ModelLoader:
             definitions = discovered_project.definitions[ed_table]
             for event_name, event_def in definitions.items():
                 fixed_name = fix_def(event_name)
-                class_def[fixed_name] = self._create_event_instance(event_def, project)
+                class_def[fixed_name] = self._create_event_instance(
+                    event_def.get_value_if_exists()
+                )
 
         return class_def
 

@@ -203,6 +203,24 @@ def create_graph_container(metric: Optional[M.Metric], project: M.Project):
     return graph_container
 
 
+def get_metric_group_by(
+    metric_config: M.MetricConfig,
+    metric_type: MNB.MetricType,
+    all_inputs: Dict[str, Any],
+    discovered_project: M.DiscoveredProject,
+):
+    group_by = None
+    group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
+    if len(group_by_paths) >= 1 and not (
+        metric_type == MNB.MetricType.RETENTION
+        and metric_config.time_group != M.TimeGroup.TOTAL
+    ):
+        gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
+        group_by = find_event_field_def(gp, discovered_project) if gp else None
+
+    return group_by
+
+
 def create_metric_from_all_inputs(
     all_inputs: Dict[str, Any],
     discovered_project: M.DiscoveredProject,
@@ -234,16 +252,9 @@ def create_metric_from_all_inputs(
     else:
         agg_str = None
 
-    group_by = None
-    group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
-    if len(group_by_paths) >= 1 and not (
-        metric_type == MNB.MetricType.RETENTION
-        and metric_config.time_group != M.TimeGroup.TOTAL
-    ):
-        gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
-        group_by = find_event_field_def(gp, discovered_project) if gp else None
-        if group_by is not None:
-            group_by._project._discovered_project.set_value(discovered_project)
+    group_by = get_metric_group_by(
+        metric_config, metric_type, all_inputs, discovered_project
+    )
 
     if isinstance(metric, M.Conversion):
         return metric.config(

@@ -64,13 +64,6 @@ def layout() -> bc.Component:
     table_header = html.Thead(
         html.Tr([html.Th("key"), html.Th("value")], className=TBL_HEADER_CLS)
     )
-    if isinstance(cache, C.LocalCache):
-        local_cache_disabled = False
-        l_cache_size = f"({len(cache.list_local_cache())})"
-    else:
-        local_cache_disabled = True
-        l_cache_size = ""
-
     rows = create_table_body_rows(cache)
 
     table = dbc.Table(
@@ -119,18 +112,6 @@ def layout() -> bc.Component:
                                     accept="application/json",
                                     multiple=False,
                                     id=STORAGE_RESET,
-                                ),
-                                lg="auto",
-                                sm=12,
-                                class_name="mb-1",
-                            ),
-                            dbc.Col(
-                                dbc.Button(
-                                    f"Clear local cache {l_cache_size}",
-                                    id=CLEAR_LOCAL_CACHE_BUTTON,
-                                    color="light",
-                                    size="sm",
-                                    disabled=local_cache_disabled,
                                 ),
                                 lg="auto",
                                 sm=12,
@@ -230,25 +211,6 @@ def download_button_clicked(n_clicks: int):
         return dict(content=res_str, filename="mitzu_storage.json")
     else:
         return no_update
-
-
-@callback(
-    Output(CLEAR_LOCAL_CACHE_BUTTON, "children"),
-    Input(CLEAR_LOCAL_CACHE_BUTTON, "n_clicks"),
-    prevent_initial_call=True,
-)
-@restricted
-def clear_local_cache_button(n_clicks: int):
-    if n_clicks is not None:
-        cache = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        ).cache
-        if isinstance(cache, C.LocalCache):
-            cache.clear_local_cache()
-            l_cache_size = f"({len(cache.list_local_cache())})"
-            return (f"Clear local cache {l_cache_size}",)
-
-    return no_update
 
 
 register_page(

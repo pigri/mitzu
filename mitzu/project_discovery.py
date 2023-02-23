@@ -71,8 +71,8 @@ class ProjectDiscovery:
         event_data_table: M.EventDataTable,
         generic: M.EventDef,
         specific: Dict[str, M.EventDef],
-    ) -> Dict[str, M.EventDef]:
-        res: Dict[str, M.EventDef] = {}
+    ) -> Dict[str, M.Reference[M.EventDef]]:
+        res: Dict[str, M.Reference[M.EventDef]] = {}
         for evt_name, spec_evt_def in specific.items():
             copied_gen_fields = {
                 field: self._copy_gen_field_def_to_spec(evt_name, field_def)
@@ -84,7 +84,7 @@ class ProjectDiscovery:
                 _event_name=evt_name,
                 _fields={**spec_evt_def._fields, **copied_gen_fields},
             )
-            res[evt_name] = new_def
+            res[evt_name] = M.Reference(new_def)
 
         return res
 
@@ -99,7 +99,7 @@ class ProjectDiscovery:
         return res
 
     def discover_project(self, progress_bar: bool = False) -> M.DiscoveredProject:
-        definitions: Dict[M.EventDataTable, Dict[str, M.EventDef]] = {}
+        definitions: Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]] = {}
 
         self.project.validate()
         tables = self.project.event_data_tables

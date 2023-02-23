@@ -648,8 +648,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise Exception("No DiscoveredProject was provided to SQLAlchemy Adapter.")
         events = dd.definitions.get(ed_table)
         if events is not None:
-            event_def = events.get(event_name)
-            if event_def is not None:
+            event_def_reference = events.get(event_name)
+            if event_def_reference is not None:
+                event_def = event_def_reference.get_value_if_exists()
                 for edt_evt_field in event_def._fields:
                     if edt_evt_field == field:
                         return True
