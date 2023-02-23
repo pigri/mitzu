@@ -1,23 +1,20 @@
 from dash import register_page
 import dash_bootstrap_components as dbc
-from dash import html, no_update
-import mitzu.helper as H
+from dash import html
 import dash.development.base_component as bc
 import flask
 import mitzu.webapp.dependencies as DEPS
 import mitzu.model as M
 import mitzu.webapp.navbar as NB
-from mitzu.webapp.auth.decorator import restricted, restricted_layout
+from mitzu.webapp.auth.decorator import restricted_layout
 import mitzu.webapp.pages.paths as P
-from dash import Input, Output, callback, dcc
-from typing import List
-import base64
+from typing import List, cast
 import traceback
 
 
-PROJECTS_CONTAINER = "projects-container"
-ERROR_PLACE_HOLDER = "error-place-holder"
-UPLOAD_BUTTON = "file_upload"
+PROJECTS_CONTAINER = "projects_container"
+PROJECTS_ROW = "projects_row"
+PROJECT_CARD_TITLE = "project_card_title"
 
 register_page(
     __name__,
@@ -29,41 +26,37 @@ register_page(
 @restricted_layout
 def layout(**query_params) -> bc.Component:
     projects = create_projects_children()
+
     return html.Div(
         [
             NB.create_mitzu_navbar("explore-navbar", []),
             dbc.Container(
                 children=[
-                    html.H4("Your projects", className="card-title"),
-                    html.Hr(),
-                    html.Div(children=projects, id=PROJECTS_CONTAINER),
-                    html.Hr(),
                     dbc.Row(
                         [
                             dbc.Col(
-                                dbc.Button(
-                                    "Create new project",
-                                    color="primary",
-                                    href=P.PROJECTS_CREATE_PATH,
+                                html.H4(
+                                    "Select a project for exploration",
+                                    className="card-title",
                                 ),
-                                sm=12,
-                                lg=2,
+                                width="auto",
                             ),
                             dbc.Col(
-                                dcc.Upload(
-                                    "Upload Mitzu File",
-                                    id=UPLOAD_BUTTON,
-                                    className="btn btn-secondary",
-                                    multiple=False,
-                                    accept=".mitzu",
+                                dbc.Button(
+                                    children=[
+                                        html.I(className="bi bi-plus-circle me-1"),
+                                        "Add project",
+                                    ],
+                                    href=P.PROJECTS_CREATE_PATH,
                                 ),
-                                sm=12,
-                                lg=2,
+                                width="auto",
+                                class_name="ms-auto",
                             ),
-                        ],
-                        class_name="mb-3",
+                        ]
                     ),
-                    html.Div(id=ERROR_PLACE_HOLDER, children=[]),
+                    html.Hr(),
+                    html.Div(children=projects, id=PROJECTS_CONTAINER),
+                    html.Hr(),
                 ]
             ),
         ]
@@ -71,7 +64,9 @@ def layout(**query_params) -> bc.Component:
 
 
 def create_projects_children() -> List[bc.Component]:
-    depenednecies: DEPS.Dependencies = flask.current_app.config.get(DEPS.CONFIG_KEY)
+    depenednecies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
     project_ids = depenednecies.storage.list_projects()
 
     projects = []
@@ -92,7 +87,7 @@ def create_projects_children() -> List[bc.Component]:
                     )
                 )
 
-        return dbc.Row(children=projects)
+        return dbc.Row(children=projects, id=PROJECTS_ROW)
 
     return html.H4(
         "You don't have any projects yet...", className="card-title text-center"
@@ -110,7 +105,9 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
             dbc.CardBody(
                 [
                     html.H4(
-                        H.value_to_label(project.project_name), className="card-title"
+                        project.project_name,
+                        className="card-title",
+                        id=PROJECT_CARD_TITLE,
                     ),
                     html.Hr(),
                     html.Img(
@@ -151,34 +148,11 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
 def store_discovered_project(
     dp: M.DiscoveredProject,
 ):
-    deps: DEPS.Dependencies = flask.current_app.config.get(DEPS.CONFIG_KEY)
-
+    deps: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
     deps.storage.set_project(dp.project.id, dp.project)
     deps.storage.set_connection(dp.project.connection.id, dp.project.connection)
     for edt, defs in dp.definitions.items():
         edt_full_name = edt.get_full_name()
         deps.storage.set_event_data_table_definition(dp.project.id, edt_full_name, defs)
-
-
-@callback(
-    Output(PROJECTS_CONTAINER, "children"),
-    Output(ERROR_PLACE_HOLDER, "children"),
-    Input(UPLOAD_BUTTON, "contents"),
-    prevent_initial_call=True,
-)
-@restricted
-def update_output(content: str):
-    if content is not None:
-        try:
-            _, content_string = content.split(",")
-            decoded = base64.b64decode(content_string)
-            discovered_project = M.DiscoveredProject.deserialize(decoded)
-            store_discovered_project(discovered_project)
-        except Exception as exc:
-            traceback.print_exc()
-            return no_update, html.Pre(
-                f"Error :( \n{str(exc)}", className="text-danger"
-            )
-        return create_projects_children(), []
-    else:
-        return no_update, []

@@ -1,23 +1,21 @@
 import dash_bootstrap_components as dbc
-from dash import Input, Output, callback, ctx, html, no_update, State
+from dash import Input, Output, callback, html
 import dash.development.base_component as bc
-from typing import Optional, cast
+from typing import Optional
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
-import flask
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted
-from mitzu.webapp.helper import create_form_property_input, MITZU_LOCATION
+from mitzu.webapp.helper import create_form_property_input
 from mitzu.helper import value_to_label
 from mitzu.webapp.pages.projects.helper import PROP_CONNECTION, PROJECT_INDEX_TYPE
-import traceback
+import mitzu.webapp.pages.projects.event_tables_config as ETC
 import dash_mantine_components as dmc
 from uuid import uuid4
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 PROJECT_DETAILS_CONTAINER = "project-details-container"
 
-DELETE_BUTTON = "project_delete_button"
 
 PROP_PROJECT_ID = "project_id"
 PROP_PROJECT_NAME = "project_name"
@@ -30,10 +28,6 @@ PROP_EXPLORE_AUTO_REFRESH = "auto_refresh"
 PROP_END_DATE_CONFIG = "default_end_date_config"
 PROP_CUSTOM_END_DATE_CONFIG = "custom_default_end_date"
 
-CONFIRM_DIALOG_INDEX = "project_delete_confirm"
-CONFIRM_DIALOG_CLOSE = "project_delete_confirm_dialog_close"
-CONFIRM_DIALOG_ACCEPT = "project_delete_confirm_dialog_accept"
-
 
 def create_project_settings(
     project: Optional[M.Project], dependencies: DEPS.Dependencies
@@ -42,51 +36,42 @@ def create_project_settings(
         [
             dbc.Form(
                 children=[
-                    html.P(
-                        "Project settings explenation...",
-                        className="mb-3 h6",
+                    dbc.Accordion(
+                        children=[
+                            dbc.AccordionItem(
+                                children=[
+                                    html.P(
+                                        [
+                                            html.I(className="bi bi-gear me-1"),
+                                            "Setup your project:",
+                                        ],
+                                        className="mb-3 lead",
+                                    ),
+                                    create_basic_project_settings(
+                                        project, dependencies
+                                    ),
+                                ],
+                                title="Project Settings",
+                            ),
+                            dbc.AccordionItem(
+                                create_explore_settings(project),
+                                title="Explore Settings",
+                            ),
+                            dbc.AccordionItem(
+                                create_discovery_settings(project),
+                                title="Discovery Settings",
+                            ),
+                            dbc.AccordionItem(
+                                ETC.create_event_tables(project), title="Event Tables"
+                            ),
+                        ],
                     ),
-                    create_basic_project_settings(project, dependencies),
-                    html.Hr(),
-                    create_discovery_settings(project),
-                    html.Hr(),
-                    create_explore_settings(project),
-                    html.Hr(),
-                    create_delete_button(project),
-                    create_discovery_button(project),
                 ],
                 id=PROJECT_DETAILS_CONTAINER,
-                class_name="mt-3",
+                class_name="mt-3 ",
             ),
-            create_confirm_dialog(project),
         ],
     )
-
-
-def create_delete_button(project: Optional[M.Project]) -> bc.Component:
-    if project is not None:
-        return dbc.Button(
-            [html.B(className="bi bi-x-circle me-1"), "Delete Project"],
-            id=DELETE_BUTTON,
-            color="danger",
-            class_name="d-inline-block me-3  mb-3",
-        )
-    else:
-        return html.Div()
-
-
-def create_discovery_button(project: Optional[M.Project]) -> bc.Component:
-    if project is not None:
-        return dbc.Button(
-            [html.B(className="bi bi-search me-1"), "Discover Project"],
-            color="primary",
-            class_name="d-inline-block me-3 mb-3",
-            href=P.create_path(
-                P.EVENTS_AND_PROPERTIES_PROJECT_PATH, project_id=project.id
-            ),
-        )
-    else:
-        return html.Div()
 
 
 def create_basic_project_settings(
@@ -153,47 +138,15 @@ def create_basic_project_settings(
             ),
             create_form_property_input(
                 property=PROP_DESCRIPTION,
+                value=project.description if project else None,
                 index_type=PROJECT_INDEX_TYPE,
                 component_type=dbc.Textarea,
                 icon_cls="bi bi-blockquote-left",
+                placeholder="Describe the project!",
                 rows=4,
                 maxlength=300,
             ),
         ],
-    )
-
-
-def create_confirm_dialog(project: Optional[M.Project]):
-    if project is None:
-        return html.Div()
-    return dbc.Modal(
-        [
-            dbc.ModalBody(
-                f"Do you really want to delete the {project.project_name}?",
-                class_name="lead",
-            ),
-            dbc.ModalFooter(
-                [
-                    dbc.Button(
-                        "Close",
-                        id=CONFIRM_DIALOG_CLOSE,
-                        size="sm",
-                        color="secondary",
-                        class_name="me-1",
-                    ),
-                    dbc.Button(
-                        "Delete",
-                        id=CONFIRM_DIALOG_ACCEPT,
-                        size="sm",
-                        color="danger",
-                        href=P.PROJECTS_PATH,
-                        external_link=True,
-                    ),
-                ]
-            ),
-        ],
-        id=CONFIRM_DIALOG_INDEX,
-        is_open=False,
     )
 
 
@@ -204,23 +157,13 @@ def create_discovery_settings(project: Optional[M.Project]) -> bc.Component:
         disc_settings = M.DiscoverySettings()
     return html.Div(
         [
-            html.Div(
-                [
-                    html.P(
-                        "Discovery settings explenation...",
-                        className="mb-3 h6",
-                    ),
-                    dbc.Button(
-                        "Learn more",
-                        class_name="border-0 mb-3",
-                        size="sm",
-                        color="primary",
-                        outline=True,
-                        href=CREATE_PROJECT_DOCS_LINK,
-                        target="_blank",
-                        external_link=True,
-                    ),
+            html.P(
+                children=[
+                    html.I(className="bi bi-info-circle me-1"),
+                    """Discovery settings are needed for the project discovery step. 
+                    The discovery step scrapes the data warehouse tables for the columns and it's values.""",
                 ],
+                className="mb-3 lead",
             ),
             create_form_property_input(
                 property=PROP_DISC_LOOKBACK_DAYS,
@@ -252,23 +195,12 @@ def create_explore_settings(project: Optional[M.Project]) -> bc.Component:
 
     return html.Div(
         [
-            html.Div(
-                [
-                    html.P(
-                        "Explore settings explenation...",
-                        className="mb-3 h6",
-                    ),
-                    dbc.Button(
-                        "Learn more",
-                        class_name="border-0 mb-3",
-                        size="sm",
-                        color="primary",
-                        outline=True,
-                        href=CREATE_PROJECT_DOCS_LINK,
-                        target="_blank",
-                        external_link=True,
-                    ),
+            html.P(
+                children=[
+                    html.I(className="bi bi-info-circle me-1"),
+                    "Explore settings change the default behaviour of the explore page.",
                 ],
+                className="mb-3 lead",
             ),
             create_form_property_input(
                 property=PROP_EXPLORE_AUTO_REFRESH,
@@ -317,45 +249,3 @@ def create_explore_settings(project: Optional[M.Project]) -> bc.Component:
 @restricted
 def end_date_config_changed(config_value: str):
     return config_value.upper() != M.WebappEndDateConfig.CUSTOM_DATE.name.upper()
-
-
-@callback(
-    Output(CONFIRM_DIALOG_ACCEPT, "n_clicks"),
-    Input(CONFIRM_DIALOG_ACCEPT, "n_clicks"),
-    State(MITZU_LOCATION, "pathname"),
-    prevent_initial_call=True,
-)
-@restricted
-def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
-    if n_clicks:
-        project_id = P.get_path_value(
-            P.PROJECTS_MANAGE_PATH, pathname, P.PROJECT_ID_PATH_PART
-        )
-        depenednecies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
-        try:
-            project = depenednecies.storage.get_project(project_id=project_id)
-            for edt in project.event_data_tables:
-                depenednecies.storage.delete_event_data_table_definition(
-                    project_id=project_id, edt_full_name=edt.get_full_name()
-                )
-            depenednecies.storage.delete_project(project_id)
-        except Exception:
-            # TBD: Toaster
-            traceback.print_exc()
-
-    return no_update
-
-
-@callback(
-    Output(CONFIRM_DIALOG_INDEX, "is_open"),
-    Input(DELETE_BUTTON, "n_clicks"),
-    Input(CONFIRM_DIALOG_CLOSE, "n_clicks"),
-    prevent_initial_call=True,
-)
-@restricted
-def delete_button_clicked(delete: int, close: int) -> bool:
-    if delete is None:
-        return no_update
-    return ctx.triggered_id == DELETE_BUTTON

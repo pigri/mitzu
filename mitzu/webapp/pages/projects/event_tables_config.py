@@ -1,7 +1,7 @@
 import dash_bootstrap_components as dbc
 from dash import ALL, Input, Output, State, callback, ctx, html, no_update
 import dash.development.base_component as bc
-from typing import Callable, Dict, List, Optional, Tuple, cast
+from typing import Callable, Dict, List, Optional, Tuple, cast, Set
 import mitzu.model as M
 from mitzu.webapp.pages.projects.helper import (
     PROP_CONNECTION,
@@ -57,9 +57,8 @@ UPDATE_INTERVAL = 100
 
 
 def create_table_row(edt: M.EventDataTable) -> html.Tr:
-
     return html.Tr(
-        [
+        children=[
             html.Td(
                 dbc.Checkbox(
                     id={
@@ -70,30 +69,32 @@ def create_table_row(edt: M.EventDataTable) -> html.Tr:
                 ),
                 className=H.TBL_CLS,
             ),
-            html.Td(edt.get_full_name(), className=H.TBL_CLS),
+            html.Td(children=edt.get_full_name(), className=H.TBL_CLS),
             html.Td(
-                edt.user_id_field._get_name(),
+                children=edt.user_id_field._get_name(),
                 className=H.TBL_CLS
                 if edt.user_id_field != MISSING_FIELD
                 else H.TBL_CLS_WARNING,
             ),
             html.Td(
-                edt.event_time_field._get_name(),
+                children=edt.event_time_field._get_name(),
                 className=H.TBL_CLS
                 if edt.event_time_field != MISSING_FIELD
                 else H.TBL_CLS_WARNING,
             ),
             html.Td(
-                (edt.event_name_field._get_name() if edt.event_name_field else None),
+                children=(
+                    edt.event_name_field._get_name() if edt.event_name_field else None
+                ),
                 className=H.TBL_CLS,
             ),
             html.Td(
-                edt.date_partition_field._get_name()
+                children=edt.date_partition_field._get_name()
                 if edt.date_partition_field
                 else None,
                 className=H.TBL_CLS,
             ),
-            html.Td(", ".join(edt.ignored_fields), className=H.TBL_CLS),
+            html.Td(",".join(edt.ignored_fields), className=H.TBL_CLS),
         ]
     )
 
@@ -102,7 +103,7 @@ def create_table_component(project: Optional[M.Project]):
     table_header = [
         html.Thead(
             html.Tr(
-                [
+                children=[
                     html.Th(
                         dbc.Checkbox(id=TBL_HEADER_CHECK_BOX_TYPE),
                         className=H.TBL_HEADER_CLS,
@@ -122,10 +123,10 @@ def create_table_component(project: Optional[M.Project]):
         for edt in project.event_data_tables:
             rows.append(create_table_row(edt))
 
-    table_body = [html.Tbody(rows, id=EDT_TBL_BODY)]
+    table_body = [html.Tbody(children=rows, id=EDT_TBL_BODY)]
 
     return dbc.Table(
-        table_header + table_body,
+        children=table_header + table_body,
         hover=False,
         responsive=True,
         striped=True,
@@ -228,7 +229,7 @@ def create_configure_tables_modal() -> dbc.Modal:
                         H.create_form_property_input(
                             property=CONF_PROP_USER_ID,
                             index_type=EDT_INDEX_TYPE,
-                            component_type=dmc.Select,
+                            component_type=dmc.MultiSelect,
                             data=[],
                             value=None,
                             required=True,
@@ -245,7 +246,7 @@ def create_configure_tables_modal() -> dbc.Modal:
                         H.create_form_property_input(
                             property=CONF_PROP_EVENT_TIME,
                             index_type=EDT_INDEX_TYPE,
-                            component_type=dmc.Select,
+                            component_type=dmc.MultiSelect,
                             data=[],
                             value=None,
                             required=True,
@@ -262,7 +263,7 @@ def create_configure_tables_modal() -> dbc.Modal:
                         H.create_form_property_input(
                             property=CONF_PROP_EVENT_NAME_COLUMN,
                             index_type=EDT_INDEX_TYPE,
-                            component_type=dmc.Select,
+                            component_type=dmc.MultiSelect,
                             data=[],
                             value=None,
                             icon_cls="bi bi-play-btn",
@@ -279,7 +280,7 @@ def create_configure_tables_modal() -> dbc.Modal:
                         H.create_form_property_input(
                             property=CONF_PROP_DATE_PARTITION,
                             index_type=EDT_INDEX_TYPE,
-                            component_type=dmc.Select,
+                            component_type=dmc.MultiSelect,
                             data=[],
                             value=None,
                             icon_cls="bi bi-calendar2-check",
@@ -346,6 +347,16 @@ def create_event_tables(project: Optional[M.Project]) -> bc.Component:
     configure_tables_modal = create_configure_tables_modal()
     return html.Div(
         [
+            html.P(
+                children=[
+                    html.I(className="bi bi-info-circle me-1"),
+                    """Event tables are tables in the data warehouse that contain user events. 
+                The user id and event time columns are mandatory for the event tables. 
+                The event name column is optional and reserved for 
+                data warehouse tables that contain multiple event types.""",
+                ],
+                className="mb-3 lead",
+            ),
             dbc.Row(
                 [
                     dbc.Col(
@@ -418,6 +429,64 @@ def get_checkbox_value_from_row(tr: html.Tr) -> bool:
     )
 
 
+def _get_unioned_table_fields(
+    set_progress,
+    adapter,
+    all_selected_tables_count: int,
+    tbl_body_children: List[bc.Component],
+) -> Tuple[Dict[str, int], List[Set]]:
+    """If the user selects tables with the checkboxes to configure,
+    this method returns all possible fields unioned for those tables.
+    Also it returns the values that were already chosen based on the table cells (user_id, event_time, etc.).
+    However it cross checks them with the state of the fields from the DWH.
+    """
+    count = 0
+    unioned_table_fields: Dict[
+        str, int
+    ] = {}  # for counting occurances of field in all tables
+    collected_prop_values: List[Set[str]] = [set(), set(), set(), set(), set()]
+    for tr in tbl_body_children:
+        check_box = get_checkbox_value_from_row(tr)
+        if check_box:
+            table_name_children = get_value_from_row(tr, 1)
+            fields_from_table = [get_value_from_row(tr, i) for i in range(2, 7)]
+            if type(table_name_children) == str:
+                table_parts = table_name_children.split(".")
+                schema = table_parts[0]
+                table_name = table_parts[-1]
+                fields = adapter.list_all_table_columns(schema, table_name)
+                for field in fields:
+                    for f in field.get_all_subfields():
+                        tbl_field_name = f._get_name()
+                        val = unioned_table_fields.get(tbl_field_name)
+                        unioned_table_fields[tbl_field_name] = (
+                            1 if val is None else val + 1
+                        )
+                        for i, field in enumerate(fields_from_table):
+                            if field:
+                                if i < 5 and tbl_field_name == field:
+                                    collected_prop_values[i].add(tbl_field_name)
+                                elif tbl_field_name in field.split(","):
+                                    # Ignore fields is a list of fields separated by comma
+                                    collected_prop_values[i].add(tbl_field_name)
+
+            count += 1
+            set_progress(
+                f"Loading table columns {count*100/all_selected_tables_count}%"
+            )
+    return unioned_table_fields, collected_prop_values
+
+
+def find_first_field(
+    all_fields: Dict[str, M.Field], field_names: List[str]
+) -> Optional[M.Field]:
+    for fn in field_names:
+        field = all_fields.get(fn)
+        if field:
+            return field
+    return None
+
+
 @callback(
     Output(CONFIGURE_TABLES_BUTTON, "disabled"),
     Output(REMOVE_TABLES_BUTTON, "disabled"),
@@ -430,7 +499,7 @@ def get_checkbox_value_from_row(tr: html.Tr) -> bool:
 @restricted
 def manage_table_checkboxes(
     header_checkbox: bool, tr_checkboxes: List, tbl_rows: List
-) -> List:
+) -> Tuple[bool, bool, List[bool]]:
     if ctx.triggered_id == TBL_HEADER_CHECK_BOX_TYPE:
         checkboxes: List[bool] = []
         for tr in tbl_rows:
@@ -440,15 +509,15 @@ def manage_table_checkboxes(
             else:
                 checkboxes.append(get_checkbox_value_from_row(tr))
         disabled = not any(checkboxes)
-        return [
+        return (
             disabled,
             disabled,
             checkboxes,
-        ]
+        )
     else:
         tr_checkboxes = [get_checkbox_value_from_row(tr) for tr in tbl_rows]
         disabled = not any(tr_checkboxes)
-        return [disabled, disabled, tr_checkboxes]
+        return (disabled, disabled, tr_checkboxes)
 
 
 @callback(
@@ -510,22 +579,21 @@ def manage_choose_schema_dropdown(
     if ctx.triggered_id in [ADD_TABLES_MODAL_CLOSE, ADD_TABLES_MODAL_CONFIRM]:
         return ([], None, "Select schema")
     if connection_id is not None:
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
-        connection = dependencies.storage.get_connection(connection_id)
-        dummy_project = M.Project(
-            connection=connection,
-            event_data_tables=[],
-            project_name="dummy_project",
-        )
-        adapter = dummy_project.get_adapter()
         try:
+            dependencies: DEPS.Dependencies = cast(
+                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+            )
+            connection = dependencies.storage.get_connection(connection_id)
+            dummy_project = M.Project(
+                connection=connection,
+                event_data_tables=[],
+                project_name="dummy_project",
+            )
+            adapter = dummy_project.get_adapter()
             schemas = [{"label": s, "value": s} for s in adapter.list_schemas()]
             return (schemas, no_update, "Select schema")
         except Exception:
             traceback.print_exc()
-
     return ([], None, "Something went wrong...")
 
 
@@ -587,17 +655,18 @@ def manage_choose_tables_checklist(
             return (options, vals, "Choose tables to add")
 
     if connection_id is not None:
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
-        connection = dependencies.storage.get_connection(connection_id)
-        dummy_project = M.Project(
-            connection=connection,
-            event_data_tables=[],
-            project_name="dummy_project",
-        )
-        adapter = dummy_project.get_adapter()
         try:
+            dependencies: DEPS.Dependencies = cast(
+                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+            )
+            connection = dependencies.storage.get_connection(connection_id)
+            dummy_project = M.Project(
+                connection=connection,
+                event_data_tables=[],
+                project_name="dummy_project",
+            )
+            adapter = dummy_project.get_adapter()
+
             tables = [
                 {"label": s, "value": s} for s in adapter.list_tables(schema=schema)
             ]
@@ -605,7 +674,7 @@ def manage_choose_tables_checklist(
         except Exception as exc:
             traceback.print_exc()
             return ([], [], f"Something went wrong: {exc}")
-    return ([], [], "Something went wrong.")
+    return ([], [], "Connection must be set first!")
 
 
 @callback(
@@ -634,6 +703,7 @@ def manage_configure_property_inputs(
     tbl_body_children: List,
 ) -> Tuple:
     if ctx.triggered_id in [CONF_TABLES_MODAL_CLOSE, CONF_TABLES_MODAL_CONFIRM]:
+        # Setting the default values as we closed the dialog
         return (
             [[] for _ in range(0, 5)],
             [None for _ in range(0, 5)],
@@ -652,52 +722,34 @@ def manage_configure_property_inputs(
                 event_data_tables=[],
                 project_name="dummy_project",
             )
-            adapter = dummy_project.get_adapter()
-            results: Dict[str, int] = {}
-            sel_count = 0
+            all_selected_count = 0
             for tr in tbl_body_children:
                 if get_checkbox_value_from_row(tr):
-                    sel_count += 1
-            count = 0
-            for tr in tbl_body_children:
-                check_box = get_checkbox_value_from_row(tr)
-                if check_box:
-                    try:
-                        table_name_children = get_value_from_row(tr, 1)
-                        if type(table_name_children) == str:
-                            table_parts = table_name_children.split(".")
-                            schema = table_parts[0]
-                            table_name = table_parts[-1]
-
-                            fields = adapter.list_all_table_columns(schema, table_name)
-                            for field in fields:
-                                for f in field.get_all_subfields():
-                                    prop_name = f._get_name()
-                                    val = results.get(prop_name)
-                                    results[prop_name] = 1 if val is None else val + 1
-                        count += 1
-                    except Exception:
-                        traceback.print_exc()
-                    finally:
-                        set_progress(f"Loading table columns ({count}/{sel_count})")
-            items = list(results.items())
-            items = sorted(items, key=lambda v: f"{str(999-v[1]*100).zfill(3)}-{v[0]}")
+                    all_selected_count += 1
+            all_table_fields, collected_values_list = _get_unioned_table_fields(
+                set_progress,
+                adapter=dummy_project.get_adapter(),
+                all_selected_tables_count=all_selected_count,
+                tbl_body_children=tbl_body_children,
+            )
+            unioned_table_fields = list(all_table_fields.items())
+            unioned_table_fields = sorted(
+                unioned_table_fields,
+                key=lambda v: f"{str(999-v[1]*100).zfill(3)}-{v[0]}",
+            )  # Sort order based on priority
             options = [
                 {
-                    "label": f"{k} {f'(missing from {sel_count-v})' if v != sel_count else ''}",
+                    "label": f"{k} {f'(missing from {all_selected_count-v})' if v != all_selected_count else ''}",
                     "value": k,
                 }
-                for k, v in items
+                for k, v in unioned_table_fields
             ]
 
-            if sel_count > 1:
-                info_text = (f"Select properties for {sel_count} tables:",)
-            else:
-                info_text = (f"Select properties for {table_name_children}:",)
+            info_text = f"Select properties for {all_selected_count} table{'s' if all_selected_count>1 else ''}:"
 
             return (
                 [options for _ in range(0, 5)],
-                [None for _ in range(0, 5)],
+                [list(vals) for vals in collected_values_list],
                 ["Select column", "Select column", "Optional", "Optional", "Optional"],
                 info_text,
             )
@@ -707,8 +759,134 @@ def manage_configure_property_inputs(
         [[] for _ in range(0, 5)],
         [None for _ in range(0, 5)],
         [None for _ in range(0, 5)],
-        "Something went wrong...",
+        "Something went wrong. Make sure your selected tables are validated.",
     )
+
+
+def handle_configure_modal_confirm(
+    set_progress,
+    connection_id: str,
+    tbl_body_children: List[bc.Component],
+    edt_properties: List[bc.Component],
+) -> List[bc.Component]:
+    dependencies: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
+    connection = dependencies.storage.get_connection(connection_id)
+    dummy_project = M.Project(
+        connection=connection,
+        event_data_tables=[],
+        project_name="dummy_project",
+    )
+    adapter = dummy_project.get_adapter()
+    results_tbl_children = []
+    count = 0
+    sel_count = 0
+
+    for tr in tbl_body_children:
+        if get_checkbox_value_from_row(tr):
+            sel_count += 1
+
+    for tr in tbl_body_children:
+        check_box = get_checkbox_value_from_row(tr)
+        if check_box:
+            count += 1
+            set_progress(f"Validating {count}/{sel_count} tables")
+            full_table_name = get_value_from_row(tr, 1)
+            schema, table_name = tuple(full_table_name.split("."))
+            fields = adapter.list_all_table_columns(
+                table_name=table_name, schema=schema
+            )
+            field_names: Dict[str, M.Field] = {}
+            for field in fields:
+                for f in field.get_all_subfields():
+                    field_names[f._get_name()] = f
+
+            user_id_fields = edt_properties[0]
+            evnet_time_fields = edt_properties[1]
+            event_name_fields = edt_properties[2]
+            date_partition_fields = edt_properties[3]
+            ignored_fields = edt_properties[4]
+            ignored_fields = ignored_fields if ignored_fields is not None else []
+
+            user_id_field = find_first_field(field_names, user_id_fields)
+            event_time_field = find_first_field(field_names, evnet_time_fields)
+            edt = M.EventDataTable(
+                table_name=table_name,
+                schema=schema,
+                user_id_field=(user_id_field if user_id_field else MISSING_FIELD),
+                event_time_field=(
+                    event_time_field if event_time_field else MISSING_FIELD
+                ),
+                event_name_field=find_first_field(field_names, event_name_fields),
+                date_partition_field=find_first_field(
+                    field_names, date_partition_fields
+                ),
+                ignored_fields=[i for i in ignored_fields if i in field_names],
+            )
+            results_tbl_children.append(create_table_row(edt))
+        else:
+            results_tbl_children.append(tr)
+    return results_tbl_children
+
+
+def handle_validate_button_clicked(
+    set_progress,
+    connection_id: str,
+    tbl_body_children: List[bc.Component],
+) -> List[bc.Component]:
+    dependencies: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
+    connection = dependencies.storage.get_connection(connection_id)
+    dummy_project = M.Project(
+        connection=connection,
+        event_data_tables=[],
+        project_name="dummy_project",
+    )
+    adapter = dummy_project.get_adapter()
+    sel_count = len(tbl_body_children)
+    for i, tr in enumerate(tbl_body_children):
+        set_progress(f"Validating {i+1}/{sel_count} tables")
+        tr_children = tr["props"]["children"]
+        full_table_name = get_value_from_row(tr, 1)
+        user_id_col = get_value_from_row(tr, 2)
+        event_time_col = get_value_from_row(tr, 3)
+        date_partition_col = get_value_from_row(tr, 4)
+        ignore_fields_str = get_value_from_row(tr, 5)
+        schema, table_name = tuple(full_table_name.split("."))
+        ignore_fields = (
+            ignore_fields_str.split(",") if ignore_fields_str is not None else []
+        )
+
+        try:
+            fields = adapter.list_all_table_columns(schema, table_name)
+            tr_children[1]["props"]["className"] = H.TBL_CLS
+
+            col_names: List[str] = []
+            for field in fields:
+                col_names.extend([f._get_name() for f in field.get_all_subfields()])
+
+            tr_children[2]["props"]["className"] = (
+                H.TBL_CLS if user_id_col in col_names else H.TBL_CLS_WARNING
+            )
+            tr_children[3]["props"]["className"] = (
+                H.TBL_CLS if event_time_col in col_names else H.TBL_CLS_WARNING
+            )
+            tr_children[4]["props"]["className"] = (
+                H.TBL_CLS if date_partition_col in col_names else H.TBL_CLS_WARNING
+            )
+            tr_children[5]["props"]["className"] = (
+                H.TBL_CLS
+                if len([f for f in ignore_fields if f not in col_names]) == 0
+                else H.TBL_CLS_WARNING
+            )
+        except Exception:
+            traceback.print_exc()
+            for i in range(1, 6):
+                tr_children[i]["props"]["className"] = H.TBL_CLS_WARNING
+
+    return tbl_body_children
 
 
 @callback(
@@ -754,124 +932,22 @@ def manage_event_data_table_body(
         return [
             row for row in tbl_body_children if not get_checkbox_value_from_row(row)
         ]
-    dependencies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+
     if ctx.triggered_id == EDT_VALIDATE_BUTTON:
-        connection = dependencies.storage.get_connection(connection_id)
-        dummy_project = M.Project(
-            connection=connection,
-            event_data_tables=[],
-            project_name="dummy_project",
+        return handle_validate_button_clicked(
+            set_progress=set_progress,
+            connection_id=connection_id,
+            tbl_body_children=tbl_body_children,
         )
-        adapter = dummy_project.get_adapter()
-        sel_count = len(tbl_body_children)
-        for i, tr in enumerate(tbl_body_children):
-            set_progress(f"Validating {i+1}/{sel_count} tables")
-            tr_children = tr["props"]["children"]
-            full_table_name = get_value_from_row(tr, 1)
-            user_id_col = get_value_from_row(tr, 2)
-            event_time_col = get_value_from_row(tr, 3)
-            date_partition_col = get_value_from_row(tr, 4)
-            ignore_fields_str = get_value_from_row(tr, 5)
-            schema, table_name = tuple(full_table_name.split("."))
-            ignore_fields = (
-                ignore_fields_str.split(",") if ignore_fields_str is not None else []
-            )
-
-            try:
-                fields = adapter.list_all_table_columns(schema, table_name)
-                tr_children[1]["props"]["className"] = H.TBL_CLS
-
-                col_names: List[str] = []
-                for field in fields:
-                    col_names.extend([f._get_name() for f in field.get_all_subfields()])
-
-                tr_children[2]["props"]["className"] = (
-                    H.TBL_CLS if user_id_col in col_names else H.TBL_CLS_WARNING
-                )
-                tr_children[3]["props"]["className"] = (
-                    H.TBL_CLS if event_time_col in col_names else H.TBL_CLS_WARNING
-                )
-                tr_children[4]["props"]["className"] = (
-                    H.TBL_CLS if date_partition_col in col_names else H.TBL_CLS_WARNING
-                )
-                tr_children[5]["props"]["className"] = (
-                    H.TBL_CLS
-                    if len([f for f in ignore_fields if f not in col_names]) == 0
-                    else H.TBL_CLS_WARNING
-                )
-            except Exception:
-                traceback.print_exc()
-                tr_children[1]["props"]["className"] = H.TBL_CLS_WARNING
-
-        return tbl_body_children
 
     if ctx.triggered_id == CONF_TABLES_MODAL_CONFIRM:
-
-        connection = dependencies.storage.get_connection(connection_id)
-        dummy_project = M.Project(
-            connection=connection,
-            event_data_tables=[],
-            project_name="dummy_project",
+        return handle_configure_modal_confirm(
+            set_progress=set_progress,
+            connection_id=connection_id,
+            tbl_body_children=tbl_body_children,
+            edt_properties=edt_properties,
         )
-        adapter = dummy_project.get_adapter()
-        results_tbl_children = []
-        count = 0
-        sel_count = 0
 
-        for tr in tbl_body_children:
-            if get_checkbox_value_from_row(tr):
-                sel_count += 1
-
-        for tr in tbl_body_children:
-            check_box = get_checkbox_value_from_row(tr)
-            if check_box:
-                count += 1
-                set_progress(f"Validating {count}/{sel_count} tables")
-                full_table_name = get_value_from_row(tr, 1)
-                schema, table_name = tuple(full_table_name.split("."))
-                fields = adapter.list_all_table_columns(
-                    table_name=table_name, schema=schema
-                )
-                field_names: Dict[str, M.Field] = {}
-                for field in fields:
-                    for f in field.get_all_subfields():
-                        field_names[f._get_name()] = f
-
-                user_id_field_name = edt_properties[0]
-                evnet_time_field_name = edt_properties[1]
-                event_name_field_name = edt_properties[2]
-                date_partition_field_name = edt_properties[3]
-                ignored_fields_names = edt_properties[4]
-                ignored_fields_names = (
-                    ignored_fields_names if ignored_fields_names is not None else []
-                )
-
-                edt = M.EventDataTable(
-                    table_name=table_name,
-                    schema=schema,
-                    user_id_field=field_names.get(user_id_field_name, MISSING_FIELD),
-                    event_time_field=field_names.get(
-                        evnet_time_field_name, MISSING_FIELD
-                    ),
-                    event_name_field=(
-                        field_names.get(event_name_field_name)
-                        if event_name_field_name is not None
-                        else None
-                    ),
-                    date_partition_field=(
-                        field_names.get(date_partition_field_name)
-                        if date_partition_field_name is not None
-                        else None
-                    ),
-                    ignored_fields=ignored_fields_names,
-                )
-                results_tbl_children.append(create_table_row(edt))
-            else:
-                results_tbl_children.append(tr)
-
-        tbl_body_children = results_tbl_children
     if ctx.triggered_id == TBL_SEARCH_INPUT:
         for tr in tbl_body_children:
             full_table_name = get_value_from_row(tr, 1)

@@ -57,7 +57,7 @@ def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
 @fixture(scope="session")
 def discovered_project() -> M.DiscoveredProject:
     connection = M.Connection(
-        id=S.SAMPLE_PROJECT_ID,
+        id=S.SAMPLE_CONNECTION_ID,
         connection_name="Sample connection",
         connection_type=M.ConnectionType.SQLITE,
         host="sample_project",

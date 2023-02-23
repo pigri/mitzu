@@ -579,7 +579,9 @@ class EventDataTable:
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
 
-        if event_name_field is None and event_name_alias is None:
+        if event_name_field == "":
+            event_name_field = None
+        if not event_name_field and event_name_alias is None:
             event_name_alias = table_name
 
         return EventDataTable(

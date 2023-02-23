@@ -106,7 +106,10 @@ def create_form_property_input(
 ):
     if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
         kwargs["size"] = "sm"
-    if component_type in [dbc.Input, dbc.Textarea]:
+    if (
+        component_type in [dbc.Input, dbc.Textarea]
+        and kwargs.get("placeholder") is None
+    ):
         kwargs["placeholder"] = value_to_label(property)
 
     if icon_cls is not None:

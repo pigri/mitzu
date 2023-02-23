@@ -11,6 +11,8 @@ from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 
 SAMPLE_PROJECT_NAME = "sample_project"
 SAMPLE_PROJECT_ID = "sample_project_id"
+SAMPLE_CONNECTION_ID = "sample_connection_id"
+
 
 DEFAULT_EXPIRE_TIME = 600  # 10 minutes
 
@@ -28,7 +30,7 @@ def setup_sample_project(storage: MitzuStorage):
     if storage.get_project(SAMPLE_PROJECT_ID) is not None:
         return
     connection = M.Connection(
-        id=SAMPLE_PROJECT_ID,
+        id=SAMPLE_CONNECTION_ID,
         connection_name="Sample connection",
         connection_type=M.ConnectionType.SQLITE,
         host="sample_project",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import flask
-from typing import cast, Optional, List, Any
+from typing import Any, List, cast
 from dash import (
     ALL,
     Input,
@@ -39,7 +39,7 @@ CHANGE_PASSWORD_RESPONSE_CONTAINER = "user_change_password_response_container"
 
 
 @restricted_layout
-def layout(user_id: Optional[str] = None, **query_params) -> bc.Component:
+def layout(user_id: str, **query_params) -> bc.Component:
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
     if user_service is None:
@@ -110,7 +110,7 @@ def layout(user_id: Optional[str] = None, **query_params) -> bc.Component:
                         icon_cls="bi bi-envelope",
                         type="text",
                         required=True,
-                        value=user.email if editing else "",
+                        value=user.email if user and editing else "",
                     ),
                     create_form_property_input(
                         index_type=INDEX_TYPE,
