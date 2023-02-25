@@ -68,7 +68,7 @@ class RootUserCannotBeChanged(Exception):
     """
 
     def __init__(self):
-        super().__init__("Root user's email address cannot be changed")
+        super().__init__("Root user cannot be changed")
 
 
 class UserService:
@@ -127,6 +127,17 @@ class UserService:
         user.password_salt = salt
         self._store_user(user)
 
+    def update_role(self, user_id: str, role: Role):
+        user = self.get_user_by_id(user_id)
+        if user is None:
+            raise UserNotFoundException()
+
+        if user.email == configs.AUTH_ROOT_USER_EMAIL:
+            raise RootUserCannotBeChanged()
+
+        user.role = role
+        self._store_user(user)
+
     def _get_password_hash_with_salt(self, password: str) -> Tuple[str, str]:
         salt = "".join(random.choice(string.printable) for i in range(10))
         password_to_hash = f"{password}:{salt}"
@@ -175,7 +186,7 @@ class UserService:
         if user is None:
             raise UserNotFoundException()
 
-        if user.role == Role.ADMIN:
+        if user.email == configs.AUTH_ROOT_USER_EMAIL:
             raise RootUserCannotBeChanged()
 
         self._cache.clear(f"users.{user.id}")

@@ -133,3 +133,22 @@ def test_change_password(server: flask.Flask):
 
         assert res[U.CHANGE_PASSWORD_RESPONSE_CONTAINER] == "Password changed"
         assert updated_user is not None
+
+
+def test_change_role(server: flask.Flask):
+    with RequestContextLoggedInAsRootUser(server) as deps:
+        user_service = deps.user_service
+        email = "test@local"
+        password = "password"
+
+        user_id = user_service.new_user(email, password, password, role=US.Role.MEMBER)
+        res = U.update_role(
+            0,
+            role=US.Role.ADMIN,
+            pathname=P.create_path(P.USERS_HOME_PATH, user_id=user_id),
+        )
+        updated_user = user_service.get_user_by_id(user_id)
+
+        assert res[U.CHANGE_ROLE_RESPONSE_CONTAINER] == "Role updated"
+        assert updated_user is not None
+        assert updated_user.role == US.Role.ADMIN

@@ -37,10 +37,12 @@ USER_CLOSE_BUTTON = "user_close_button"
 NOT_FOUND_USER_CLOSE_BUTTON = "not_found_user_close_button"
 USER_DELETE_BUTTON = "user_delete_button"
 USER_CHANGE_PASSWORD_BUTTON = "user_change_password_button"
+USER_CHANGE_ROLE_BUTTON = "user_change_role_button"
 
 SAVE_RESPONSE_CONTAINER = "user_save_response_container"
 DELETE_RESPONSE_CONTAINER = "user_delete_response_container"
 CHANGE_PASSWORD_RESPONSE_CONTAINER = "user_change_password_response_container"
+CHANGE_ROLE_RESPONSE_CONTAINER = "user_change_role_response_container"
 
 
 @restricted_layout
@@ -188,7 +190,31 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         ),
                     ]
                     if user is None
-                    else []
+                    else (
+                        [
+                            html.Hr(),
+                            html.Div(
+                                [
+                                    dbc.Button(
+                                        ["Update"],
+                                        color="primary",
+                                        class_name="me-3",
+                                        id=USER_CHANGE_ROLE_BUTTON,
+                                    )
+                                    if user is not None
+                                    else None,
+                                ],
+                                className="mb-3",
+                            ),
+                            html.Div(
+                                children=[],
+                                id=CHANGE_ROLE_RESPONSE_CONTAINER,
+                                className="lead",
+                            ),
+                        ]
+                        if is_admin
+                        else []
+                    )
                 )
                 + (change_password_form() if show_change_password else [])
                 + [
@@ -326,6 +352,51 @@ def update_password(
     except Exception as e:
         return {
             CHANGE_PASSWORD_RESPONSE_CONTAINER: str(e),
+        }
+
+
+@callback(
+    output={
+        CHANGE_ROLE_RESPONSE_CONTAINER: Output(
+            CHANGE_ROLE_RESPONSE_CONTAINER, "children"
+        ),
+    },
+    inputs={
+        "n_clicks": Input(USER_CHANGE_ROLE_BUTTON, "n_clicks"),
+    },
+    state={
+        "role": State({"type": INDEX_TYPE, "index": PROP_ROLE}, "value"),
+        "pathname": State(MITZU_LOCATION, "pathname"),
+    },
+    prevent_initial_call=True,
+)
+@restricted_for_admin
+def update_role(n_clicks: int, role="", pathname: str = ""):
+    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+
+    user_service = deps.user_service
+
+    if user_service is None:
+        raise ValueError("User service is not set")
+
+    if deps.authorizer is None:
+        raise ValueError("Authorizer is not set")
+
+    try:
+        logged_in_user_id = deps.authorizer.get_current_user_id()
+
+        user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
+        if logged_in_user_id is None:
+            raise Exception("User is not signed in")
+
+        if user_id == "my-account":
+            user_id = logged_in_user_id
+
+        user_service.update_role(user_id, US.Role(role))
+        return {CHANGE_ROLE_RESPONSE_CONTAINER: "Role updated"}
+    except Exception as e:
+        return {
+            CHANGE_ROLE_RESPONSE_CONTAINER: str(e),
         }
 
 
