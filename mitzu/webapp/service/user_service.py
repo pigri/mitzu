@@ -13,6 +13,13 @@ class Role(Enum):
     ADMIN = "admin"
     MEMBER = "member"
 
+    @classmethod
+    def all_values(cls):
+        return [
+            Role.ADMIN,
+            Role.MEMBER,
+        ]
+
 
 @dataclass
 class User:

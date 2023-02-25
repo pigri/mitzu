@@ -122,8 +122,11 @@ def create_form_property_input(
     else:
         label_children = [value_to_label(property)]
     if read_only:
+        component_type = dbc.Input
         kwargs["readonly"] = True
         kwargs["disabled"] = True
+        if "data" in kwargs.keys():
+            del kwargs["data"]
     else:
         kwargs["id"] = {"type": index_type, "index": property}
     return dbc.Row(

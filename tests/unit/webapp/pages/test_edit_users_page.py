@@ -101,13 +101,14 @@ def test_delete_user(server: flask.Flask):
         res = U.create_new_user(
             0,
             email="a@b",
+            role=US.Role.MEMBER.value,
             password="password",
             confirm_password="password",
         )
+        assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
         user = user_service.get_user_by_email_and_password("a@b", "password")
         assert user is not None
-
-        assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
+        assert user.role == US.Role.MEMBER
 
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
         deleted_user = user_service.get_user_by_email("a@b")

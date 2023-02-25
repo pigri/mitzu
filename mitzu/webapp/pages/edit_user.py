@@ -12,6 +12,7 @@ from dash import (
 )
 import dash_bootstrap_components as dbc
 import dash.development.base_component as bc
+import dash_mantine_components as dmc
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
@@ -26,6 +27,7 @@ from mitzu.webapp.webapp import MITZU_LOCATION
 
 INDEX_TYPE = "user_property"
 PROP_EMAIL = "email"
+PROP_ROLE = "role"
 PROP_PASSWORD = "password"
 PROP_CONFIRM_PASSWORD = "confirm_password"
 
@@ -58,6 +60,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
     if logged_in_user is None:
         raise ValueError("Logged in user is not found")
 
+    is_admin = deps.authorizer.get_current_user_role(flask.request) == US.Role.ADMIN
     show_password_fields = user_id == "new"
     show_change_password = False
     show_delete_button = user_id != "new"
@@ -115,6 +118,19 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         required=True,
                         value=user.email if user is not None else "",
                         read_only=user is not None,
+                    ),
+                    create_form_property_input(
+                        index_type=INDEX_TYPE,
+                        property=PROP_ROLE,
+                        icon_cls="bi bi-person-fill",
+                        component_type=dmc.Select,
+                        data=[
+                            {"label": v.name.lower(), "value": v.value}
+                            for v in US.Role.all_values()
+                        ],
+                        required=True,
+                        value=user.role if user is not None else US.Role.MEMBER.value,
+                        read_only=user is not None and not is_admin,
                     ),
                     create_form_property_input(
                         index_type=INDEX_TYPE,
@@ -229,6 +245,7 @@ def change_password_form():
     },
     state={
         "email": State({"type": INDEX_TYPE, "index": PROP_EMAIL}, "value"),
+        "role": State({"type": INDEX_TYPE, "index": PROP_ROLE}, "value"),
         "password": State({"type": INDEX_TYPE, "index": PROP_PASSWORD}, "value"),
         "confirm_password": State(
             {"type": INDEX_TYPE, "index": PROP_CONFIRM_PASSWORD}, "value"
@@ -237,7 +254,7 @@ def change_password_form():
     prevent_initial_call=True,
 )
 @restricted_for_admin
-def create_new_user(n_clicks: int, email="", password="", confirm_password=""):
+def create_new_user(n_clicks: int, email="", role="", password="", confirm_password=""):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
@@ -245,7 +262,7 @@ def create_new_user(n_clicks: int, email="", password="", confirm_password=""):
         raise ValueError("User service is not set")
 
     try:
-        user_service.new_user(email, password, confirm_password)
+        user_service.new_user(email, password, confirm_password, role=US.Role(role))
         return {
             SAVE_RESPONSE_CONTAINER: "User created!",
         }
