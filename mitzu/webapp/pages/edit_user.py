@@ -18,7 +18,11 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.service.user_service as US
 from mitzu.webapp.helper import create_form_property_input
-from mitzu.webapp.auth.decorator import restricted_layout, restricted
+from mitzu.webapp.auth.decorator import (
+    restricted_layout,
+    restricted,
+    restricted_for_admin,
+)
 from mitzu.webapp.webapp import MITZU_LOCATION
 
 INDEX_TYPE = "user_property"
@@ -229,7 +233,7 @@ def change_password_form():
     },
     prevent_initial_call=True,
 )
-@restricted
+@restricted_for_admin
 def create_new_user(n_clicks: int, values: List[Any] = []):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
@@ -312,7 +316,7 @@ def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
     },
     prevent_initial_call=True,
 )
-@restricted
+@restricted_for_admin
 def delete_user(n_clicks: int, pathname: str = ""):
     user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))

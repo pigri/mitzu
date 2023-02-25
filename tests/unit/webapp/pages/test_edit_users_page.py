@@ -33,7 +33,9 @@ class RequestContextLoggedInAsRootUser:
         storage = S.MitzuStorage(cache)
 
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-        token = authorizer._generate_new_token_for_identity(root_user_id.id)
+        token = authorizer._generate_new_token_for_identity(
+            root_user_id.id, role=US.Role.ADMIN
+        )
 
         deps = DEPS.Dependencies(
             authorizer=authorizer,
