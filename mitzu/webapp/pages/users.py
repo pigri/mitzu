@@ -29,6 +29,7 @@ def create_users_table(user_service: user_service.UserService):
         html.Tr(
             [
                 html.Th("User Email", className=TBL_HEADER_CLS + " fw-bold"),
+                html.Th("Role", className=TBL_HEADER_CLS + " fw-bold"),
                 html.Th("", className=TBL_HEADER_CLS),
             ],
         )
@@ -41,6 +42,7 @@ def create_users_table(user_service: user_service.UserService):
             html.Tr(
                 [
                     html.Td(user.email, className=TBL_CLS),
+                    html.Td(user.role.value, className=TBL_CLS),
                     html.Td(
                         dbc.Button(
                             "Edit",
