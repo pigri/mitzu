@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import flask
-from typing import Any, List, cast
+from typing import cast
 from dash import (
-    ALL,
     Input,
     Output,
     State,
@@ -229,12 +228,16 @@ def change_password_form():
         "n_clicks": Input(USER_SAVE_BUTTON, "n_clicks"),
     },
     state={
-        "values": State({"type": INDEX_TYPE, "index": ALL}, "value"),
+        "email": State({"type": INDEX_TYPE, "index": PROP_EMAIL}, "value"),
+        "password": State({"type": INDEX_TYPE, "index": PROP_PASSWORD}, "value"),
+        "confirm_password": State(
+            {"type": INDEX_TYPE, "index": PROP_CONFIRM_PASSWORD}, "value"
+        ),
     },
     prevent_initial_call=True,
 )
 @restricted_for_admin
-def create_new_user(n_clicks: int, values: List[Any] = []):
+def create_new_user(n_clicks: int, email="", password="", confirm_password=""):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
@@ -242,7 +245,7 @@ def create_new_user(n_clicks: int, values: List[Any] = []):
         raise ValueError("User service is not set")
 
     try:
-        user_service.new_user(values[0], values[1], values[2])
+        user_service.new_user(email, password, confirm_password)
         return {
             SAVE_RESPONSE_CONTAINER: "User created!",
         }
@@ -262,13 +265,18 @@ def create_new_user(n_clicks: int, values: List[Any] = []):
         "n_clicks": Input(USER_CHANGE_PASSWORD_BUTTON, "n_clicks"),
     },
     state={
-        "values": State({"type": INDEX_TYPE, "index": ALL}, "value"),
+        "password": State({"type": INDEX_TYPE, "index": PROP_PASSWORD}, "value"),
+        "confirm_password": State(
+            {"type": INDEX_TYPE, "index": PROP_CONFIRM_PASSWORD}, "value"
+        ),
         "pathname": State(MITZU_LOCATION, "pathname"),
     },
     prevent_initial_call=True,
 )
 @restricted
-def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
+def update_password(
+    n_clicks: int, password="", confirm_password="", pathname: str = ""
+):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
 
     user_service = deps.user_service
@@ -296,7 +304,7 @@ def update_password(n_clicks: int, values: List[Any] = [], pathname: str = ""):
         if logged_in_user.role != US.Role.ADMIN and logged_in_user.id != user_id:
             raise Exception("User is not authorized to change this password")
 
-        user_service.update_password(user_id, values[0], values[1])
+        user_service.update_password(user_id, password, confirm_password)
         return {CHANGE_PASSWORD_RESPONSE_CONTAINER: "Password changed"}
     except Exception as e:
         return {

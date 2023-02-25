@@ -100,7 +100,9 @@ def test_delete_user(server: flask.Flask):
         user_service = deps.user_service
         res = U.create_new_user(
             0,
-            ["a@b", "password", "password"],
+            email="a@b",
+            password="password",
+            confirm_password="password",
         )
         user = user_service.get_user_by_email_and_password("a@b", "password")
         assert user is not None
@@ -122,8 +124,9 @@ def test_change_password(server: flask.Flask):
         user_id = user_service.new_user(email, old_password, old_password)
         res = U.update_password(
             0,
-            [new_password, new_password],
-            P.create_path(P.USERS_HOME_PATH, user_id=user_id),
+            password=new_password,
+            confirm_password=new_password,
+            pathname=P.create_path(P.USERS_HOME_PATH, user_id=user_id),
         )
         updated_user = user_service.get_user_by_email_and_password(email, new_password)
 
