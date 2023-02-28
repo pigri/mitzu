@@ -12,6 +12,7 @@ import mitzu.webapp.cache as C
 import mitzu.helper as H
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.explore.explore_page as EXP
+import mitzu.webapp.service.events_service as ES
 from dash import DiskcacheManager, Dash
 import threading
 import flask
@@ -43,13 +44,14 @@ def external_dashboard(
     H.LOGGER.setLevel(logging_level)
     log = logging.getLogger("werkzeug")
     log.setLevel(logging_level)
-
+    storage = SingleProjectMitzuStorage(discovered_project)
     callback_manager = DiskcacheManager(diskcache.Cache("./"))
     dependencies = DEPS.Dependencies(
         authorizer=None,
-        storage=SingleProjectMitzuStorage(discovered_project),
+        storage=storage,
         cache=C.DiskMitzuCache(),
         queue=C.DiskMitzuCache(),
+        events_service=ES.EventsService(storage),
     )
 
     app = Dash(

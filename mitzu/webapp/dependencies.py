@@ -10,6 +10,7 @@ import mitzu.webapp.cache as C
 import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.user_service as U
+import mitzu.webapp.service.events_service as E
 
 CONFIG_KEY = "dependencies"
 
@@ -21,6 +22,7 @@ class Dependencies:
     storage: S.MitzuStorage
     queue: C.MitzuCache
     cache: C.MitzuCache
+    events_service: E.EventsService
     user_service: Optional[U.UserService] = None
 
     @classmethod
@@ -76,10 +78,13 @@ class Dependencies:
         if configs.SETUP_SAMPLE_PROJECT:
             S.setup_sample_project(storage)
 
+        events_service = E.EventsService(storage)
+
         return Dependencies(
             authorizer=authorizer,
             cache=cache,
             storage=storage,
             queue=queue,
             user_service=user_service,
+            events_service=events_service,
         )

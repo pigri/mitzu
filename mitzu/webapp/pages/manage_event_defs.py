@@ -90,13 +90,18 @@ def no_project_layout():
 
 @restricted_layout
 def layout(project_id: Optional[str], **query_params) -> bc.Component:
-    storage = cast(
+    events_service = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    ).events_service
 
-    project_ids = storage.list_projects()
-    projects = {p_id: storage.get_project(p_id) for p_id in project_ids}
-    options = [{"label": p.project_name, "value": p.id} for p in projects.values()]
+    projects = events_service.list_all_projects()
+    selected_project: Optional[M.Project] = None
+    for p in projects:
+        if p.id == project_id:
+            selected_project = p
+            break
+
+    options = [{"label": p.project_name, "value": p.id} for p in projects]
 
     return html.Div(
         [
@@ -172,9 +177,7 @@ def layout(project_id: Optional[str], **query_params) -> bc.Component:
                             ),
                         ]
                     ),
-                    create_event_table_component(
-                        projects.get(project_id) if project_id is not None else None,
-                    ),
+                    create_event_table_component(selected_project),
                     html.Hr(),
                 ],
             ),
@@ -223,55 +226,39 @@ def handle_project_discovery(
     set_progress: Callable, discovery_clicks: int, project_id: str
 ):
     rows: List[bc.Component] = []
-
-    storage = cast(
+    events_service = cast(
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    ).events_service
 
     try:
         if ctx.triggered_id == SELECT_PROJECT_DD:
             set_progress(([], ""))
-            project = storage.get_project(project_id)
-            dp = project._discovered_project.get_value()
-            if dp is not None:
-                for edt, df in dp.definitions.items():
-                    for evt_df in df.values():
-                        rows.append(create_table_row(edt, evt_df))
+            defs = events_service.get_project_definition(project_id)
+            for edt, df in defs.items():
+                for evt_df in df.values():
+                    rows.append(create_table_row(edt, evt_df))
         else:
-            project = storage.get_project(project_id)
-            edt_count = len(project.event_data_tables)
-            processed_edts = []
 
             def edt_callback(
                 edt: M.EventDataTable,
                 defs: Dict[str, M.Reference[M.EventDef]],
                 exc: Optional[Exception],
+                processed_count: int,
+                total_count: int,
             ):
                 if exc is None:
-                    storage.set_event_data_table_definition(
-                        project_id, edt_full_name=edt.get_full_name(), definitions=defs
-                    )
                     for df in defs.values():
                         rows.append(create_table_row(edt, df))
                 else:
-                    traceback.print_exception(type(exc), exc, exc.__traceback__)
                     rows.append(create_failed_table_row(edt, exc))
-                processed_edts.append(edt)
                 set_progress(
                     (
                         rows,
-                        f"Discovering tables {len(processed_edts)*100/edt_count:.0f}%",
+                        f"Discovering tables {processed_count*100/total_count:.0f}%",
                     )
                 )
 
-            set_progress(([], "Discovering tables 0%"))
-            discovered_project = project.discover_project(False, edt_callback)
-            storage.set_project(
-                project_id=discovered_project.project.id,
-                project=discovered_project.project,
-            )
-        if rows is None or len(rows) == 0:
-            rows = []
+            events_service.discover_project(project_id, callback=edt_callback)
 
         return (rows, "")
 

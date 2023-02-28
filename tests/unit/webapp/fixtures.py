@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, List
 from dataclasses import dataclass, field
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
+import mitzu.webapp.service.events_service as E
 import mitzu.model as M
 from mitzu.webapp.cache import MitzuCache
 import flask
@@ -50,8 +51,15 @@ def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
         storage.set_event_data_table_definition(
             project_id=project.id, definitions=defs, edt_full_name=edt.get_full_name()
         )
-
-    return DEPS.Dependencies(authorizer=None, storage=storage, cache=cache, queue=queue)
+    evt_service = E.EventsService(storage)
+    return DEPS.Dependencies(
+        authorizer=None,
+        storage=storage,
+        cache=cache,
+        queue=queue,
+        events_service=evt_service,
+        user_service=None,
+    )
 
 
 @fixture(scope="session")

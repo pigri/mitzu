@@ -8,6 +8,7 @@ from tests.unit.webapp.fixtures import InMemoryCache
 import mitzu.webapp.configs as configs
 import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.service.user_service as US
+import mitzu.webapp.service.events_service as ES
 import mitzu.webapp.pages.paths as P
 
 
@@ -35,12 +36,15 @@ class RequestContextLoggedInAsRootUser:
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
         token = authorizer._generate_new_token_for_identity(root_user_id.id)
 
+        event_service = ES.EventsService(storage)
+
         deps = DEPS.Dependencies(
             authorizer=authorizer,
             storage=storage,
             queue=None,
             cache=cache,
             user_service=user_service,
+            events_service=event_service,
         )
 
         self.context = self._server.test_request_context(
