@@ -185,13 +185,16 @@ class OAuthAuthorizer:
 
         return resp.json()["id_token"]
 
-    def _generate_new_token_for_identity(self, identity: str) -> str:
+    def _generate_new_token_for_identity(
+        self, identity: str, role: U.Role = U.Role.MEMBER
+    ) -> str:
         now = int(time.time())
         claims = {
             "iat": now - 10,
             "exp": now + self._config.session_timeout,
             "iss": "mitzu",
             "sub": identity,
+            "rol": role.value,
         }
         return jwt.encode(
             claims, key=self._config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -199,9 +202,16 @@ class OAuthAuthorizer:
 
     def _validate_token(self, token: str) -> Optional[Dict]:
         try:
-            return jwt.decode(
+            claims = jwt.decode(
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
+            if "rol" in claims.keys():
+                claims["rol"] = U.Role(claims["rol"])
+            else:
+                claims[
+                    "rol"
+                ] = U.Role.MEMBER  # backward compatibility with old sessions
+            return claims
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
             return None
@@ -301,13 +311,29 @@ class OAuthAuthorizer:
             if auth_token is not None:
                 identity = self._validate_token(auth_token)
                 if identity is not None:
-                    new_token = self._generate_new_token_for_identity(identity["sub"])
+                    new_token = self._generate_new_token_for_identity(
+                        identity["sub"], role=identity["rol"]
+                    )
                     resp.set_cookie(self._config.token_cookie_name, new_token)
             return resp
 
     def is_request_authorized(self, request: flask.Request) -> bool:
         auth_token = request.cookies.get(self._config.token_cookie_name)
         return auth_token is not None and self._validate_token(auth_token) is not None
+
+    def get_current_user_role(self, request: flask.Request) -> Optional[U.Role]:
+        auth_token = request.cookies.get(self._config.token_cookie_name)
+        if self._config.user_service is None:
+            return U.Role.MEMBER
+
+        if auth_token is None:
+            return None
+
+        claims = self._validate_token(auth_token)
+        if claims is None or "rol" not in claims.keys():
+            return None
+
+        return U.Role(claims["rol"])
 
     def login_local_user(self, email: str, password: str) -> bool:
         if self._config.user_service is None:
@@ -317,7 +343,7 @@ class OAuthAuthorizer:
         if user is None:
             return False
 
-        token = self._generate_new_token_for_identity(user.id)
+        token = self._generate_new_token_for_identity(user.id, role=user.role)
         dash.callback_context.response.set_cookie(self._config.token_cookie_name, token)
         return True
 

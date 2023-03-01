@@ -6,6 +6,7 @@ from mitzu.webapp.service.user_service import (
     UserNotFoundException,
     UserPasswordAndConfirmationDoNotMatch,
     RootUserCannotBeChanged,
+    Role,
 )
 from tests.unit.webapp.fixtures import InMemoryCache
 import mitzu.webapp.configs as configs
@@ -85,6 +86,28 @@ def test_update_password():
     assert service.get_user_by_email_and_password(email, password) is not None
 
 
+def test_update_role():
+    service = UserService(InMemoryCache(), root_password="password")
+    email = "a@b.c"
+    password = "password"
+
+    with pytest.raises(UserNotFoundException):
+        service.update_role("id", Role.ADMIN)
+
+    with pytest.raises(RootUserCannotBeChanged):
+        root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
+        service.update_role(root_user.id, Role.MEMBER)
+
+    user_id = service.new_user(email, password, password, role=Role.MEMBER)
+    user = service.get_user_by_id(user_id)
+    assert user is not None
+    assert user.role == Role.MEMBER
+
+    service.update_role(user_id, Role.ADMIN)
+    user = service.get_user_by_id(user_id)
+    assert user.role == Role.ADMIN
+
+
 def test_delete_user():
     service = UserService(InMemoryCache())
     email = "a@b.c"
@@ -105,3 +128,13 @@ def test_delete_root_user():
 
     with pytest.raises(RootUserCannotBeChanged):
         service.delete_user(root_user.id)
+
+
+def test_is_root_user():
+    service = UserService(InMemoryCache(), root_password="password")
+    root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
+
+    assert service.is_root_user(root_user.id)
+
+    user_id = service.new_user("new_user@mail.com", "password", "password")
+    assert not service.is_root_user(user_id)

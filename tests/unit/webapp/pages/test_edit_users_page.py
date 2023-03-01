@@ -34,7 +34,9 @@ class RequestContextLoggedInAsRootUser:
         storage = S.MitzuStorage(cache)
 
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-        token = authorizer._generate_new_token_for_identity(root_user_id.id)
+        token = authorizer._generate_new_token_for_identity(
+            root_user_id.id, role=US.Role.ADMIN
+        )
 
         event_service = ES.EventsService(storage)
 
@@ -102,12 +104,15 @@ def test_delete_user(server: flask.Flask):
         user_service = deps.user_service
         res = U.create_new_user(
             0,
-            ["a@b", "password", "password"],
+            email="a@b",
+            role=US.Role.MEMBER.value,
+            password="password",
+            confirm_password="password",
         )
+        assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
         user = user_service.get_user_by_email_and_password("a@b", "password")
         assert user is not None
-
-        assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
+        assert user.role == US.Role.MEMBER
 
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
         deleted_user = user_service.get_user_by_email("a@b")
@@ -124,10 +129,30 @@ def test_change_password(server: flask.Flask):
         user_id = user_service.new_user(email, old_password, old_password)
         res = U.update_password(
             0,
-            [new_password, new_password],
-            P.create_path(P.USERS_HOME_PATH, user_id=user_id),
+            password=new_password,
+            confirm_password=new_password,
+            pathname=P.create_path(P.USERS_HOME_PATH, user_id=user_id),
         )
         updated_user = user_service.get_user_by_email_and_password(email, new_password)
 
         assert res[U.CHANGE_PASSWORD_RESPONSE_CONTAINER] == "Password changed"
         assert updated_user is not None
+
+
+def test_change_role(server: flask.Flask):
+    with RequestContextLoggedInAsRootUser(server) as deps:
+        user_service = deps.user_service
+        email = "test@local"
+        password = "password"
+
+        user_id = user_service.new_user(email, password, password, role=US.Role.MEMBER)
+        res = U.update_role(
+            0,
+            role=US.Role.ADMIN,
+            pathname=P.create_path(P.USERS_HOME_PATH, user_id=user_id),
+        )
+        updated_user = user_service.get_user_by_id(user_id)
+
+        assert res[U.CHANGE_ROLE_RESPONSE_CONTAINER] == "Role updated"
+        assert updated_user is not None
+        assert updated_user.role == US.Role.ADMIN

@@ -13,6 +13,13 @@ class Role(Enum):
     ADMIN = "admin"
     MEMBER = "member"
 
+    @classmethod
+    def all_values(cls):
+        return [
+            Role.ADMIN,
+            Role.MEMBER,
+        ]
+
 
 @dataclass
 class User:
@@ -61,7 +68,7 @@ class RootUserCannotBeChanged(Exception):
     """
 
     def __init__(self):
-        super().__init__("Root user's email address cannot be changed")
+        super().__init__("Root user cannot be changed")
 
 
 class UserService:
@@ -85,6 +92,10 @@ class UserService:
                 root_password,
                 role=Role.ADMIN,
             )
+
+    def is_root_user(self, user_id: str) -> bool:
+        user = self.get_user_by_id(user_id)
+        return user is not None and user.email == configs.AUTH_ROOT_USER_EMAIL
 
     def list_users(self) -> List[User]:
         result = []
@@ -118,6 +129,17 @@ class UserService:
         hash, salt = self._get_password_hash_with_salt(password)
         user.password_hash = hash
         user.password_salt = salt
+        self._store_user(user)
+
+    def update_role(self, user_id: str, role: Role):
+        user = self.get_user_by_id(user_id)
+        if user is None:
+            raise UserNotFoundException()
+
+        if user.email == configs.AUTH_ROOT_USER_EMAIL:
+            raise RootUserCannotBeChanged()
+
+        user.role = role
         self._store_user(user)
 
     def _get_password_hash_with_salt(self, password: str) -> Tuple[str, str]:
@@ -168,7 +190,7 @@ class UserService:
         if user is None:
             raise UserNotFoundException()
 
-        if user.role == Role.ADMIN:
+        if user.email == configs.AUTH_ROOT_USER_EMAIL:
             raise RootUserCannotBeChanged()
 
         self._cache.clear(f"users.{user.id}")

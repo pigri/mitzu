@@ -14,6 +14,7 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.helper import TBL_CLS, TBL_HEADER_CLS
 from mitzu.webapp.auth.decorator import restricted_layout
+import mitzu.webapp.service.user_service as US
 
 
 ADD_USER_BUTTON = "user_add_user"
@@ -28,6 +29,7 @@ def create_users_table(user_service: user_service.UserService):
         html.Tr(
             [
                 html.Th("User Email", className=TBL_HEADER_CLS + " fw-bold"),
+                html.Th("Role", className=TBL_HEADER_CLS + " fw-bold"),
                 html.Th("", className=TBL_HEADER_CLS),
             ],
         )
@@ -40,6 +42,7 @@ def create_users_table(user_service: user_service.UserService):
             html.Tr(
                 [
                     html.Td(user.email, className=TBL_CLS),
+                    html.Td(user.role.value, className=TBL_CLS),
                     html.Td(
                         dbc.Button(
                             "Edit",
@@ -72,6 +75,12 @@ def layout(**query_params) -> bc.Component:
     if user_service is None:
         raise ValueError("User service is not set")
 
+    authorizer = deps.authorizer
+    if authorizer is None:
+        raise ValueError("Authorizer is not set")
+
+    is_admin = authorizer.get_current_user_role(flask.request) == US.Role.ADMIN
+
     table = create_users_table(user_service)
 
     return html.Div(
@@ -82,14 +91,20 @@ def layout(**query_params) -> bc.Component:
                     html.H4("Registered Users"),
                     html.Hr(),
                     table,
-                    html.Hr(),
-                    dbc.Button(
-                        [html.I(className="bi bi-plus-circle me-1"), "Add user"],
-                        color="primary",
-                        href=P.create_path(P.USERS_HOME_PATH, user_id="new"),
-                        id=ADD_USER_BUTTON,
-                    ),
                 ]
+                + (
+                    [
+                        html.Hr(),
+                        dbc.Button(
+                            [html.I(className="bi bi-plus-circle me-1"), "Add user"],
+                            color="primary",
+                            href=P.create_path(P.USERS_HOME_PATH, user_id="new"),
+                            id=ADD_USER_BUTTON,
+                        ),
+                    ]
+                    if is_admin
+                    else []
+                )
             ),
         ]
     )
