@@ -128,3 +128,13 @@ def test_delete_root_user():
 
     with pytest.raises(RootUserCannotBeChanged):
         service.delete_user(root_user.id)
+
+
+def test_is_root_user():
+    service = UserService(InMemoryCache(), root_password="password")
+    root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
+
+    assert service.is_root_user(root_user.id)
+
+    user_id = service.new_user("new_user@mail.com", "password", "password")
+    assert not service.is_root_user(user_id)
