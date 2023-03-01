@@ -93,6 +93,10 @@ class UserService:
                 role=Role.ADMIN,
             )
 
+    def is_root_user(self, user_id: str) -> bool:
+        user = self.get_user_by_id(user_id)
+        return user is not None and user.email == configs.AUTH_ROOT_USER_EMAIL
+
     def list_users(self) -> List[User]:
         result = []
         for key in self._cache.list_keys("users."):

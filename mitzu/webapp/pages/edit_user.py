@@ -66,7 +66,6 @@ def layout(user_id: str, **query_params) -> bc.Component:
     show_password_fields = user_id == "new"
     show_change_password = False
     show_delete_button = user_id != "new"
-
     if user_id is not None and user_id != "new":
         if user_id == "my-account":
             user_id = logged_in_user.id
@@ -103,8 +102,6 @@ def layout(user_id: str, **query_params) -> bc.Component:
             ]
         )
 
-    user is not None
-
     return html.Div(
         [
             NB.create_mitzu_navbar("users_management_page", []),
@@ -132,7 +129,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         ],
                         required=True,
                         value=user.role if user is not None else US.Role.MEMBER.value,
-                        read_only=user is not None and not is_admin,
+                        read_only=user_service.is_root_user(user_id),
                     ),
                     create_form_property_input(
                         index_type=INDEX_TYPE,
@@ -200,6 +197,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                                         color="primary",
                                         class_name="me-3",
                                         id=USER_CHANGE_ROLE_BUTTON,
+                                        disabled=user_service.is_root_user(user_id),
                                     )
                                     if user is not None
                                     else None,
