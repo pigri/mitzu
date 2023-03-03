@@ -18,7 +18,7 @@ import mitzu.serialization as SE
 from mitzu.webapp.helper import MITZU_LOCATION
 
 import pandas as pd
-from dash import Input, Output, State, ctx, dcc, html, callback, no_update
+from dash import Input, Output, State, ctx, dcc, html, callback, no_update, dash_table
 from mitzu.webapp.helper import get_final_all_inputs
 from mitzu.webapp.auth.decorator import restricted
 import mitzu.visualization.plot as PLT
@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 
 GRAPH = "graph"
 MESSAGE = "lead fw-normal text-center h-100 w-100"
-TABLE = "table"
+TABLE = "explore_results_table"
 SQL_AREA = "sql_area"
 
 
@@ -44,7 +44,9 @@ MARKDOWN = """```sql
 {sql}
 ```"""
 
-GRAPH_CONTAINER = "graph_container d-flex align-items-center justify-content-stretch"
+GRAPH_CONTAINER = (
+    "graph_container d-flex justify-content-stretch align-items-center pt-3"
+)
 GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 
 
@@ -116,16 +118,28 @@ def create_table(
     result_df = get_metric_result_df(hash_key, metric, storage)
     result_df = result_df.sort_values(by=[result_df.columns[0], result_df.columns[1]])
     result_df.columns = [col[1:].replace("_", " ").title() for col in result_df.columns]
-
-    table = dbc.Table.from_dataframe(
-        result_df,
-        id={"type": TABLE, "index": TABLE},
-        striped=True,
-        bordered=True,
-        hover=True,
-        size="sm",
-        style=CONTENT_STYLE,
+    table = dash_table.DataTable(
+        id=TABLE,
+        columns=[
+            {"name": i, "id": i, "deletable": False, "selectable": False}
+            for i in result_df.columns
+        ],
+        data=result_df.to_dict("records"),
+        editable=False,
+        sort_action="native",
+        sort_mode="single",
+        filter_action="native",
+        export_columns="all",
+        export_headers="names",
+        export_format="csv",
+        page_size=20,
+        style_cell={"padding": "10px", "fontFamily": "var(--mdb-font-sans-serif)"},
+        style_header={
+            "backgroundColor": "var(--mdb-gray-100)",
+            "fontWeight": "bold",
+        },
     )
+
     return table
 
 

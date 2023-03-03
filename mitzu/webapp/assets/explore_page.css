@@ -3,6 +3,7 @@
   --mdb-body-font-size-large: 18px;
   --mdb-body-font-size: 12px;
   --mdb-body-font-size-small: 8px;
+  --expore-content-min-height: 450px;
 }
 
 .complex_segment {
@@ -16,7 +17,7 @@
 }
 
 .graph_container {
-  min-height: 450px;
+  min-height: var(--expore-content-min-height);
 }
 
 .spinner-border {
@@ -105,4 +106,92 @@
   /* Simple segment value dropdown */
   background: transparent;
   border: none;
+}
+
+#explore_results_table {
+  width: 100%;
+  font-family: var(--mdb-font-sans-serif) !important;
+  min-height: var(--expore-content-min-height);
+}
+
+.dash-table-container
+  .dash-spreadsheet-container
+  .dash-spreadsheet-inner
+  th.dash-filter
+  input.dash-filter--case--sensitive {
+  border-color: var(--mdb-primary) !important;
+  color: var(--mdb-primary) !important;
+}
+
+.dash-table-container
+  .dash-spreadsheet-container
+  .dash-spreadsheet-inner
+  th:hover
+  [class^="dash-filter--"]:not(.disabled) {
+  border-color: var(--mdb-primary) !important;
+  color: var(--mdb-primary) !important;
+}
+
+.dash-table-container .export {
+  /* .btn .btn-info merged to make Datatable export button look like DBC button */
+  --mdb-btn-bg: #54b4d3;
+  --mdb-btn-color: #fff;
+  --mdb-btn-box-shadow: 0 4px 9px -4px #54b4d3;
+  --mdb-btn-hover-bg: #50abc8;
+  --mdb-btn-hover-color: #fff;
+  --mdb-btn-focus-bg: #50abc8;
+  --mdb-btn-focus-color: #fff;
+  --mdb-btn-active-bg: #4ca2be;
+  --mdb-btn-active-color: #fff;
+  --mdb-btn-padding-x: 1.5rem;
+  --mdb-btn-padding-y: 0.375rem;
+  --mdb-btn-font-size: 0.75rem;
+  --mdb-btn-font-weight: 500;
+  --mdb-btn-line-height: 1.5;
+  --mdb-btn-color: #4f4f4f;
+  --mdb-btn-bg: transparent;
+  --mdb-btn-border-width: 2px;
+  --mdb-btn-border-color: transparent;
+  --mdb-btn-hover-border-color: transparent;
+  --mdb-btn-disabled-opacity: 0.65;
+  --mdb-btn-focus-box-shadow: 0 0 0 0.25rem;
+  --mdb-btn-padding-top: 0.625rem;
+  --mdb-btn-padding-bottom: 0.5rem;
+  --mdb-btn-border-width: 0;
+  --mdb-btn-border-color: none;
+  --mdb-btn-border-radius: 0.25rem;
+  --mdb-btn-box-shadow: 0 4px 9px -4px rgba(0, 0, 0, 0.35);
+  --mdb-btn-hover-box-shadow: 0 8px 9px -4px rgba(0, 0, 0, 0.15),
+    0 4px 18px 0 rgba(0, 0, 0, 0.1);
+  --mdb-btn-focus-box-shadow: 0 8px 9px -4px rgba(0, 0, 0, 0.15),
+    0 4px 18px 0 rgba(0, 0, 0, 0.1);
+  --mdb-btn-active-box-shadow: 0 8px 9px -4px rgba(0, 0, 0, 0.15),
+    0 4px 18px 0 rgba(0, 0, 0, 0.1);
+
+  padding-top: var(--mdb-btn-padding-top);
+  padding-bottom: var(--mdb-btn-padding-bottom);
+  text-transform: uppercase;
+  vertical-align: bottom;
+  border: 0;
+  border-radius: var(--mdb-btn-border-radius);
+  box-shadow: var(--mdb-btn-box-shadow);
+  margin-bottom: 6px;
+
+  display: inline-block;
+  padding: var(--mdb-btn-padding-y) var(--mdb-btn-padding-x);
+  font-family: var(--mdb-btn-font-family);
+  font-size: var(--mdb-btn-font-size);
+  font-weight: var(--mdb-btn-font-weight);
+  line-height: var(--mdb-btn-line-height);
+  color: var(--mdb-light);
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  border: var(--mdb-btn-border-width) solid var(--mdb-btn-border-color);
+  background-color: var(--mdb-info);
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
