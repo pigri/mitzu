@@ -59,13 +59,19 @@ def create_graph_container() -> bc.Component:
         )
     else:
         return html.Div(
-            dcc.Loading(id=GRAPH_CONTAINER, children=[], color="#287bb5", type="dot"),
-            className=GRAPH_CONTAINER,
+            dcc.Loading(
+                id=GRAPH_CONTAINER,
+                children=[],
+                color="#287bb5",
+                type="dot",
+                className=GRAPH_CONTAINER,
+            ),
         )
 
 
 def create_metric_hash_key(metric: M.Metric) -> str:
     metric_dict = SE.to_dict(metric)
+
     #  We need to remove these keys from the metric dict as changes in these shouldn't trigger reexecution
     metric_dict["co"]["mn"] = None
     metric_dict["co"]["mgc"] = None
@@ -189,7 +195,6 @@ def create_callbacks():
             metric_id=State(EXP.METRIC_ID_VALUE, "children"),
         ),
         interval=configs.GRAPH_POLL_INTERVAL_MS,
-        prevent_initial_call=True,
         background=configs.BACKGROUND_CALLBACK,
         running=[
             (
@@ -245,7 +250,8 @@ def create_callbacks():
                     className=MESSAGE,
                 )
 
-            metric = EXP.create_metric_from_all_inputs(all_inputs, dp)
+            metric, _, _ = EXP.create_metric_from_all_inputs(all_inputs, dp)
+
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)
 

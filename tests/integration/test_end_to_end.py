@@ -150,7 +150,7 @@ def test_retention_query():
         time_group="hour",
         start_dt="2020-01-01",
         end_dt="2020-01-02",
-        resolution="minute",
+        resolution="one_user_event_per_minute",
     )
 
     print(conv.get_df())

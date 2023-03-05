@@ -31,7 +31,7 @@ class Dependencies:
         if configs.STORAGE_REDIS_HOST is not None:
             delegate_cache = C.RedisMitzuCache()
         else:
-            delegate_cache = C.DiskMitzuCache()
+            delegate_cache = C.DiskMitzuCache("cache")
         cache = C.RequestCache(delegate_cache)
 
         authorizer = None
@@ -71,7 +71,7 @@ class Dependencies:
         if configs.QUEUE_REDIS_HOST is not None:
             queue = C.RedisMitzuCache()
         else:
-            queue = C.DiskMitzuCache()
+            queue = C.DiskMitzuCache("queue")
 
         # Adding cache layer over storage
         storage = S.MitzuStorage(cache)

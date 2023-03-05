@@ -49,8 +49,8 @@ def external_dashboard(
     dependencies = DEPS.Dependencies(
         authorizer=None,
         storage=storage,
-        cache=C.DiskMitzuCache(),
-        queue=C.DiskMitzuCache(),
+        cache=C.DiskMitzuCache("cache"),
+        queue=C.DiskMitzuCache("queue"),
         events_service=ES.EventsService(storage),
     )
 

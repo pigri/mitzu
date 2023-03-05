@@ -3,7 +3,7 @@ import redis
 import diskcache
 from typing import Any, Optional, List, Dict
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import pickle
 import mitzu.helper as H
 import flask
@@ -39,12 +39,22 @@ class MitzuCache(ABC):
         raise NotImplementedError()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class DiskMitzuCache(MitzuCache):
 
-    _disk_cache: diskcache.Cache = field(
-        default_factory=lambda: diskcache.Cache(configs.DISK_CACHE_PATH)
-    )
+    _disk_cache: diskcache.Cache
+
+    def __init__(self, name: str) -> None:
+        super().__init__()
+        object.__setattr__(
+            self,
+            "_disk_cache",
+            diskcache.Cache(timeout=10, directory=f"{configs.DISK_CACHE_PATH}/{name}"),
+        )
+
+    def __post_init__(self):
+        H.LOGGER.info("Vacuuming disk cache")
+        self._disk_cache._sql("vacuum")
 
     def put(self, key: str, val: Any, expire: Optional[float] = None):
         self.clear(key)

@@ -34,6 +34,8 @@ def _to_dict(value: Any) -> Any:
 
     if isinstance(value, M.TimeGroup):
         return value.name.lower()
+    if isinstance(value, M.Resolution):
+        return value.name.lower()
     if isinstance(value, M.TimeWindow):
         return f"{value.value} {value.period.name.lower()}"
     if isinstance(value, M.SimpleChartType):
@@ -159,7 +161,7 @@ def _from_dict(
             ),
             custom_title=_from_dict(value.get("ct"), project, str, path + ".ct"),
             resolution=_from_dict(
-                value.get("res"), project, M.TimeGroup, path + ".res"
+                value.get("res"), project, M.Resolution, path + ".res"
             ),
             chart_type=_from_dict(
                 value.get("cat"), project, M.SimpleChartType, path + ".cat"
@@ -264,6 +266,8 @@ def _from_dict(
         raise Exception(f"Couldn't find {value} among {event_name} fields.")
     if type_hint == M.TimeGroup:
         return M.TimeGroup.parse(value)
+    if type_hint == M.Resolution:
+        return M.Resolution.parse(value)
     if type_hint == M.AggType:
         return M.AggType.parse_agg_str(value)
     if type_hint == M.TimeWindow:

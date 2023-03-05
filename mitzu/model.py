@@ -343,6 +343,11 @@ class State(Generic[T]):
     def get_value(self) -> Optional[T]:
         return self._val
 
+    def get_value_if_exsits(self) -> T:
+        if self._val is None:
+            raise ValueError("State is empty.")
+        return self._val
+
     def set_value(self, value: Optional[T]):
         self._val = value
 
@@ -1113,19 +1118,45 @@ DEF_RET_WINDOW = TimeWindow(1, TimeGroup.WEEK)
 DEF_TIME_GROUP = TimeGroup.DAY
 
 
+class Resolution(Enum):
+    EVERY_EVENT = auto()
+    ONE_USER_EVENT_PER_MINUTE = auto()
+    ONE_USER_EVENT_PER_HOUR = auto()
+    ONE_USER_EVENT_PER_DAY = auto()
+
+    @classmethod
+    def parse(cls, val: str | Resolution) -> Resolution:
+        if type(val) == str:
+            val = val.upper()
+            return Resolution[val]
+        elif type(val) == Resolution:
+            return val
+        else:
+            raise ValueError(f"Invalid argument type for Resolution parse: {type(val)}")
+
+    def get_time_group(self) -> Optional[TimeGroup]:
+        if self == Resolution.ONE_USER_EVENT_PER_DAY:
+            return TimeGroup.DAY
+        if self == Resolution.ONE_USER_EVENT_PER_HOUR:
+            return TimeGroup.HOUR
+        if self == Resolution.ONE_USER_EVENT_PER_MINUTE:
+            return TimeGroup.MINUTE
+        return None
+
+
 @dataclass()
 class MetricConfig:
     start_dt: Optional[datetime] = None
     end_dt: Optional[datetime] = None
-    lookback_days: Optional[TimeWindow] = None
-    time_group: Optional[TimeGroup] = None
-    max_group_count: Optional[int] = None
+    lookback_days: TimeWindow = DEF_LOOK_BACK_DAYS
+    time_group: TimeGroup = DEF_TIME_GROUP
+    max_group_count: int = DEF_MAX_GROUP_COUNT
     group_by: Optional[EventFieldDef] = None
     custom_title: Optional[str] = None
     agg_type: Optional[AggType] = None
     agg_param: Optional[Any] = None
     chart_type: Optional[SimpleChartType] = None
-    resolution: Optional[TimeGroup] = None
+    resolution: Resolution = Resolution.EVERY_EVENT
 
 
 @dataclass(init=False, frozen=True)
@@ -1143,20 +1174,14 @@ class Metric(ABC):
 
     @property
     def _lookback_days(self) -> TimeWindow:
-        if self._config.lookback_days is None:
-            return DEF_LOOK_BACK_DAYS
-        if type(self._config.lookback_days) == int:
-            return TimeWindow(self._config.lookback_days, TimeGroup.DAY)
-        return cast(TimeWindow, self._config.lookback_days)
+        return self._config.lookback_days
 
     @property
     def _time_group(self) -> TimeGroup:
-        if self._config.time_group is None:
-            return DEF_TIME_GROUP
         return self._config.time_group
 
     @property
-    def _resolution(self) -> Optional[TimeGroup]:
+    def _resolution(self) -> Resolution:
         return self._config.resolution
 
     @property
@@ -1170,6 +1195,12 @@ class Metric(ABC):
     @property
     def _custom_title(self) -> Optional[str]:
         return self._config.custom_title
+
+    @property
+    def _end_dt(self) -> datetime:
+        if self._config.end_dt is not None:
+            return self._config.end_dt
+        return self.get_project().get_default_end_dt()
 
     @property
     def _start_dt(self) -> datetime:
@@ -1198,12 +1229,6 @@ class Metric(ABC):
         if self._agg_type == AggType.PERCENTILE_TIME_TO_CONV:
             return 50
         return None
-
-    @property
-    def _end_dt(self) -> datetime:
-        if self._config.end_dt is not None:
-            return self._config.end_dt
-        return self.get_project().get_default_end_dt()
 
     def get_project(self) -> Project:
         raise NotImplementedError()
@@ -1322,57 +1347,53 @@ class RetentionMetric(Metric):
         start_dt: Optional[str | datetime] = None,
         end_dt: Optional[str | datetime] = None,
         custom_title: Optional[str] = None,
-        retention_window: Optional[Union[TimeWindow, str]] = None,
-        time_group: Optional[TimeGroup] = None,
+        retention_window: Union[TimeWindow, str] = TimeWindow(
+            value=1, period=TimeGroup.WEEK
+        ),
+        time_group: Union[str, TimeGroup] = TimeGroup.WEEK,
         group_by: Optional[EventFieldDef] = None,
-        max_group_by_count: Optional[int] = None,
-        lookback_days: Optional[Union[int, TimeWindow]] = None,
-        aggregation: Optional[str] = None,
+        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
-        resolution: Optional[Union[str, TimeGroup]] = None,
+        resolution: Union[str, Resolution] = Resolution.EVERY_EVENT,
     ) -> RetentionMetric:
-        if type(lookback_days) == int:
-            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
-        elif type(lookback_days) == TimeWindow:
-            lbd = lookback_days
-        else:
-            lbd = None
-
-        if aggregation is not None:
-            agg_type, agg_param = AggType.parse_agg_str(aggregation)
-        else:
-            agg_type, agg_param = AggType.RETENTION_RATE, None
-
-        if resolution is not None:
-            resolution = TimeGroup.parse(resolution)
+        chart_type = chart_type
+        if type(chart_type) == str:
+            chart_type = SimpleChartType.parse(chart_type)
 
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
             time_group=(
-                TimeGroup.parse(time_group)
-                if time_group is not None
-                else TimeGroup.WEEK
+                time_group
+                if type(time_group) == TimeGroup
+                else TimeGroup.parse(time_group)
             ),
             custom_title=custom_title,
             group_by=group_by,
             max_group_count=max_group_by_count,
-            lookback_days=lbd,
-            agg_type=agg_type,
-            agg_param=agg_param,
-            resolution=resolution,
-            chart_type=(
-                SimpleChartType.parse(chart_type) if chart_type is not None else None
+            lookback_days=(
+                lookback_days
+                if type(lookback_days) == TimeWindow
+                else TimeWindow(cast(int, lookback_days), TimeGroup.DAY)
             ),
+            agg_type=AggType.RETENTION_RATE,
+            agg_param=None,
+            resolution=(
+                resolution
+                if type(resolution) == Resolution
+                else Resolution.parse(resolution)
+            ),
+            chart_type=cast(SimpleChartType, chart_type),
         )
 
         return RetentionMetric(
             initial_segment=self._initial_segment,
             retaining_segment=self._retaining_segment,
             retention_window=(
-                TimeWindow.parse(retention_window)
-                if retention_window is not None
-                else TimeWindow(value=1, period=TimeGroup.WEEK)
+                retention_window
+                if type(retention_window) == TimeWindow
+                else TimeWindow.parse(retention_window)
             ),
             config=config,
         )
@@ -1410,48 +1431,57 @@ class Conversion(ConversionMetric):
 
     def config(
         self,
-        conv_window: Optional[str | TimeWindow] = DEF_CONV_WINDOW,
-        start_dt: Optional[str | datetime] = None,
-        end_dt: Optional[str | datetime] = None,
-        time_group: Optional[str | TimeGroup] = None,
+        conv_window: Optional[Union[str, TimeWindow]] = DEF_CONV_WINDOW,
+        start_dt: Optional[Union[str, datetime]] = None,
+        end_dt: Optional[Union[str, datetime]] = None,
+        time_group: Union[str, TimeGroup] = DEF_TIME_GROUP,
         group_by: Optional[EventFieldDef] = None,
-        max_group_by_count: Optional[int] = None,
-        lookback_days: Optional[Union[int, TimeWindow]] = None,
+        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         custom_title: Optional[str] = None,
-        aggregation: Optional[str] = None,
+        aggregation: Union[str, AggType] = AggType.CONVERSION,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
-        resolution: Optional[Union[str, TimeGroup]] = None,
-        metric_name: Optional[str] = None,
+        resolution: Union[str, Resolution] = Resolution.EVERY_EVENT,
     ) -> ConversionMetric:
         if type(lookback_days) == int:
-            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
-        elif type(lookback_days) == TimeWindow:
-            lbd = lookback_days
-        else:
-            lbd = None
-        if aggregation is not None:
-            agg_type, agg_param = AggType.parse_agg_str(aggregation)
-        else:
-            agg_type, agg_param = AggType.CONVERSION, None
+            lookback_days = TimeWindow(lookback_days, TimeGroup.DAY)
 
-        if resolution is not None:
-            resolution = TimeGroup.parse(resolution)
+        agg_param = None
+        if type(aggregation) != AggType:
+            agg_type, agg_param = AggType.parse_agg_str(cast(str, aggregation))
+        else:
+            agg_type = aggregation
+
+        chart_type = chart_type
+        if type(chart_type) == str:
+            chart_type = SimpleChartType.parse(chart_type)
 
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
+            time_group=(
+                time_group
+                if type(time_group) == TimeGroup
+                else TimeGroup.parse(time_group)
+            ),
+            custom_title=custom_title,
             group_by=group_by,
             max_group_count=max_group_by_count,
-            custom_title=custom_title,
-            lookback_days=lbd,
+            lookback_days=(
+                lookback_days
+                if type(lookback_days) == TimeWindow
+                else TimeWindow(cast(int, lookback_days), TimeGroup.DAY)
+            ),
             agg_type=agg_type,
             agg_param=agg_param,
-            resolution=resolution,
-            chart_type=(
-                SimpleChartType.parse(chart_type) if chart_type is not None else None
+            resolution=(
+                resolution
+                if type(resolution) == Resolution
+                else Resolution.parse(resolution)
             ),
+            chart_type=cast(SimpleChartType, chart_type),
         )
+
         if conv_window is not None:
             conv_res = ConversionMetric(conversion=self._conversion, config=config)
             conv_res._conv_window = TimeWindow.parse(conv_window)
@@ -1486,40 +1516,46 @@ class Segment(SegmentationMetric):
 
     def config(
         self,
-        start_dt: Optional[str | datetime] = None,
-        end_dt: Optional[str | datetime] = None,
-        time_group: Optional[str | TimeGroup] = None,
+        start_dt: Optional[Union[str, datetime]] = None,
+        end_dt: Optional[Union[str, datetime]] = None,
+        time_group: Union[str, TimeGroup] = DEF_TIME_GROUP,
         group_by: Optional[EventFieldDef] = None,
-        max_group_by_count: Optional[int] = None,
-        lookback_days: Optional[Union[int, TimeWindow]] = None,
+        max_group_by_count: int = DEF_MAX_GROUP_COUNT,
+        lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         custom_title: Optional[str] = None,
-        aggregation: Optional[str] = None,
+        aggregation: Union[str, AggType] = AggType.COUNT_UNIQUE_USERS,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
-        metric_name: Optional[str] = None,
     ) -> SegmentationMetric:
-        if type(lookback_days) == int:
-            lbd = TimeWindow(lookback_days, TimeGroup.DAY)
-        elif type(lookback_days) == TimeWindow:
-            lbd = lookback_days
+        agg_param = None
+        if type(aggregation) != AggType:
+            agg_type, agg_param = AggType.parse_agg_str(cast(str, aggregation))
         else:
-            lbd = None
-        if aggregation is not None:
-            agg_type, agg_param = AggType.parse_agg_str(aggregation)
-        else:
-            agg_type, agg_param = AggType.COUNT_UNIQUE_USERS, None
+            agg_type = aggregation
+
+        chart_type = chart_type
+        if type(chart_type) == str:
+            chart_type = SimpleChartType.parse(chart_type)
+
         config = MetricConfig(
             start_dt=helper.parse_datetime_input(start_dt, None),
             end_dt=helper.parse_datetime_input(end_dt, None),
-            time_group=TimeGroup.parse(time_group) if time_group is not None else None,
+            time_group=(
+                time_group
+                if type(time_group) == TimeGroup
+                else TimeGroup.parse(time_group)
+            ),
+            custom_title=custom_title,
             group_by=group_by,
             max_group_count=max_group_by_count,
-            custom_title=custom_title,
-            lookback_days=lbd,
+            lookback_days=(
+                lookback_days
+                if type(lookback_days) == TimeWindow
+                else TimeWindow(cast(int, lookback_days), TimeGroup.DAY)
+            ),
             agg_type=agg_type,
             agg_param=agg_param,
-            chart_type=SimpleChartType.parse(chart_type)
-            if chart_type is not None
-            else None,
+            resolution=Resolution.EVERY_EVENT,
+            chart_type=cast(SimpleChartType, chart_type),
         )
 
         return SegmentationMetric(segment=self, config=config)

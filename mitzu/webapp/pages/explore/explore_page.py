@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional, Tuple, cast
 from urllib.parse import quote, urlparse, parse_qs
 
 import dash_bootstrap_components as dbc
@@ -17,14 +17,14 @@ import mitzu.webapp.pages.explore.event_segment_handler as ES
 import mitzu.webapp.pages.explore.graph_handler as GH
 import mitzu.webapp.pages.explore.metric_config_handler as MC
 import mitzu.webapp.pages.explore.metric_segments_handler as MS
-import mitzu.webapp.pages.explore.metric_type_handler as MNB
+import mitzu.webapp.pages.explore.metric_type_handler as MTH
 import mitzu.webapp.pages.explore.simple_segment_handler as SS
 import mitzu.webapp.pages.explore.toolbar_handler as TH
 import mitzu.webapp.navbar as NB
 import mitzu.visualization.charts as CHRT
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
-from mitzu.webapp.helper import MITZU_LOCATION
+from mitzu.webapp.helper import MITZU_LOCATION, find_event_field_def, CHILDREN
 import mitzu.webapp.pages.paths as P
 import flask
 import dash_mantine_components as dmc
@@ -36,9 +36,6 @@ from mitzu.webapp.auth.decorator import restricted
 
 
 from mitzu.webapp.helper import (
-    CHILDREN,
-    METRIC_SEGMENTS,
-    find_event_field_def,
     get_final_all_inputs,
 )
 
@@ -51,7 +48,6 @@ METRIC_NAME_PROGRESS = "metric_name_progress"
 EXPLORE_PAGE = "explore_page"
 ALL_INPUT_COMPS = {
     "all_inputs": {
-        MNB.METRIC_TYPE_DROPDOWN: Input(MNB.METRIC_TYPE_DROPDOWN, "value"),
         ES.EVENT_NAME_DROPDOWN: Input(
             {"type": ES.EVENT_NAME_DROPDOWN, "index": ALL}, "value"
         ),
@@ -78,6 +74,7 @@ ALL_INPUT_COMPS = {
         TH.GRAPH_RUN_QUERY_BUTTON: Input(TH.GRAPH_RUN_QUERY_BUTTON, "n_clicks"),
         TH.CHART_TYPE_DD: Input(TH.CHART_TYPE_DD, "value"),
         TH.GRAPH_CONTENT_TYPE: Input(TH.GRAPH_CONTENT_TYPE, "value"),
+        MTH.METRIC_TYPE_DROPDOWN: Input(MTH.METRIC_TYPE_DROPDOWN, "value"),
     }
 }
 
@@ -89,7 +86,7 @@ def create_navbar(
     notebook_mode: bool,
 ) -> dbc.Navbar:
     navbar_children = [
-        MNB.from_metric_type(MNB.MetricType.from_metric(metric)),
+        MTH.from_metric_type(MTH.MetricType.from_metric(metric)),
         dmc.TextInput(
             id=METRIC_NAME_INPUT,
             debounce=700,
@@ -185,7 +182,21 @@ def create_explore_page(
 
 
 def create_graph_container(metric: Optional[M.Metric], project: M.Project):
-    metrics_config_card = MC.from_metric(metric)
+    metric_config = metric._config if metric is not None else M.MetricConfig()
+    metric_type = MTH.MetricType.from_metric(metric)
+    ret_or_conv_window = M.DEF_CONV_WINDOW
+    if metric is not None:
+        if isinstance(metric, M.ConversionMetric):
+            ret_or_conv_window = metric._conv_window
+        elif isinstance(metric, M.RetentionMetric):
+            ret_or_conv_window = metric._retention_window
+    else:
+        if metric_type == MTH.MetricType.CONVERSION:
+            ret_or_conv_window = M.DEF_CONV_WINDOW
+        elif metric_type == MTH.MetricType.RETENTION:
+            ret_or_conv_window = M.DEF_CONV_WINDOW
+
+    metrics_config_card = MC.from_metric(metric_config, metric_type, ret_or_conv_window)
     graph_handler = GH.create_graph_container()
     toolbar_handler = TH.from_metric(metric, project)
 
@@ -205,14 +216,14 @@ def create_graph_container(metric: Optional[M.Metric], project: M.Project):
 
 def get_metric_group_by(
     metric_config: M.MetricConfig,
-    metric_type: MNB.MetricType,
+    metric_type: MTH.MetricType,
     all_inputs: Dict[str, Any],
     discovered_project: M.DiscoveredProject,
 ):
     group_by = None
-    group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
+    group_by_paths = all_inputs[MS.METRIC_SEGMENTS][CHILDREN]
     if len(group_by_paths) >= 1 and not (
-        metric_type == MNB.MetricType.RETENTION
+        metric_type == MTH.MetricType.RETENTION
         and metric_config.time_group != M.TimeGroup.TOTAL
     ):
         gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
@@ -224,87 +235,42 @@ def get_metric_group_by(
 def create_metric_from_all_inputs(
     all_inputs: Dict[str, Any],
     discovered_project: M.DiscoveredProject,
-) -> Optional[M.Metric]:
-
+) -> Tuple[Optional[M.Metric], M.MetricConfig, M.TimeWindow]:
     segments = MS.from_all_inputs(discovered_project, all_inputs)
-    metric_type = MNB.MetricType(all_inputs[MNB.METRIC_TYPE_DROPDOWN])
-    metric: Optional[Union[M.Segment, M.Conversion, M.RetentionMetric]] = None
-    if metric_type == MNB.MetricType.CONVERSION:
+    metric_type = MTH.MetricType.parse(all_inputs[MTH.METRIC_TYPE_DROPDOWN])
+
+    metric_config, time_window = MC.from_all_inputs(
+        discovered_project, all_inputs, metric_type
+    )
+    metric: Optional[M.Metric] = None
+    if metric_type == MTH.MetricType.CONVERSION:
         if len(segments) >= 1:
             metric = M.Conversion(segments)
-    elif metric_type == MNB.MetricType.SEGMENTATION:
+    elif metric_type == MTH.MetricType.SEGMENTATION:
         if len(segments) == 1:
             metric = segments[0]
-    elif metric_type == MNB.MetricType.RETENTION:
+    elif metric_type == MTH.MetricType.RETENTION:
         if len(segments) == 2:
             metric = segments[0] >= segments[1]
         elif len(segments) == 1:
             metric = segments[0] >= segments[0]
 
-    if metric is None:
-        return None
+    if metric is not None:
+        metric = configure_metric(metric, metric_config, time_window)
 
-    metric_config, res_tw = MC.from_all_inputs(
-        discovered_project, all_inputs, metric_type
-    )
-    if metric_config.agg_type:
-        agg_str = M.AggType.to_agg_str(metric_config.agg_type, metric_config.agg_param)
-    else:
-        agg_str = None
-
-    group_by = get_metric_group_by(
-        metric_config, metric_type, all_inputs, discovered_project
-    )
-
-    if isinstance(metric, M.Conversion):
-        return metric.config(
-            time_group=metric_config.time_group,
-            conv_window=res_tw,
-            group_by=group_by,
-            lookback_days=metric_config.lookback_days,
-            start_dt=metric_config.start_dt,
-            end_dt=metric_config.end_dt,
-            chart_type=metric_config.chart_type,
-            resolution=metric_config.resolution,
-            custom_title="",
-            aggregation=agg_str,
-        )
-    elif isinstance(metric, M.Segment):
-        return metric.config(
-            time_group=metric_config.time_group,
-            group_by=group_by,
-            lookback_days=metric_config.lookback_days,
-            start_dt=metric_config.start_dt,
-            end_dt=metric_config.end_dt,
-            chart_type=metric_config.chart_type,
-            custom_title="",
-            aggregation=agg_str,
-        )
-    elif isinstance(metric, M.RetentionMetric):
-        return metric.config(
-            time_group=metric_config.time_group,
-            group_by=group_by,
-            lookback_days=metric_config.lookback_days,
-            start_dt=metric_config.start_dt,
-            end_dt=metric_config.end_dt,
-            retention_window=res_tw,
-            chart_type=metric_config.chart_type,
-            resolution=metric_config.resolution,
-            custom_title="",
-            aggregation=agg_str,
-        )
-
-    return None
+    return metric, metric_config, time_window
 
 
 def handle_input_changes(
     all_inputs: Dict[str, Any],
     discovered_project: M.DiscoveredProject,
 ) -> Dict[str, Any]:
-    metric = create_metric_from_all_inputs(all_inputs, discovered_project)
-
+    metric, metric_config, time_window = create_metric_from_all_inputs(
+        all_inputs, discovered_project
+    )
     parse_result = urlparse(all_inputs[MITZU_LOCATION])
     if metric is not None:
+
         url_params = "m=" + quote(SE.to_compressed_string(metric))
         parse_result = parse_result._replace(query=url_params)
     url = parse_result.geturl()
@@ -314,12 +280,11 @@ def handle_input_changes(
         metric=metric,
     ).children
 
-    mc_children = MC.from_metric(metric).children
-    if metric is not None:
-        metric_type_val = MNB.MetricType.from_metric(metric).value
-    else:
-        # This is the case when the url query is not parseable
-        metric_type_val = all_inputs[MNB.METRIC_TYPE_DROPDOWN]
+    metric_type = all_inputs[MTH.METRIC_TYPE_DROPDOWN]
+
+    mc_children = MC.from_metric(
+        metric_config, MTH.MetricType.parse(metric_type), time_window
+    ).children
 
     chart_type_dd = TH.create_chart_type_dropdown(metric)
     auto_refresh = discovered_project.project.webapp_settings.auto_refresh_enabled
@@ -333,14 +298,48 @@ def handle_input_changes(
         MC.METRICS_CONFIG_CONTAINER: mc_children,
         CLIPBOARD: url,
         MITZU_LOCATION: url,
-        MNB.METRIC_TYPE_DROPDOWN: metric_type_val,
+        MTH.METRIC_TYPE_DROPDOWN: no_update,
         TH.CHART_TYPE_CONTAINER: chart_type_dd,
         TH.CANCEL_BUTTON: cancel_button_cls,
     }
 
 
+def configure_metric(
+    metric: M.Metric, metric_config: M.MetricConfig, time_window: M.TimeWindow
+) -> M.Metric:
+    if isinstance(metric, M.ConversionMetric):
+        return M.ConversionMetric(
+            conversion=metric._conversion,
+            config=metric_config,
+            conv_window=time_window,
+        )
+
+    if isinstance(metric, M.RetentionMetric):
+        return M.RetentionMetric(
+            initial_segment=metric._initial_segment,
+            retaining_segment=metric._retaining_segment,
+            retention_window=time_window,
+            config=metric_config,
+        )
+
+    if isinstance(metric, M.SegmentationMetric):
+        return M.SegmentationMetric(metric._segment, metric_config)
+
+    raise Exception(f"Invalid metric type for graph visualization: {type(metric)}")
+
+
 def create_callbacks():
     GH.create_callbacks()
+
+    no_update_response = {
+        MS.METRIC_SEGMENTS: no_update,
+        MC.METRICS_CONFIG_CONTAINER: no_update,
+        CLIPBOARD: no_update,
+        MITZU_LOCATION: no_update,
+        MTH.METRIC_TYPE_DROPDOWN: no_update,
+        TH.CHART_TYPE_CONTAINER: no_update,
+        TH.CANCEL_BUTTON: no_update,
+    }
 
     @callback(
         output={
@@ -350,7 +349,7 @@ def create_callbacks():
             ),
             MITZU_LOCATION: Output(MITZU_LOCATION, "href"),
             CLIPBOARD: Output(CLIPBOARD, "content"),
-            MNB.METRIC_TYPE_DROPDOWN: Output(MNB.METRIC_TYPE_DROPDOWN, "value"),
+            MTH.METRIC_TYPE_DROPDOWN: Output(MTH.METRIC_TYPE_DROPDOWN, "value"),
             TH.CHART_TYPE_CONTAINER: Output(TH.CHART_TYPE_CONTAINER, "children"),
             TH.CANCEL_BUTTON: Output(TH.CANCEL_BUTTON, "class_name"),
         },
@@ -370,6 +369,11 @@ def create_callbacks():
         metric_id: str,
     ) -> Dict[str, Any]:
         try:
+            if len(ctx.triggered_prop_ids) != 1:
+                # Ignoring all components change as this comes from
+                # page layout load and everything should be already rendered
+                return no_update_response
+
             url = urlparse(href)
             project_id = P.get_path_value(
                 P.PROJECTS_EXPLORE_PATH, url.path, P.PROJECT_ID_PATH_PART
@@ -379,42 +383,18 @@ def create_callbacks():
             )
             project = depenedencies.storage.get_project(project_id)
             if project is None:
-                return {
-                    MS.METRIC_SEGMENTS: no_update,
-                    MC.METRICS_CONFIG_CONTAINER: no_update,
-                    CLIPBOARD: no_update,
-                    MITZU_LOCATION: no_update,
-                    MNB.METRIC_TYPE_DROPDOWN: no_update,
-                    TH.CHART_TYPE_CONTAINER: no_update,
-                    TH.CANCEL_BUTTON: no_update,
-                }
+                return no_update_response
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             all_inputs[METRIC_NAME_INPUT] = metric_name
             all_inputs[METRIC_ID_VALUE] = metric_id
             all_inputs[MITZU_LOCATION] = href
             discovered_project = project._discovered_project.get_value()
             if discovered_project is None:
-                return {
-                    MS.METRIC_SEGMENTS: no_update,
-                    MC.METRICS_CONFIG_CONTAINER: no_update,
-                    CLIPBOARD: no_update,
-                    MITZU_LOCATION: no_update,
-                    MNB.METRIC_TYPE_DROPDOWN: no_update,
-                    TH.CHART_TYPE_CONTAINER: no_update,
-                    TH.CANCEL_BUTTON: no_update,
-                }
+                return no_update_response
             return handle_input_changes(all_inputs, discovered_project)
         except Exception:
             traceback.print_exc()
-            return {
-                MS.METRIC_SEGMENTS: no_update,
-                MC.METRICS_CONFIG_CONTAINER: no_update,
-                CLIPBOARD: no_update,
-                MITZU_LOCATION: no_update,
-                MNB.METRIC_TYPE_DROPDOWN: no_update,
-                TH.CHART_TYPE_CONTAINER: no_update,
-                TH.CANCEL_BUTTON: no_update,
-            }
+            return no_update_response
 
 
 @callback(

@@ -41,8 +41,11 @@ def test_definition_to_json():
         "co": {
             "sdt": "2020-01-01T00:00:00",
             "edt": "2021-01-01T00:00:00",
+            "lbd": "30 day",
             "tg": "total",
+            "mgc": 10,
             "gb": {"en": "view", "f": "category_id"},
+            "res": "every_event",
             "at": "user_count",
         },
     }
@@ -57,10 +60,11 @@ def test_definition_to_json():
         group_by=m.view.category_id,
         custom_title="test_title",
         aggregation="conversion",
-        resolution="day",
+        resolution="one_user_event_per_day",
     )
 
     res_dict = to_dict(res)
+
     assert res_dict == {
         "conv": {
             "segs": [
@@ -72,11 +76,13 @@ def test_definition_to_json():
         "co": {
             "sdt": "2020-01-01T00:00:00",
             "edt": "2021-01-01T00:00:00",
+            "lbd": "30 day",
             "tg": "week",
+            "mgc": 10,
             "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
+            "res": "one_user_event_per_day",
             "at": "conversion",
-            "res": "day",
         },
     }
 
@@ -100,6 +106,7 @@ def test_definition_to_json():
     )
 
     res_dict = to_dict(res)
+
     assert res_dict == {
         "conv": {
             "segs": [
@@ -111,9 +118,12 @@ def test_definition_to_json():
         "co": {
             "sdt": "2020-01-01T00:00:00",
             "edt": "2021-01-01T00:00:00",
+            "lbd": "30 day",
             "tg": "week",
+            "mgc": 10,
             "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
+            "res": "every_event",
             "at": "ttc_p75",
         },
     }
@@ -125,10 +135,10 @@ def test_definition_to_json():
         time_group="week",
         retention_window="1 week",
         custom_title="test_title",
-        aggregation="retention_rate",
     )
 
     res_dict = to_dict(res)
+
     verify(res, eds)
     assert res_dict == {
         "seg_1": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
@@ -137,8 +147,11 @@ def test_definition_to_json():
         "co": {
             "sdt": "2020-01-01T00:00:00",
             "edt": "2021-01-01T00:00:00",
+            "lbd": "30 day",
             "tg": "week",
+            "mgc": 10,
             "ct": "test_title",
+            "res": "every_event",
             "at": "retention_rate",
         },
     }

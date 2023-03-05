@@ -36,7 +36,7 @@ def layout(**query_params):
                         [
                             dbc.Button(
                                 [
-                                    html.B(className="bi bi-play-circle"),
+                                    html.B(className="bi bi-play-circle me-1"),
                                     "Start exploring",
                                 ],
                                 color="secondary",

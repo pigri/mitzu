@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import dash_mantine_components as dmc
+import mitzu.webapp.pages.explore.metric_type_handler as MTH
 
 import mitzu.model as M
 from dash import html
@@ -47,25 +48,22 @@ def create_timewindow_options() -> List[Dict[str, str]]:
     return [{"label": k, "value": str(v)} for k, v in LOOKBACK_DAYS_OPTIONS.items()]
 
 
-def get_default_tg_value(metric: Optional[M.Metric]) -> M.TimeGroup:
-    metric_config = metric._config if metric is not None else None
-    if metric is not None:
-        if metric_config is not None and metric_config.time_group is not None:
-            return metric_config.time_group
-        else:
-            if isinstance(metric, M.RetentionMetric):
-                return M.TimeGroup.WEEK
-            else:
-                return M.TimeGroup.DAY
+def get_default_tg_value(
+    metric_config: M.MetricConfig, metric_type: MTH.MetricType
+) -> M.TimeGroup:
+    if metric_config is not None and metric_config.time_group is not None:
+        return metric_config.time_group
     else:
-        return M.TimeGroup.DAY
+        if metric_type == MTH.MetricType.RETENTION:
+            return M.TimeGroup.WEEK
+        else:
+            return M.TimeGroup.DAY
 
 
 def from_metric(
-    metric: Optional[M.Metric],
+    metric_config: M.MetricConfig, metric_type: MTH.MetricType
 ) -> bc.Component:
-    metric_config = metric._config if metric is not None else None
-    tg_val = get_default_tg_value(metric)
+    tg_val = get_default_tg_value(metric_config, metric_type)
     tw_options = create_timewindow_options()
 
     start_date = None
@@ -73,12 +71,10 @@ def from_metric(
 
     if metric_config is not None:
         if metric_config.start_dt is None and metric_config.lookback_days is not None:
-            if type(metric_config.lookback_days) == M.TimeWindow:
+            if metric_config.lookback_days in LOOKBACK_DAYS_OPTIONS.values():
                 lookback_days = str(metric_config.lookback_days)
             else:
-                raise Exception(
-                    f"Unsupported lookback days type {type(metric_config.lookback_days)}"
-                )
+                lookback_days = str(DEFAULT_LOOKBACK_DAY_OPTION)
         elif metric_config.start_dt is not None:
             lookback_days = CUSTOM_DATE_TW_VALUE
         start_date = metric_config.start_dt
@@ -169,14 +165,14 @@ def get_metric_custom_dates(
     return (start_dt, end_dt)
 
 
-def get_metric_lookback_days(all_inputs: Dict[str, Any]) -> Optional[M.TimeWindow]:
+def get_metric_lookback_days(all_inputs: Dict[str, Any]) -> M.TimeWindow:
     tw_val = all_inputs.get(
         LOOKBACK_WINDOW_DROPDOWN,
     )
     if tw_val is None:
         return M.TimeWindow(1, M.TimeGroup.MONTH)
     if tw_val == CUSTOM_DATE_TW_VALUE:
-        return None
+        return M.DEF_LOOK_BACK_DAYS
 
     return M.TimeWindow.parse(str(tw_val))
 

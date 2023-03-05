@@ -9,14 +9,18 @@ import mitzu.webapp.pages.explore.dates_selector_handler as DS
 import mitzu.webapp.pages.explore.toolbar_handler as TH
 import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.helper as H
+import mitzu.webapp.storage as S
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
+import mitzu.serialization as SE
 import mitzu.webapp.dependencies as DEPS
 from urllib.parse import unquote
 from typing import cast
 from datetime import datetime
+from unittest.mock import patch
 
 
-def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_event_chosen_for_segmentation(ctx, discovered_project: M.DiscoveredProject):
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {0: {"children": {0: {ES.EVENT_NAME_DROPDOWN: "page_visit"}}}}
@@ -67,7 +71,9 @@ def test_event_chosen_for_segmentation(discovered_project: M.DiscoveredProject):
     assert first_property_operator_dd is None
 
 
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_chosen_for_segmentation(
+    ctx,
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
@@ -140,7 +146,9 @@ def test_event_property_chosen_for_segmentation(
     assert first_property_value_input["value"] == []
 
 
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_operator_changed_with_values_already_chosen(
+    ctx,
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
@@ -199,7 +207,9 @@ def test_event_property_operator_changed_with_values_already_chosen(
     assert first_property_value_input["value"] == "organic"
 
 
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_operator_changed_creates_correct_metric(
+    ctx,
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
@@ -238,7 +248,7 @@ def test_event_property_operator_changed_creates_correct_metric(
         EXP.METRIC_ID_VALUE: "test_id",
     }
 
-    metric = EXP.create_metric_from_all_inputs(all_inputs, discovered_project)
+    metric, _, _ = EXP.create_metric_from_all_inputs(all_inputs, discovered_project)
     ss = cast(M.SimpleSegment, cast(M.SegmentationMetric, metric)._segment)
     assert ss._left._event_name == "page_visit"
     assert cast(M.EventFieldDef, ss._left)._field._get_name() == "acquisition_campaign"
@@ -256,7 +266,9 @@ def test_event_property_operator_changed_creates_correct_metric(
     assert first_property_value_input["value"] == "a"
 
 
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_empty_page_with_project(
+    ctx,
     discovered_project: M.DiscoveredProject,
 ):
     all_inputs = {
@@ -317,7 +329,8 @@ def test_empty_page_with_project(
     assert timegroup_dd["value"] == M.TimeGroup.DAY.value
 
 
-def test_custom_date_selected(discovered_project: M.DiscoveredProject):
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_custom_date_selected(ctx, discovered_project: M.DiscoveredProject):
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {
@@ -358,7 +371,10 @@ def test_custom_date_selected(discovered_project: M.DiscoveredProject):
     assert date_picker["style"] == {"width": "180px", "display": "inline-block"}
 
 
-def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredProject):
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_custom_date_selected_new_start_date(
+    ctx, discovered_project: M.DiscoveredProject
+):
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {
@@ -403,7 +419,10 @@ def test_custom_date_selected_new_start_date(discovered_project: M.DiscoveredPro
     ]
 
 
-def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProject):
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_custom_date_lookback_days_selected(
+    ctx, discovered_project: M.DiscoveredProject
+):
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {
@@ -454,8 +473,9 @@ def test_custom_date_lookback_days_selected(discovered_project: M.DiscoveredProj
     assert lookback_days_dd["value"] == "1 month"
 
 
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_mitzu_link_redirected(
-    discovered_project: M.DiscoveredProject, dependencies: DEPS.Dependencies
+    ctx, discovered_project: M.DiscoveredProject, dependencies: DEPS.Dependencies
 ):
     import flask
 
@@ -463,12 +483,12 @@ def test_mitzu_link_redirected(
     with app.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
 
-        query_params = {
-            "m": unquote(
-                "eNolTEsKgCAUvIrMulXLLiOm"
-                "DxNSI59BiHfPZ5v5MJ%2BGQh6bajgnUhqEy3jSTyiB0fuiYPNf2Z2kq4o58YERsGzhzCvGshhRZqpa6NY21yQvH0z5HoY%3D"
-            )
-        }
+        p = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)
+        m = p._discovered_project.get_value_if_exsits().create_notebook_class_model()
+
+        query = SE.to_compressed_string(m.page_visit.config(lookback_days="2 months"))
+
+        query_params = {"m": unquote(query)}
         res = EXP.create_explore_page(
             query_params, discovered_project, storage=dependencies.storage
         )
@@ -524,7 +544,8 @@ def test_mitzu_link_redirected(
         assert lookback_days_dd["value"] == "2 months"
 
 
-def test_event_chosen_for_retention(discovered_project: M.DiscoveredProject):
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_event_chosen_for_retention(ctx, discovered_project: M.DiscoveredProject):
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {

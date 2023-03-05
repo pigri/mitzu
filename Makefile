@@ -106,7 +106,7 @@ serve:
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=8
 
 run:	
-	LOG_LEVEL=WARN \
+	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	AUTH_BACKEND="local" \
 	AUTH_ROOT_PASSWORD="test" \

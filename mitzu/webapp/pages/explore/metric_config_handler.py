@@ -6,12 +6,20 @@ from typing import Any, Dict, List, Optional, Tuple
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
+from mitzu.helper import parse_datetime_input
 
 import mitzu.webapp.pages.explore.dates_selector_handler as DS
+import mitzu.webapp.pages.explore.complex_segment_handler as CS
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
 import mitzu.webapp.pages.explore.toolbar_handler as TH
-from dash import html
+from dash import html, ctx
 import dash_mantine_components as dmc
+from mitzu.webapp.helper import (
+    CHILDREN,
+    METRIC_SEGMENTS,
+    find_event_field_def,
+    value_to_label,
+)
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
 
@@ -22,7 +30,6 @@ AGGREGATION_TYPE = "aggregation_type"
 RESOLUTION_DD = "resolution_dd"
 RESOLUTION_IG = "resolution_ig"
 
-EVERY_EVENT_RESOLUTION = "EVERY_EVENT"
 
 SUPPORTED_PERCENTILES = [50, 75, 90, 95, 99, 0, 100]
 
@@ -52,17 +59,29 @@ def agg_type_to_str(agg_type: M.AggType, agg_param: Any = None) -> str:
     raise ValueError(f"Unsupported aggregation type {agg_type}")
 
 
-def get_time_group_options() -> List[Dict[str, int]]:
+def get_time_window_options(metric_type: MTH.MetricType) -> List[Dict[str, int]]:
     res: List[Dict[str, Any]] = []
-    for tg in M.TimeGroup:
-        if tg in (M.TimeGroup.TOTAL, M.TimeGroup.QUARTER):
-            continue
-        res.append({"label": tg.name.lower().title(), "value": tg.value})
+    if metric_type == MTH.MetricType.CONVERSION:
+        for tg in M.TimeGroup:
+            if tg in (M.TimeGroup.TOTAL, M.TimeGroup.QUARTER):
+                continue
+            res.append({"label": tg.name.lower().title(), "value": tg.value})
+    elif metric_type == MTH.MetricType.RETENTION:
+        for tg in [
+            M.TimeGroup.DAY,
+            M.TimeGroup.WEEK,
+            M.TimeGroup.MONTH,
+            M.TimeGroup.YEAR,
+        ]:
+            if tg in (M.TimeGroup.TOTAL, M.TimeGroup.QUARTER):
+                continue
+            res.append({"label": tg.name.lower().title(), "value": tg.value})
+
     return res
 
 
-def get_agg_type_options(metric: Optional[M.Metric]) -> List[Dict[str, str]]:
-    if isinstance(metric, M.ConversionMetric):
+def get_agg_type_options(metric_type: MTH.MetricType) -> List[Dict[str, str]]:
+    if metric_type == MTH.MetricType.CONVERSION:
         res: List[Dict[str, Any]] = [
             {
                 "label": agg_type_to_str(M.AggType.CONVERSION),
@@ -84,7 +103,7 @@ def get_agg_type_options(metric: Optional[M.Metric]) -> List[Dict[str, str]]:
         )
 
         return res
-    elif isinstance(metric, M.RetentionMetric):
+    elif metric_type == MTH.MetricType.RETENTION:
         res = [
             {
                 "label": agg_type_to_str(M.AggType.RETENTION_RATE),
@@ -105,36 +124,47 @@ def get_agg_type_options(metric: Optional[M.Metric]) -> List[Dict[str, str]]:
         ]
 
 
-def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
-
-    if isinstance(metric, M.SegmentationMetric):
+def create_metric_options_component(
+    metric_config: M.MetricConfig,
+    metric_type: MTH.MetricType,
+    time_window: M.TimeWindow,
+) -> bc.Component:
+    if metric_type == MTH.MetricType.SEGMENTATION:
         tw_value = 1
-        tg_value = M.TimeGroup.DAY
-        agg_type = metric._agg_type
-        agg_param = metric._agg_param
+        tw_g_value = M.TimeGroup.DAY
+        agg_type = metric_config.agg_type
+        agg_param = metric_config.agg_param
         if agg_type not in (M.AggType.COUNT_UNIQUE_USERS, M.AggType.COUNT_EVENTS):
             agg_type = M.AggType.COUNT_UNIQUE_USERS
-    elif isinstance(metric, M.ConversionMetric):
-        tw_value = metric._conv_window.value
-        tg_value = metric._conv_window.period
-        agg_type = metric._agg_type
-        agg_param = metric._agg_param
+    elif metric_type == MTH.MetricType.CONVERSION:
+        tw_value = time_window.value
+        tw_g_value = time_window.period
+        agg_type = metric_config.agg_type
+        agg_param = metric_config.agg_param
         if agg_type not in (
             M.AggType.PERCENTILE_TIME_TO_CONV,
             M.AggType.AVERAGE_TIME_TO_CONV,
             M.AggType.CONVERSION,
         ):
             agg_type = M.AggType.CONVERSION
-    elif isinstance(metric, M.RetentionMetric):
-        tw_value = metric._retention_window.value
-        tg_value = metric._retention_window.period
+    elif metric_type == MTH.MetricType.RETENTION:
+        tw_value = time_window.value
+        tw_g_value = time_window.period
+        if tw_g_value not in [
+            M.TimeGroup.DAY,
+            M.TimeGroup.WEEK,
+            M.TimeGroup.MONTH,
+            M.TimeGroup.YEAR,
+        ]:
+            tw_g_value = M.TimeGroup.WEEK
+
         agg_type = M.AggType.RETENTION_RATE
         agg_param = None
     else:
         agg_type = M.AggType.COUNT_UNIQUE_USERS
         agg_param = None
         tw_value = 1
-        tg_value = M.TimeGroup.DAY
+        tw_g_value = M.TimeGroup.DAY
 
     aggregation_comp = dmc.Select(
         id=AGGREGATION_TYPE,
@@ -143,13 +173,15 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
         clearable=False,
         value=M.AggType.to_agg_str(agg_type, agg_param),
         size="xs",
-        data=get_agg_type_options(metric),
+        data=get_agg_type_options(metric_type),
         style={
             "width": "204px",
         },
     )
 
-    tw_label = "Retention Period" if isinstance(metric, M.RetentionMetric) else "Within"
+    tw_label = (
+        "Retention Period" if metric_type == MTH.MetricType.RETENTION else "Within"
+    )
 
     time_window = html.Div(
         [
@@ -167,44 +199,32 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
             dmc.Select(
                 id=TIME_WINDOW_INTERVAL_STEPS,
                 clearable=False,
-                value=tg_value.value,
+                value=tw_g_value.value,
                 size="xs",
-                data=get_time_group_options(),
+                data=get_time_window_options(metric_type),
                 style={"width": "100px", "display": "inline-block"},
             ),
         ],
         style={
             "visibility": "visible"
-            if isinstance(metric, M.ConversionMetric)
-            or isinstance(metric, M.RetentionMetric)
+            if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.CONVERSION]
             else "hidden"
         },
-    )
-
-    res_value = (
-        EVERY_EVENT_RESOLUTION
-        if metric is None or metric._resolution is None
-        else str(metric._resolution).lower()
     )
 
     resolution_ig = dmc.Select(
         id=RESOLUTION_DD,
         className="rounded-right",
         clearable=False,
-        value=res_value,
+        value=metric_config.resolution.name,
         size="xs",
         label="Resolution",
-        data=[
-            {"label": "Every event", "value": EVERY_EVENT_RESOLUTION},
-            {"label": "Single user event hourly", "value": "hour"},
-            {"label": "Single user event daily", "value": "day"},
-        ],
+        data=[{"label": value_to_label(v.name), "value": v.name} for v in M.Resolution],
         style={
             "width": "204px",
             "visibility": (
                 "visible"
-                if isinstance(metric, M.ConversionMetric)
-                or isinstance(metric, M.RetentionMetric)
+                if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.CONVERSION]
                 else "hidden"
             ),
         },
@@ -214,13 +234,17 @@ def create_metric_options_component(metric: Optional[M.Metric]) -> bc.Component:
 
 
 def from_metric(
-    metric: Optional[M.Metric],
+    metric_config: M.MetricConfig,
+    metric_type: MTH.MetricType,
+    time_window: M.TimeWindow,
 ) -> bc.Component:
-    conversion_comps = [create_metric_options_component(metric)]
+    conversion_comps = [
+        create_metric_options_component(metric_config, metric_type, time_window)
+    ]
     component = dbc.Row(
         [
             dbc.Col(
-                children=[DS.from_metric(metric)],
+                children=[DS.from_metric(metric_config, metric_type)],
                 xs=12,
                 md=6,
             ),
@@ -250,28 +274,64 @@ def from_all_inputs(
     else:
         agg_type, agg_param = M.AggType.parse_agg_str(agg_type_val)
 
-    res_tw = M.TimeWindow(
-        value=all_inputs.get(TIME_WINDOW_INTERVAL, 1),
-        period=M.TimeGroup(all_inputs.get(TIME_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)),
-    )
-
-    res_val = all_inputs.get(RESOLUTION_DD, EVERY_EVENT_RESOLUTION)
-    resolution: Optional[M.TimeGroup] = None
-    if res_val != EVERY_EVENT_RESOLUTION:
-        resolution = M.TimeGroup.parse(res_val)
+    if ctx.triggered_id == MTH.METRIC_TYPE_DROPDOWN:
+        start_dt = None
+        end_dt = None
+        if metric_type == MTH.MetricType.RETENTION:
+            time_group = M.TimeGroup.WEEK
+            resolution = M.Resolution.ONE_USER_EVENT_PER_HOUR
+            lookback_days = M.TimeWindow(2, M.TimeGroup.MONTH)
+            time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
+        elif metric_type == MTH.MetricType.CONVERSION:
+            time_group = M.TimeGroup.DAY
+            resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
+            lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)
+            time_window = M.TimeWindow(1, M.TimeGroup.DAY)
+        else:
+            time_group = M.TimeGroup.DAY
+            resolution = M.Resolution.EVERY_EVENT
+            lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)
+            time_window = M.TimeWindow(1, M.TimeGroup.DAY)
+    else:
+        dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
+        time_group = dates_conf.time_group
+        resolution = M.Resolution.parse(
+            all_inputs.get(RESOLUTION_DD, M.Resolution.EVERY_EVENT.name)
+        )
+        lookback_days = dates_conf.lookback_days
+        start_dt = dates_conf.start_dt
+        end_dt = dates_conf.end_dt
+        time_window = M.TimeWindow(
+            value=all_inputs.get(TIME_WINDOW_INTERVAL, 1),
+            period=M.TimeGroup(
+                all_inputs.get(TIME_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)
+            ),
+        )
 
     chart_type_val = all_inputs.get(TH.CHART_TYPE_DD, None)
     chart_type = M.SimpleChartType.parse(chart_type_val)
 
-    dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
+    group_by: Optional[M.EventFieldDef] = None
+    if discovered_project is not None:
+        group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
+        if len(group_by_paths) >= 1 and not (
+            metric_type == MTH.MetricType.RETENTION and time_group != M.TimeGroup.TOTAL
+        ):
+            gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
+            group_by = find_event_field_def(gp, discovered_project) if gp else None
+            if group_by is not None:
+                group_by._project._discovered_project.set_value(discovered_project)
+
     res_config = M.MetricConfig(
-        start_dt=dates_conf.start_dt,
-        end_dt=dates_conf.end_dt,
-        lookback_days=dates_conf.lookback_days,
-        time_group=dates_conf.time_group,
+        start_dt=parse_datetime_input(start_dt, None),
+        end_dt=parse_datetime_input(end_dt, None),
+        lookback_days=lookback_days,
+        time_group=time_group,
         agg_type=agg_type,
         agg_param=agg_param,
         chart_type=chart_type,
         resolution=resolution,
+        group_by=group_by,
+        custom_title="",
     )
-    return res_config, res_tw
+    return res_config, time_window

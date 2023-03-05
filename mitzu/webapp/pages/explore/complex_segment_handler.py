@@ -6,7 +6,7 @@ import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
 import mitzu.webapp.pages.explore.event_segment_handler as ES
-import mitzu.webapp.pages.explore.metric_type_handler as MNB
+import mitzu.webapp.pages.explore.metric_type_handler as MTH
 from dash import html
 from mitzu.webapp.helper import (
     CHILDREN,
@@ -99,12 +99,12 @@ def from_segment(
     funnel_step: int,
     metric: Optional[M.Metric],
     segment: Optional[M.Segment],
-    metric_type: MNB.MetricType,
+    metric_type: MTH.MetricType,
 ) -> bc.Component:
     type_index = str(funnel_step)
-    if metric_type == MNB.MetricType.CONVERSION:
+    if metric_type == MTH.MetricType.CONVERSION:
         title = f"{funnel_step+1}. Step"
-    elif metric_type == MNB.MetricType.RETENTION:
+    elif metric_type == MTH.MetricType.RETENTION:
         title = "Initial Step" if funnel_step == 0 else "Retaining Step"
     else:
         title = "Events"

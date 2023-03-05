@@ -245,7 +245,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             selects.append(index_sel)
             index += time_window.value
             curr_dt = curr_dt + time_window.to_relative_delta()
-
+        if len(selects) > 64:  # TODO: make this come from configs
+            raise ValueError(
+                "Too many retention periods to caluclate try reducing the scope"
+            )
         return SA.union(*selects).cte()
 
     def list_schemas(self) -> List[str]:
@@ -675,7 +678,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self,
         sub_query: SegmentSubQuery,
         group_field: Optional[M.EventFieldDef] = None,
-        resolution: Optional[M.TimeGroup] = None,
+        resolution: M.Resolution = M.Resolution.EVERY_EVENT,
     ) -> EXP.CTE:
         selects = []
         while True:
@@ -688,10 +691,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 )
 
             datetime_col = self.get_field_reference(ed_table.event_time_field, ed_table)
-            if resolution is not None:
+            resolution_tg = resolution.get_time_group()
+            if resolution_tg is not None:
                 datetime_col = self._get_date_trunc(
                     field_ref=datetime_col,
-                    time_group=resolution,
+                    time_group=resolution_tg,
                 )
 
             select = SA.select(
@@ -704,7 +708,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 ],
                 whereclause=(sub_query.where_clause),
             )
-            if resolution is not None:
+            if resolution != M.Resolution.EVERY_EVENT:
                 select = select.distinct()
 
             selects.append(select)
@@ -748,17 +752,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             elif isinstance(metric, M.RetentionMetric):
                 end_date = end_date + metric._retention_window.to_relative_delta()
 
-        if metric._resolution == M.TimeGroup.DAY:
+        if metric._resolution == M.Resolution.ONE_USER_EVENT_PER_DAY:
             start_date = start_date.replace(hour=0, minute=0, second=0)
-        elif metric._resolution == M.TimeGroup.HOUR:
+        elif metric._resolution == M.Resolution.ONE_USER_EVENT_PER_HOUR:
             start_date = start_date.replace(minute=0, second=0)
-        elif metric._resolution == M.TimeGroup.MINUTE:
+        elif metric._resolution == M.Resolution.ONE_USER_EVENT_PER_MINUTE:
             start_date = start_date.replace(second=0)
-        elif metric._resolution is not None:
-
-            raise ValueError(
-                f"Unsupported resolution value {metric._resolution}. Supported are [None, minute, hour, day]"
-            )
 
         start_date = start_date.replace(microsecond=0)
         end_date = end_date.replace(microsecond=0)

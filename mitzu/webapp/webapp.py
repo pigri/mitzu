@@ -79,7 +79,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         update_title=None,
         suppress_callback_exceptions=True,
         use_pages=True,
-        long_callback_manager=get_callback_manager(dependencies),
+        background_callback_manager=get_callback_manager(dependencies),
         external_scripts=[
             "https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.2/dragula.min.js"
         ],
