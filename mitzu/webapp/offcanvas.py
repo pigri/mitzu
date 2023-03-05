@@ -6,6 +6,7 @@ from typing import Any, Dict
 import dash_bootstrap_components as dbc
 from dash import callback, ctx, html, dcc
 from dash.dependencies import ALL, Input, Output
+from mitzu import __version__ as version
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
@@ -157,6 +158,11 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
             )
             if show_sign_out
             else None,
+            html.Div(
+                f"v{version}",
+                className="position-absolute bottom-0 start-0 p-2",
+                style={"opacity": "0.5"},
+            ),
         ],
         close_button=False,
         is_open=False,

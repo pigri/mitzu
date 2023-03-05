@@ -9,6 +9,7 @@ clean:
 
 init:
 	$(POETRY) install --all-extras
+	$(POETRY) self add "poetry-dynamic-versioning[plugin]"
 
 format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
@@ -123,11 +124,25 @@ publish: bump_version build
 publish_no_build:
 	$(POETRY) publish
 
-docker_build:	
-	docker image build ./release --platform="linux/amd64" \
-	-t mitzuio/mitzu:$(shell poetry version -s) \
-	-t mitzuio/mitzu:latest \
-	--build-arg ADDITIONAL_DEPENDENCIES="mitzu[webapp,databricks,trinodwh,athena,postgres,mysql,snowflake]==$(shell poetry version -s)" --no-cache
+docker_build_latest:	
+	$(POETRY) build
+	cp -r ./dist/ ./release/dist/
+	poetry export \
+		-E webapp \
+		-E trinodwh \
+		-E postgres \
+		-E databricks \
+		-E athena \
+		-E snowflake \
+		-E mysql \
+		--without-hashes \
+		--format=requirements.txt > release/requirements.txt	
+	docker build ./release \
+	--platform "linux/amd64" \
+	--build-arg MITZU_VERSION=$(shell poetry version -s) \
+	-f ./release/Dockerfile \
+	-t mitzuio/mitzu:$(shell poetry version -s)
+	-t mitzuio/mitzu:latest
 
 docker_build_amd64_snapshot:
 	$(POETRY) build
@@ -152,7 +167,7 @@ docker_run_amd64_snapshot:
 	rm -rf ./docker_cache/
 	docker run -v "$(pwd)/docker_cache/:/app/cache" -e SETUP_SAMPLE_PROJECT=false KALEIDO_CONFIGS="" -e LOCAL_CACHING_ENABLED=false -p 8082:8080 mitzuio/mitzu:snapshot
 
-docker_publish: docker_build
+docker_publish_latest: docker_build_latest
 	docker push mitzuio/mitzu:$(shell poetry version -s)
 	docker push mitzuio/mitzu:latest
 

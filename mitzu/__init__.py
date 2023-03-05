@@ -14,6 +14,9 @@ from mitzu.model import (
 )
 from mitzu.samples import get_sample_discovered_project
 
+__version__ = "0.0.0"
+
+
 __all__ = [
     "Connection",
     "ConnectionType",
