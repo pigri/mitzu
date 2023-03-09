@@ -6,6 +6,7 @@ import mitzu.model as M
 from mitzu.helper import LOGGER
 from tqdm import tqdm
 import sys
+import traceback
 
 
 class ProjectDiscoveryError(Exception):
@@ -88,16 +89,6 @@ class ProjectDiscovery:
 
         return res
 
-    def flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
-        res = []
-        for f in fields:
-            if f._type.is_complex():
-                if f._sub_fields is not None:
-                    res.extend(self.flatten_fields(list(f._sub_fields)))
-            else:
-                res.append(f)
-        return res
-
     def discover_project(self, progress_bar: bool = False) -> M.DiscoveredProject:
         definitions: Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]] = {}
 
@@ -112,11 +103,9 @@ class ProjectDiscovery:
             defs = {}
             try:
                 LOGGER.debug(f"Discovering {ed_table.get_full_name()}")
-                all_fields = self.project.get_adapter().list_fields(
+                fields = self.project.get_adapter().list_fields(
                     event_data_table=ed_table
                 )
-                fields = self.flatten_fields(all_fields)
-
                 specific_fields = self._get_specific_fields(ed_table, fields)
 
                 generic_fields = [c for c in fields if c not in specific_fields]
@@ -150,6 +139,7 @@ class ProjectDiscovery:
         )
 
         if len(errors) > 0:
+            traceback.print_exception(list(errors.values())[0])
             LOGGER.warning(f"Finished discovery with {len(errors)} errors.")
         else:
             LOGGER.info("Successfully finished dataset discovery.")

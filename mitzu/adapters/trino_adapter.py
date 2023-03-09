@@ -7,7 +7,10 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
 import trino.sqlalchemy.datatype as SA_T
-from mitzu.adapters.helper import dataframe_str_to_datetime, pdf_string_array_to_array
+from mitzu.adapters.helper import (
+    dataframe_str_to_datetime,
+    pdf_string_json_array_to_array,
+)
 from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
 from mitzu.helper import LOGGER
 from sqlalchemy.sql.type_api import TypeEngine
@@ -115,6 +118,9 @@ class TrinoAdapter(SQLAlchemyAdapter):
     def _get_struct_type(self) -> TypeEngine:
         return SA_T.ROW
 
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.array_agg(SA.distinct(field_ref))
+
     def _get_column_values_df(
         self,
         event_data_table: M.EventDataTable,
@@ -126,7 +132,7 @@ class TrinoAdapter(SQLAlchemyAdapter):
             fields=fields,
             event_specific=event_specific,
         )
-        return pdf_string_array_to_array(df)
+        return pdf_string_json_array_to_array(df)
 
     def _correct_timestamp(self, dt: datetime) -> Any:
         return SA.text(f"timestamp '{dt}'")

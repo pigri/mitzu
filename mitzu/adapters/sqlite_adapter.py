@@ -6,12 +6,15 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
 import pandas as pd
 from mitzu.adapters.helper import dataframe_str_to_datetime
-from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import (
+    FieldReference,
+    SQLAlchemyAdapter,
+)
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 
-VALUE_SEPARATOR = "###"
+ARRAY_JOIN_SEP = "###"
 
 
 class SQLiteAdapter(SQLAlchemyAdapter):
@@ -59,17 +62,16 @@ class SQLiteAdapter(SQLAlchemyAdapter):
         event_specific: bool,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(event_data_table, fields, event_specific)
-
         for field in df.columns:
             df[field] = (
                 df[field]
-                .str.replace(f"{VALUE_SEPARATOR}$", "", regex=True)
-                .str.split(f"{VALUE_SEPARATOR},")
+                .str.replace(f"{ARRAY_JOIN_SEP}$", "", regex=True)
+                .str.split(f"{ARRAY_JOIN_SEP},")
             )
         return df
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
-        return SA.func.group_concat(SA.distinct(field_ref.concat(VALUE_SEPARATOR)))
+        return SA.func.group_concat(SA.distinct(field_ref.concat(ARRAY_JOIN_SEP)))
 
     def _get_datetime_interval(
         self, field_ref: FieldReference, timewindow: M.TimeWindow

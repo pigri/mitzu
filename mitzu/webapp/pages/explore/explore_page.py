@@ -228,7 +228,10 @@ def get_metric_group_by(
     ):
         gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
         group_by = find_event_field_def(gp, discovered_project) if gp else None
-
+        if group_by is not None:
+            group_by._event_data_table.project_reference.restore_value(
+                discovered_project.project
+            )
     return group_by
 
 

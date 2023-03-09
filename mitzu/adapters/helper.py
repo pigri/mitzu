@@ -5,6 +5,7 @@ from typing import Optional
 
 import mitzu.adapters.generic_adapter as GA
 import pandas as pd
+import json
 
 
 def str_to_datetime(val: str) -> Optional[datetime]:
@@ -18,14 +19,10 @@ def dataframe_str_to_datetime(pdf: pd.DataFrame, column: str) -> pd.DataFrame:
     return pdf
 
 
-def pdf_string_array_to_array(
-    pdf: pd.DataFrame, split_text: str = ", ", omit_chars: int = 1
-):
+def pdf_string_json_array_to_array(pdf: pd.DataFrame):
     for col in pdf.columns:
         if col != GA.EVENT_NAME_ALIAS_COL:
             pdf[col] = pdf[col].apply(
-                lambda val: [v for v in val[omit_chars:-omit_chars].split(split_text)]
-                if type(val) == str
-                else val
+                lambda val: json.loads(val) if type(val) == str else val
             )
     return pdf

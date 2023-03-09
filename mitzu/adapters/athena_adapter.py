@@ -7,9 +7,12 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.adapters.sqlalchemy.athena.sqlalchemy.datatype as DA_T
 import mitzu.model as M
 import pandas as pd
-from mitzu.adapters.helper import pdf_string_array_to_array
+from mitzu.adapters.helper import pdf_string_json_array_to_array
 from mitzu.adapters.sqlalchemy.athena import sqlalchemy  # noqa: F401
-from mitzu.adapters.sqlalchemy_adapter import FieldReference, SQLAlchemyAdapter
+from mitzu.adapters.sqlalchemy_adapter import (
+    FieldReference,
+    SQLAlchemyAdapter,
+)
 from mitzu.helper import LOGGER
 from sqlalchemy.sql.type_api import TypeEngine
 import sqlalchemy as SA
@@ -39,7 +42,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
             fields=fields,
             event_specific=event_specific,
         )
-        return pdf_string_array_to_array(df)
+        return pdf_string_json_array_to_array(df)
 
     def _correct_timestamp(self, dt: datetime) -> Any:
         timeformat = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -67,14 +70,19 @@ class AthenaAdapter(SQLAlchemyAdapter):
         cte = self._get_dataset_discovery_cte(event_data_table)
         F = SA.func
         map_keys_func = F.array_distinct(
-            F.flatten(F.collect_set(F.map_keys(cte.columns[name])))
+            F.flatten(F.array_agg(F.map_keys(cte.columns[name]).distinct()))
         )
 
         max_cardinality = event_data_table.discovery_settings.max_map_key_cardinality
         q = SA.select(
             columns=[
                 SA.case(
-                    [(F.size(map_keys_func) < max_cardinality, map_keys_func)],
+                    [
+                        (
+                            F.cardinality(map_keys_func) < max_cardinality,
+                            F.cast(map_keys_func, SA.JSON),
+                        )
+                    ],
                     else_=None,
                 ).label("sub_fields")
             ]
@@ -82,7 +90,7 @@ class AthenaAdapter(SQLAlchemyAdapter):
         df = self.execute_query(q)
         if df.shape[0] == 0:
             return M.Field(_name=name, _type=M.DataType.MAP)
-        keys = df.iat[0, 0].tolist()
+        keys = df.iat[0, 0]
         sf_type = self.map_type(map.value_type)
         sub_fields: List[M.Field] = [M.Field(key, sf_type) for key in keys]
         return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))

@@ -24,7 +24,6 @@ from typing import (
 )
 import pandas as pd
 
-
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
@@ -713,6 +712,11 @@ class EventDataTable(Identifiable):
 
     def __hash__(self):
         return self.id.__hash__()
+
+    def __eq__(self, other):
+        if isinstance(other, EventDataTable):
+            return self.id == other.id
+        return False
 
     def get_id(self) -> str:
         return self.id

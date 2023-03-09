@@ -24,6 +24,7 @@ def fix_col_index(index: int, col_name: str):
 
 COLUMN_NAME_REPLACE_STR = "___"
 
+
 FieldReference = Union[SA.Column, EXP.Label]
 SAMPLED_SOURCE_CTE_NAME = "sampled_source"
 
@@ -193,8 +194,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         if field._parent is None:
             return sa_table.columns.get(field._name)
-
-        return SA.literal_column(f"{sa_table.name}.{field._get_name()}")
+        if field._parent._type == M.DataType.MAP:
+            return SA.literal_column(
+                f"{sa_table.name}.{field._parent._get_name()}['{field._name}']"
+            )
+        else:
+            return SA.literal_column(f"{sa_table.name}.{field._get_name()}")
 
     def _get_struct_type(self) -> TypeEngine:
         raise NotImplementedError(
@@ -261,6 +266,25 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         insp = SA.inspect(engine)
         return insp.get_table_names(schema=schema)
 
+    def _flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
+        """Flattens the tree field structure to a list.
+            All leaf-nodes in the tree will be in the result list
+
+        Args:
+            fields (List[M.Field]): Fields that might contain subfields
+
+        Returns:
+            List[M.Field]: All subfields (with correct parents)
+        """
+        res = []
+        for f in fields:
+            if f._type.is_complex():
+                if f._sub_fields is not None:
+                    res.extend(self._flatten_fields(list(f._sub_fields)))
+            else:
+                res.append(f)
+        return res
+
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
         table = self.get_table(event_data_table)
         field_types = table.columns
@@ -293,7 +317,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             else:
                 field = M.Field(_name=field_name, _type=data_type)
                 res.append(field)
-        return res
+        return self._flatten_fields(res)
 
     def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
         table = self.get_table_by_name(schema, table_name)
@@ -372,7 +396,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         return res
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
-        return SA.func.array_agg(SA.distinct(field_ref))
+        return SA.func.cast(SA.func.array_agg(SA.distinct(field_ref)), SA.JSON)
 
     def _column_index_support(self):
         return True
@@ -499,32 +523,27 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         enums = self._get_column_values_df(
             event_data_table, fields, event_specific
         ).to_dict("index")
-        res = {}
+        res: Dict[str, M.EventDef] = {}
         for evt, values in enums.items():
+            field_defs: Dict[M.Field, M.EventFieldDef] = {}
             for f in fields:
-                field_name = f._get_name()
+                field_values = values[f._get_name()]
                 if (
-                    values[field_name] is not None
-                    and len(values[field_name]) == 1
-                    and values[field_name][0] is None
+                    (field_values is None)
+                    or (len(field_values) == 1 and field_values[0])
+                    or (len(field_values) > 1)
                 ):
-                    # Cardinality is too high or only empty values are
-                    values[field_name] = []
-            res[evt] = M.EventDef(
-                _event_name=evt,
-                _fields={
-                    f: M.EventFieldDef(
+                    vals = [v for v in field_values if v] if field_values else None
+                    field_defs[f] = M.EventFieldDef(
                         _event_name=evt,
                         _field=f,
                         _event_data_table=event_data_table,
-                        _enums=values[f._get_name()],
+                        _enums=vals,
                     )
-                    for f in fields
-                    # We return NONE if the cardinality is above the max_enum_cardinality for a field.
-                    # This is Needed as the NULL type will be accepted for every case-when as a return statement.
-                    # Empty list are the result of field not having any value
-                    if values[f._get_name()] is None or len(values[f._get_name()]) > 0
-                },
+
+            res[evt] = M.EventDef(
+                _event_name=evt,
+                _fields=field_defs,
                 _event_data_table=event_data_table,
             )
         return res

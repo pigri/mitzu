@@ -58,3 +58,6 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
         df = super().get_segmentation_df(metric)
         df[GA.AGG_VALUE_COL] = df[GA.AGG_VALUE_COL].astype(float)
         return df
+
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.to_json(SA.func.array_agg(SA.distinct(field_ref)))

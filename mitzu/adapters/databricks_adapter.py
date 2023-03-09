@@ -7,6 +7,7 @@ import mitzu.adapters.sqlalchemy.databricks.sqlalchemy.datatype as DA_T
 import mitzu.model as M
 from mitzu.adapters.sqlalchemy.databricks import sqlalchemy  # noqa: F401
 from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter, FieldReference
+from mitzu.adapters.helper import pdf_string_json_array_to_array
 from mitzu.helper import LOGGER
 
 import sqlalchemy as SA
@@ -137,3 +138,15 @@ class DatabricksAdapter(SQLAlchemyAdapter):
         raise ValueError(
             f"{time_group} is not supported for databricks dynamic time intervals"
         )
+
+    def _get_column_values_df(
+        self,
+        event_data_table: M.EventDataTable,
+        fields: List[M.Field],
+        event_specific: bool,
+    ):
+        df = super()._get_column_values_df(event_data_table, fields, event_specific)
+        return pdf_string_json_array_to_array(df)
+
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.to_json(SA.func.array_agg(SA.distinct(field_ref)))
