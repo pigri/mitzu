@@ -18,27 +18,9 @@ jobs:
       - name: Set semantic version
         run: |
           poetry dynamic-versioning
-      - name: Start docker images
-        uses: isbang/compose-action@v1.2.0
-        with:
-          compose-file: "docker/docker-compose.yml"
-      - name: Waiting for trino server
+      - name: Poetry build
         run: |
-          poetry run python3 scripts/wait_for_trino.py
-      - name: Setup trino test data
-        run: |
-          make trino_setup_test_data
-      - name: Testing and building the project
-        run: |
-          make build
-      - name: Generate documentation
-        run: |
-          make generate_docs_ci
-      - name: Dump trino logs
-        if: failure()
-        run: |
-          curl http://localhost:8080/v1/info 2>/dev/null | jq
-          docker logs docker-trino-coordinator-1
+          poetry build
       - name: Publish to Pypi
         run: |
           poetry publish -u '${{ secrets.PYPI_USERNAME }}' -p '${{ secrets.PYPI_PASSWORD }}'
@@ -46,7 +28,6 @@ jobs:
   publish_docker_image:
     name: Publish docker image
     runs-on: ubuntu-latest
-    needs: publish_pypi_package
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

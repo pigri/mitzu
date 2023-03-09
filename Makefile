@@ -141,7 +141,7 @@ docker_build_latest:
 	--platform "linux/amd64" \
 	--build-arg MITZU_VERSION=$(shell poetry version -s) \
 	-f ./release/Dockerfile \
-	-t mitzuio/mitzu:$(shell poetry version -s)
+	-t mitzuio/mitzu:$(shell poetry version -s) \
 	-t mitzuio/mitzu:latest
 
 docker_build_amd64_snapshot:
