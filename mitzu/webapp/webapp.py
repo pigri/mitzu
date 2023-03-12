@@ -10,8 +10,10 @@ from dash.long_callback.managers import BaseLongCallbackManager
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
 from mitzu.helper import LOGGER
+
 from mitzu.webapp.helper import MITZU_LOCATION
 
 MAIN = "main"
@@ -62,6 +64,8 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
 
     with server.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
+        if configs.SETUP_SAMPLE_PROJECT:
+            S.setup_sample_project(dependencies.storage)
 
     app = Dash(
         __name__,

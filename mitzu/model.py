@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import pathlib
 from urllib import parse
@@ -947,46 +946,6 @@ class DiscoveredProject:
 
     def create_notebook_class_model(self) -> Any:
         return ML.ModelLoader().create_datasource_class_model(self)
-
-    def display_inline_dashboard(
-        self,
-        port: int = 8080,
-        host: str = "0.0.0.0",
-        external_url: Optional[str] = None,
-        logging_level: int = logging.WARN,
-        height: Any = 800,
-        width: Any = "100%",
-    ):
-        import IPython.display as ID
-
-        if not external_url:
-            external_url = f"http://{host}:{port}"
-        results = self.display_external_dashboard(
-            port, host, logging_level, new_thread=True
-        )
-        ID.display(ID.IFrame(external_url, height=height, width=width))
-        return results
-
-    def display_external_dashboard(
-        self,
-        port: Optional[int] = 8080,
-        host: Optional[str] = "0.0.0.0",
-        logging_level: int = logging.WARN,
-        new_thread: bool = False,
-    ):
-        import mitzu.webapp.notebook as DASH
-
-        self.project.validate()
-        results: Optional[Dict[str, Any]] = {}
-        DASH.external_dashboard(
-            self,
-            results=results,
-            port=port,
-            host=host,
-            logging_level=logging_level,
-            new_thread=new_thread,
-        )
-        return results
 
     def get_event_def(self, event_name) -> EventDef:
         for val in self.definitions.values():

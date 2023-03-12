@@ -17,6 +17,7 @@ from urllib.parse import unquote
 from typing import cast
 from datetime import datetime
 from unittest.mock import patch
+import flask
 
 
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
@@ -475,12 +476,9 @@ def test_custom_date_lookback_days_selected(
 
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_mitzu_link_redirected(
-    ctx, discovered_project: M.DiscoveredProject, dependencies: DEPS.Dependencies
+    ctx, server: flask.Flask, dependencies: DEPS.Dependencies
 ):
-    import flask
-
-    app = flask.Flask("_test_app_")
-    with app.app_context():
+    with server.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
 
         p = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)
@@ -490,7 +488,9 @@ def test_mitzu_link_redirected(
 
         query_params = {"m": unquote(query)}
         res = EXP.create_explore_page(
-            query_params, discovered_project, storage=dependencies.storage
+            query_params,
+            p._discovered_project.get_value_if_exsits(),
+            storage=dependencies.storage,
         )
 
         explore_page = to_dict(res)

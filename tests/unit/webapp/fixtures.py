@@ -38,19 +38,11 @@ class InMemoryCache(MitzuCache):
 
 
 @fixture(scope="function")
-def dependencies(discovered_project: M.DiscoveredProject) -> DEPS.Dependencies:
+def dependencies() -> DEPS.Dependencies:
     cache = InMemoryCache()
     queue = InMemoryCache()
     storage = S.MitzuStorage(cache)
 
-    project = discovered_project.project
-
-    storage.set_connection(project.connection.id, project.connection)
-    storage.set_project(project_id=project.id, project=project)
-    for edt, defs in discovered_project.definitions.items():
-        storage.set_event_data_table_definition(
-            project_id=project.id, definitions=defs, edt_full_name=edt.get_full_name()
-        )
     evt_service = E.EventsService(storage)
     return DEPS.Dependencies(
         authorizer=None,
@@ -83,8 +75,22 @@ def discovered_project() -> M.DiscoveredProject:
 
 
 @fixture(scope="function")
-def server(dependencies: DEPS.Dependencies) -> flask.Flask:
-    app = flask.Flask(__name__)
-    with app.test_request_context():
-        flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
-    return app
+def server(
+    dependencies: DEPS.Dependencies, discovered_project: M.DiscoveredProject
+) -> flask.Flask:
+    flask_app = flask.Flask(__name__)
+    with flask_app.app_context():
+        storage = dependencies.storage
+        project = discovered_project.project
+        flask_app.config[DEPS.CONFIG_KEY] = dependencies
+        with flask_app.test_request_context():
+            storage.set_connection(project.connection.id, project.connection)
+            storage.set_project(project_id=project.id, project=project)
+            for edt, defs in discovered_project.definitions.items():
+                storage.set_event_data_table_definition(
+                    project_id=project.id,
+                    definitions=defs,
+                    edt_full_name=edt.get_full_name(),
+                )
+
+    return flask_app

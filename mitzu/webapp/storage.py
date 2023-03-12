@@ -9,6 +9,7 @@ import mitzu.webapp.cache as C
 import mitzu.helper as H
 import mitzu.webapp.model as WM
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
+import flask
 
 SAMPLE_PROJECT_NAME = "sample_project"
 SAMPLE_PROJECT_ID = "sample_project_id"
@@ -33,11 +34,14 @@ class InvalidStorageReference(Exception):
 
 
 class StorageReference(M.Reference[M.ID]):
-    def __init__(self, id: str, storage: MitzuStorage, prefix: str):
+    def __init__(self, id: str, prefix: str):
         super().__init__(None)
         self._id = id
-        self.storage = storage
         self.prefix = prefix
+
+    def __get_storage(self):
+        deps = flask.current_app.config.get("dependencies")
+        return deps.storage
 
     def get_id(self) -> Optional[str]:
         return super().get_id()
@@ -48,7 +52,7 @@ class StorageReference(M.Reference[M.ID]):
             return None
 
         if res is None:
-            res = self.storage.mitzu_cache.get(self.prefix + self._id)
+            res = self.__get_storage().mitzu_cache.get(self.prefix + self._id)
             H.LOGGER.debug(f"Restoring storage-ref value: {self.prefix + self._id}")
             self.restore_value(res)
         return res
@@ -58,10 +62,10 @@ class StorageReference(M.Reference[M.ID]):
 
     def store_value(self):
         if self._id is not None:
-            self.storage.mitzu_cache.clear(self.prefix + self._id)
+            self.__get_storage().mitzu_cache.clear(self.prefix + self._id)
         value = self._value_state.get_value()
         if value is not None:
-            self.storage.mitzu_cache.put(self.prefix + value.get_id(), value)
+            self.__get_storage().mitzu_cache.put(self.prefix + value.get_id(), value)
 
     def set_value(self, value: Optional[M.ID]):
         super().set_value(value)
@@ -86,9 +90,7 @@ class StorageReference(M.Reference[M.ID]):
                 "Trying to convert Reference to StorageReference without an ID."
             )
 
-        res: StorageReference[M.ID] = StorageReference(
-            id=ref_id, storage=storage, prefix=prefix
-        )
+        res: StorageReference[M.ID] = StorageReference(id=ref_id, prefix=prefix)
         res.restore_value(reference.get_value())
         return res
 
@@ -123,7 +125,6 @@ def setup_sample_project(storage: MitzuStorage):
 
 class MitzuStorage:
     def __init__(self, mitzu_cache: C.MitzuCache) -> None:
-        super().__init__()
         self.mitzu_cache = mitzu_cache
 
     def set_project(self, project_id: str, project: M.Project):

@@ -75,9 +75,6 @@ class Dependencies:
 
         # Adding cache layer over storage
         storage = S.MitzuStorage(cache)
-        if configs.SETUP_SAMPLE_PROJECT:
-            S.setup_sample_project(storage)
-
         events_service = E.EventsService(storage)
 
         return Dependencies(
