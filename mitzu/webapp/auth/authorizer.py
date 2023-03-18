@@ -229,15 +229,6 @@ class OAuthAuthorizer:
                 LOGGER.warning("Email field is missing from the identity token")
                 return None
 
-            if (
-                self._config.allowed_email_domain is not None
-                and not user_email.endswith(self._config.allowed_email_domain)
-            ):
-                LOGGER.warning(
-                    f"User tried to login with not allowed email address: {user_email}"
-                )
-                return None
-
             return user_email
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
@@ -266,7 +257,35 @@ class OAuthAuthorizer:
                         if not user_email:
                             raise Exception("Unauthorized (Invalid jwt token)")
 
-                        token = self._generate_new_token_for_identity(user_email)
+                        if (
+                            self._config.allowed_email_domain is not None
+                            and not user_email.endswith(
+                                self._config.allowed_email_domain
+                            )
+                        ):
+                            raise Exception(
+                                f"User tried to login with not allowed email address: {user_email}"
+                            )
+
+                        user_role = U.Role.MEMBER
+                        token_identity = user_email
+                        if (
+                            configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
+                            and self._config.user_service is not None
+                        ):
+                            user = self._config.user_service.get_user_by_email(
+                                user_email
+                            )
+                            if user is None:
+                                raise Exception(
+                                    f"User tried to login without having a local user: {user_email}"
+                                )
+                            user_role = user.role
+                            token_identity = user.id
+
+                        token = self._generate_new_token_for_identity(
+                            token_identity, role=user_role
+                        )
 
                         resp = self._redirect(redirect_url)
                         resp.set_cookie(self._config.token_cookie_name, token)
@@ -277,6 +296,12 @@ class OAuthAuthorizer:
                     except Exception as exc:
                         traceback.print_exception(type(exc), exc, exc.__traceback__)
                         LOGGER.warning(f"Failed to authenticate: {str(exc)}")
+                        if self._config.oauth and self._config.oauth.sign_out_url:
+                            resp = self._redirect(self._config.oauth.sign_out_url)
+                            resp.set_cookie(
+                                self._config.token_cookie_name, "", expires=0
+                            )
+                            return resp
                         return self._get_unauthenticated_response()
 
             auth_token = flask.request.cookies.get(self._config.token_cookie_name)
@@ -338,6 +363,9 @@ class OAuthAuthorizer:
     def login_local_user(self, email: str, password: str) -> bool:
         if self._config.user_service is None:
             raise ValueError("User service is not set for local auth")
+
+        if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+            raise ValueError("Password login is not enabled, need to use SSO")
 
         user = self._config.user_service.get_user_by_email_and_password(email, password)
         if user is None:

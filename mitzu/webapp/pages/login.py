@@ -45,9 +45,9 @@ def layout(**query_params):
             html.Hr(),
             dbc.Row(
                 dbc.Col(
-                    login_with_local_users()
-                    if depenednecies.authorizer._config.user_service
-                    else login_with_oauth(),
+                    login_with_oauth()
+                    if depenednecies.authorizer._config.oauth
+                    else login_with_local_users(),
                     class_name="mt-5",
                 )
             ),

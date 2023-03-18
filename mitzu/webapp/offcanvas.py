@@ -44,7 +44,7 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
     show_sign_out = False
     if dependencies.authorizer is not None:
         show_sign_out = True
-        show_users = dependencies.authorizer._config.oauth is None
+        show_users = dependencies.authorizer._config.user_service is not None
 
     res = dbc.Offcanvas(
         children=[

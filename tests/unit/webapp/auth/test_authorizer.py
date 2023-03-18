@@ -7,6 +7,8 @@ from unittest.mock import patch, MagicMock
 from requests.models import Response
 import mitzu.webapp.configs as configs
 import mitzu.webapp.pages.paths as P
+import mitzu.webapp.service.user_service as U
+from tests.unit.webapp.fixtures import InMemoryCache
 from mitzu.webapp.auth.authorizer import (
     OAuthAuthorizer,
     OAuthConfig,
@@ -48,6 +50,7 @@ authorizer.setup_authorizer(app)
 def before_and_after_test():
     token_validator.return_value = None
     token_validator.side_effect = None
+    configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = False
 
 
 def get_cookie_by_name(cookie_name, resp: flask.Response) -> Optional[str]:
@@ -352,6 +355,74 @@ def test_rejects_not_allowed_email_domains_when_configured(req_mock):
             },
         )
         assert_redirected_to_unauthorized_page(resp)
+
+
+@patch("mitzu.webapp.auth.authorizer.requests.post")
+def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
+    response = Response()
+    response.code = "success"
+    response.status_code = 200
+    response._content = json.dumps(
+        {
+            "id_token": auth_token,
+        }
+    ).encode("utf-8")
+
+    req_mock.return_value = response
+    email = "user@email.com"
+    token_validator.validate_token.return_value = {"email": email}
+
+    user_service = U.UserService(InMemoryCache())
+    app = flask.Flask(__name__)
+    authorizer = OAuthAuthorizer.create(
+        AuthConfig(
+            token_signing_key=auth_config.token_signing_key,
+            token_validator=token_validator,
+            oauth=oauth_config,
+            user_service=user_service,
+        )
+    )
+    authorizer.setup_authorizer(app)
+    configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = True
+
+    code = "1234567890"
+    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert_redirected_to_unauthorized_page(resp)
+
+    user_id = user_service.new_user(email, "password", "password")
+    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
+        resp = app.preprocess_request()
+        req_mock.assert_called_with(
+            "https://token_url/",
+            params={
+                "grant_type": "authorization_code",
+                "client_id": "client_id",
+                "code": "1234567890",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
+            },
+        )
+        assert resp is not None
+        assert resp.status_code == 307
+        assert resp.headers["Location"] == HOME_URL
+        assert_auth_token(resp, user_id)
 
 
 def test_token_is_not_refreshed_for_assets_and_some_auth_urls():

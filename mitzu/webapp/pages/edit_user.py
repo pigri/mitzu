@@ -17,6 +17,7 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.service.user_service as US
+import mitzu.webapp.configs as configs
 from mitzu.webapp.helper import create_form_property_input
 from mitzu.webapp.auth.decorator import (
     restricted_layout,
@@ -138,6 +139,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         type="password",
                         required=True,
                         value="",
+                        hidden=configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS,
                     )
                     if show_password_fields
                     else None,
@@ -148,6 +150,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         type="password",
                         required=True,
                         value="",
+                        hidden=configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS,
                     )
                     if show_password_fields
                     else None,
@@ -231,6 +234,9 @@ def layout(user_id: str, **query_params) -> bc.Component:
 
 
 def change_password_form():
+    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+        return []
+
     return [
         html.Hr(),
         create_form_property_input(
@@ -284,6 +290,13 @@ def create_new_user(n_clicks: int, email="", role="", password="", confirm_passw
 
     if user_service is None:
         raise ValueError("User service is not set")
+
+    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+        # new user need a password other than empty string
+        from uuid import uuid4
+
+        password = str(uuid4())
+        confirm_password = password
 
     try:
         user_service.new_user(email, password, confirm_password, role=US.Role(role))

@@ -103,6 +103,7 @@ def create_form_property_input(
     label_sm: int = 12,
     justify: Optional[str] = None,
     read_only: bool = False,
+    hidden: bool = False,
     **kwargs,
 ):
     if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
@@ -129,6 +130,13 @@ def create_form_property_input(
             del kwargs["data"]
     else:
         kwargs["id"] = {"type": index_type, "index": property}
+
+    if hidden:
+        kwargs["type"] = "hidden"
+        return component_type(
+            **kwargs,
+        )
+
     return dbc.Row(
         [
             dbc.Label(label_children, class_name="fw-bold", sm=label_sm, lg=label_lg),

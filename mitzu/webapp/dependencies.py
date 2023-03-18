@@ -51,6 +51,11 @@ class Dependencies:
                 cache, root_password=configs.AUTH_ROOT_PASSWORD
             )
 
+        if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+            user_service = U.UserService(
+                cache, root_password=configs.AUTH_ROOT_PASSWORD
+            )
+
         if oauth_config or user_service:
             auth_config = A.AuthConfig(
                 oauth=oauth_config,
