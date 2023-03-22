@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 from uuid import uuid4
+from enum import Enum
 
 import mitzu.model as M
 import mitzu.visualization.common as C
@@ -236,3 +237,28 @@ class Dashboard:
             dashboard_metrics=self.dashboard_metrics,
             owner=self.owner,
         )
+
+
+class Role(Enum):
+    ADMIN = "admin"
+    MEMBER = "member"
+
+    @classmethod
+    def all_values(cls):
+        return [
+            Role.ADMIN,
+            Role.MEMBER,
+        ]
+
+
+@dataclass
+class User:
+    """
+    Container class for describing a user
+    """
+
+    email: str
+    password_hash: str
+    password_salt: str
+    id: str = field(default_factory=create_unique_id)
+    role: Role = Role.MEMBER

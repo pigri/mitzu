@@ -14,7 +14,7 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.helper import TBL_CLS, TBL_HEADER_CLS
 from mitzu.webapp.auth.decorator import restricted_layout
-import mitzu.webapp.service.user_service as US
+import mitzu.webapp.model as WM
 
 
 ADD_USER_BUTTON = "user_add_user"
@@ -79,7 +79,7 @@ def layout(**query_params) -> bc.Component:
     if authorizer is None:
         raise ValueError("Authorizer is not set")
 
-    is_admin = authorizer.get_current_user_role(flask.request) == US.Role.ADMIN
+    is_admin = authorizer.get_current_user_role(flask.request) == WM.Role.ADMIN
 
     table = create_users_table(user_service)
 

@@ -1,4 +1,5 @@
 import pytest
+from typing import Optional
 
 from mitzu.webapp.service.user_service import (
     UserService,
@@ -6,17 +7,23 @@ from mitzu.webapp.service.user_service import (
     UserNotFoundException,
     UserPasswordAndConfirmationDoNotMatch,
     RootUserCannotBeChanged,
-    Role,
 )
+from mitzu.webapp.model import Role
 from tests.unit.webapp.fixtures import InMemoryCache
 import mitzu.webapp.configs as configs
+import mitzu.webapp.storage as S
+
+
+def create_service(root_password: Optional[str] = None) -> UserService:
+    storage = S.MitzuStorage(InMemoryCache())
+    return UserService(storage, root_password=root_password)
 
 
 def test_service_creates_root_user_if_password_is_set():
-    service = UserService(InMemoryCache())
+    service = create_service()
     assert len(service.list_users()) == 0
 
-    service = UserService(InMemoryCache(), root_password="test")
+    service = create_service(root_password="test")
     assert len(service.list_users()) == 1
     root_user = service.get_user_by_email_and_password(
         configs.AUTH_ROOT_USER_EMAIL, "test"
@@ -26,7 +33,7 @@ def test_service_creates_root_user_if_password_is_set():
 
 
 def test_create_new_user():
-    service = UserService(InMemoryCache())
+    service = create_service()
     assert len(service.list_users()) == 0
 
     email = "a@b.c"
@@ -43,7 +50,7 @@ def test_create_new_user():
 
 
 def test_user_lookup_with_password():
-    service = UserService(InMemoryCache())
+    service = create_service()
     email = "a@b.c"
     password = "password"
 
@@ -61,7 +68,7 @@ def test_user_lookup_with_password():
 
 
 def test_root_user_cannot_be_deleted():
-    service = UserService(InMemoryCache(), root_password="password")
+    service = create_service(root_password="password")
     root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
 
     with pytest.raises(RootUserCannotBeChanged):
@@ -69,7 +76,7 @@ def test_root_user_cannot_be_deleted():
 
 
 def test_update_password():
-    service = UserService(InMemoryCache())
+    service = create_service()
     email = "a@b.c"
     password = "password"
 
@@ -87,7 +94,7 @@ def test_update_password():
 
 
 def test_update_role():
-    service = UserService(InMemoryCache(), root_password="password")
+    service = create_service(root_password="password")
     email = "a@b.c"
     password = "password"
 
@@ -109,7 +116,7 @@ def test_update_role():
 
 
 def test_delete_user():
-    service = UserService(InMemoryCache())
+    service = create_service()
     email = "a@b.c"
 
     with pytest.raises(UserNotFoundException):
@@ -123,7 +130,7 @@ def test_delete_user():
 
 
 def test_delete_root_user():
-    service = UserService(InMemoryCache(), root_password="password")
+    service = create_service(root_password="password")
     root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
 
     with pytest.raises(RootUserCannotBeChanged):
@@ -131,7 +138,7 @@ def test_delete_root_user():
 
 
 def test_is_root_user():
-    service = UserService(InMemoryCache(), root_password="password")
+    service = create_service(root_password="password")
     root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
 
     assert service.is_root_user(root_user.id)

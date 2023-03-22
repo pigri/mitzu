@@ -5,7 +5,7 @@ from dash.exceptions import PreventUpdate
 from dash.dcc import Location
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.paths as P
-import mitzu.webapp.service.user_service as US
+import mitzu.webapp.model as WM
 
 
 def restricted(func):
@@ -38,7 +38,7 @@ def restricted_for_admin(func):
             if user_role is None:
                 raise PreventUpdate
 
-            if user_role != US.Role.ADMIN:
+            if user_role != WM.Role.ADMIN:
                 raise PreventUpdate
             else:
                 return func(*args, **kwargs)

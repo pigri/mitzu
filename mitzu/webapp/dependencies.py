@@ -33,6 +33,7 @@ class Dependencies:
         else:
             delegate_cache = C.DiskMitzuCache("cache")
         cache = C.RequestCache(delegate_cache)
+        storage = S.MitzuStorage(cache)
 
         authorizer = None
         oauth_config = None
@@ -46,14 +47,9 @@ class Dependencies:
 
             oauth_config = GoogleOAuth.get_config()
 
-        elif configs.AUTH_BACKEND == "local":
+        elif configs.AUTH_BACKEND == "local" or configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
             user_service = U.UserService(
-                cache, root_password=configs.AUTH_ROOT_PASSWORD
-            )
-
-        if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
-            user_service = U.UserService(
-                cache, root_password=configs.AUTH_ROOT_PASSWORD
+                storage, root_password=configs.AUTH_ROOT_PASSWORD
             )
 
         if oauth_config or user_service:
@@ -79,7 +75,6 @@ class Dependencies:
             queue = C.DiskMitzuCache("queue")
 
         # Adding cache layer over storage
-        storage = S.MitzuStorage(cache)
         events_service = E.EventsService(storage)
 
         return Dependencies(

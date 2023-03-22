@@ -8,6 +8,7 @@ from requests.models import Response
 import mitzu.webapp.configs as configs
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.service.user_service as U
+import mitzu.webapp.storage as S
 from tests.unit.webapp.fixtures import InMemoryCache
 from mitzu.webapp.auth.authorizer import (
     OAuthAuthorizer,
@@ -372,7 +373,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
     email = "user@email.com"
     token_validator.validate_token.return_value = {"email": email}
 
-    user_service = U.UserService(InMemoryCache())
+    user_service = U.UserService(S.MitzuStorage(InMemoryCache()))
     app = flask.Flask(__name__)
     authorizer = OAuthAuthorizer.create(
         AuthConfig(

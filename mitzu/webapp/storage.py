@@ -261,3 +261,21 @@ class MitzuStorage:
 
     def clear_dashboard(self, dashboard_id: str):
         return self.mitzu_cache.clear(DASHBOARD_PREFIX + dashboard_id)
+
+    def set_user(self, user: WM.User):
+        key = f"users.{user.id}"
+        if self.mitzu_cache.get(key):
+            self.mitzu_cache.clear(key)
+        self.mitzu_cache.put(key, user)
+
+    def get_user_by_id(self, user_id: str) -> Optional[WM.User]:
+        return self.mitzu_cache.get(f"users.{user_id}")
+
+    def list_users(self) -> List[WM.User]:
+        result = []
+        for key in self.mitzu_cache.list_keys("users."):
+            result.append(self.mitzu_cache.get(f"users.{key}"))
+        return result
+
+    def clear_user(self, user_id: str):
+        self.mitzu_cache.clear(f"users.{user_id}")

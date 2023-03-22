@@ -7,6 +7,7 @@ import mitzu.webapp.storage as S
 from tests.unit.webapp.fixtures import InMemoryCache
 import mitzu.webapp.configs as configs
 import mitzu.webapp.auth.authorizer as A
+import mitzu.webapp.model as WM
 import mitzu.webapp.service.user_service as US
 import mitzu.webapp.service.events_service as ES
 import mitzu.webapp.pages.paths as P
@@ -18,7 +19,8 @@ class RequestContextLoggedInAsRootUser:
 
     def __enter__(self):
         cache = InMemoryCache()
-        user_service = US.UserService(cache, root_password=configs.AUTH_ROOT_PASSWORD)
+        storage = S.MitzuStorage(cache)
+        user_service = US.UserService(storage, root_password=configs.AUTH_ROOT_PASSWORD)
 
         auth_config = A.AuthConfig(
             oauth=None,
@@ -31,11 +33,9 @@ class RequestContextLoggedInAsRootUser:
         authorizer = A.OAuthAuthorizer.create(auth_config)
         authorizer.setup_authorizer(self._server)
 
-        storage = S.MitzuStorage(cache)
-
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
         token = authorizer._generate_new_token_for_identity(
-            root_user_id.id, role=US.Role.ADMIN
+            root_user_id.id, role=WM.Role.ADMIN
         )
 
         event_service = ES.EventsService(storage)
@@ -105,14 +105,14 @@ def test_delete_user(server: flask.Flask):
         res = U.create_new_user(
             0,
             email="a@b",
-            role=US.Role.MEMBER.value,
+            role=WM.Role.MEMBER.value,
             password="password",
             confirm_password="password",
         )
         assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
         user = user_service.get_user_by_email_and_password("a@b", "password")
         assert user is not None
-        assert user.role == US.Role.MEMBER
+        assert user.role == WM.Role.MEMBER
 
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
         deleted_user = user_service.get_user_by_email("a@b")
@@ -145,14 +145,14 @@ def test_change_role(server: flask.Flask):
         email = "test@local"
         password = "password"
 
-        user_id = user_service.new_user(email, password, password, role=US.Role.MEMBER)
+        user_id = user_service.new_user(email, password, password, role=WM.Role.MEMBER)
         res = U.update_role(
             0,
-            role=US.Role.ADMIN,
+            role=WM.Role.ADMIN,
             pathname=P.create_path(P.USERS_HOME_PATH, user_id=user_id),
         )
         updated_user = user_service.get_user_by_id(user_id)
 
         assert res[U.CHANGE_ROLE_RESPONSE_CONTAINER] == "Role updated"
         assert updated_user is not None
-        assert updated_user.role == US.Role.ADMIN
+        assert updated_user.role == WM.Role.ADMIN

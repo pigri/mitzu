@@ -17,10 +17,12 @@ from mitzu.helper import LOGGER
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.configs as configs
 import mitzu.webapp.service.user_service as U
+import mitzu.webapp.model as WM
 
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
 MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
 JWT_ALGORITHM = "HS256"
+JWT_CLAIM_ROLE = "rol"
 
 
 @dataclass(frozen=True)
@@ -186,7 +188,7 @@ class OAuthAuthorizer:
         return resp.json()["id_token"]
 
     def _generate_new_token_for_identity(
-        self, identity: str, role: U.Role = U.Role.MEMBER
+        self, identity: str, role: WM.Role = WM.Role.MEMBER
     ) -> str:
         now = int(time.time())
         claims = {
@@ -194,7 +196,7 @@ class OAuthAuthorizer:
             "exp": now + self._config.session_timeout,
             "iss": "mitzu",
             "sub": identity,
-            "rol": role.value,
+            JWT_CLAIM_ROLE: role.value,
         }
         return jwt.encode(
             claims, key=self._config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -205,12 +207,12 @@ class OAuthAuthorizer:
             claims = jwt.decode(
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
-            if "rol" in claims.keys():
-                claims["rol"] = U.Role(claims["rol"])
+            if JWT_CLAIM_ROLE in claims.keys():
+                claims[JWT_CLAIM_ROLE] = WM.Role(claims[JWT_CLAIM_ROLE])
             else:
                 claims[
-                    "rol"
-                ] = U.Role.MEMBER  # backward compatibility with old sessions
+                    JWT_CLAIM_ROLE
+                ] = WM.Role.MEMBER  # backward compatibility with old sessions
             return claims
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
@@ -267,7 +269,7 @@ class OAuthAuthorizer:
                                 f"User tried to login with not allowed email address: {user_email}"
                             )
 
-                        user_role = U.Role.MEMBER
+                        user_role = WM.Role.MEMBER
                         token_identity = user_email
                         if (
                             configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
@@ -337,7 +339,7 @@ class OAuthAuthorizer:
                 identity = self._validate_token(auth_token)
                 if identity is not None:
                     new_token = self._generate_new_token_for_identity(
-                        identity["sub"], role=identity["rol"]
+                        identity["sub"], role=identity[JWT_CLAIM_ROLE]
                     )
                     resp.set_cookie(self._config.token_cookie_name, new_token)
             return resp
@@ -346,19 +348,19 @@ class OAuthAuthorizer:
         auth_token = request.cookies.get(self._config.token_cookie_name)
         return auth_token is not None and self._validate_token(auth_token) is not None
 
-    def get_current_user_role(self, request: flask.Request) -> Optional[U.Role]:
+    def get_current_user_role(self, request: flask.Request) -> Optional[WM.Role]:
         auth_token = request.cookies.get(self._config.token_cookie_name)
         if self._config.user_service is None:
-            return U.Role.MEMBER
+            return WM.Role.MEMBER
 
         if auth_token is None:
             return None
 
         claims = self._validate_token(auth_token)
-        if claims is None or "rol" not in claims.keys():
+        if claims is None or JWT_CLAIM_ROLE not in claims.keys():
             return None
 
-        return U.Role(claims["rol"])
+        return WM.Role(claims[JWT_CLAIM_ROLE])
 
     def login_local_user(self, email: str, password: str) -> bool:
         if self._config.user_service is None:

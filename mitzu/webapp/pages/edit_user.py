@@ -16,7 +16,7 @@ import dash_mantine_components as dmc
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
-import mitzu.webapp.service.user_service as US
+import mitzu.webapp.model as WM
 import mitzu.webapp.configs as configs
 from mitzu.webapp.helper import create_form_property_input
 from mitzu.webapp.auth.decorator import (
@@ -63,7 +63,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
     if logged_in_user is None:
         raise ValueError("Logged in user is not found")
 
-    is_admin = deps.authorizer.get_current_user_role(flask.request) == US.Role.ADMIN
+    is_admin = deps.authorizer.get_current_user_role(flask.request) == WM.Role.ADMIN
     show_password_fields = user_id == "new"
     show_change_password = False
     show_delete_button = user_id != "new"
@@ -72,11 +72,11 @@ def layout(user_id: str, **query_params) -> bc.Component:
             user_id = logged_in_user.id
 
         show_change_password = (
-            user_id == logged_in_user.id or logged_in_user.role == US.Role.ADMIN
+            user_id == logged_in_user.id or logged_in_user.role == WM.Role.ADMIN
         )
         user = user_service.get_user_by_id(user_id)
         show_delete_button = (
-            logged_in_user.role == US.Role.ADMIN
+            logged_in_user.role == WM.Role.ADMIN
             and user is not None
             and user.id != logged_in_user.id
         )
@@ -126,10 +126,10 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         component_type=dmc.Select,
                         data=[
                             {"label": v.name.lower(), "value": v.value}
-                            for v in US.Role.all_values()
+                            for v in WM.Role.all_values()
                         ],
                         required=True,
-                        value=user.role if user is not None else US.Role.MEMBER.value,
+                        value=user.role if user is not None else WM.Role.MEMBER.value,
                         read_only=user_service.is_root_user(user_id),
                     ),
                     create_form_property_input(
@@ -299,7 +299,7 @@ def create_new_user(n_clicks: int, email="", role="", password="", confirm_passw
         confirm_password = password
 
     try:
-        user_service.new_user(email, password, confirm_password, role=US.Role(role))
+        user_service.new_user(email, password, confirm_password, role=WM.Role(role))
         return {
             SAVE_RESPONSE_CONTAINER: "User created!",
         }
@@ -355,7 +355,7 @@ def update_password(
         if logged_in_user is None:
             raise Exception("User is not signed in")
 
-        if logged_in_user.role != US.Role.ADMIN and logged_in_user.id != user_id:
+        if logged_in_user.role != WM.Role.ADMIN and logged_in_user.id != user_id:
             raise Exception("User is not authorized to change this password")
 
         user_service.update_password(user_id, password, confirm_password)
@@ -403,7 +403,7 @@ def update_role(n_clicks: int, role="", pathname: str = ""):
         if user_id == "my-account":
             user_id = logged_in_user_id
 
-        user_service.update_role(user_id, US.Role(role))
+        user_service.update_role(user_id, WM.Role(role))
         return {CHANGE_ROLE_RESPONSE_CONTAINER: "Role updated"}
     except Exception as e:
         return {
