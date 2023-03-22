@@ -87,6 +87,45 @@ def create_confirm_dialog(project: Optional[M.Project]):
     )
 
 
+def create_event_data_table(project: M.Project, tr: html.Tr):
+    full_table_name = MPH.get_value_from_row(tr, 1)
+    user_id_column = MPH.get_value_from_row(tr, 2)
+    event_time_column = MPH.get_value_from_row(tr, 3)
+    event_name_column = MPH.get_value_from_row(tr, 4)
+    date_partition_col = MPH.get_value_from_row(tr, 5)
+    ignore_cols = MPH.get_value_from_row(tr, 6)
+
+    schema, table_name = tuple(full_table_name.split("."))
+    adapter = project.get_adapter()
+
+    fields = adapter.list_all_table_columns(schema, table_name)
+    all_fields: Dict[str, M.Field] = {}
+    for field in fields:
+        if field._sub_fields:
+            for sf in field.get_all_subfields():
+                all_fields[sf._get_name()] = sf
+        else:
+            all_fields[field._get_name()] = field
+
+    converted_ignored_fields: List[M.Field] = []
+    if ignore_cols:
+        for igf in ignore_cols.split(","):
+            converted_ignored_fields.append(all_fields[igf])
+
+    return M.EventDataTable.create(
+        table_name=table_name,
+        schema=schema,
+        event_time_field=all_fields[event_time_column],
+        event_name_field=all_fields[event_name_column] if event_name_column else None,
+        ignored_fields=converted_ignored_fields,
+        user_id_field=all_fields[user_id_column],
+        event_specific_fields=fields,
+        date_partition_field=(
+            all_fields[date_partition_col] if date_partition_col else None
+        ),
+    )
+
+
 @restricted_layout
 def layout_create() -> bc.Component:
     return layout(None)
@@ -214,6 +253,20 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
     State(MPH.EDT_TBL_BODY, "children"),
     State({"type": MPH.PROJECT_INDEX_TYPE, "index": ALL}, "value"),
     State(WH.MITZU_LOCATION, "pathname"),
+    background=True,
+    running=[
+        (
+            Output(MANAGE_PROJECT_INFO, "children"),
+            [
+                dbc.Spinner(
+                    spinner_style={"width": "1rem", "height": "1rem"},
+                    spinner_class_name="me-1",
+                ),
+                "Saving and validating project",
+            ],
+            "Project succesfully saved",
+        )
+    ],
     prevent_initial_call=True,
 )
 @restricted
@@ -259,30 +312,15 @@ def save_button_clicked(
             custom_end_date = None
 
         connection = storage.get_connection(connection_id)
+        dummy_project = M.Project(
+            connection=connection,
+            event_data_tables=[],
+            project_name="dummy_project",
+        )
+
         event_data_tables = []
         for tr in edt_table_rows:
-            full_table_name = MPH.get_value_from_row(tr, 1)
-            user_id_column = MPH.get_value_from_row(tr, 2)
-            event_time_column = MPH.get_value_from_row(tr, 3)
-            event_name_column = MPH.get_value_from_row(tr, 4)
-            date_partition_col = MPH.get_value_from_row(tr, 5)
-            ignore_cols = MPH.get_value_from_row(tr, 6)
-
-            schema, table_name = tuple(full_table_name.split("."))
-
-            event_data_tables.append(
-                M.EventDataTable.create(
-                    table_name=table_name,
-                    schema=schema,
-                    event_time_field=event_time_column,
-                    event_name_field=event_name_column,
-                    ignored_fields=(
-                        ignore_cols.split(",") if ignore_cols is not None else []
-                    ),
-                    user_id_field=user_id_column,
-                    date_partition_field=date_partition_col,
-                )
-            )
+            event_data_tables.append(create_event_data_table(dummy_project, tr))
 
         project = M.Project(
             project_name=project_name,

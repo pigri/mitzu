@@ -47,11 +47,11 @@ STORAGE_REDIS_PASSWORD = os.getenv("STORAGE_REDIS_PASSWORD")
 
 
 # disk cache
-DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./cache")
+DISK_CACHE_PATH = os.getenv("DISK_CACHE_PATH", "./storage")
 
 # storage
 SETUP_SAMPLE_PROJECT = bool(
-    os.getenv("SETUP_SAMPLE_PROJECT", "true").lower() != "false"
+    os.getenv("SETUP_SAMPLE_PROJECT", "false").lower() != "false"
 )
 
 

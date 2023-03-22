@@ -67,6 +67,13 @@
   font-weight: var(--mdb-body-font-weight);
   font: var(--mdb-font-roboto);
   background: rgba(39, 128, 227, 0.2);
+  max-width: 180px;
+
+  height: auto !important;
+}
+
+.property_value_input .mantine-rsiguj {
+  white-space: normal !important;
 }
 
 .complex_segment_group_by.with_value {

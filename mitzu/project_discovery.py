@@ -53,7 +53,11 @@ class ProjectDiscovery:
         else:
             for spec_field in ed_table.event_specific_fields:
                 res.extend(
-                    [f for f in all_fields if f._get_name().startswith(spec_field)]
+                    [
+                        f
+                        for f in all_fields
+                        if f._get_name().startswith(spec_field._get_name())
+                    ]
                 )
         return res
 

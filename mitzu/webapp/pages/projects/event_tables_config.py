@@ -94,7 +94,10 @@ def create_table_row(edt: M.EventDataTable) -> html.Tr:
                 else None,
                 className=H.TBL_CLS,
             ),
-            html.Td(",".join(edt.ignored_fields), className=H.TBL_CLS),
+            html.Td(
+                ",".join([f._get_name() for f in edt.ignored_fields]),
+                className=H.TBL_CLS,
+            ),
         ]
     )
 
@@ -822,7 +825,9 @@ def handle_configure_modal_confirm(
                 date_partition_field=find_first_field(
                     field_names, date_partition_fields
                 ),
-                ignored_fields=[i for i in ignored_fields if i in field_names],
+                ignored_fields=[
+                    f for fn, f in field_names.items() if fn in ignored_fields
+                ],
             )
             results_tbl_children.append(create_table_row(edt))
         else:

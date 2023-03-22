@@ -42,7 +42,6 @@ redis =  { version= "^4.4.0", optional=true}
 kaleido = {version = "==0.2.1", optional=true}
 dash-iconify = {version ="^0.1.2", optional=true}
 dash-draggable = {version="^0.1.2", optional=true}
-jsonpickle = {version="^3.0.1", optional=true}
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]

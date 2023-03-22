@@ -560,14 +560,14 @@ class EventDataTable(Identifiable):
     schema: Optional[str] = None
     catalog: Optional[str] = None
     event_name_field: Optional[Field] = None
-    event_name_alias: Optional[str] = None
     date_partition_field: Optional[Field] = None
+    event_name_alias: Optional[str] = None
 
     # TBD change to Field type
-    ignored_fields: List[str] = field(default_factory=lambda: [])
+    ignored_fields: List[Field] = field(default_factory=lambda: [])
 
     # TBD change to Field type
-    event_specific_fields: Optional[List[str]] = None
+    event_specific_fields: Optional[List[Field]] = None
 
     # TBD remove
     description: Optional[str] = None
@@ -581,15 +581,15 @@ class EventDataTable(Identifiable):
     def create(
         cls,
         table_name: str,
-        event_time_field: str,
-        user_id_field: str,
+        event_time_field: Union[str, Field],
+        user_id_field: Union[str, Field],
         schema: Optional[str] = None,
         catalog: Optional[str] = None,
-        event_name_field: Optional[str] = None,
+        event_name_field: Optional[Union[str, Field]] = None,
         event_name_alias: Optional[str] = None,
-        ignored_fields: List[str] = None,
-        event_specific_fields: List[str] = None,
-        date_partition_field: Optional[str] = None,
+        ignored_fields: Optional[Union[List[str], List[Field]]] = None,
+        event_specific_fields: Optional[Union[List[str], List[Field]]] = None,
+        date_partition_field: Optional[Union[str, Field]] = None,
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
@@ -599,22 +599,52 @@ class EventDataTable(Identifiable):
         if not event_name_field and event_name_alias is None:
             event_name_alias = table_name
 
+        if type(event_name_field) == str:
+            event_name_field = Field(_name=event_name_field, _type=DataType.STRING)
+
+        if type(date_partition_field) == str:
+            date_partition_field = Field(
+                _name=date_partition_field, _type=DataType.DATETIME
+            )
+
+        if type(event_time_field) == str:
+            event_time_field = Field(_name=event_time_field, _type=DataType.DATETIME)
+
+        if type(user_id_field) == str:
+            user_id_field = Field(_name=user_id_field, _type=DataType.STRING)
+
+        converted_ignored_fields: List[Field] = []
+        if ignored_fields is not None:
+            for igf in ignored_fields:
+                if type(igf) == str:
+                    converted_ignored_fields.append(
+                        Field(_name=igf, _type=DataType.STRING)
+                    )
+                elif isinstance(igf, Field):
+                    converted_ignored_fields.append(igf)
+
+        converted_evt_spc_fields: List[Field] = []
+        if event_specific_fields is not None:
+            for esf in event_specific_fields:
+                if type(esf) == str:
+                    if "." in esf:
+                        raise ValueError(f"Invalid field name {esf}")
+                    converted_evt_spc_fields.append(
+                        Field(_name=esf, _type=DataType.STRING)
+                    )
+                elif isinstance(esf, Field):
+                    converted_evt_spc_fields.append(esf)
+
         return EventDataTable(
             table_name=table_name,
             event_name_alias=event_name_alias,
             description=description,
-            ignored_fields=([] if ignored_fields is None else ignored_fields),
-            event_specific_fields=event_specific_fields,
-            event_name_field=Field(_name=event_name_field, _type=DataType.STRING)
-            if event_name_field is not None
-            else None,
-            date_partition_field=Field(
-                _name=date_partition_field, _type=DataType.DATETIME
-            )
-            if date_partition_field is not None
-            else None,
-            event_time_field=Field(_name=event_time_field, _type=DataType.DATETIME),
-            user_id_field=Field(_name=user_id_field, _type=DataType.STRING),
+            ignored_fields=converted_ignored_fields,
+            event_specific_fields=converted_evt_spc_fields,
+            event_name_field=cast(Field, event_name_field),
+            date_partition_field=cast(Field, date_partition_field),
+            event_time_field=cast(Field, event_time_field),
+            user_id_field=cast(Field, user_id_field),
             schema=schema,
             catalog=catalog,
             discovery_settings=discovery_settings,
@@ -629,7 +659,7 @@ class EventDataTable(Identifiable):
         schema: Optional[str] = None,
         catalog: Optional[str] = None,
         event_name_alias: Optional[str] = None,
-        ignored_fields: List[str] = None,
+        ignored_fields: Optional[Union[List[str], List[Field]]] = None,
         date_partition_field: Optional[str] = None,
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
@@ -672,8 +702,8 @@ class EventDataTable(Identifiable):
         schema: Optional[str] = None,
         catalog: Optional[str] = None,
         event_name_field: Optional[str] = None,
-        ignored_fields: List[str] = None,
-        event_specific_fields: List[str] = None,
+        ignored_fields: Optional[Union[List[str], List[Field]]] = None,
+        event_specific_fields: Optional[Union[List[str], List[Field]]] = None,
         date_partition_field: Optional[str] = None,
         description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,

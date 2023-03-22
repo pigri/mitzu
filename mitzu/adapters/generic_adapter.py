@@ -34,6 +34,13 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def list_fields(self, event_data_table: M.EventDataTable) -> List[M.Field]:
+        """Returns all fields including structs and map keys for an Event Data Table
+        It requires running SQL query for Map type discovery
+        """
+        raise NotImplementedError()
+
+    def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
+        """Returns physical columns including structs for a table"""
         raise NotImplementedError()
 
     def get_distinct_event_names(self, event_data_table: M.EventDataTable) -> List[str]:
@@ -51,9 +58,6 @@ class GenericDatasetAdapter(ABC):
         raise NotImplementedError()
 
     def list_tables(self, schema: str) -> List[str]:
-        raise NotImplementedError()
-
-    def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
         raise NotImplementedError()
 
     def get_conversion_sql(self, metric: M.ConversionMetric) -> str:

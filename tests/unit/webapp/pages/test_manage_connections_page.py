@@ -78,7 +78,6 @@ def test_connection_update_layout_values_are_filled(
             {"label": "Mysql", "value": "MYSQL"},
             {"label": "Databricks", "value": "DATABRICKS"},
             {"label": "Snowflake", "value": "SNOWFLAKE"},
-            {"label": "Sqlite", "value": "SQLITE"},
         ]
 
 

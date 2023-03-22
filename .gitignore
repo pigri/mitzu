@@ -83,6 +83,7 @@ release/app/cache/
 release/requirements.txt
 cache/
 cache.db*
+storage/
 
 examples/notebook/*ipynb.py
 private_notebooks/

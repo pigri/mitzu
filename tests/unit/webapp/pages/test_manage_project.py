@@ -201,22 +201,22 @@ def test_save_button_clicked_add_2_rows(ctx, server: Flask, dependencies: Depend
         ]
         new_rows = [
             get_table_row(
-                full_table_name="database.test_table_1",
+                full_table_name="main.page_events",
                 check_box=True,
-                user_id_column="test_user_id_col_1",
-                event_time_column="test_event_time_col_1",
-                event_name_column="test_event_name_col_1",
-                date_partition_column="test_date_partition_col_1",
-                ignore_cols="col1,col2",
+                user_id_column="user_id",
+                event_time_column="event_time",
+                event_name_column="event_name",
+                date_partition_column="",
+                ignore_cols="acquisition_campaign,title",
             ),
             get_table_row(
-                full_table_name="database.test_table_2",
+                full_table_name="main.checkouts",
                 check_box=True,
-                user_id_column="test_user_id_col_2",
-                event_time_column="test_event_time_col_2",
-                event_name_column=None,
-                date_partition_column=None,
-                ignore_cols="col3",
+                user_id_column="user_id",
+                event_time_column="event_time",
+                event_name_column="",
+                date_partition_column="",
+                ignore_cols="",
             ),
         ]
         project_info = PRJ.save_button_clicked(
@@ -231,35 +231,36 @@ def test_save_button_clicked_add_2_rows(ctx, server: Flask, dependencies: Depend
         assert len(saved_project.event_data_tables) == 2
 
         edt_1 = saved_project.event_data_tables[0]
-        assert edt_1.table_name == "test_table_1"
-        assert edt_1.schema == "database"
+        assert edt_1.table_name == "page_events"
+        assert edt_1.schema == "main"
         assert edt_1.user_id_field == M.Field(
-            _name="test_user_id_col_1", _sub_fields=None, _type=M.DataType.STRING
+            _name="user_id", _sub_fields=None, _type=M.DataType.STRING
         )
 
         assert edt_1.event_time_field == M.Field(
-            _name="test_event_time_col_1", _sub_fields=None, _type=M.DataType.DATETIME
+            _name="event_time", _sub_fields=None, _type=M.DataType.DATETIME
         )
         assert edt_1.event_name_field == M.Field(
-            _name="test_event_name_col_1", _sub_fields=None, _type=M.DataType.STRING
+            _name="event_name", _sub_fields=None, _type=M.DataType.STRING
         )
-        assert edt_1.date_partition_field == M.Field(
-            _name="test_date_partition_col_1",
-            _sub_fields=None,
-            _type=M.DataType.DATETIME,
-        )
-        assert edt_1.ignored_fields == ["col1", "col2"]
+        assert edt_1.date_partition_field is None
+        assert edt_1.ignored_fields == [
+            M.Field(
+                _name="acquisition_campaign", _sub_fields=None, _type=M.DataType.STRING
+            ),
+            M.Field(_name="title", _sub_fields=None, _type=M.DataType.STRING),
+        ]
 
         edt_2 = saved_project.event_data_tables[1]
-        assert edt_2.table_name == "test_table_2"
-        assert edt_2.schema == "database"
+        assert edt_2.table_name == "checkouts"
+        assert edt_2.schema == "main"
         assert edt_2.user_id_field == M.Field(
-            _name="test_user_id_col_2", _sub_fields=None, _type=M.DataType.STRING
+            _name="user_id", _sub_fields=None, _type=M.DataType.STRING
         )
         assert edt_2.date_partition_field is None
         assert edt_2.event_name_field is None
-        assert edt_2.event_name_alias == "test_table_2"
+        assert edt_2.event_name_alias == "checkouts"
         assert edt_2.event_time_field == M.Field(
-            _name="test_event_time_col_2", _sub_fields=None, _type=M.DataType.DATETIME
+            _name="event_time", _sub_fields=None, _type=M.DataType.DATETIME
         )
-        assert edt_2.ignored_fields == ["col3"]
+        assert edt_2.ignored_fields == []
