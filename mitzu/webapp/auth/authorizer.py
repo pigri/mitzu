@@ -207,7 +207,14 @@ class OAuthAuthorizer:
             claims = jwt.decode(
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
-            if JWT_CLAIM_ROLE in claims.keys():
+
+            if self._config.user_service is not None:
+                user_id = claims["sub"]
+                user = self._config.user_service.get_user_by_id(user_id)
+                if user is None:
+                    raise Exception("User not found")
+                claims[JWT_CLAIM_ROLE] = user.role
+            elif JWT_CLAIM_ROLE in claims.keys():
                 claims[JWT_CLAIM_ROLE] = WM.Role(claims[JWT_CLAIM_ROLE])
             else:
                 claims[
