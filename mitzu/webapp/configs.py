@@ -31,6 +31,7 @@ AUTH_ROOT_USER_EMAIL = os.getenv("AUTH_ROOT_USER_EMAIL", "root@local")
 
 # cache
 CACHE_EXPIRATION = int(os.getenv("CACHE_EXPIRATION", "600"))
+CACHE_PREFIX = os.getenv("CACHE_PREFIX")
 
 # redis cache
 QUEUE_REDIS_HOST = os.getenv("QUEUE_REDIS_HOST")
