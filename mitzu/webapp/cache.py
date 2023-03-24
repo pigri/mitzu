@@ -43,20 +43,32 @@ class MitzuCache(ABC):
 class DiskMitzuCache(MitzuCache):
 
     _disk_cache: diskcache.Cache
+    _global_prefix: Optional[str] = None
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, global_prefix: Optional[str] = None) -> None:
         super().__init__()
         object.__setattr__(
             self,
             "_disk_cache",
             diskcache.Cache(timeout=10, directory=f"{configs.DISK_CACHE_PATH}/{name}"),
         )
+        object.__setattr__(
+            self,
+            "_global_prefix",
+            global_prefix,
+        )
 
     def __post_init__(self):
         H.LOGGER.info("Vacuuming disk cache")
         self._disk_cache._sql("vacuum")
 
+    def _get_key(self, key: str) -> str:
+        if self._global_prefix:
+            return f"{self._global_prefix}.{key}"
+        return key
+
     def put(self, key: str, val: Any, expire: Optional[float] = None):
+        key = self._get_key(key)
         self.clear(key)
         if val is not None:
             H.LOGGER.debug(f"PUT: {key}: {type(val)}")
@@ -65,6 +77,7 @@ class DiskMitzuCache(MitzuCache):
             H.LOGGER.debug(f"PUT: {key}: None")
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
+        key = self._get_key(key)
         res = self._disk_cache.get(key)
         if res is not None:
             H.LOGGER.debug(f"GET: {key}: {type(res)}")
@@ -74,12 +87,18 @@ class DiskMitzuCache(MitzuCache):
             return default
 
     def clear(self, key: str) -> None:
+        key = self._get_key(key)
         H.LOGGER.debug(f"Clear {key}")
         self._disk_cache.pop(key)
 
     def list_keys(
         self, prefix: Optional[str] = None, strip_prefix: bool = True
     ) -> List[str]:
+        if prefix is None:
+            prefix = self._global_prefix
+        else:
+            prefix = self._get_key(prefix)
+
         keys = self._disk_cache.iterkeys()
         start_pos = len(prefix) if strip_prefix and prefix is not None else 0
         res = [k[start_pos:] for k in keys if prefix is None or k.startswith(prefix)]
@@ -136,12 +155,18 @@ class RedisException(Exception):
 class RedisMitzuCache(MitzuCache):
 
     _redis: redis.Redis
+    _global_prefix: Optional[str] = None
 
-    def __init__(self, redis_cache: Optional[redis.Redis] = None) -> None:
+    def __init__(
+        self,
+        redis_cache: Optional[redis.Redis] = None,
+        global_prefix: Optional[str] = None,
+    ) -> None:
         super().__init__()
 
         if redis_cache is not None:
             object.__setattr__(self, "_redis", redis_cache)
+            object.__setattr__(self, "_global_prefix", global_prefix)
         else:
             if configs.STORAGE_REDIS_HOST is None:
                 raise ValueError(
@@ -156,8 +181,15 @@ class RedisMitzuCache(MitzuCache):
                     password=configs.STORAGE_REDIS_PASSWORD,
                 ),
             )
+            object.__setattr__(self, "_global_prefix", global_prefix)
+
+    def _get_key(self, key: str) -> str:
+        if self._global_prefix:
+            return f"{self._global_prefix}.{key}"
+        return key
 
     def put(self, key: str, val: Any, expire: Optional[float] = None):
+        key = self._get_key(key)
         pickled_value = pickle.dumps(val)
         if H.LOGGER.getEffectiveLevel() == H.logging.DEBUG:
             H.LOGGER.debug(f"PUT: {key}: {len(pickled_value)}")
@@ -166,6 +198,7 @@ class RedisMitzuCache(MitzuCache):
             raise RedisException(f"Couldn't set {key}")
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
+        key = self._get_key(key)
         res = self._redis.get(name=key)
         if res is None:
             H.LOGGER.debug(f"GET: {key}: None")
@@ -177,13 +210,18 @@ class RedisMitzuCache(MitzuCache):
         return pickle.loads(res)
 
     def clear(self, key: str) -> None:
+        key = self._get_key(key)
         H.LOGGER.debug(f"CLEAR: {key}")
         self._redis.delete(key)
 
     def list_keys(
         self, prefix: Optional[str] = None, strip_prefix: bool = True
     ) -> List[str]:
-        if not prefix:
+        if prefix:
+            prefix = self._get_key(prefix)
+        elif self._global_prefix is not None:
+            prefix = self._global_prefix
+        else:
             prefix = ""
         keys = self._redis.keys(f"{prefix}*")
         start_pos = len(prefix) if strip_prefix else 0
