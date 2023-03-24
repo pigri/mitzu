@@ -29,9 +29,11 @@ class Dependencies:
     def from_configs(cls, server: Flask) -> Dependencies:
         delegate_cache: C.MitzuCache
         if configs.STORAGE_REDIS_HOST is not None:
-            delegate_cache = C.RedisMitzuCache()
+            delegate_cache = C.RedisMitzuCache(global_prefix=configs.CACHE_PREFIX)
         else:
-            delegate_cache = C.DiskMitzuCache("cache")
+            delegate_cache = C.DiskMitzuCache(
+                "cache", global_prefix=configs.CACHE_PREFIX
+            )
         cache = C.RequestCache(delegate_cache)
         storage = S.MitzuStorage(cache)
 
