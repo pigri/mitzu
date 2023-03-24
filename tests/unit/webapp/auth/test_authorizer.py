@@ -17,6 +17,7 @@ from mitzu.webapp.auth.authorizer import (
     HOME_URL,
     JWT_ALGORITHM,
 )
+import mitzu.webapp.model as WM
 
 from typing import Optional
 
@@ -481,3 +482,37 @@ def test_token_is_refreshed_for_callbacks():
         resp = flask.make_response("ok", 200)
         resp = app.process_response(resp)
         assert_auth_token(resp, "identity")
+
+
+def test_unauthorized_when_user_is_deleted():
+    email = "a@b.c"
+    password = "password"
+    user_service = U.UserService(S.MitzuStorage(InMemoryCache()))
+    user_id = user_service.new_user(email, password, password)
+    app = flask.Flask(__name__)
+    authorizer = OAuthAuthorizer.create(
+        AuthConfig(
+            token_signing_key=auth_config.token_signing_key,
+            token_validator=token_validator,
+            oauth=oauth_config,
+            user_service=user_service,
+        )
+    )
+    authorizer.setup_authorizer(app)
+
+    token = authorizer._generate_new_token_for_identity(user_id, role=WM.Role.MEMBER)
+
+    with app.test_request_context(
+        "/",
+        headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"},
+    ):
+        resp = app.preprocess_request()
+        assert_request_authorized(resp)
+
+    user_service.delete_user(user_id)
+    with app.test_request_context(
+        "/",
+        headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"},
+    ):
+        resp = app.preprocess_request()
+        assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/")
