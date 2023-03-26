@@ -72,7 +72,9 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         @server.after_request
         def after_request(response: flask.Response):
             request = flask.request
-            return dependencies.authorizer.refresh_auth_token(request, response)
+            if dependencies is not None and dependencies.authorizer is not None:
+                return dependencies.authorizer.refresh_auth_token(request, response)
+            return response
 
     with server.app_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
