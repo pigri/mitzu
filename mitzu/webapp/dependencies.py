@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from flask import Flask
 
 import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.cache as C
@@ -26,7 +25,7 @@ class Dependencies:
     user_service: Optional[U.UserService] = None
 
     @classmethod
-    def from_configs(cls, server: Flask) -> Dependencies:
+    def from_configs(cls) -> Dependencies:
         delegate_cache: C.MitzuCache
         if configs.STORAGE_REDIS_HOST is not None:
             delegate_cache = C.RedisMitzuCache(global_prefix=configs.CACHE_PREFIX)
@@ -68,7 +67,6 @@ class Dependencies:
                 user_service=user_service,
             )
             authorizer = A.OAuthAuthorizer.create(auth_config)
-            authorizer.setup_authorizer(server)
 
         queue: C.MitzuCache
         if configs.QUEUE_REDIS_HOST is not None:

@@ -243,113 +243,103 @@ class OAuthAuthorizer:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
             return None
 
-    def setup_authorizer(self, server: flask.Flask):
-        @server.before_request
-        def authorize_request():
-            request = flask.request
+    def authorize_request(
+        self, request: flask.Request
+    ) -> Optional[werkzeug.wrappers.response.Response]:
+        if self._config.oauth and request.path == P.REDIRECT_TO_LOGIN_URL:
+            resp = self._redirect(self._config.oauth.sign_in_url)
+            return resp
 
-            if self._config.oauth and request.path == P.REDIRECT_TO_LOGIN_URL:
-                resp = self._redirect(self._config.oauth.sign_in_url)
-                return resp
+        if self._config.oauth and request.path == P.OAUTH_CODE_URL:
+            code = self._get_oauth_code()
+            if code is not None:
+                LOGGER.debug(f"Redirected with code={code}")
+                try:
+                    id_token = self._get_identity_token(code)
+                    redirect_url = flask.request.cookies.get(
+                        self._config.redirect_cookie_name, MITZU_WEBAPP_URL
+                    )
 
-            if self._config.oauth and request.path == P.OAUTH_CODE_URL:
-                code = self._get_oauth_code()
-                if code is not None:
-                    LOGGER.debug(f"Redirected with code={code}")
-                    try:
-                        id_token = self._get_identity_token(code)
-                        redirect_url = flask.request.cookies.get(
-                            self._config.redirect_cookie_name, MITZU_WEBAPP_URL
+                    user_email = self._validate_foreign_token(id_token)
+                    if not user_email:
+                        raise Exception("Unauthorized (Invalid jwt token)")
+
+                    if (
+                        self._config.allowed_email_domain is not None
+                        and not user_email.endswith(self._config.allowed_email_domain)
+                    ):
+                        raise Exception(
+                            f"User tried to login with not allowed email address: {user_email}"
                         )
 
-                        user_email = self._validate_foreign_token(id_token)
-                        if not user_email:
-                            raise Exception("Unauthorized (Invalid jwt token)")
-
-                        if (
-                            self._config.allowed_email_domain is not None
-                            and not user_email.endswith(
-                                self._config.allowed_email_domain
-                            )
-                        ):
+                    user_role = WM.Role.MEMBER
+                    token_identity = user_email
+                    if (
+                        configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
+                        and self._config.user_service is not None
+                    ):
+                        user = self._config.user_service.get_user_by_email(user_email)
+                        if user is None:
                             raise Exception(
-                                f"User tried to login with not allowed email address: {user_email}"
+                                f"User tried to login without having a local user: {user_email}"
                             )
+                        user_role = user.role
+                        token_identity = user.id
 
-                        user_role = WM.Role.MEMBER
-                        token_identity = user_email
-                        if (
-                            configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
-                            and self._config.user_service is not None
-                        ):
-                            user = self._config.user_service.get_user_by_email(
-                                user_email
-                            )
-                            if user is None:
-                                raise Exception(
-                                    f"User tried to login without having a local user: {user_email}"
-                                )
-                            user_role = user.role
-                            token_identity = user.id
+                    token = self._generate_new_token_for_identity(
+                        token_identity, role=user_role
+                    )
 
-                        token = self._generate_new_token_for_identity(
-                            token_identity, role=user_role
-                        )
-
-                        resp = self._redirect(redirect_url)
-                        resp.set_cookie(self._config.token_cookie_name, token)
-                        resp.set_cookie(
-                            self._config.redirect_cookie_name, "", expires=0
-                        )
-                        return resp
-                    except Exception as exc:
-                        traceback.print_exception(type(exc), exc, exc.__traceback__)
-                        LOGGER.warning(f"Failed to authenticate: {str(exc)}")
-                        if self._config.oauth and self._config.oauth.sign_out_url:
-                            resp = self._redirect(self._config.oauth.sign_out_url)
-                            resp.set_cookie(
-                                self._config.token_cookie_name, "", expires=0
-                            )
-                            return resp
-                        return self._get_unauthenticated_response()
-
-            auth_token = flask.request.cookies.get(self._config.token_cookie_name)
-
-            if request.path == P.SIGN_OUT_URL:
-                if self._config.oauth and self._config.oauth.sign_out_url:
-                    resp = self._redirect(self._config.oauth.sign_out_url)
-                    resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+                    resp = self._redirect(redirect_url)
+                    resp.set_cookie(self._config.token_cookie_name, token)
+                    resp.set_cookie(self._config.redirect_cookie_name, "", expires=0)
                     return resp
-                return self._get_unauthenticated_response()
+                except Exception as exc:
+                    traceback.print_exception(type(exc), exc, exc.__traceback__)
+                    LOGGER.warning(f"Failed to authenticate: {str(exc)}")
+                    if self._config.oauth and self._config.oauth.sign_out_url:
+                        resp = self._redirect(self._config.oauth.sign_out_url)
+                        resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+                        return resp
+                    return self._get_unauthenticated_response()
 
-            for prefix in self._authorized_url_prefixes:
-                if request.path.startswith(prefix):
-                    return None
+        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
 
-            if auth_token and self._validate_token(auth_token) is not None:
+        if request.path == P.SIGN_OUT_URL:
+            if self._config.oauth and self._config.oauth.sign_out_url:
+                resp = self._redirect(self._config.oauth.sign_out_url)
+                resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+                return resp
+            return self._get_unauthenticated_response()
+
+        for prefix in self._authorized_url_prefixes:
+            if request.path.startswith(prefix):
                 return None
 
-            redirect_url = request.path
-            if len(request.query_string) > 0:
-                redirect_url += "?" + request.query_string.decode("utf-8")
-            return self._get_unauthenticated_response(redirect_url)
+        if auth_token and self._validate_token(auth_token) is not None:
+            return None
 
-        @server.after_request
-        def after_request(resp: flask.Response):
-            request = flask.request
-            for prefix in self._ignore_token_refresh_prefixes:
-                if request.path.startswith(prefix):
-                    return resp
+        redirect_url = request.path
+        if len(request.query_string) > 0:
+            redirect_url += "?" + request.query_string.decode("utf-8")
+        return self._get_unauthenticated_response(redirect_url)
 
-            auth_token = flask.request.cookies.get(self._config.token_cookie_name)
-            if auth_token is not None:
-                identity = self._validate_token(auth_token)
-                if identity is not None:
-                    new_token = self._generate_new_token_for_identity(
-                        identity["sub"], role=identity[JWT_CLAIM_ROLE]
-                    )
-                    resp.set_cookie(self._config.token_cookie_name, new_token)
-            return resp
+    def refresh_auth_token(
+        self, request: flask.Request, resp: flask.Response
+    ) -> werkzeug.wrappers.response.Response:
+        for prefix in self._ignore_token_refresh_prefixes:
+            if request.path.startswith(prefix):
+                return resp
+
+        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        if auth_token is not None:
+            identity = self._validate_token(auth_token)
+            if identity is not None:
+                new_token = self._generate_new_token_for_identity(
+                    identity["sub"], role=identity[JWT_CLAIM_ROLE]
+                )
+                resp.set_cookie(self._config.token_cookie_name, new_token)
+        return resp
 
     def is_request_authorized(self, request: flask.Request) -> bool:
         auth_token = request.cookies.get(self._config.token_cookie_name)

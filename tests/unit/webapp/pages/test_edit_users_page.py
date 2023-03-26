@@ -1,5 +1,5 @@
 import flask
-from typing import Dict
+from typing import Dict, Optional
 from tests.helper import to_dict, find_component_by_id
 import mitzu.webapp.pages.edit_user as U
 import mitzu.webapp.dependencies as DEPS
@@ -31,7 +31,16 @@ class RequestContextLoggedInAsRootUser:
             user_service=user_service,
         )
         authorizer = A.OAuthAuthorizer.create(auth_config)
-        authorizer.setup_authorizer(self._server)
+
+        @self._server.before_request
+        def before_request() -> Optional[flask.Response]:
+            request = flask.request
+            return authorizer.authorize_request(request)
+
+        @self._server.after_request
+        def after_request(resp: flask.Response) -> flask.Response:
+            request = flask.request
+            return authorizer.refresh_auth_token(request, resp)
 
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
         token = authorizer._generate_new_token_for_identity(
