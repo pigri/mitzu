@@ -45,7 +45,21 @@ auth_config = AuthConfig(
     token_validator=token_validator,
 )
 authorizer = OAuthAuthorizer.create(auth_config)
-authorizer.setup_authorizer(app)
+
+
+def setup_authorizer(app: flask.Flask, authorizer: OAuthAuthorizer):
+    @app.before_request
+    def before_request() -> Optional[flask.Response]:
+        request = flask.request
+        return authorizer.authorize_request(request)
+
+    @app.after_request
+    def after_request(resp: flask.Response) -> flask.Response:
+        request = flask.request
+        return authorizer.refresh_auth_token(request, resp)
+
+
+setup_authorizer(app, authorizer)
 
 
 @pytest.fixture(autouse=True)
@@ -286,7 +300,7 @@ def test_sign_out_with_sign_out_url():
             oauth=oauth_config,
         )
     )
-    authorizer.setup_authorizer(app)
+    setup_authorizer(app, authorizer)
 
     with app.test_request_context(P.SIGN_OUT_URL):
         resp = app.preprocess_request()
@@ -307,7 +321,7 @@ def test_healthcheck_request():
             allowed_email_domain="allowed.com",
         )
     )
-    authorizer.setup_authorizer(app)
+    setup_authorizer(app, authorizer)
 
     # If healthcheck path wasn't in the allowed list, this would return 307
     with app.test_request_context(configs.HEALTH_CHECK_PATH):
@@ -338,7 +352,7 @@ def test_rejects_not_allowed_email_domains_when_configured(req_mock):
             allowed_email_domain="allowed.com",
         )
     )
-    authorizer.setup_authorizer(app)
+    setup_authorizer(app, authorizer)
 
     code = "1234567890"
     with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
@@ -384,7 +398,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
             user_service=user_service,
         )
     )
-    authorizer.setup_authorizer(app)
+    setup_authorizer(app, authorizer)
     configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = True
 
     code = "1234567890"
@@ -498,7 +512,7 @@ def test_unauthorized_when_user_is_deleted():
             user_service=user_service,
         )
     )
-    authorizer.setup_authorizer(app)
+    setup_authorizer(app, authorizer)
 
     token = authorizer._generate_new_token_for_identity(user_id, role=WM.Role.MEMBER)
 
