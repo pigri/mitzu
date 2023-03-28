@@ -39,16 +39,22 @@ class Dependencies:
         authorizer = None
         oauth_config = None
         user_service = None
+        create_user_service = False
         if configs.AUTH_BACKEND == "cognito":
             from mitzu.webapp.auth.cognito import Cognito
 
             oauth_config = Cognito.get_config()
+            create_user_service = configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
         elif configs.AUTH_BACKEND == "google":
             from mitzu.webapp.auth.google import GoogleOAuth
 
             oauth_config = GoogleOAuth.get_config()
+            create_user_service = configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
 
-        elif configs.AUTH_BACKEND == "local" or configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+        elif configs.AUTH_BACKEND == "local":
+            create_user_service = True
+
+        if create_user_service:
             user_service = U.UserService(
                 storage, root_password=configs.AUTH_ROOT_PASSWORD
             )
