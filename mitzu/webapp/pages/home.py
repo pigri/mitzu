@@ -18,7 +18,7 @@ register_page(
 def layout(**query_params):
     return html.Div(
         [
-            NB.create_mitzu_navbar("home-navbar", []),
+            NB.create_mitzu_navbar("home-navbar"),
             dbc.Container(
                 children=[
                     dbc.Row(

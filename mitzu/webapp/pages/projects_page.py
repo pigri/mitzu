@@ -28,7 +28,7 @@ def layout(**query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("explore-navbar", []),
+            NB.create_mitzu_navbar("explore-navbar"),
             dbc.Container(
                 children=[
                     dbc.Row(

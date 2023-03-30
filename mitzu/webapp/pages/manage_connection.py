@@ -47,7 +47,7 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
 
     return dbc.Form(
         [
-            NB.create_mitzu_navbar("create-connection-navbar", []),
+            NB.create_mitzu_navbar("create-connection-navbar"),
             dbc.Container(
                 children=[
                     html.H4(title),

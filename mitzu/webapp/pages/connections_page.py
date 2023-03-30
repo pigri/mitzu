@@ -31,7 +31,7 @@ def layout() -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("explore-navbar", []),
+            NB.create_mitzu_navbar("explore-navbar"),
             dbc.Container(
                 children=[
                     html.H4("Choose from connections:", className="card-title"),

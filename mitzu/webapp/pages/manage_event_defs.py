@@ -105,7 +105,7 @@ def layout(project_id: Optional[str], **query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("events-navbar", []),
+            NB.create_mitzu_navbar("events-navbar"),
             dbc.Container(
                 [
                     html.H4("Discovered events and properties"),

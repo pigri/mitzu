@@ -28,7 +28,7 @@ def layout(dashboard_id: Optional[str] = None, **query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("create-dashboard-navbar", []),
+            NB.create_mitzu_navbar("create-dashboard-navbar"),
             MDC.create_manage_dashboard_container(dashboard),
         ]
     )
