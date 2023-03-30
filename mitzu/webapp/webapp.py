@@ -10,6 +10,7 @@ from dash.long_callback.managers import BaseLongCallbackManager
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.navbar as NB
 import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
 from mitzu.helper import LOGGER
@@ -103,6 +104,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         ],
     )
     app._favicon = configs.DASH_FAVICON_PATH
+    NB.init_navbar_item_providers()
     app.layout = create_webapp_layout(dependencies)
 
     @server.route(configs.HEALTH_CHECK_PATH)
