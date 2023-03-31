@@ -117,10 +117,14 @@ class ProjectDiscovery:
                     ed_table, generic_fields, False
                 )
                 if M.ANY_EVENT_NAME not in generic_field_values.keys():
-                    raise ProjectDiscoveryError(
-                        f"Can't find any data to determine the generic field values in table '{ed_table.table_name}'"
+                    any_event_field_values = M.EventDef(
+                        _event_name=M.ANY_EVENT_NAME,
+                        _fields={},
+                        _event_data_table=ed_table,
                     )
-                any_event_field_values = generic_field_values[M.ANY_EVENT_NAME]
+                else:
+                    any_event_field_values = generic_field_values[M.ANY_EVENT_NAME]
+
                 event_specific_field_values = self._get_field_values(
                     ed_table, specific_fields, True
                 )

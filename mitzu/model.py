@@ -260,14 +260,15 @@ class AttributionMode(Enum):
 
 
 class ConnectionType(Enum):
-    FILE = "file"
-    ATHENA = "athena"
-    TRINO = "trino"
-    POSTGRESQL = "postgresql+psycopg2"
-    MYSQL = "mysql+mysqlconnector"
-    SQLITE = "sqlite"
-    DATABRICKS = "databricks"
-    SNOWFLAKE = "snowflake"
+    FILE = auto()
+    ATHENA = auto()
+    TRINO = auto()
+    POSTGRESQL = auto()
+    REDSHIFT = auto()
+    MYSQL = auto()
+    SQLITE = auto()
+    DATABRICKS = auto()
+    SNOWFLAKE = auto()
 
     @classmethod
     def parse(cls, val: str | ConnectionType) -> ConnectionType:
@@ -280,6 +281,27 @@ class ConnectionType(Enum):
             raise ValueError(
                 f"Invalid argument type for ConnectionType parse: {type(val)}"
             )
+
+    def get_protocol(self) -> str:
+        if self == ConnectionType.FILE:
+            return "file"
+        if self == ConnectionType.ATHENA:
+            return "athena"
+        if self == ConnectionType.TRINO:
+            return "trino"
+        if self == ConnectionType.POSTGRESQL:
+            return "postgresql+psycopg2"
+        if self == ConnectionType.REDSHIFT:
+            return "postgresql+psycopg2"
+        if self == ConnectionType.MYSQL:
+            return "mysql+mysqlconnector"
+        if self == ConnectionType.SQLITE:
+            return "sqlite"
+        if self == ConnectionType.DATABRICKS:
+            return "databricks"
+        if self == ConnectionType.SNOWFLAKE:
+            return "snowflake"
+        raise ValueError(f"No protocol for: {self}")
 
 
 @dataclass(frozen=True)

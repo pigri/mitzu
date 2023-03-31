@@ -75,6 +75,7 @@ def test_connection_update_layout_values_are_filled(
             {"label": "Athena", "value": "ATHENA"},
             {"label": "Trino", "value": "TRINO"},
             {"label": "Postgresql", "value": "POSTGRESQL"},
+            {"label": "Redshift", "value": "REDSHIFT"},
             {"label": "Mysql", "value": "MYSQL"},
             {"label": "Databricks", "value": "DATABRICKS"},
             {"label": "Snowflake", "value": "SNOWFLAKE"},

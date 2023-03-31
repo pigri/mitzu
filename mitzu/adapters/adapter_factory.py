@@ -27,6 +27,10 @@ def create_adapter(project: M.Project) -> GA.GenericDatasetAdapter:
         from mitzu.adapters.postgresql_adapter import PostgresqlAdapter
 
         res = PostgresqlAdapter(project)
+    elif con_type == M.ConnectionType.REDSHIFT:
+        from mitzu.adapters.redshift_adapter import RedshiftAdapter
+
+        res = RedshiftAdapter(project)
     elif con_type == M.ConnectionType.TRINO:
         from mitzu.adapters.trino_adapter import TrinoAdapter
 

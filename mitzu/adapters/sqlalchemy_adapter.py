@@ -391,7 +391,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             url_params_str = "?" + url_params_str
         catalog_str = "" if con.catalog is None else f"/{con.catalog}"
 
-        protocol = con.connection_type.value.lower()
+        protocol = con.connection_type.get_protocol().lower()
         res = f"{protocol}://{user_name}{password}{host_str}{port_str}{catalog_str}{schema_str}{url_params_str}"
         return res
 

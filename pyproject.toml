@@ -19,7 +19,7 @@ pyarrow = "~8.0.0"
 fastparquet = "~0.8.0"
 sqlparse = "^0.4.2"
 tqdm = "^4.64.1"
-cryptography= ">=38.0.4,<39.1.0"
+cryptography= "==38.0.4"
 requests = "^2.28.2"
 
 # Adapter extras
@@ -45,6 +45,7 @@ dash-draggable = {version="^0.1.2", optional=true}
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]
+redshift= ["psycopg2"]
 mysql = ["mysql-connector-python"]
 trinodwh = ["trino"]
 databricks = ["databricks-sql-connector"]

@@ -9,7 +9,7 @@ from mitzu.model import (
     Project,
     Segment,
 )
-from mitzu.project_discovery import ProjectDiscovery, ProjectDiscoveryError
+from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row
 from tests.samples.sources import (
     get_project_with_missing_table,
@@ -70,7 +70,6 @@ def test_data_discovery_without_data():
     callback.assert_called_once()
     assert isinstance(callback.call_args[0][0], EventDataTable)
     assert callback.call_args[0][1] == {}
-    assert isinstance(callback.call_args[0][2], ProjectDiscoveryError)
 
 
 def test_data_discovery_with_missing_table():

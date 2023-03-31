@@ -108,8 +108,6 @@ serve:
 run:	
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
-	AUTH_BACKEND="local" \
-	AUTH_ROOT_PASSWORD="test" \
 	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check
