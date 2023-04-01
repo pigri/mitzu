@@ -1,6 +1,7 @@
 # About Mitzu
 
 Mitzu is a python based product analytics tool. Mitzu is an open source alternative to these tools:
+
 - [Amplitude](https://amplitude.com/)
 - [Mixpanel](https://mixpanel.com/)
 - [Heap](https://heap.io/)
@@ -11,12 +12,12 @@ Mitzu connects directly to the company's data warehouse or data lake.
 # Setting Up Local Environment
 
 Before you begin you need to have these packages installed:
+
 - [poetry](https://python-poetry.org/)
 - [docker](https://www.docker.com/)
 - [docker-compose](https://docs.docker.com/compose/)
 
 We use `Makefile` to do most of the operations around the project.
-
 
 ## Install Dependencies
 
@@ -64,13 +65,14 @@ make trino_setup_test_data
 ```
 
 These will create a data lake consisting of `Minio + Hive + Trino`.
-The test project that can attach to the test data lake is at  `./trino_test_project.mitzu`.
+The test project that can attach to the test data lake is at `./trino_test_project.mitzu`.
 
 ## Running Standalone Webapp
 
 Start the webapp with this command:
+
 ```bash
-make serve
+make run
 ```
 
 This will start the webapp at http://localhost:8082.
@@ -82,8 +84,8 @@ Start the local prepared jupyter hub with this command:
 ```bash
 make notebook
 ```
-Navigate to `examples/notebook/trino_test_project.ipynb`
 
+Navigate to `examples/notebook/trino_test_project.ipynb`
 
 ## Understand Mitzu
 

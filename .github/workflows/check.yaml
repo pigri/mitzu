@@ -40,6 +40,8 @@ jobs:
           filename: coverage.xml
           format: markdown
           output: both
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
       - name: Comment coverage report
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request'
