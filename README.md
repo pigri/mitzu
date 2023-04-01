@@ -35,7 +35,7 @@
   - Internal user management
   - OAuth2 - (OIDC)
 
-# Supported Integrations
+# Supported Warehouse Integrations
 
 Mitzu integrates with most modern data lake and warehouse solutions:
 
@@ -58,7 +58,7 @@ Mitzu can run as a standalone webapp:
 
 Trying out locally:
 
-```bash
+```zsh
 docker run -p 8080:8080 mitzuio/mitzu:latest
 ```
 
