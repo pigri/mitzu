@@ -4,10 +4,11 @@ import dash.development.base_component as bc
 
 import dash_bootstrap_components as dbc
 from dash import html
-from typing import List, Optional, cast
+from typing import Optional, cast
 import mitzu.webapp.pages.paths as P
 import flask
 import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.storage as S
 
 
 OFF_CANVAS_TOGGLER = "off-canvas-toggler"
@@ -21,8 +22,9 @@ class NavbarService:
         self._init_default_navbars()
 
     def _init_default_navbars(self):
-        def off_canvas_toggle(id: str, **kwargs) -> Optional[bc.Component]:
-            off_canvas_toggler_visible = kwargs.get("off_canvas_toggler_visible", True)
+        def off_canvas_toggle(
+            id: str, off_canvas_toggler_visible: bool = True, **kwargs
+        ) -> Optional[bc.Component]:
             return dbc.Button(
                 html.B(className="bi bi-list"),
                 color="primary",
@@ -34,10 +36,13 @@ class NavbarService:
                 },
             )
 
-        def explore_button(id: str, **kwargs) -> Optional[bc.Component]:
-            create_explore_button = kwargs.get("create_explore_button", True)
-            storage = kwargs.get("storage", None)
-            project_name = kwargs.get("project_name", None)
+        def explore_button(
+            id: str,
+            create_explore_button: bool = True,
+            project_name: Optional[str] = None,
+            storage: Optional[S.MitzuStorage] = None,
+            **kwargs,
+        ) -> Optional[bc.Component]:
             if create_explore_button:
                 if storage is None:
                     storage = cast(
@@ -101,19 +106,22 @@ class NavbarService:
             signed_in_as,
         ]
 
-    def get_navbar_component(
-        self, id: str, children: List[bc.Component] = [], **kwargs
-    ) -> dbc.Navbar:
-        navbar_comps = []
+    def register_navbar_item_provider(self, menu_name: str, callback):
+        if menu_name == "left":
+            self._left_navbar_providers.append(callback)
+        elif menu_name == "right":
+            self._right_navbar_provider.append(callback)
+        else:
+            raise ValueError(f"Unknow navbar menu: {menu_name}")
+
+    def get_navbar_component(self, id: str, **kwargs) -> dbc.Navbar:
+        left_navbar_comps = []
         right_navbar_comps = []
 
         for provider in self._left_navbar_providers:
             comp = provider(id, **kwargs)
             if comp is not None:
-                navbar_comps.append(comp)
-
-        for comp in children:
-            navbar_comps.append(comp)
+                left_navbar_comps.append(comp)
 
         for provider in self._right_navbar_provider:
             comp = provider(id, **kwargs)
@@ -124,11 +132,15 @@ class NavbarService:
             dbc.Container(
                 [
                     dbc.Row(
-                        children=[dbc.Col(comp, width="auto") for comp in navbar_comps],
+                        children=[
+                            dbc.Col(comp, width="auto") for comp in left_navbar_comps
+                        ],
                         className="g-2",
                     ),
                     dbc.Row(
-                        children=[dbc.Col(comp, width="autho") for comp in right_navbar_comps],
+                        children=[
+                            dbc.Col(comp, width="autho") for comp in right_navbar_comps
+                        ],
                     ),
                 ],
                 fluid=True,

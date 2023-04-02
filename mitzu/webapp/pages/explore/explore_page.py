@@ -79,29 +79,44 @@ ALL_INPUT_COMPS = {
 }
 
 
-def create_navbar(
-    metric: Optional[M.Metric],
-    saved_metric: Optional[WM.SavedMetric],
-    project: M.Project,
-    notebook_mode: bool,
-) -> dbc.Navbar:
-    navbar_children = [
-        MTH.from_metric_type(MTH.MetricType.from_metric(metric)),
-        dmc.TextInput(
-            id=METRIC_NAME_INPUT,
-            debounce=700,
-            placeholder="Name your metric",
-            value=saved_metric.name if saved_metric is not None else None,
+def metric_type_navbar_provider(
+    id: str, show_metric_type: bool = False, metric: Optional[M.Metric] = None, **kwargs
+) -> Optional[bc.Component]:
+    if not show_metric_type:
+        return None
+    return MTH.from_metric_type(MTH.MetricType.from_metric(metric))
+
+
+def metric_name_navbar_provider(
+    id: str,
+    show_metric_name: bool = False,
+    saved_metric: Optional[WM.SavedMetric] = None,
+    **kwargs,
+) -> Optional[bc.Component]:
+    if not show_metric_name:
+        return None
+
+    return dmc.TextInput(
+        id=METRIC_NAME_INPUT,
+        debounce=700,
+        placeholder="Name your metric",
+        value=saved_metric.name if saved_metric is not None else None,
+        size="xs",
+        icon=DashIconify(icon="material-symbols:star", color="dark"),
+        rightSection=dmc.Loader(
             size="xs",
-            icon=DashIconify(icon="material-symbols:star", color="dark"),
-            rightSection=dmc.Loader(
-                size="xs",
-                color="dark",
-                className="d-none",
-                id=METRIC_NAME_PROGRESS,
-            ),
-            style={"width": "200px"},
+            color="dark",
+            className="d-none",
+            id=METRIC_NAME_PROGRESS,
         ),
+        style={"width": "200px"},
+    )
+
+
+def share_button_navbar_provider(
+    id: str, notebook_mode: bool = True, **kwargs
+) -> Optional[bc.Component]:
+    return (
         dbc.Button(
             [
                 html.B(className="bi bi-link-45deg"),
@@ -118,13 +133,6 @@ def create_navbar(
             size="sm",
             style={"display": "none" if notebook_mode else "inline-block"},
         ),
-    ]
-
-    return NB.create_mitzu_navbar(
-        id=NAVBAR_ID,
-        children=navbar_children,
-        off_canvas_toggler_visible=not notebook_mode,
-        project_name=project.project_name,
     )
 
 
@@ -148,10 +156,12 @@ def create_explore_page(
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
     graph_container = create_graph_container(metric, discovered_project.project)
-    navbar = create_navbar(
+    navbar = NB.create_mitzu_navbar(
+        id=NAVBAR_ID,
+        show_metric_type=True,
+        show_metric_name=True,
         metric=metric,
         saved_metric=saved_metric,
-        project=discovered_project.project,
         notebook_mode=notebook_mode,
     )
 
