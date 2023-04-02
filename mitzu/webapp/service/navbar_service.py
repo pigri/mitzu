@@ -105,6 +105,7 @@ class NavbarService:
         self, id: str, children: List[bc.Component] = [], **kwargs
     ) -> dbc.Navbar:
         navbar_comps = []
+        right_navbar_comps = []
 
         for provider in self._left_navbar_providers:
             comp = provider(id, **kwargs)
@@ -117,7 +118,7 @@ class NavbarService:
         for provider in self._right_navbar_provider:
             comp = provider(id, **kwargs)
             if comp is not None:
-                navbar_comps.append(comp)
+                right_navbar_comps.append(comp)
 
         res = dbc.Navbar(
             dbc.Container(
@@ -125,6 +126,9 @@ class NavbarService:
                     dbc.Row(
                         children=[dbc.Col(comp, width="auto") for comp in navbar_comps],
                         className="g-2",
+                    ),
+                    dbc.Row(
+                        children=[dbc.Col(comp, width="autho") for comp in right_navbar_comps],
                     ),
                 ],
                 fluid=True,
