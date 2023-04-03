@@ -15,7 +15,11 @@ class MetricType(Enum):
     SEGMENTATION = auto()
     CONVERSION = auto()
     RETENTION = auto()
-    JOURNEY = auto()
+    USER_JOURNEYS = auto()
+    REVENUE = auto()
+    AB_TEST_ANALYSIS = auto()
+    COHORTS = auto()
+    CHURN_ANALYSIS = auto()
 
     @classmethod
     def from_metric(cls, metric: Optional[M.Metric]) -> MetricType:
@@ -35,9 +39,14 @@ def from_metric_type(metric_type: MetricType) -> bc.Component:
     return dmc.Select(
         data=[
             {
-                "label": m_type.name.upper(),
+                "label": m_type.name.upper().replace("_", " "),
                 "value": m_type.name.upper(),
-                "disabled": m_type == MetricType.JOURNEY,
+                "disabled": m_type
+                not in (
+                    MetricType.SEGMENTATION,
+                    MetricType.RETENTION,
+                    MetricType.CONVERSION,
+                ),
             }
             for m_type in MetricType
         ],
