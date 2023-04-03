@@ -9,6 +9,7 @@ import mitzu.webapp.cache as C
 import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.user_service as U
+import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.events_service as E
 
 CONFIG_KEY = "dependencies"
@@ -22,6 +23,7 @@ class Dependencies:
     queue: C.MitzuCache
     cache: C.MitzuCache
     events_service: E.EventsService
+    navbar_service: NB.NavbarService
     user_service: Optional[U.UserService] = None
 
     @classmethod
@@ -89,5 +91,6 @@ class Dependencies:
             storage=storage,
             queue=queue,
             user_service=user_service,
+            navbar_service=NB.NavbarService(),
             events_service=events_service,
         )

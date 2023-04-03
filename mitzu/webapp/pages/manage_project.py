@@ -148,7 +148,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("create-project-navbar", []),
+            NB.create_mitzu_navbar("create-project-navbar"),
             dbc.Container(
                 children=[
                     dbc.Row(

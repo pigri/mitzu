@@ -12,6 +12,7 @@ import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
+import mitzu.webapp.pages.explore.explore_page as EXP
 from mitzu.helper import LOGGER
 
 from mitzu.webapp.helper import MITZU_LOCATION
@@ -80,6 +81,16 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
         if configs.SETUP_SAMPLE_PROJECT:
             S.setup_sample_project(dependencies.storage)
+
+    dependencies.navbar_service.register_navbar_item_provider(
+        "left", EXP.metric_type_navbar_provider
+    )
+    dependencies.navbar_service.register_navbar_item_provider(
+        "left", EXP.metric_name_navbar_provider
+    )
+    dependencies.navbar_service.register_navbar_item_provider(
+        "left", EXP.share_button_navbar_provider
+    )
 
     app = Dash(
         __name__,

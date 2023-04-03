@@ -10,7 +10,7 @@ from mitzu import __version__ as version
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
-import mitzu.webapp.navbar as NB
+import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted
 

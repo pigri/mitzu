@@ -85,7 +85,7 @@ def layout(**query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("users_list", []),
+            NB.create_mitzu_navbar("users_list"),
             dbc.Container(
                 [
                     html.H4("Registered Users"),

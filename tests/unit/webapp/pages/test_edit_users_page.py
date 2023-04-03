@@ -10,6 +10,7 @@ import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.model as WM
 import mitzu.webapp.service.user_service as US
 import mitzu.webapp.service.events_service as ES
+import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.pages.paths as P
 
 
@@ -56,6 +57,7 @@ class RequestContextLoggedInAsRootUser:
             cache=cache,
             user_service=user_service,
             events_service=event_service,
+            navbar_service=NB.NavbarService(),
         )
 
         self.context = self._server.test_request_context(

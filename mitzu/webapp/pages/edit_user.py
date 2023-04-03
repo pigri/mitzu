@@ -86,7 +86,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
     if user is None and user_id != "new":
         return html.Div(
             [
-                NB.create_mitzu_navbar("users_edit", []),
+                NB.create_mitzu_navbar("users_edit"),
                 dbc.Container(
                     [
                         html.H4("Users not found"),
@@ -105,7 +105,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
 
     return html.Div(
         [
-            NB.create_mitzu_navbar("users_management_page", []),
+            NB.create_mitzu_navbar("users_management_page"),
             dbc.Container(
                 [
                     html.H4("User"),
