@@ -11,6 +11,7 @@ import mitzu.webapp.storage as S
 import mitzu.webapp.service.user_service as U
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.events_service as E
+import mitzu.webapp.service.secret_service as SS
 
 CONFIG_KEY = "dependencies"
 
@@ -24,6 +25,7 @@ class Dependencies:
     cache: C.MitzuCache
     events_service: E.EventsService
     navbar_service: NB.NavbarService
+    secret_service: SS.SecretService
     user_service: Optional[U.UserService] = None
 
     @classmethod
@@ -85,6 +87,8 @@ class Dependencies:
         # Adding cache layer over storage
         events_service = E.EventsService(storage)
 
+        secret_service = SS.SecretService()
+
         return Dependencies(
             authorizer=authorizer,
             cache=cache,
@@ -93,4 +97,5 @@ class Dependencies:
             user_service=user_service,
             navbar_service=NB.NavbarService(),
             events_service=events_service,
+            secret_service=secret_service,
         )

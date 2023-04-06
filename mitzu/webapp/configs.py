@@ -55,6 +55,8 @@ SETUP_SAMPLE_PROJECT = bool(
     os.getenv("SETUP_SAMPLE_PROJECT", "false").lower() != "false"
 )
 
+SECRET_ENCRYPTION_KEY = os.getenv("SECRET_ENCRYPTION_KEY", None)
+
 
 KALEIDO_CONFIGS = os.getenv("KALEIDO_CONFIGS", "--disable-gpu-*,--single-process")
 
