@@ -12,6 +12,8 @@ import mitzu.webapp.storage as S
 
 
 OFF_CANVAS_TOGGLER = "off-canvas-toggler"
+EXPLORE_DROPDOWN = "explore-dropdown"
+SIGNED_IN_AS_DIV = "signed-in-as"
 
 
 class NavbarService:
@@ -65,6 +67,7 @@ class NavbarService:
                     color="light",
                     label="explore" if project_name is None else project_name,
                     class_name="d-inline-block",
+                    id={"type": EXPLORE_DROPDOWN, "index": id},
                 )
             return None
 
@@ -100,6 +103,7 @@ class NavbarService:
             return html.Div(
                 "Signed in as " + email,
                 style={"color": "white", "line-height": "2.4em", "font-weight": "bold"},
+                id={"type": SIGNED_IN_AS_DIV, "index": id},
             )
 
         self._right_navbar_providers = [
