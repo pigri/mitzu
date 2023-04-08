@@ -5,6 +5,7 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.navbar_service as NB
+import mitzu.webapp.service.secret_service as SS
 import mitzu.model as M
 from mitzu.webapp.cache import MitzuCache
 import flask
@@ -53,6 +54,7 @@ def dependencies() -> DEPS.Dependencies:
         events_service=evt_service,
         navbar_service=NB.NavbarService(),
         user_service=None,
+        secret_service=SS.SecretService(),
     )
 
 

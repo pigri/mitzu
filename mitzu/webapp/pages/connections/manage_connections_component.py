@@ -55,6 +55,10 @@ def create_url_param(values: Dict[str, Any], property: str) -> str:
 
 
 def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
+    deps: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
+
     con_type = M.ConnectionType.parse(values[PROP_CONNECTION_TYPE])
     url_params = ""
     extra_configs = {}
@@ -82,7 +86,7 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
         id=values[PROP_CONNECTION_ID],
         catalog=values[PROP_CATALOG],
         user_name=values[PROP_USERNAME],
-        secret_resolver=M.ConstSecretResolver(values[PROP_PASSWORD]),
+        secret_resolver=deps.secret_service.get_secret_resolver(values[PROP_PASSWORD]),
         url_params=url_params,
         extra_configs=extra_configs,
     )
