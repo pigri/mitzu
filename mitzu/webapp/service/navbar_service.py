@@ -4,7 +4,7 @@ import dash.development.base_component as bc
 
 import dash_bootstrap_components as dbc
 from dash import html
-from typing import Optional, cast
+from typing import Optional, cast, Callable, List, Tuple
 import mitzu.webapp.pages.paths as P
 import flask
 import mitzu.webapp.dependencies as DEPS
@@ -16,8 +16,8 @@ OFF_CANVAS_TOGGLER = "off-canvas-toggler"
 
 class NavbarService:
     def __init__(self):
-        self._left_navbar_providers = []
-        self._right_navbar_provider = []
+        self._left_navbar_providers: List[Tuple[int, Callable]] = []
+        self._right_navbar_providers: List[Tuple[int, Callable]] = []
 
         self._init_default_navbars()
 
@@ -69,8 +69,8 @@ class NavbarService:
             return None
 
         self._left_navbar_providers = [
-            off_canvas_toggle,
-            explore_button,
+            (0, off_canvas_toggle),
+            (10, explore_button),
         ]
 
         def signed_in_as(id: str, **kwargs) -> Optional[bc.Component]:
@@ -102,15 +102,17 @@ class NavbarService:
                 style={"color": "white", "line-height": "2.4em", "font-weight": "bold"},
             )
 
-        self._right_navbar_provider = [
-            signed_in_as,
+        self._right_navbar_providers = [
+            (50, signed_in_as),
         ]
 
-    def register_navbar_item_provider(self, menu_name: str, callback):
+    def register_navbar_item_provider(self, menu_name: str, callback, priority=100):
         if menu_name == "left":
-            self._left_navbar_providers.append(callback)
+            self._left_navbar_providers.append((priority, callback))
+            self._left_navbar_providers.sort(key=lambda x: x[0])
         elif menu_name == "right":
-            self._right_navbar_provider.append(callback)
+            self._right_navbar_providers.append((priority, callback))
+            self._right_navbar_providers.sort(key=lambda x: x[0])
         else:
             raise ValueError(f"Unknow navbar menu: {menu_name}")
 
@@ -118,12 +120,12 @@ class NavbarService:
         left_navbar_comps = []
         right_navbar_comps = []
 
-        for provider in self._left_navbar_providers:
+        for _, provider in self._left_navbar_providers:
             comp = provider(id, **kwargs)
             if comp is not None:
                 left_navbar_comps.append(comp)
 
-        for provider in self._right_navbar_provider:
+        for _, provider in self._right_navbar_providers:
             comp = provider(id, **kwargs)
             if comp is not None:
                 right_navbar_comps.append(comp)
