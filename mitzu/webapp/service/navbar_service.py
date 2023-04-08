@@ -139,7 +139,7 @@ class NavbarService:
                     ),
                     dbc.Row(
                         children=[
-                            dbc.Col(comp, width="autho") for comp in right_navbar_comps
+                            dbc.Col(comp, width="auto") for comp in right_navbar_comps
                         ],
                     ),
                 ],
