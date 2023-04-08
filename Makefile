@@ -133,6 +133,7 @@ docker_build_latest:
 		-E athena \
 		-E snowflake \
 		-E mysql \
+		-E redshift \
 		--without-hashes \
 		--format=requirements.txt > release/requirements.txt	
 	docker build ./release \
@@ -153,6 +154,7 @@ docker_build_amd64_snapshot:
 		-E athena \
 		-E snowflake \
 		-E mysql \
+		-E redshift \
 		--without-hashes \
 		--format=requirements.txt > release/requirements.txt	
 	docker build ./release \
