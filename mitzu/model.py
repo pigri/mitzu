@@ -858,6 +858,9 @@ class Project(Identifiable):
         discovery_settings: Optional[DiscoverySettings] = None,
         webapp_settings: Optional[WebappSettings] = None,
     ):
+        if project_id is None:
+            project_id = helper.create_unique_id()
+
         object.__setattr__(self, "id", project_id)
         edt_with_discovery_settings = []
         if discovery_settings is None:
@@ -873,9 +876,6 @@ class Project(Identifiable):
 
         if webapp_settings is None:
             webapp_settings = WebappSettings()
-
-        if project_id is None:
-            project_id = helper.create_unique_id()
 
         object.__setattr__(self, "event_data_tables", edt_with_discovery_settings)
         object.__setattr__(self, "discovery_settings", discovery_settings)
