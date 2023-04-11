@@ -83,13 +83,19 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
             S.setup_sample_project(dependencies.storage)
 
     dependencies.navbar_service.register_navbar_item_provider(
-        "left", EXP.metric_type_navbar_provider
+        "left",
+        EXP.metric_type_navbar_provider,
+        priority=20,
     )
     dependencies.navbar_service.register_navbar_item_provider(
-        "left", EXP.metric_name_navbar_provider
+        "left",
+        EXP.metric_name_navbar_provider,
+        priority=30,
     )
     dependencies.navbar_service.register_navbar_item_provider(
-        "left", EXP.share_button_navbar_provider
+        "left",
+        EXP.share_button_navbar_provider,
+        priority=40,
     )
 
     app = Dash(
