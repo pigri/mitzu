@@ -102,7 +102,7 @@ class NavbarService:
 
             return html.Div(
                 "Signed in as " + email,
-                style={"color": "white", "line-height": "2.4em", "font-weight": "bold"},
+                className="text-light fw-bold",
                 id={"type": SIGNED_IN_AS_DIV, "index": id},
             )
 

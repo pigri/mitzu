@@ -284,7 +284,7 @@ def from_all_inputs(
             time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
         elif metric_type == MTH.MetricType.CONVERSION:
             time_group = M.TimeGroup.DAY
-            resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
+            resolution = M.Resolution.EVERY_EVENT
             lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)
             time_window = M.TimeWindow(1, M.TimeGroup.DAY)
         else:

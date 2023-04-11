@@ -93,4 +93,4 @@ sample_project.db
 *.rdb
 
 docker_cache/
-
+storage.db

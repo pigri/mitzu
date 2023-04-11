@@ -77,6 +77,7 @@ def test_connection_update_layout_values_are_filled(
             {"label": "Postgresql", "value": "POSTGRESQL"},
             {"label": "Redshift", "value": "REDSHIFT"},
             {"label": "Mysql", "value": "MYSQL"},
+            {"label": "Sqlite", "value": "SQLITE"},
             {"label": "Databricks", "value": "DATABRICKS"},
             {"label": "Snowflake", "value": "SNOWFLAKE"},
         ]
