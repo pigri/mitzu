@@ -279,7 +279,7 @@ def from_all_inputs(
         end_dt = None
         if metric_type == MTH.MetricType.RETENTION:
             time_group = M.TimeGroup.WEEK
-            resolution = M.Resolution.ONE_USER_EVENT_PER_HOUR
+            resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
             lookback_days = M.TimeWindow(2, M.TimeGroup.MONTH)
             time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
         elif metric_type == MTH.MetricType.CONVERSION:

@@ -67,6 +67,9 @@ class SnowflakeAdapter(SQLAlchemyAdapter):
             )
         return df
 
+    def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
+        return SA.func.array_agg(SA.distinct(field_ref))
+
     def _get_conv_aggregation(
         self, metric: M.Metric, cte: EXP.CTE, first_cte: EXP.CTE
     ) -> Any:

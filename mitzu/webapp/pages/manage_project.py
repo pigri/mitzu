@@ -187,7 +187,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                                 project_id=project_id,
                             )
                             if project_id is not None
-                            else P.EVENTS_AND_PROPERTIES_PROJECT_PATH
+                            else P.EVENTS_AND_PROPERTIES_PATH
                         ),
                     ),
                     html.Div(
