@@ -123,6 +123,10 @@ def test_connection_successfull_to_sqlite(
 def test_delete_confirmed(ctx, server: Flask, dependencies: Dependencies):
     with server.test_request_context():
         con_id = dependencies.storage.list_connections()[0]
+        for project_id in dependencies.storage.list_projects():
+            project = dependencies.storage.get_project(project_id)
+            if project.get_connection_id() == con_id:
+                dependencies.storage.delete_project(project.id)
         res = to_dict(
             MCC.delete_confirmed_clicked(
                 1,

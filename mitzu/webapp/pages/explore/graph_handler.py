@@ -10,6 +10,7 @@ import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
+import mitzu.webapp.cache as C
 import mitzu.visualization.common as CO
 import flask
 import mitzu.webapp.pages.paths as P
@@ -83,12 +84,12 @@ def create_metric_hash_key(metric: M.Metric) -> str:
 
 
 def get_metric_result_df(
-    hash_key: str, metric: M.Metric, storage: S.MitzuStorage
+    hash_key: str, metric: M.Metric, mitzu_cache: C.MitzuCache
 ) -> pd.DataFrame:
-    result_df = storage.get_query_result_dataframe(hash_key)
+    result_df = mitzu_cache.get(hash_key)
     if result_df is None:
         result_df = metric.get_df()
-        storage.set_query_result_dataframe(hash_key, result_df)
+        mitzu_cache.put(hash_key, result_df, expire=configs.CACHE_EXPIRATION)
     return result_df
 
 
@@ -116,12 +117,12 @@ def create_graph(
 
 
 def create_table(
-    metric: Optional[M.Metric], hash_key: str, storage: S.MitzuStorage
+    metric: Optional[M.Metric], hash_key: str, mitzu_cache: C.MitzuCache
 ) -> Optional[dbc.Table]:
     if metric is None:
         return None
 
-    result_df = get_metric_result_df(hash_key, metric, storage)
+    result_df = get_metric_result_df(hash_key, metric, mitzu_cache)
     result_df = result_df.sort_values(by=[result_df.columns[0], result_df.columns[1]])
     result_df.columns = [col[1:].replace("_", " ").title() for col in result_df.columns]
     table = dash_table.DataTable(
@@ -223,9 +224,12 @@ def create_callbacks():
             project_id = P.get_path_value(
                 P.PROJECTS_EXPLORE_PATH, parse_result.path, P.PROJECT_ID_PATH_PART
             )
-            storage = cast(
+            deps = cast(
                 DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            ).storage
+            )
+            storage = deps.storage
+            mitzu_cache = deps.cache
+
             project = storage.get_project(project_id)
             if project is None:
                 return no_update
@@ -260,25 +264,25 @@ def create_callbacks():
 
             hash_key = create_metric_hash_key(metric)
             if ctx.triggered_id in (TH.GRAPH_REFRESH_BUTTON, TH.GRAPH_RUN_QUERY_BUTTON):
-                storage.clear_query_result_dataframe(hash_key)
+                mitzu_cache.clear(hash_key)
 
             if (
                 not project.webapp_settings.auto_refresh_enabled
                 and ctx.triggered_id != TH.GRAPH_RUN_QUERY_BUTTON
-                and storage.get_query_result_dataframe(hash_key) is None
+                and mitzu_cache.get(hash_key) is None
             ):
                 return html.Div(
                     "Click run to execute the query", id=GRAPH, className=MESSAGE
                 )
 
             if graph_content_type == TH.CHART_VAL or should_save_metrics:
-                result_df = get_metric_result_df(hash_key, metric, storage)
+                result_df = get_metric_result_df(hash_key, metric, mitzu_cache)
                 simple_chart = CHRT.get_simple_chart(metric, result_df)
 
             if graph_content_type == TH.CHART_VAL:
                 res = create_graph(metric, simple_chart)  # noqa
             if graph_content_type == TH.TABLE_VAL:
-                res = create_table(metric, hash_key, storage)
+                res = create_table(metric, hash_key, mitzu_cache)
             elif graph_content_type == TH.SQL_VAL:
                 res = create_sql_area(metric)
 

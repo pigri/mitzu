@@ -57,7 +57,12 @@ def create_table_row(
 def create_event_table_component(project: Optional[M.Project]) -> bc.Component:
     rows = []
     if project is not None:
-        dp = project._discovered_project.get_value()
+        dp = project._discovered_project.get_value_if_exsits()
+        events_service = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        ).events_service
+        events_service.populate_discovered_project(dp)
+
         if dp is not None:
             for edt, df in dp.definitions.items():
                 for evt_df in df.values():

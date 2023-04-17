@@ -234,11 +234,6 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
         try:
-            project = depenednecies.storage.get_project(project_id=project_id)
-            for edt in project.event_data_tables:
-                depenednecies.storage.delete_event_data_table_definition(
-                    project_id=project_id, edt_full_name=edt.get_full_name()
-                )
             depenednecies.storage.delete_project(project_id)
         except Exception:
             # TBD: Toaster

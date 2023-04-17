@@ -56,6 +56,10 @@ SETUP_SAMPLE_PROJECT = bool(
 )
 
 SECRET_ENCRYPTION_KEY = os.getenv("SECRET_ENCRYPTION_KEY", None)
+STORAGE_CONNECTION_STRING = os.getenv(
+    "STORAGE_CONNECTION_STRING",
+    "sqlite:///storage.db?cache=shared&check_same_thread=False",
+)
 
 
 KALEIDO_CONFIGS = os.getenv("KALEIDO_CONFIGS", "--disable-gpu-*,--single-process")

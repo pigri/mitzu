@@ -65,7 +65,7 @@ def deserialize_discovered_project(raw_data: bytes) -> M.DiscoveredProject:
     for edt, defs in res[DEFS].items():
         edt_def: Dict[str, M.Reference[M.EventDef]] = {}
         for evt_name, evt_def in defs.items():
-            edt_def[evt_name] = M.Reference(evt_def)
+            edt_def[evt_name] = M.Reference.create_from_value(evt_def)
         definitions[edt] = edt_def
 
     return M.DiscoveredProject(definitions=definitions, project=project)

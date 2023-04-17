@@ -53,6 +53,7 @@ class SavedMetric(M.Identifiable):
         description: Optional[str] = None,
         created_at: Optional[datetime] = None,
         id: Optional[str] = None,
+        last_updated_at: Optional[datetime] = None,
     ):
         if created_at is None:
             created_at = datetime.now()
@@ -67,17 +68,20 @@ class SavedMetric(M.Identifiable):
 
         if id is None:
             id = create_unique_id()
+
+        if last_updated_at is None:
+            last_updated_at = datetime.now()
         object.__setattr__(self, "chart", chart)
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "description", description if description else "")
         object.__setattr__(self, "image_base64", image_base64)
         object.__setattr__(self, "small_base64", small_base64)
         object.__setattr__(self, "created_at", created_at)
-        object.__setattr__(self, "last_updated_at", datetime.now())
+        object.__setattr__(self, "last_updated_at", last_updated_at)
         object.__setattr__(self, "metric_json", metric_json)
         object.__setattr__(self, "owner", owner)
         object.__setattr__(self, "id", id)
-        object.__setattr__(self, "_project_ref", M.Reference(project))
+        object.__setattr__(self, "_project_ref", M.Reference.create_from_value(project))
         object.__setattr__(self, "_metric_state", M.State(metric))
 
     @property
@@ -167,6 +171,7 @@ class DashboardMetric:
     width: int
     height: int
     _saved_metric_ref: M.Reference[SavedMetric]
+    id: str
 
     def __init__(
         self,
@@ -175,12 +180,18 @@ class DashboardMetric:
         y: int = 0,
         width: int = 2,
         height: int = 8,
+        id: Optional[str] = None,
     ):
+        if id is None:
+            id = str(uuid4())[-12:]
+        object.__setattr__(self, "id", id)
         object.__setattr__(self, "x", x)
         object.__setattr__(self, "y", y)
         object.__setattr__(self, "width", width)
         object.__setattr__(self, "height", height)
-        object.__setattr__(self, "_saved_metric_ref", M.Reference(saved_metric))
+        object.__setattr__(
+            self, "_saved_metric_ref", M.Reference.create_from_value(saved_metric)
+        )
 
     @property
     def saved_metric(self) -> Optional[SavedMetric]:

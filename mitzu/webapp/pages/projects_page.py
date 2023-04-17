@@ -98,7 +98,7 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
     discovered_project = project._discovered_project.get_value()
 
     tables = len(project.event_data_tables)
-    events = len(discovered_project.get_all_events()) if discovered_project else 0
+    events = len(discovered_project.get_all_event_names()) if discovered_project else 0
     project_jumbotron = dbc.Col(
         dbc.Card(
             dbc.CardBody(

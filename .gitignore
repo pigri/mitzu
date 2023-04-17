@@ -91,6 +91,7 @@ private_notebooks/
 sample_project.db
 *.env
 *.rdb
+storage.db
 
 docker_cache/
 storage.db

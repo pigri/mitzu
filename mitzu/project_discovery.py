@@ -89,7 +89,7 @@ class ProjectDiscovery:
                 _event_name=evt_name,
                 _fields={**spec_evt_def._fields, **copied_gen_fields},
             )
-            res[evt_name] = M.Reference(new_def)
+            res[evt_name] = M.Reference.create_from_value(new_def)
 
         return res
 

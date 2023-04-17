@@ -9,13 +9,12 @@ from mitzu.webapp.service.user_service import (
     RootUserCannotBeChanged,
 )
 from mitzu.webapp.model import Role
-from tests.unit.webapp.fixtures import InMemoryCache
 import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
 
 
 def create_service(root_password: Optional[str] = None) -> UserService:
-    storage = S.MitzuStorage(InMemoryCache())
+    storage = S.MitzuStorage()
     return UserService(storage, root_password=root_password)
 
 

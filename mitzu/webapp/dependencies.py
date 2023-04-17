@@ -38,7 +38,7 @@ class Dependencies:
                 "cache", global_prefix=configs.CACHE_PREFIX
             )
         cache = C.RequestCache(delegate_cache)
-        storage = S.MitzuStorage(cache)
+        storage = S.MitzuStorage(connection_string=configs.STORAGE_CONNECTION_STRING)
 
         authorizer = None
         oauth_config = None

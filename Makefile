@@ -27,6 +27,9 @@ lint: ## lints and checks formatting all python code
 test_units:
 	$(POETRY) run pytest -sv tests/unit/
 
+test_hypothesis: ## runs all property based tests with a bigger example size
+	HYPOTHESIS_MAX_EXAMPLES=100 $(POETRY) run pytest -sv $(shell grep -r "tests.unit.webapp.generators" tests/ 2>/dev/null | cut -d ":" -f 1)
+
 test_integrations:
 	docker-compose -f docker/docker-compose.yml up -d --no-recreate
 	$(POETRY) run pytest -sv tests/integration/
@@ -108,6 +111,7 @@ serve:
 run:	
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
+	SETUP_SAMPLE_PROJECT=true \
 	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check

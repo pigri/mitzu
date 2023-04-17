@@ -51,3 +51,19 @@ class SimpleChart:
     x_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
     y_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
     color_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, SimpleChart):
+            return False
+
+        value_dict = value.__dict__
+        for key, value in self.__dict__.items():
+            if key not in [
+                "dataframe",
+                "x_axis_labels_func",
+                "y_axis_labels_func",
+                "color_labels_func",
+            ]:
+                if value != value_dict[key]:
+                    return False
+        return True

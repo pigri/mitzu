@@ -43,7 +43,7 @@ class InMemoryCache(MitzuCache):
 def dependencies() -> DEPS.Dependencies:
     cache = InMemoryCache()
     queue = InMemoryCache()
-    storage = S.MitzuStorage(cache)
+    storage = S.MitzuStorage()
 
     evt_service = E.EventsService(storage)
     return DEPS.Dependencies(
@@ -92,9 +92,8 @@ def server(
             storage.set_project(project_id=project.id, project=project)
             for edt, defs in discovered_project.definitions.items():
                 storage.set_event_data_table_definition(
-                    project_id=project.id,
                     definitions=defs,
-                    edt_full_name=edt.get_full_name(),
+                    event_data_table=edt,
                 )
 
     return flask_app

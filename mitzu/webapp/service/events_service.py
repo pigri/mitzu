@@ -19,12 +19,15 @@ class EventsService:
             self.storage.get_project(pid) for pid in project_ids
         ]  # todo move this logic to storage
 
+    def populate_discovered_project(self, discovered_project: M.DiscoveredProject):
+        self.storage.populate_discovered_project(discovered_project)
+
     def get_project_definition(
         self, project_id: str
     ) -> Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]]:
-        dp = self.storage.get_project(project_id)._discovered_project.get_value()
-        if dp is None:
-            raise EventServiceException(f"Missing discovered project for {project_id}")
+        project = self.storage.get_project(project_id)
+        dp = project._discovered_project.get_value_if_exsits()
+        self.storage.populate_discovered_project(dp)
         return dp.definitions
 
     def discover_project(
@@ -52,7 +55,7 @@ class EventsService:
         ):
             if exc is None:
                 self.storage.set_event_data_table_definition(
-                    project_id, edt_full_name=edt.get_full_name(), definitions=defs
+                    event_data_table=edt, definitions=defs
                 )
             edts.append(edt)
             callback(edt, defs, exc, len(edts), edt_count)

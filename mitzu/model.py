@@ -389,12 +389,24 @@ class Reference(Generic[ID]):
     _value_state: State[ID]
     _id: Optional[str]
 
-    def __init__(self, value: Optional[ID]):
+    def __init__(self, id: Optional[str], value: Optional[ID]):
         self._value_state = State(value)
-        if value is None:
-            self._id = None
+        self._id = id
+        if id is None:
+            if value is None:
+                raise ValueError("Both id and value are None")
+            else:
+                self._id = value.get_id()
         else:
-            self._id = value.get_id()
+            self._id = id
+
+    @classmethod
+    def create_from_value(cls, value: ID) -> Reference:
+        return Reference(id=value.get_id(), value=value)
+
+    @classmethod
+    def create_from_id(cls, id: str) -> Reference:
+        return Reference(id=id, value=None)
 
     def get_id(self) -> Optional[str]:
         return self._id
@@ -423,7 +435,7 @@ class Reference(Generic[ID]):
         self._value_state.set_value(value)
         if value is not None and value.get_id() != self._id:
             raise InvalidReferenceException(
-                "Restored reference value has different ID."
+                f"Restored reference value has different ID. Original: {self._id}, New: {value.get_id()}"
             )
 
 
@@ -539,6 +551,7 @@ class Connection(Identifiable):
 
 @dataclass(frozen=True)
 class DiscoverySettings:
+    id: str = field(default_factory=helper.create_unique_id)
     max_enum_cardinality: int = 300
     max_map_key_cardinality: int = 1000
 
@@ -555,9 +568,25 @@ class WebappEndDateConfig(Enum):
     START_OF_CURRENT_DAY = auto()
     END_OF_CURRENT_DAY = auto()
 
+    @classmethod
+    def parse(cls, val: str | WebappEndDateConfig) -> WebappEndDateConfig:
+        if type(val) == str:
+            val = val.upper()
+            return WebappEndDateConfig[val]
+        elif type(val) == WebappEndDateConfig:
+            return val
+        else:
+            raise ValueError(
+                f"Invalid argument type for WebappEndDateConfig parse: {type(val)}"
+            )
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
 
 @dataclass(frozen=True)
 class WebappSettings:
+    id: str = field(default_factory=helper.create_unique_id)
     lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     auto_refresh_enabled: bool = True
     end_date_config: WebappEndDateConfig = WebappEndDateConfig.START_OF_CURRENT_DAY
@@ -584,20 +613,14 @@ class EventDataTable(Identifiable):
     event_name_field: Optional[Field] = None
     date_partition_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
-
-    # TBD change to Field type
     ignored_fields: List[Field] = field(default_factory=lambda: [])
-
-    # TBD change to Field type
     event_specific_fields: Optional[List[Field]] = None
 
     # TBD remove
     description: Optional[str] = None
 
     discovery_settings: Optional[DiscoverySettings] = None
-    project_reference: Reference[Project] = field(
-        default_factory=lambda: Reference(None)
-    )
+    project_reference: Optional[Reference[Project]] = None
 
     @classmethod
     def create(
@@ -814,13 +837,17 @@ class EventDataTable(Identifiable):
 
     @property
     def project(self) -> Project:
+        if self.project_reference is None:
+            raise InvalidReferenceException(
+                "EventDataTable doesn't have a ProjectReference"
+            )
         res = self.project_reference.get_value()
         if res is None:
             raise InvalidReferenceException("EventDataTable doesn't have a Project")
         return res
 
     def set_project(self, project: Project):
-        self.project_reference = Reference(project)
+        self.project_reference = Reference.create_from_value(project)
 
 
 class InvalidProjectError(Exception):
@@ -882,7 +909,9 @@ class Project(Identifiable):
         object.__setattr__(self, "webapp_settings", webapp_settings)
         object.__setattr__(self, "project_name", project_name)
         object.__setattr__(self, "description", description)
-        object.__setattr__(self, "_connection_ref", Reference(connection))
+        object.__setattr__(
+            self, "_connection_ref", Reference.create_from_value(connection)
+        )
         object.__setattr__(self, "_adapter_cache", State())
         object.__setattr__(self, "_discovered_project", State())
 
@@ -1060,6 +1089,7 @@ class Field:
         _name: str,
         _type: DataType,
         _sub_fields: Optional[Tuple[Field, ...]] = None,
+        _parent: Optional[Field] = None,
     ):
         object.__setattr__(self, "_name", _name)
         object.__setattr__(self, "_type", _type)
@@ -1067,6 +1097,7 @@ class Field:
         if _sub_fields is not None:
             for sf in _sub_fields:
                 object.__setattr__(sf, "_parent", self)
+        object.__setattr__(self, "_parent", _parent)
 
     def has_sub_field(self, field: Field) -> bool:
         if self._sub_fields is None:
@@ -1111,17 +1142,19 @@ class EventFieldDef:
 
 @dataclass(frozen=True)
 class EventDef(Identifiable):
+
     _event_name: str
     _fields: Dict[Field, EventFieldDef]
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
+    _id: str = field(default_factory=helper.create_unique_id)
 
     @property
     def _project(self) -> Project:
         return self._event_data_table.project
 
     def get_id(self) -> str:
-        return self._event_data_table.id + f"_{self._event_name}"
+        return self._id
 
 
 # =========================================== Metric definitions ===========================================

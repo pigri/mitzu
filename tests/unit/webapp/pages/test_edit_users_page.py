@@ -21,7 +21,7 @@ class RequestContextLoggedInAsRootUser:
 
     def __enter__(self):
         cache = InMemoryCache()
-        storage = S.MitzuStorage(cache)
+        storage = S.MitzuStorage()
         user_service = US.UserService(storage, root_password=configs.AUTH_ROOT_PASSWORD)
 
         auth_config = A.AuthConfig(

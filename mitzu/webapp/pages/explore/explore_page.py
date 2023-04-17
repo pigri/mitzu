@@ -239,8 +239,8 @@ def get_metric_group_by(
         gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
         group_by = find_event_field_def(gp, discovered_project) if gp else None
         if group_by is not None:
-            group_by._event_data_table.project_reference.restore_value(
-                discovered_project.project
+            group_by._event_data_table.project_reference = (
+                M.Reference.create_from_value(discovered_project.project)
             )
     return group_by
 
@@ -427,10 +427,9 @@ def handle_metric_name_changed(
     metric_id: str,
     href: str,
 ) -> str:
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
-
+    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    storage = deps.storage
+    mitzu_cache = deps.cache
     parse_result = urlparse(href)
     sm = storage.get_saved_metric(metric_id)
     if sm is not None and sm.project is not None:
@@ -447,7 +446,7 @@ def handle_metric_name_changed(
         if metric_v64 is not None:
             metric = SE.from_compressed_string(metric_v64[0], project)
             hash_key = GH.create_metric_hash_key(metric)
-            result_df = GH.get_metric_result_df(hash_key, metric, storage)
+            result_df = GH.get_metric_result_df(hash_key, metric, mitzu_cache)
             simple_chart = CHRT.get_simple_chart(metric, result_df)
             GH.store_rendered_saved_metric(
                 metric_name=metric_name,
