@@ -199,7 +199,7 @@ Trying out locally:
 
 .. code-block:: shell
 
-   docker run -p 8082:8082 imeszaros/mitzu-webapp
+   docker run -p 8080:8080 imeszaros/mitzu-webapp
 
 
 - `Example webapp <https://app.mitzu.io>`_
