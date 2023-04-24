@@ -7,6 +7,7 @@ import mitzu.webapp.pages.manage_connection as CON
 from unittest.mock import patch
 import mitzu.webapp.pages.paths as P
 import mitzu.model as M
+from dash import no_update
 
 
 def get_connections_input_arg_groupping(**kwargs):
@@ -206,19 +207,49 @@ def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Depend
     with server.test_request_context():
         ctx.args_grouping = [
             [],
+            [],
             get_connections_input_arg_groupping(
                 connection_id="new_connection_id", connection_name="New Connection"
             ),
         ]
+        ctx.triggered_id = CON.CONNECTION_SAVE_BUTTON
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, {}, ""))
+        res = to_dict(CON.save_button_clicked(1, 0, {}))
         assert res == [
             {
                 "props": {"children": "Connection saved", "className": "lead"},
                 "type": "P",
                 "namespace": "dash_html_components",
                 "children": "Connection saved",
-            }
+            },
+            no_update,
+        ]
+
+        assert len(dependencies.storage.list_connections()) == 2
+        con = dependencies.storage.get_connection("new_connection_id")
+        assert con.connection_name == "New Connection"
+        assert con.id == "new_connection_id"
+        assert con.connection_type == M.ConnectionType.SQLITE
+
+
+@patch("mitzu.webapp.pages.manage_connection.ctx")
+def test_save_connection_and_add_project_button_clicked(
+    ctx, server: Flask, dependencies: Dependencies
+):
+    with server.test_request_context():
+        ctx.args_grouping = [
+            [],
+            [],
+            get_connections_input_arg_groupping(
+                connection_id="new_connection_id", connection_name="New Connection"
+            ),
+        ]
+        ctx.triggered_id = CON.CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON
+        # Values are passed through dash.ctx.args_grouping
+        res = to_dict(CON.save_button_clicked(1, 0, {}))
+        assert res == [
+            no_update,
+            f"{P.PROJECTS_CREATE_PATH}?connection_id=new_connection_id",
         ]
 
         assert len(dependencies.storage.list_connections()) == 2
@@ -235,10 +266,11 @@ def test_save_connection_button_clicked_invalid(
     with server.test_request_context():
         ctx.args_grouping = [
             [],
+            [],
             get_connections_input_arg_groupping(connection_name=None),
         ]
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, {}, ""))
+        res = to_dict(CON.save_button_clicked(1, 0, {}))
         assert res == {
             "props": {"children": "Invalid Connection Name", "className": "lead"},
             "type": "P",

@@ -13,6 +13,7 @@ from dash import (
     html,
     no_update,
     register_page,
+    dcc,
 )
 
 import mitzu.helper as H
@@ -22,11 +23,12 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.connections.manage_connections_component as MCC
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
-from mitzu.webapp.helper import MITZU_LOCATION
 
 CONNECTION_SAVE_BUTTON = "connection_save_button"
 CONNECTION_CLOSE_BUTTON = "connection_close_button"
+CONNECTION_LOCATION = "connection_location"
 SAVE_RESPONSE_CONTAINER = "save_response_container"
+CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON = "connection_save_and_add_project"
 
 
 @restricted_layout
@@ -50,6 +52,7 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
             NB.create_mitzu_navbar("create-connection-navbar"),
             dbc.Container(
                 children=[
+                    dcc.Location(id=CONNECTION_LOCATION),
                     html.H4(title),
                     html.Hr(),
                     MCC.create_manage_connection_component(connection),
@@ -66,7 +69,17 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
                             dbc.Button(
                                 [html.B(className="bi bi-check-circle"), " Save"],
                                 color="success",
+                                class_name="me-3",
                                 id=CONNECTION_SAVE_BUTTON,
+                            ),
+                            dbc.Button(
+                                [
+                                    html.B(className="bi bi-plus-circle"),
+                                    " Save and add project",
+                                ],
+                                color="primary",
+                                class_name="me-3",
+                                id=CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON,
                             ),
                         ],
                         className="mb-3",
@@ -97,20 +110,23 @@ register_page(
 
 @callback(
     Output(SAVE_RESPONSE_CONTAINER, "children"),
+    Output(CONNECTION_LOCATION, "href"),
     Input(CONNECTION_SAVE_BUTTON, "n_clicks"),
+    Input(CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON, "n_clicks"),
     State({"type": MCC.INDEX_TYPE, "index": ALL}, "value"),
-    State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
 )
 @restricted
 def save_button_clicked(
-    n_clicks: int, values: List[Any], pathname: str
+    save_button_clicks: int,
+    save_and_add_project_button_clicks: int,
+    values: List[Any],
 ) -> List[bc.Component]:
-    if n_clicks is None:
+    if save_button_clicks is None and save_and_add_project_button_clicks is None:
         return no_update
 
     vals = {}
-    for prop in ctx.args_grouping[1]:
+    for prop in ctx.args_grouping[2]:
         id_val = prop["id"]
         if id_val.get("type") == MCC.INDEX_TYPE:
             vals[id_val.get("index")] = prop["value"]
@@ -125,4 +141,7 @@ def save_button_clicked(
         return html.P(f"Invalid {H.value_to_label(invalid)}", className="lead")
     depenednecies.storage.set_connection(connection.id, connection)
 
-    return [html.P("Connection saved", className="lead")]
+    if ctx.triggered_id == CONNECTION_SAVE_BUTTON:
+        return [html.P("Connection saved", className="lead"), no_update]
+    else:
+        return [no_update, f"{P.PROJECTS_CREATE_PATH}?connection_id={connection.id}"]

@@ -127,8 +127,8 @@ def create_event_data_table(project: M.Project, tr: html.Tr):
 
 
 @restricted_layout
-def layout_create() -> bc.Component:
-    return layout(None)
+def layout_create(**query_params) -> bc.Component:
+    return layout(None, **query_params)
 
 
 @restricted_layout
@@ -162,7 +162,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                         ]
                     ),
                     html.Hr(),
-                    MPC.create_project_settings(project, dependencies),
+                    MPC.create_project_settings(project, dependencies, **query_params),
                     html.Hr(),
                     dbc.Button(
                         [html.B(className="bi bi-check-circle"), " Save"],

@@ -671,7 +671,8 @@ def manage_choose_tables_checklist(
             adapter = dummy_project.get_adapter()
 
             tables = [
-                {"label": s, "value": s} for s in adapter.list_tables(schema=schema)
+                {"label": s, "value": s}
+                for s in sorted(adapter.list_tables(schema=schema))
             ]
             return (tables, [], "Choose tables to add")
         except Exception as exc:

@@ -30,7 +30,7 @@ PROP_CUSTOM_END_DATE_CONFIG = "custom_default_end_date"
 
 
 def create_project_settings(
-    project: Optional[M.Project], dependencies: DEPS.Dependencies
+    project: Optional[M.Project], dependencies: DEPS.Dependencies, **query_args
 ) -> bc.Component:
     return html.Div(
         [
@@ -48,7 +48,7 @@ def create_project_settings(
                                         className="mb-3 lead",
                                     ),
                                     create_basic_project_settings(
-                                        project, dependencies
+                                        project, dependencies, **query_args
                                     ),
                                 ],
                                 title="Project Settings",
@@ -75,12 +75,17 @@ def create_project_settings(
 
 
 def create_basic_project_settings(
-    project: Optional[M.Project], dependencies: DEPS.Dependencies
+    project: Optional[M.Project], dependencies: DEPS.Dependencies, **query_args
 ) -> bc.Component:
     if project is not None:
         project_name = project.project_name
+        connection_id = project.connection.id
     else:
         project_name = None
+        connection_id = None
+
+    if connection_id is None:
+        connection_id = query_args.get("connection_id", None)
 
     con_ids = dependencies.storage.list_connections()
     connections = [dependencies.storage.get_connection(c_id) for c_id in con_ids]
@@ -112,7 +117,7 @@ def create_basic_project_settings(
                 index_type=PROJECT_INDEX_TYPE,
                 icon_cls="bi bi-link",
                 component_type=dmc.Select,
-                value=(project.connection.id if project is not None else None),
+                value=(connection_id),
                 data=con_options,
                 size="xs",
                 required=True,
