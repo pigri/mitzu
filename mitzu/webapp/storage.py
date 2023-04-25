@@ -79,9 +79,7 @@ class MitzuStorage:
         connection_string: str = "sqlite://?check_same_thread=False",
     ) -> None:
         self._engine = SA.create_engine(connection_string)
-        if connection_string.startswith("sqlite"):
-            with self._engine.connect() as connection:
-                connection.execute("PRAGMA foreign_keys = ON;")
+        self._is_sqlite = connection_string.startswith("sqlite")
         self.__init_schema()
 
     @property
@@ -89,20 +87,37 @@ class MitzuStorage:
         if flask.has_app_context():
             if "request_session_cache" not in flask.g:
                 session = SA.orm.sessionmaker(bind=self._engine)()
-                session.execute("PRAGMA foreign_keys = ON;")
-                session.commit()
+                if self._is_sqlite:
+                    session.execute("PRAGMA foreign_keys = ON;")
+                    session.commit()
                 flask.g.request_session_cache = session
                 return session
             else:
                 return flask.g.request_session_cache
         else:
             session = SA.orm.sessionmaker(bind=self._engine)()
-            session.execute("PRAGMA foreign_keys = ON;")
-            session.commit()
+            if self._is_sqlite:
+                session.execute("PRAGMA foreign_keys = ON;")
+                session.commit()
             return session
 
     def __init_schema(self):
-        SM.Base.metadata.create_all(self._engine)
+        tables = []
+        for storage_record in [
+            SM.UserStorageRecord,
+            SM.DiscoverySettingsStorageRecord,
+            SM.WebappSettingsStorageRecord,
+            SM.ConnectionStorageRecord,
+            SM.ProjectStorageRecord,
+            SM.EventDataTableStorageRecord,
+            SM.EventDefStorageRecord,
+            SM.SavedMetricStorageRecord,
+            SM.DashboardStorageRecord,
+            SM.DashboardMetricStorageRecord,
+        ]:
+            tables.append(SM.Base.metadata.tables[storage_record.__tablename__])
+
+        SM.Base.metadata.create_all(self._engine, tables=tables)
 
     def set_project(self, project_id: str, project: M.Project):
         self.set_connection(project.connection.id, project.connection)
