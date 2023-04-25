@@ -94,18 +94,12 @@ serve_google_sso:
 	GOOGLE_REDIRECT_URL="http://localhost:8082/auth/oauth" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
-serve_local_auth:
+serve:
 	cd release/app/ && \
 	LOG_LEVEL=WARN \
 	LOG_HANDLER=stdout \
 	AUTH_BACKEND="local" \
 	AUTH_ROOT_PASSWORD="test" \
-	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=1
-	
-serve:
-	cd release/app/ && \
-	LOG_LEVEL=WARN \
-	LOG_HANDLER=stdout \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=8
 
 run:	

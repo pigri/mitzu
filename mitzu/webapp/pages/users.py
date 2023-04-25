@@ -72,12 +72,8 @@ def create_users_table(user_service: user_service.UserService):
 def layout(**query_params) -> bc.Component:
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
-    if user_service is None:
-        raise ValueError("User service is not set")
 
     authorizer = deps.authorizer
-    if authorizer is None:
-        raise ValueError("Authorizer is not set")
 
     is_admin = authorizer.get_current_user_role(flask.request) == WM.Role.ADMIN
 

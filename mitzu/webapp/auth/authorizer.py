@@ -81,6 +81,8 @@ class JWTTokenValidator(TokenValidator):
 
 @dataclass(frozen=True)
 class AuthConfig:
+    user_service: U.UserService
+
     token_cookie_name: str = field(default_factory=lambda: "auth-token")
     redirect_cookie_name: str = field(default_factory=lambda: "redirect-to")
 
@@ -90,11 +92,10 @@ class AuthConfig:
     oauth: Optional[OAuthConfig] = None
     token_validator: Optional[TokenValidator] = None
 
-    user_service: Optional[U.UserService] = None
-
 
 @dataclass(frozen=True)
 class OAuthAuthorizer:
+    _config: AuthConfig
 
     _authorized_url_prefixes: List[str] = field(
         default_factory=lambda: [
@@ -115,7 +116,6 @@ class OAuthAuthorizer:
             "/assets/",
         ]
     )
-    _config: AuthConfig = field(default_factory=lambda: AuthConfig())
 
     @classmethod
     def create(cls, config: AuthConfig) -> OAuthAuthorizer:
@@ -207,18 +207,11 @@ class OAuthAuthorizer:
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
 
-            if self._config.user_service is not None:
-                user_id = claims["sub"]
-                user = self._config.user_service.get_user_by_id(user_id)
-                if user is None:
-                    raise Exception("User not found")
-                claims[JWT_CLAIM_ROLE] = user.role
-            elif JWT_CLAIM_ROLE in claims.keys():
-                claims[JWT_CLAIM_ROLE] = WM.Role(claims[JWT_CLAIM_ROLE])
-            else:
-                claims[
-                    JWT_CLAIM_ROLE
-                ] = WM.Role.MEMBER  # backward compatibility with old sessions
+            user_id = claims["sub"]
+            user = self._config.user_service.get_user_by_id(user_id)
+            if user is None:
+                raise Exception("User not found")
+            claims[JWT_CLAIM_ROLE] = user.role
             return claims
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
@@ -265,10 +258,7 @@ class OAuthAuthorizer:
 
                     user_role = WM.Role.MEMBER
                     token_identity = user_email
-                    if (
-                        configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS
-                        and self._config.user_service is not None
-                    ):
+                    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
                         user = self._config.user_service.get_user_by_email(user_email)
                         if user is None:
                             raise Exception(
@@ -338,8 +328,6 @@ class OAuthAuthorizer:
 
     def get_current_user_role(self, request: flask.Request) -> Optional[WM.Role]:
         auth_token = request.cookies.get(self._config.token_cookie_name)
-        if self._config.user_service is None:
-            return WM.Role.MEMBER
 
         if auth_token is None:
             return None
@@ -351,9 +339,6 @@ class OAuthAuthorizer:
         return WM.Role(claims[JWT_CLAIM_ROLE])
 
     def login_local_user(self, email: str, password: str) -> bool:
-        if self._config.user_service is None:
-            raise ValueError("User service is not set for local auth")
-
         if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
             raise ValueError("Password login is not enabled, need to use SSO")
 
