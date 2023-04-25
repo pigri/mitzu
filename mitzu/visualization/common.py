@@ -45,9 +45,9 @@ class SimpleChart:
     y_axis_label: str
     color_label: str
     yaxis_ticksuffix: str
-    hover_mode: str
     chart_type: M.SimpleChartType
     dataframe: pd.DataFrame
+    hover_mode: str = "closest"
     x_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
     y_axis_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None
     color_labels_func: Optional[Callable[[Any, M.Metric], Any]] = None

@@ -8,10 +8,14 @@ import pandas as pd
 import json
 
 
-def str_to_datetime(val: str) -> Optional[datetime]:
+def str_to_datetime(val: str | pd.Timestamp) -> Optional[datetime]:
     if val is None:
         return None
-    return datetime.fromisoformat(val)
+    if type(val) == str:
+        return datetime.fromisoformat(val)
+    elif type(val) == pd.Timestamp:
+        return val.to_pydatetime()
+    raise ValueError(f"invalid datetime type: {type(val)}")
 
 
 def dataframe_str_to_datetime(pdf: pd.DataFrame, column: str) -> pd.DataFrame:

@@ -32,28 +32,25 @@ def filter_top_groups(
 
 
 def get_color_label(metric: M.Metric):
-    if metric._group_by is not None:
-        return value_to_label(metric._group_by._field._get_name())
+    if (
+        isinstance(metric, M.SegmentationMetric)
+        and metric._segment._group_by is not None
+    ):
+        return value_to_label(metric._segment._group_by._field._get_name())
+    elif (
+        isinstance(metric, M.ConversionMetric)
+        and len(metric._conversion._segments) > 0
+        and metric._conversion._segments[0]._group_by
+    ):
+        return value_to_label(
+            metric._conversion._segments[0]._group_by._field._get_name()
+        )
     elif (
         isinstance(metric, M.RetentionMetric)
         and metric._chart_type == M.SimpleChartType.LINE
     ):
         return "Cohort"
     return ""
-
-
-def get_hover_mode(pdf: pd.DataFrame, metric: M.Metric) -> str:
-    group_count = len(list(pdf[C.COLOR_COL].values))
-    if metric._time_group == M.TimeGroup.TOTAL:
-        if metric._group_by is None:
-            return "x"
-        else:
-            return "closest" if group_count > 4 else "x"
-    else:
-        if metric._group_by is None:
-            return "x"
-        else:
-            return "closest" if group_count > 4 else "x"
 
 
 def get_default_chart_type(metric: M.Metric) -> M.SimpleChartType:
@@ -169,7 +166,6 @@ def get_simple_chart(
             x_axis_label="",
             y_axis_label=y_axis_label,
             color_label=color_label,
-            hover_mode=get_hover_mode(pdf, metric),
             chart_type=chart_type,
             title=TI.get_segmentation_title(metric),
             yaxis_ticksuffix="",
@@ -186,7 +182,6 @@ def get_simple_chart(
             color_label=color_label,
             title=TI.get_conversion_title(metric),
             chart_type=chart_type,
-            hover_mode=get_hover_mode(pdf, metric),
             yaxis_ticksuffix=suffix,
             dataframe=pdf,
             x_axis_labels_func=x_axis_label_func,

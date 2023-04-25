@@ -4,8 +4,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Any, Optional, Dict
-import inspect
+from typing import Any, Optional
 
 import mitzu.model as M
 from uuid import uuid4
@@ -17,17 +16,6 @@ LOGGER.setLevel(os.getenv("LOG_LEVEL", logging.INFO))
 
 def value_to_label(value: str) -> str:
     return value.title().replace("_", " ")
-
-
-def find_notebook_globals(hint_string: str) -> Optional[Dict]:
-    for stk in inspect.stack():
-        glbs = stk[0].f_globals
-
-        if (hint_string in glbs) and "find_notebook_globals" not in glbs:
-            LOGGER.debug("Found globals on stack")
-            return glbs
-    LOGGER.warning("Globals not found on stack.")
-    return None
 
 
 def parse_datetime_input(val: Any, def_val: Optional[datetime]) -> Optional[datetime]:

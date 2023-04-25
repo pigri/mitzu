@@ -821,7 +821,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_segmentation_select(self, metric: M.SegmentationMetric) -> Any:
         sub_query = self._get_segment_sub_query(metric._segment, metric, step=0)
         cte: EXP.CTE = aliased(
-            self._get_segment_sub_query_cte(sub_query, metric._group_by)
+            self._get_segment_sub_query_cte(sub_query, metric._segment._group_by)
         )
 
         evt_time_group = (
@@ -835,7 +835,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         group_by = (
             cte.columns.get(GA.CTE_GROUP_COL)
-            if metric._group_by is not None
+            if metric._segment._group_by is not None
             else SA.literal(None)
         )
 
@@ -856,12 +856,17 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         first_segment = metric._conversion._segments[0]
         first_cte = self._get_segment_sub_query_cte(
             self._get_segment_sub_query(first_segment, metric, step=0),
-            metric._group_by,
+            (
+                metric._conversion._segments[0]._group_by
+                if len(metric._conversion._segments)
+                else None
+            ),
             metric._resolution,
         )
         first_group_by = (
             first_cte.columns.get(GA.CTE_GROUP_COL)
-            if metric._group_by is not None
+            if len(metric._conversion._segments) > 0
+            and metric._conversion._segments[0]._group_by is not None
             else SA.literal(None)
         )
 
@@ -942,7 +947,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _get_retention_select(self, metric: M.RetentionMetric) -> Any:
         initial_cte = self._get_segment_sub_query_cte(
             self._get_segment_sub_query(metric._initial_segment, metric, step=0),
-            metric._group_by,
+            metric._initial_segment._group_by,
             metric._resolution,
         )
 
@@ -952,7 +957,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         initial_group_by = (
             initial_cte.columns.get(GA.CTE_GROUP_COL)
-            if metric._group_by is not None
+            if metric._initial_segment._group_by is not None
             else SA.literal(None)
         )
 

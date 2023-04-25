@@ -2,10 +2,14 @@ POETRY := $(shell command -v poetry 2> /dev/null)
 
 clean:
 	$(POETRY) run pyclean mitzu release tests 
-	rm -rf dist htmlcov
+	rm -rf dist
+	rm -rf htmlcov
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
 	rm -rf .ipynb_checkpoints
+	rm -f coverage.xml
+	rm -rf .hypothesis
+	rm -rf storage
 
 init:
 	$(POETRY) install --all-extras
@@ -15,11 +19,8 @@ format: ## formats all python code
 	$(POETRY) run autoflake -r -i --remove-all-unused-imports --remove-unused-variables --expand-star-imports mitzu/ tests/ release/
 	$(POETRY) run black mitzu tests release 
 
-format_notebooks: 
-	$(POETRY) run black  ./examples/notebook/
-
 lint: ## lints and checks formatting all python code
-	$(POETRY) run black --exclude .dbs --check mitzu tests release examples/notebook/*.ipynb
+	$(POETRY) run black --exclude .dbs --check mitzu tests release
 	$(POETRY) run flake8 mitzu tests release
 	$(POETRY) run mypy mitzu tests release --ignore-missing-imports 
 	
@@ -38,8 +39,6 @@ test_project_creation_and_discovery:
 	$(POETRY) run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter postgresql
 	$(POETRY) run python3 scripts/create_example_project.py --project-dir . --overwrite-records --adapter mysql
 
-test_notebooks: test_project_creation_and_discovery
-	sh scripts/convert_and_run_notebook.sh
 
 docker_test_down:
 	rm -rf tests/.dbs/
@@ -61,11 +60,9 @@ trino_setup_test_data:
 test_coverage:
 	$(POETRY) run pytest --cov=mitzu --cov-report=html --cov-report=xml tests/
 
-check: lint test_coverage test_notebooks
+check: lint test_coverage
 	@echo 'done'
 
-notebook: 
-	$(POETRY) run jupyter lab
 
 # This make command is used for testing the SSO
 serve_cognito_sso:

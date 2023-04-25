@@ -148,6 +148,66 @@ def test_event_property_chosen_for_segmentation(
 
 
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_event_property_chosen_for_group_by(
+    ctx,
+    discovered_project: M.DiscoveredProject,
+):
+    all_inputs = {
+        MS.METRIC_SEGMENTS: {
+            "children": {
+                0: {
+                    "children": {
+                        0: {
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {
+                                0: {
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign"
+                                }
+                            },
+                        },
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
+                    },
+                    CS.COMPLEX_SEGMENT_GROUP_BY: "page_visit.acquisition_campaign",
+                }
+            }
+        },
+        H.MITZU_LOCATION: f"http://127.0.0.1/projects/{discovered_project.project.id}/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
+    }
+
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
+
+    first_event_gp = find_component_by_id(
+        {"index": "0", "type": CS.COMPLEX_SEGMENT_GROUP_BY}, res
+    )
+
+    assert first_event_gp is not None
+    assert first_event_gp["data"] == [
+        {"label": "Acquisition Campaign", "value": "page_visit.acquisition_campaign"},
+        {"label": "Domain", "value": "page_visit.domain"},
+        {"label": "Event Name", "value": "page_visit.event_name"},
+        {"label": "Event Time", "value": "page_visit.event_time"},
+        {"label": "Item Id", "value": "page_visit.item_id"},
+        {"label": "Title", "value": "page_visit.title"},
+        {"label": "User Country Code", "value": "page_visit.user_country_code"},
+        {"label": "User Id", "value": "page_visit.user_id"},
+        {"label": "User Locale", "value": "page_visit.user_locale"},
+    ]
+    assert first_event_gp["value"] == "page_visit.acquisition_campaign"
+
+
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_operator_changed_with_values_already_chosen(
     ctx,
     discovered_project: M.DiscoveredProject,
@@ -445,7 +505,6 @@ def test_custom_date_lookback_days_selected(
         SS.PROPERTY_OPERATOR_DROPDOWN: [],
         SS.PROPERTY_NAME_DROPDOWN: [None],
         SS.PROPERTY_VALUE_INPUT: [],
-        CS.COMPLEX_SEGMENT_GROUP_BY: [None],
         DS.TIME_GROUP_DROPDOWN: 5,
         DS.CUSTOM_DATE_PICKER: ["2021-12-01T00:00:00", "2022-01-01T00:00:00"],
         DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",

@@ -32,8 +32,18 @@ def get_timeframe_str(metric: M.Metric) -> str:
 
 
 def get_grouped_by_str(metric: M.Metric) -> str:
-    if metric._group_by:
-        grp = metric._group_by._field._name
+    grp_field = None
+    if isinstance(metric, M.SegmentationMetric):
+        grp_field = metric._segment._group_by
+    elif (
+        isinstance(metric, M.ConversionMetric) and len(metric._conversion._segments) > 0
+    ):
+        grp_field = metric._conversion._segments[0]._group_by
+    elif isinstance(metric, M.RetentionMetric):
+        grp_field = metric._initial_segment._group_by
+
+    if grp_field is not None:
+        grp = grp_field._field._name
         return f"grouped by <b>{grp}</b> (top {metric._max_group_count})"
     return ""
 
@@ -94,7 +104,7 @@ def get_segmentation_title(metric: M.SegmentationMetric):
         f"{tg} count of unique users",
         f"who did {segment_str}",
     ]
-    if metric._group_by is not None:
+    if metric._segment._group_by is not None:
         lines.append(get_grouped_by_str(metric))
     lines.append(get_timeframe_str(metric))
     return "<br />".join(lines)

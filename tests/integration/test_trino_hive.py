@@ -44,9 +44,13 @@ def test_trino_complex_data():
     dp = target.discover_project()
     m = dp.create_notebook_class_model()
     pdf = (
-        (m.page_visit.event_properties.url.is_not_null >> m.purchase)
+        (
+            m.page_visit.event_properties.url.is_not_null.group_by(
+                m.page_visit.user_properties.is_subscribed
+            )
+            >> m.purchase
+        )
         .config(
-            group_by=m.page_visit.user_properties.is_subscribed,
             time_group="total",
             conv_window="1 week",
         )
@@ -56,7 +60,8 @@ def test_trino_complex_data():
 
     pdf = (
         (m.user_subscribe.event_properties.reason.is_referral)
-        .config(group_by=m.user_subscribe.event_properties.reason, time_group="week")
+        .group_by(m.user_subscribe.event_properties.reason)
+        .config(time_group="week")
         .get_df()
     )
     assert pdf is not None
@@ -102,12 +107,15 @@ def test_trino_map_types_discovery():
     m = target.discover_project().create_notebook_class_model()
 
     # Group by with Event Specific MAP type
-    df = m.search.config(
-        group_by=m.search.event_properties.url,
-        start_dt="2021-01-01",
-        end_dt="2021-02-01",
-        time_group="total",
-    ).get_df()
+    df = (
+        m.search.group_by(m.search.event_properties.url)
+        .config(
+            start_dt="2021-01-01",
+            end_dt="2021-02-01",
+            time_group="total",
+        )
+        .get_df()
+    )
 
     assert_row(
         df,
@@ -117,13 +125,16 @@ def test_trino_map_types_discovery():
     )
 
     # Group by with Event Specific MAP type
-    df = m.search.config(
-        group_by=m.search.event_properties.url,
-        start_dt="2021-01-01",
-        end_dt="2021-02-01",
-        time_group="total",
-        aggregation="event_count",
-    ).get_df()
+    df = (
+        m.search.group_by(m.search.event_properties.url)
+        .config(
+            start_dt="2021-01-01",
+            end_dt="2021-02-01",
+            time_group="total",
+            aggregation="event_count",
+        )
+        .get_df()
+    )
 
     assert_row(
         df,
@@ -133,12 +144,15 @@ def test_trino_map_types_discovery():
     )
 
     # Group by with ROW type
-    df = m.search.config(
-        group_by=m.search.user_properties.is_subscribed,
-        start_dt="2021-01-01",
-        end_dt="2021-02-01",
-        time_group="total",
-    ).get_df()
+    df = (
+        m.search.group_by(m.search.user_properties.is_subscribed)
+        .config(
+            start_dt="2021-01-01",
+            end_dt="2021-02-01",
+            time_group="total",
+        )
+        .get_df()
+    )
 
     assert_row(
         df,
@@ -148,12 +162,15 @@ def test_trino_map_types_discovery():
     )
 
     # Group by with  Geneir MAP type
-    df = m.user_subscribe.config(
-        group_by=m.user_subscribe.event_properties.reason,
-        start_dt="2021-01-01",
-        end_dt="2021-02-01",
-        time_group="total",
-    ).get_df()
+    df = (
+        m.user_subscribe.group_by(m.user_subscribe.event_properties.reason)
+        .config(
+            start_dt="2021-01-01",
+            end_dt="2021-02-01",
+            time_group="total",
+        )
+        .get_df()
+    )
 
     assert_row(
         df,
@@ -165,8 +182,8 @@ def test_trino_map_types_discovery():
     # Group by with properties that are present only partially present
     df = (
         (m.user_subscribe | m.add_to_cart)
+        .group_by(m.add_to_cart.user_properties.is_subscribed)
         .config(
-            group_by=m.add_to_cart.user_properties.is_subscribed,
             start_dt="2021-01-01",
             end_dt="2021-02-01",
             time_group="total",
@@ -190,9 +207,8 @@ def test_trino_map_types_discovery():
 
     # Median conversion type
     df = (
-        (m.page_visit >> m.add_to_cart)
+        (m.page_visit.group_by(m.page_visit.event_properties.url) >> m.add_to_cart)
         .config(
-            group_by=m.page_visit.event_properties.url,
             start_dt="2021-01-01",
             end_dt="2021-02-01",
             time_group="total",

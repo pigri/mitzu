@@ -49,7 +49,6 @@ def _to_dict(value: Any) -> Any:
             "lbd": _to_dict(value.lookback_days),
             "tg": _to_dict(value.time_group),
             "mgc": _to_dict(value.max_group_count),
-            "gb": _to_dict(value.group_by),
             "ct": _to_dict(value.custom_title),
             "cat": _to_dict(value.chart_type),
             "res": _to_dict(value.resolution),
@@ -66,12 +65,14 @@ def _to_dict(value: Any) -> Any:
             "l": _to_dict(value._left),
             "op": value._operator.name if value._operator is not None else None,
             "r": _to_dict(value._right) if value._right is not None else None,
+            "gb": _to_dict(value._group_by) if value._group_by is not None else None,
         }
     if isinstance(value, M.ComplexSegment):
         return {
             "l": _to_dict(value._left),
             "bop": value._operator.name,
             "r": _to_dict(value._right),
+            "gb": _to_dict(value._group_by) if value._group_by is not None else None,
         }
     if isinstance(value, M.Conversion):
         return {
@@ -156,9 +157,6 @@ def _from_dict(
             ),
             time_group=_from_dict(value.get("tg"), project, M.TimeGroup, path + ".tg"),
             max_group_count=_from_dict(value.get("mgc"), project, int, path + ".mgc"),
-            group_by=_from_dict(
-                value.get("gb"), project, M.EventFieldDef, path + ".gb"
-            ),
             custom_title=_from_dict(value.get("ct"), project, str, path + ".ct"),
             resolution=_from_dict(
                 value.get("res"), project, M.Resolution, path + ".res"
@@ -211,6 +209,9 @@ def _from_dict(
                     value.get("bop"), project, M.BinaryOperator, path + ".bop"
                 ),
                 _right=_from_dict(value.get("r"), project, M.Segment, path + ".r"),
+                _group_by=_from_dict(
+                    value.get("gb"), project, M.EventFieldDef, path + ".gb"
+                ),
             )
         elif "op" in value:
             return M.SimpleSegment(
@@ -219,9 +220,20 @@ def _from_dict(
                     value.get("op"), project, M.Operator, path + ".op"
                 ),
                 _right=_from_dict(value.get("r"), project, Any, path + ".r"),
+                _group_by=_from_dict(
+                    value.get("gb"), project, M.EventFieldDef, path + ".gb"
+                ),
             )
         return M.SimpleSegment(
-            _left=_from_dict(value.get("l"), project, EFD_OR_ED_TYPE, path + ".l")
+            _left=_from_dict(
+                value.get("l"),
+                project,
+                EFD_OR_ED_TYPE,
+                path + ".l",
+            ),
+            _group_by=_from_dict(
+                value.get("gb"), project, M.EventFieldDef, path + ".gb"
+            ),
         )
 
     if type_hint == M.EventFieldDef:

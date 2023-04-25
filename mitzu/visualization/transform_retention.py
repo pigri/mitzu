@@ -27,7 +27,7 @@ def get_retention_mapping(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.Da
             GA.GROUP_COL: C.COLOR_COL,
         }
     else:
-        if metric._group_by is not None:
+        if metric._initial_segment._group_by is not None:
             raise Exception(
                 "Break downs are not supported for retention over time metric"
             )

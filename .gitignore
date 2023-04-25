@@ -85,7 +85,6 @@ cache/
 cache.db*
 storage/
 
-examples/notebook/*ipynb.py
 private_notebooks/
 
 sample_project.db

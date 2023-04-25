@@ -31,8 +31,6 @@ import mitzu.adapters.generic_adapter as GA
 import mitzu.helper as helper
 import mitzu.notebook.model_loader as ML
 import mitzu.project_discovery as D
-import mitzu.visualization.charts as CHRT
-import mitzu.visualization.plot as PLT
 import mitzu.visualization.titles as TI
 import mitzu.project_serialization as PSE
 
@@ -1199,7 +1197,6 @@ class MetricConfig:
     lookback_days: TimeWindow = DEF_LOOK_BACK_DAYS
     time_group: TimeGroup = DEF_TIME_GROUP
     max_group_count: int = DEF_MAX_GROUP_COUNT
-    group_by: Optional[EventFieldDef] = None
     custom_title: Optional[str] = None
     agg_type: Optional[AggType] = None
     agg_param: Optional[Any] = None
@@ -1231,10 +1228,6 @@ class Metric(ABC):
     @property
     def _resolution(self) -> Resolution:
         return self._config.resolution
-
-    @property
-    def _group_by(self) -> Optional[EventFieldDef]:
-        return self._config.group_by
 
     @property
     def _chart_type(self) -> Optional[SimpleChartType]:
@@ -1287,20 +1280,8 @@ class Metric(ABC):
     def get_sql(self) -> pd.DataFrame:
         raise NotImplementedError()
 
-    def get_title(self) -> str:
-        raise NotImplementedError()
-
     def print_sql(self):
         print(self.get_sql())
-
-    def get_figure(self):
-        chart = CHRT.get_simple_chart(self)
-        return PLT.plot_chart(chart, self)
-
-    def __repr__(self) -> str:
-        fig = self.get_figure()
-        fig.show(config={"displayModeBar": False})
-        return ""
 
 
 class ConversionMetric(Metric):
@@ -1324,13 +1305,6 @@ class ConversionMetric(Metric):
     def get_sql(self) -> pd.DataFrame:
         project = helper.get_segment_project(self._conversion._segments[0])
         return project.get_adapter().get_conversion_sql(self)
-
-    def get_figure(self):
-        chart = CHRT.get_simple_chart(self)
-        return PLT.plot_chart(chart, self)
-
-    def __repr__(self) -> str:
-        return super().__repr__()
 
     def get_project(self) -> Project:
         curr: Segment = self._conversion._segments[0]
@@ -1357,9 +1331,6 @@ class SegmentationMetric(Metric):
     def get_sql(self) -> str:
         project = helper.get_segment_project(self._segment)
         return project.get_adapter().get_segmentation_sql(self)
-
-    def __repr__(self) -> str:
-        return super().__repr__()
 
     def get_project(self) -> Project:
         curr: Segment = self._segment
@@ -1399,7 +1370,6 @@ class RetentionMetric(Metric):
             value=1, period=TimeGroup.WEEK
         ),
         time_group: Union[str, TimeGroup] = TimeGroup.WEEK,
-        group_by: Optional[EventFieldDef] = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
         lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         chart_type: Optional[Union[str, SimpleChartType]] = None,
@@ -1418,7 +1388,6 @@ class RetentionMetric(Metric):
                 else TimeGroup.parse(time_group)
             ),
             custom_title=custom_title,
-            group_by=group_by,
             max_group_count=max_group_by_count,
             lookback_days=(
                 lookback_days
@@ -1445,9 +1414,6 @@ class RetentionMetric(Metric):
             ),
             config=config,
         )
-
-    def __repr__(self) -> str:
-        return super().__repr__()
 
     def get_df(self) -> pd.DataFrame:
         project = helper.get_segment_project(self._initial_segment)
@@ -1483,7 +1449,6 @@ class Conversion(ConversionMetric):
         start_dt: Optional[Union[str, datetime]] = None,
         end_dt: Optional[Union[str, datetime]] = None,
         time_group: Union[str, TimeGroup] = DEF_TIME_GROUP,
-        group_by: Optional[EventFieldDef] = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
         lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         custom_title: Optional[str] = None,
@@ -1513,7 +1478,6 @@ class Conversion(ConversionMetric):
                 else TimeGroup.parse(time_group)
             ),
             custom_title=custom_title,
-            group_by=group_by,
             max_group_count=max_group_by_count,
             lookback_days=(
                 lookback_days
@@ -1537,13 +1501,15 @@ class Conversion(ConversionMetric):
         else:
             raise ValueError("conw_window or ret_window must be defined")
 
-    def __repr__(self) -> str:
-        return super().__repr__()
 
-
+@dataclass(frozen=True, init=False)
 class Segment(SegmentationMetric):
-    def __init__(self):
+
+    _group_by: Optional[EventFieldDef]
+
+    def __init__(self, _group_by: Optional[EventFieldDef] = None):
         super().__init__(self, config=MetricConfig())
+        object.__setattr__(self, "_group_by", _group_by)
 
     def __and__(self, right: Segment) -> ComplexSegment:
         return ComplexSegment(self, BinaryOperator.AND, right)
@@ -1567,7 +1533,6 @@ class Segment(SegmentationMetric):
         start_dt: Optional[Union[str, datetime]] = None,
         end_dt: Optional[Union[str, datetime]] = None,
         time_group: Union[str, TimeGroup] = DEF_TIME_GROUP,
-        group_by: Optional[EventFieldDef] = None,
         max_group_by_count: int = DEF_MAX_GROUP_COUNT,
         lookback_days: Union[int, TimeWindow] = DEF_LOOK_BACK_DAYS,
         custom_title: Optional[str] = None,
@@ -1593,7 +1558,6 @@ class Segment(SegmentationMetric):
                 else TimeGroup.parse(time_group)
             ),
             custom_title=custom_title,
-            group_by=group_by,
             max_group_count=max_group_by_count,
             lookback_days=(
                 lookback_days
@@ -1608,9 +1572,6 @@ class Segment(SegmentationMetric):
 
         return SegmentationMetric(segment=self, config=config)
 
-    def __repr__(self) -> str:
-        return super().__repr__()
-
 
 @dataclass(init=False, frozen=True)
 class ComplexSegment(Segment):
@@ -1618,17 +1579,25 @@ class ComplexSegment(Segment):
     _operator: BinaryOperator
     _right: Segment
 
-    def __init__(self, _left: Segment, _operator: BinaryOperator, _right: Segment):
+    def __init__(
+        self,
+        _left: Segment,
+        _operator: BinaryOperator,
+        _right: Segment,
+        _group_by: Optional[EventFieldDef] = None,
+    ):
         object.__setattr__(self, "_left", _left)
         object.__setattr__(self, "_operator", _operator)
         object.__setattr__(self, "_right", _right)
-        super().__init__()
-
-    def __repr__(self) -> str:
-        return super().__repr__()
+        super().__init__(_group_by=_group_by)
 
     def __hash__(self) -> int:
         return hash(f"{hash(self._left)}{self._operator}{hash(self._right)}")
+
+    def group_by(self, grp_evt_field_def: EventFieldDef):
+        return ComplexSegment(
+            self._left, self._operator, self._right, grp_evt_field_def
+        )
 
 
 @dataclass(init=False, frozen=True)
@@ -1642,14 +1611,12 @@ class SimpleSegment(Segment):
         _left: EventFieldDef | EventDef,
         _operator: Optional[Operator] = None,
         _right: Optional[Any] = None,
+        _group_by: Optional[EventFieldDef] = None,
     ):
         object.__setattr__(self, "_left", _left)
         object.__setattr__(self, "_operator", _operator)
         object.__setattr__(self, "_right", _right)
-        super().__init__()
-
-    def __repr__(self) -> str:
-        return super().__repr__()
+        super().__init__(_group_by=_group_by)
 
     def __hash__(self) -> int:
         event_property_name = (
@@ -1658,3 +1625,6 @@ class SimpleSegment(Segment):
             else f"{self._left._event_name}.{self._left._field._get_name()}"
         )
         return hash(f"{event_property_name}{self._operator}{self._right}")
+
+    def group_by(self, grp_evt_field_def: EventFieldDef):
+        return SimpleSegment(self._left, self._operator, self._right, grp_evt_field_def)

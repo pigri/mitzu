@@ -1,28 +1,9 @@
 from datetime import datetime
 
-from mitzu.model import ConversionMetric, DiscoveredProject, Segment, RetentionMetric
+from mitzu.model import ConversionMetric, RetentionMetric, Segment
 from mitzu.project_discovery import ProjectDiscovery
 from tests.helper import assert_row, assert_sql
 from tests.samples.sources import get_simple_csv
-
-
-def test_discovered_dataset_pickle():
-    simple_csv = get_simple_csv()
-    discovery = ProjectDiscovery(project=simple_csv)
-    dd1 = discovery.discover_project()
-    dd1.save_to_project_file("test_app", folder="./examples/data/projects/")
-
-    dd2 = DiscoveredProject.load_from_project_file(
-        "test_app", folder="./examples/data/projects/"
-    )
-
-    m = dd2.create_notebook_class_model()
-
-    seg: Segment = m.cart.config(
-        start_dt="2020-01-01", end_dt="2021-01-01", time_group="total"
-    )
-    assert 1 == seg.get_df().shape[0]
-    assert_row(seg.get_df(), _agg_value=108, _datetime=None)
 
 
 def test_simple_csv_segmentation():
@@ -64,12 +45,11 @@ def test_simple_csv_funnel():
     discovery = ProjectDiscovery(get_simple_csv())
     m = discovery.discover_project().create_notebook_class_model()
 
-    conv: ConversionMetric = (m.view >> m.cart).config(
+    conv: ConversionMetric = (m.view.group_by(m.view.category_id) >> m.cart).config(
         conv_window="1 month",
         time_group="day",
         start_dt="2020-01-01",
         end_dt="2021-01-01",
-        group_by=m.view.category_id,
     )
 
     conv.print_sql()

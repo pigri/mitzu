@@ -9,17 +9,11 @@ import mitzu.model as M
 from mitzu.helper import parse_datetime_input
 
 import mitzu.webapp.pages.explore.dates_selector_handler as DS
-import mitzu.webapp.pages.explore.complex_segment_handler as CS
 import mitzu.webapp.pages.explore.metric_type_handler as MTH
 import mitzu.webapp.pages.explore.toolbar_handler as TH
 from dash import html, ctx
 import dash_mantine_components as dmc
-from mitzu.webapp.helper import (
-    CHILDREN,
-    METRIC_SEGMENTS,
-    find_event_field_def,
-    value_to_label,
-)
+from mitzu.webapp.helper import value_to_label
 
 METRICS_CONFIG_CONTAINER = "metrics_config_container"
 
@@ -311,17 +305,6 @@ def from_all_inputs(
     chart_type_val = all_inputs.get(TH.CHART_TYPE_DD, None)
     chart_type = M.SimpleChartType.parse(chart_type_val)
 
-    group_by: Optional[M.EventFieldDef] = None
-    if discovered_project is not None:
-        group_by_paths = all_inputs[METRIC_SEGMENTS][CHILDREN]
-        if len(group_by_paths) >= 1 and not (
-            metric_type == MTH.MetricType.RETENTION and time_group != M.TimeGroup.TOTAL
-        ):
-            gp = group_by_paths[0].get(CS.COMPLEX_SEGMENT_GROUP_BY)
-            group_by = find_event_field_def(gp, discovered_project) if gp else None
-            if group_by is not None:
-                group_by._project._discovered_project.set_value(discovered_project)
-
     res_config = M.MetricConfig(
         start_dt=parse_datetime_input(start_dt, None),
         end_dt=parse_datetime_input(end_dt, None),
@@ -331,7 +314,6 @@ def from_all_inputs(
         agg_param=agg_param,
         chart_type=chart_type,
         resolution=resolution,
-        group_by=group_by,
         custom_title="",
     )
     return res_config, time_window

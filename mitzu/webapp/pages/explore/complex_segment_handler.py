@@ -13,6 +13,7 @@ from mitzu.webapp.helper import (
     get_event_names,
     get_property_name_label,
     WITH_VALUE_CLS,
+    find_event_field_def,
 )
 import dash_mantine_components as dmc
 
@@ -48,13 +49,11 @@ def get_group_by_options(
 
 def create_group_by_dropdown(
     index: str,
-    metric: Optional[M.Metric],
     segment: M.Segment,
     discovered_project: M.DiscoveredProject,
 ) -> dmc.Select:
     event_names = get_event_names(segment)
-    group_by_efd = metric._config.group_by if metric is not None else None
-
+    group_by_efd = segment._group_by
     value = None
     if group_by_efd is not None:
         value = f"{group_by_efd._event_name}.{group_by_efd._field._get_name()}"
@@ -132,7 +131,7 @@ def from_segment(
         )
     ):
         group_by_dd = html.Div(
-            [create_group_by_dropdown(type_index, metric, segment, discovered_project)],
+            [create_group_by_dropdown(type_index, segment, discovered_project)],
             className=COMPLEX_SEGMENT_FOOTER,
         )
         body_children.append(group_by_dd)
@@ -163,5 +162,15 @@ def from_all_inputs(
             res_segment = event_segment
         else:
             res_segment = res_segment | event_segment
+
+    if res_segment is not None:
+        gp = complex_segment.get(COMPLEX_SEGMENT_GROUP_BY)
+        group_by = find_event_field_def(gp, discovered_project) if gp else None
+        if group_by is not None:
+            group_by._project._discovered_project.set_value(discovered_project)
+            if isinstance(res_segment, M.SimpleSegment) or isinstance(
+                res_segment, M.ComplexSegment
+            ):
+                res_segment = res_segment.group_by(group_by)
 
     return res_segment

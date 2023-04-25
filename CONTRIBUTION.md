@@ -51,11 +51,7 @@ make format autoflake
 
 # Running Locally
 
-You can run Mitzu locally in 3 ways:
-
-- Standalone webapp
-- Low-code notebook commands
-- Embedded notebook app
+You can run Mitzu locally as a standalone-webapp
 
 To run any of these first you need to have a running `data warehouse or data lake` and a `Mitzu Project`. We have already created the `test data lake` with these two steps:
 
@@ -76,16 +72,6 @@ make run
 ```
 
 This will start the webapp at http://localhost:8082.
-
-## Running Notebook Commands and Notebook App
-
-Start the local prepared jupyter hub with this command:
-
-```bash
-make notebook
-```
-
-Navigate to `examples/notebook/trino_test_project.ipynb`
 
 ## Understand Mitzu
 

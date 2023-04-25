@@ -144,12 +144,11 @@ def validate_segmentation(project: M.Project):
 def validate_funnel(project: M.Project):
     m = project.discover_project().create_notebook_class_model()
     df = (
-        (m.view >> m.cart)
+        (m.view.group_by(m.view.brand) >> m.cart)
         .config(
             start_dt="2020-01-01",
             time_group="hour",
             conv_window="12 day",
-            group_by=m.view.brand,
             max_group_by_count=3,
             aggregation="conversion",
         )
@@ -168,12 +167,11 @@ def validate_funnel(project: M.Project):
     )
 
     df = (
-        (m.view >> m.cart)
+        (m.view.group_by(m.view.brand) >> m.cart)
         .config(
             start_dt="2020-01-01",
             time_group="week",
             conv_window="12 day",
-            group_by=m.view.brand,
             max_group_by_count=3,
         )
         .get_df()
@@ -191,12 +189,11 @@ def validate_funnel(project: M.Project):
     )
 
     df = (
-        (m.view >> m.cart)
+        (m.view.group_by(m.view.brand) >> m.cart)
         .config(
             start_dt="2020-01-01",
             time_group="week",
             conv_window="12 day",
-            group_by=m.view.brand,
             max_group_by_count=3,
             aggregation="ttc_avg",
         )
@@ -215,12 +212,11 @@ def validate_funnel(project: M.Project):
     )
 
     df = (
-        (m.view >> m.cart)
+        (m.view.group_by(m.view.brand) >> m.cart)
         .config(
             start_dt="2020-01-01",
             time_group="week",
             conv_window="1 week",
-            group_by=m.view.brand,
             max_group_by_count=1,
         )
         .get_df()

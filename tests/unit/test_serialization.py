@@ -23,12 +23,16 @@ def test_definition_to_json():
     m = dd1.create_notebook_class_model()
 
     # Test Segmentation
-    res = (m.view.category_id.is_not_null | m.cart).config(
-        start_dt="2020-01-01",
-        end_dt="2021-01-01",
-        time_group="total",
-        group_by=m.view.category_id,
-        aggregation="user_count",
+
+    res = (
+        (m.view.category_id.is_not_null | m.cart)
+        .group_by(m.view.category_id)
+        .config(
+            start_dt="2020-01-01",
+            end_dt="2021-01-01",
+            time_group="total",
+            aggregation="user_count",
+        )
     )
 
     res_dict = to_dict(res)
@@ -37,6 +41,7 @@ def test_definition_to_json():
             "l": {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
             "bop": "OR",
             "r": {"l": {"en": "cart"}},
+            "gb": {"en": "view", "f": "category_id"},
         },
         "co": {
             "sdt": "2020-01-01T00:00:00",
@@ -44,7 +49,6 @@ def test_definition_to_json():
             "lbd": "30 day",
             "tg": "total",
             "mgc": 10,
-            "gb": {"en": "view", "f": "category_id"},
             "res": "every_event",
             "at": "user_count",
         },
@@ -52,12 +56,13 @@ def test_definition_to_json():
     verify(res, eds)
 
     # Test Conversion
-    res = (m.view.category_id.is_not_null >> m.cart).config(
+    res = (
+        m.view.category_id.is_not_null.group_by(m.view.category_id) >> m.cart
+    ).config(
         start_dt="2020-01-01",
         end_dt="2021-01-01",
         time_group="week",
         conv_window="1 week",
-        group_by=m.view.category_id,
         custom_title="test_title",
         aggregation="conversion",
         resolution="one_user_event_per_day",
@@ -68,7 +73,11 @@ def test_definition_to_json():
     assert res_dict == {
         "conv": {
             "segs": [
-                {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
+                {
+                    "l": {"en": "view", "f": "category_id"},
+                    "op": "IS_NOT_NULL",
+                    "gb": {"en": "view", "f": "category_id"},
+                },
                 {"l": {"en": "cart"}},
             ]
         },
@@ -79,7 +88,6 @@ def test_definition_to_json():
             "lbd": "30 day",
             "tg": "week",
             "mgc": 10,
-            "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
             "res": "one_user_event_per_day",
             "at": "conversion",
@@ -95,12 +103,13 @@ def test_definition_to_json():
     verify((m.view >> m.cart).config(start_dt="2021-01-01", end_dt="2021-10-01"), eds)
 
     # Test Conversion
-    res = (m.view.category_id.is_not_null >> m.cart).config(
+    res = (
+        m.view.category_id.is_not_null.group_by(m.view.category_id) >> m.cart
+    ).config(
         start_dt="2020-01-01",
         end_dt="2021-01-01",
         time_group="week",
         conv_window="1 week",
-        group_by=m.view.category_id,
         custom_title="test_title",
         aggregation="ttc_p75",
     )
@@ -110,7 +119,11 @@ def test_definition_to_json():
     assert res_dict == {
         "conv": {
             "segs": [
-                {"l": {"en": "view", "f": "category_id"}, "op": "IS_NOT_NULL"},
+                {
+                    "l": {"en": "view", "f": "category_id"},
+                    "op": "IS_NOT_NULL",
+                    "gb": {"en": "view", "f": "category_id"},
+                },
                 {"l": {"en": "cart"}},
             ]
         },
@@ -121,7 +134,6 @@ def test_definition_to_json():
             "lbd": "30 day",
             "tg": "week",
             "mgc": 10,
-            "gb": {"en": "view", "f": "category_id"},
             "ct": "test_title",
             "res": "every_event",
             "at": "ttc_p75",
@@ -164,11 +176,14 @@ def test_compression():
     m = dd1.create_notebook_class_model()
 
     # Test Segmentation
-    res = (m.view.category_id.is_not_null | m.cart).config(
-        start_dt="2020-01-01",
-        end_dt="2021-01-01",
-        time_group="total",
-        group_by=m.view.category_id,
+    res = (
+        (m.view.category_id.is_not_null | m.cart)
+        .group_by(m.view.category_id)
+        .config(
+            start_dt="2020-01-01",
+            end_dt="2021-01-01",
+            time_group="total",
+        )
     )
 
     compressed = to_compressed_string(res)
