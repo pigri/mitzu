@@ -478,7 +478,7 @@ def test_custom_date_lookback_days_selected(
 def test_mitzu_link_redirected(
     ctx, server: flask.Flask, dependencies: DEPS.Dependencies
 ):
-    with server.app_context():
+    with server.test_request_context():
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
 
         p = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)

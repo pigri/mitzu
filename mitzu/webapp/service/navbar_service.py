@@ -85,9 +85,6 @@ class NavbarService:
                 DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
             ).storage
 
-            if authorizer is None:
-                return None
-
             user_id = authorizer.get_current_user_id()
             if user_id is None:
                 return None

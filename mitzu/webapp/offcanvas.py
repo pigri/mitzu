@@ -40,12 +40,6 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
     project_ids = dependencies.storage.list_projects()
     project_id = project_ids[0] if len(project_ids) > 0 else None
 
-    show_users = False
-    show_sign_out = False
-    if dependencies.authorizer is not None:
-        show_sign_out = True
-        show_users = dependencies.authorizer._config.user_service is not None
-
     res = dbc.Offcanvas(
         children=[
             dbc.Row(
@@ -136,18 +130,14 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
                 class_name=MENU_ITEM_CSS,
                 href=P.USERS_PATH,
                 id=USERS_BUTTON,
-            )
-            if show_users
-            else None,
+            ),
             dbc.Button(
                 [html.B(className="bi bi-person-circle me-1"), "My Account"],
                 color=BUTTON_COLOR,
                 class_name=MENU_ITEM_CSS,
                 href=P.create_path(P.USERS_HOME_PATH, user_id="my-account"),
                 id=MY_ACCOUNT_BUTTON,
-            )
-            if show_users
-            else None,
+            ),
             html.Hr(className="mb-3 d-none"),
             dbc.Button(
                 [html.B(className="bi bi-box-arrow-right me-1"), "Sign out"],
@@ -155,9 +145,7 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
                 class_name=MENU_ITEM_CSS,
                 href=P.SIGN_OUT_URL,
                 external_link=True,
-            )
-            if show_sign_out
-            else None,
+            ),
             html.Div(
                 f"v{version}",
                 className="position-absolute bottom-0 start-0 p-2",

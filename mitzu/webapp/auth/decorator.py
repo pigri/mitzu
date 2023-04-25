@@ -15,13 +15,10 @@ def restricted(func):
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
 
-        if dependencies.authorizer is not None:
-            if dependencies.authorizer.is_request_authorized(flask.request):
-                return func(*args, **kwargs)
-            else:
-                raise PreventUpdate
-        else:
+        if dependencies.authorizer.is_request_authorized(flask.request):
             return func(*args, **kwargs)
+        else:
+            raise PreventUpdate
 
     return wrapper
 
@@ -33,15 +30,12 @@ def restricted_for_admin(func):
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
 
-        if dependencies.authorizer is not None:
-            user_role = dependencies.authorizer.get_current_user_role(flask.request)
-            if user_role is None:
-                raise PreventUpdate
+        user_role = dependencies.authorizer.get_current_user_role(flask.request)
+        if user_role is None:
+            raise PreventUpdate
 
-            if user_role != WM.Role.ADMIN:
-                raise PreventUpdate
-            else:
-                return func(*args, **kwargs)
+        if user_role != WM.Role.ADMIN:
+            raise PreventUpdate
         else:
             return func(*args, **kwargs)
 
@@ -55,12 +49,9 @@ def restricted_layout(func):
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
 
-        if dependencies.authorizer is not None:
-            if dependencies.authorizer.is_request_authorized(flask.request):
-                return func(*args, **kwargs)
-            else:
-                return Location("url", href=P.UNAUTHORIZED_URL)
-        else:
+        if dependencies.authorizer.is_request_authorized(flask.request):
             return func(*args, **kwargs)
+        else:
+            return Location("url", href=P.UNAUTHORIZED_URL)
 
     return wrapper

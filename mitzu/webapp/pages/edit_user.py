@@ -50,11 +50,6 @@ CHANGE_ROLE_RESPONSE_CONTAINER = "user_change_role_response_container"
 def layout(user_id: str, **query_params) -> bc.Component:
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
-    if user_service is None:
-        raise ValueError("User service is not set")
-
-    if deps.authorizer is None:
-        raise ValueError("Authorizer is not set")
 
     logged_in_user_id = deps.authorizer.get_current_user_id()
     if logged_in_user_id is None:
@@ -288,9 +283,6 @@ def create_new_user(n_clicks: int, email="", role="", password="", confirm_passw
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
-    if user_service is None:
-        raise ValueError("User service is not set")
-
     if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
         # new user need a password other than empty string
         from uuid import uuid4
@@ -334,12 +326,6 @@ def update_password(
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
 
     user_service = deps.user_service
-
-    if user_service is None:
-        raise ValueError("User service is not set")
-
-    if deps.authorizer is None:
-        raise ValueError("Authorizer is not set")
 
     try:
         logged_in_user_id = deps.authorizer.get_current_user_id()
@@ -387,12 +373,6 @@ def update_role(n_clicks: int, role="", pathname: str = ""):
 
     user_service = deps.user_service
 
-    if user_service is None:
-        raise ValueError("User service is not set")
-
-    if deps.authorizer is None:
-        raise ValueError("Authorizer is not set")
-
     try:
         logged_in_user_id = deps.authorizer.get_current_user_id()
 
@@ -428,9 +408,6 @@ def delete_user(n_clicks: int, pathname: str = ""):
     user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
-
-    if user_service is None:
-        raise ValueError("User service is not set")
 
     try:
         if user_id == "my-account":

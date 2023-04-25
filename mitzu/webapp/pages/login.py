@@ -140,15 +140,6 @@ def login(n_click: int, inputs: List[str]):
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).authorizer
 
-    if authorizer is None:
-        return (
-            no_update,
-            html.P(
-                "Authorizer is not configured for local user login",
-                className="color-danger lead",
-            ),
-        )
-
     if authorizer.login_local_user(inputs[0], inputs[1]):
         return (P.HOME_PATH, "")
     return (

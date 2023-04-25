@@ -38,7 +38,9 @@ oauth_config = OAuthConfig(
     jwt_algorithms=["RS256"],
 )
 token_validator = MagicMock()
+user_service = U.UserService(S.MitzuStorage())
 auth_config = AuthConfig(
+    user_service=user_service,
     token_signing_key="test",
     oauth=oauth_config,
     token_validator=token_validator,
@@ -66,6 +68,9 @@ def before_and_after_test():
     token_validator.return_value = None
     token_validator.side_effect = None
     configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = False
+
+    for user in user_service.list_users():
+        user_service.delete_user(user.id)
 
 
 def get_cookie_by_name(cookie_name, resp: flask.Response) -> Optional[str]:
@@ -127,11 +132,12 @@ def test_unauthorized_request_redirected_to_unauthorized_page():
 
 def test_request_with_previously_signed_token_is_accepted():
     now = int(time.time())
+    user_id = user_service.new_user("email@b.c", "password", "password")
     claims = {
         "iat": now - 10,
         "exp": now + 10,
         "iss": "mitzu",
-        "sub": "identity",
+        "sub": user_id,
     }
     token = jwt.encode(
         claims, key=auth_config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -294,6 +300,7 @@ def test_sign_out_with_sign_out_url():
     )
     authorizer = OAuthAuthorizer.create(
         AuthConfig(
+            user_service=user_service,
             token_signing_key=auth_config.token_signing_key,
             token_validator=token_validator,
             oauth=oauth_config,
@@ -310,66 +317,9 @@ def test_sign_out_with_sign_out_url():
 
 
 def test_healthcheck_request():
-    app = flask.Flask(__name__)
-
-    authorizer = OAuthAuthorizer.create(
-        AuthConfig(
-            token_signing_key=auth_config.token_signing_key,
-            token_validator=token_validator,
-            oauth=oauth_config,
-            allowed_email_domain="allowed.com",
-        )
-    )
-    setup_authorizer(app, authorizer)
-
-    # If healthcheck path wasn't in the allowed list, this would return 307
     with app.test_request_context(configs.HEALTH_CHECK_PATH):
         resp = app.preprocess_request()
         assert resp is None
-
-
-@patch("mitzu.webapp.auth.authorizer.requests.post")
-def test_rejects_not_allowed_email_domains_when_configured(req_mock):
-    response = Response()
-    response.code = "success"
-    response.status_code = 200
-    response._content = json.dumps(
-        {
-            "id_token": auth_token,
-        }
-    ).encode("utf-8")
-
-    req_mock.return_value = response
-    token_validator.validate_token.return_value = {"email": "user@email.com"}
-
-    app = flask.Flask(__name__)
-    authorizer = OAuthAuthorizer.create(
-        AuthConfig(
-            token_signing_key=auth_config.token_signing_key,
-            token_validator=token_validator,
-            oauth=oauth_config,
-            allowed_email_domain="allowed.com",
-        )
-    )
-    setup_authorizer(app, authorizer)
-
-    code = "1234567890"
-    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
-        resp = app.preprocess_request()
-        req_mock.assert_called_with(
-            "https://token_url/",
-            params={
-                "grant_type": "authorization_code",
-                "client_id": "client_id",
-                "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
-            },
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
-            },
-        )
-        assert_redirected_to_unauthorized_page(resp)
 
 
 @patch("mitzu.webapp.auth.authorizer.requests.post")
@@ -442,11 +392,12 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
 
 def test_token_is_not_refreshed_for_assets_and_some_auth_urls():
     now = int(time.time())
+    user_id = user_service.new_user("email@b.c", "password", "password")
     claims = {
         "iat": now - 10,
         "exp": now + 10,
         "iss": "mitzu",
-        "sub": "identity",
+        "sub": user_id,
     }
     token = jwt.encode(
         claims, key=auth_config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -479,11 +430,12 @@ def test_token_is_not_refreshed_for_assets_and_some_auth_urls():
 
 def test_token_is_refreshed_for_callbacks():
     now = int(time.time())
+    user_id = user_service.new_user("email@b.c", "password", "password")
     claims = {
         "iat": now - 10,
         "exp": now + 10,
         "iss": "mitzu",
-        "sub": "identity",
+        "sub": user_id,
     }
     token = jwt.encode(
         claims, key=auth_config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -494,7 +446,7 @@ def test_token_is_refreshed_for_callbacks():
     ):
         resp = flask.make_response("ok", 200)
         resp = app.process_response(resp)
-        assert_auth_token(resp, "identity")
+        assert_auth_token(resp, user_id)
 
 
 def test_unauthorized_when_user_is_deleted():

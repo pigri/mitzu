@@ -2,11 +2,14 @@ from pytest import fixture
 from typing import Any, Dict, Optional, List
 from dataclasses import dataclass, field
 import mitzu.webapp.dependencies as DEPS
+import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.secret_service as SS
+import mitzu.webapp.service.user_service as US
 import mitzu.model as M
+import mitzu.webapp.configs as configs
 from mitzu.webapp.cache import MitzuCache
 import flask
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
@@ -46,14 +49,28 @@ def dependencies() -> DEPS.Dependencies:
     storage = S.MitzuStorage()
 
     evt_service = E.EventsService(storage)
+    user_service = US.UserService(storage, root_password="test")
+
+    auth_config = A.AuthConfig(
+        oauth=None,
+        token_validator=None,
+        token_signing_key=configs.AUTH_JWT_SECRET,
+        session_timeout=configs.AUTH_SESSION_TIMEOUT,
+        user_service=user_service,
+    )
+    authorizer = A.OAuthAuthorizer.create(auth_config)
+
+    # make sure the test requests are always authorized
+    object.__setattr__(authorizer, "is_request_authorized", lambda _: True)
+
     return DEPS.Dependencies(
-        authorizer=None,
+        authorizer=authorizer,
         storage=storage,
         cache=cache,
         queue=queue,
         events_service=evt_service,
         navbar_service=NB.NavbarService(),
-        user_service=None,
+        user_service=user_service,
         secret_service=SS.SecretService(),
     )
 
