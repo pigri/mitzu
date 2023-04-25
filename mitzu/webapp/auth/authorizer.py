@@ -207,10 +207,13 @@ class OAuthAuthorizer:
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
 
-            user_id = claims["sub"]
-            user = self._config.user_service.get_user_by_id(user_id)
+            token_subject = claims["sub"]
+            user = self._config.user_service.get_user_by_id(token_subject)
             if user is None:
-                raise Exception("User not found")
+                # SSO tokens contains the email not the use id
+                user = self._config.user_service.get_user_by_email(token_subject)
+                if user is None:
+                    raise Exception("User not found")
             claims[JWT_CLAIM_ROLE] = user.role
             return claims
         except Exception as e:
