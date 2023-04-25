@@ -89,7 +89,6 @@ class AuthConfig:
 
     oauth: Optional[OAuthConfig] = None
     token_validator: Optional[TokenValidator] = None
-    allowed_email_domain: Optional[str] = None
 
     user_service: Optional[U.UserService] = None
 
@@ -263,14 +262,6 @@ class OAuthAuthorizer:
                     user_email = self._validate_foreign_token(id_token)
                     if not user_email:
                         raise Exception("Unauthorized (Invalid jwt token)")
-
-                    if (
-                        self._config.allowed_email_domain is not None
-                        and not user_email.endswith(self._config.allowed_email_domain)
-                    ):
-                        raise Exception(
-                            f"User tried to login with not allowed email address: {user_email}"
-                        )
 
                     user_role = WM.Role.MEMBER
                     token_identity = user_email

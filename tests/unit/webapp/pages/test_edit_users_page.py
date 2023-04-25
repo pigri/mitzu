@@ -27,7 +27,6 @@ class RequestContextLoggedInAsRootUser:
         auth_config = A.AuthConfig(
             oauth=None,
             token_validator=None,
-            allowed_email_domain=configs.AUTH_ALLOWED_EMAIL_DOMAIN,
             token_signing_key=configs.AUTH_JWT_SECRET,
             session_timeout=configs.AUTH_SESSION_TIMEOUT,
             user_service=user_service,

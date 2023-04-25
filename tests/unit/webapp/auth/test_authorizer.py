@@ -317,7 +317,6 @@ def test_healthcheck_request():
             token_signing_key=auth_config.token_signing_key,
             token_validator=token_validator,
             oauth=oauth_config,
-            allowed_email_domain="allowed.com",
         )
     )
     setup_authorizer(app, authorizer)
@@ -326,50 +325,6 @@ def test_healthcheck_request():
     with app.test_request_context(configs.HEALTH_CHECK_PATH):
         resp = app.preprocess_request()
         assert resp is None
-
-
-@patch("mitzu.webapp.auth.authorizer.requests.post")
-def test_rejects_not_allowed_email_domains_when_configured(req_mock):
-    response = Response()
-    response.code = "success"
-    response.status_code = 200
-    response._content = json.dumps(
-        {
-            "id_token": auth_token,
-        }
-    ).encode("utf-8")
-
-    req_mock.return_value = response
-    token_validator.validate_token.return_value = {"email": "user@email.com"}
-
-    app = flask.Flask(__name__)
-    authorizer = OAuthAuthorizer.create(
-        AuthConfig(
-            token_signing_key=auth_config.token_signing_key,
-            token_validator=token_validator,
-            oauth=oauth_config,
-            allowed_email_domain="allowed.com",
-        )
-    )
-    setup_authorizer(app, authorizer)
-
-    code = "1234567890"
-    with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
-        resp = app.preprocess_request()
-        req_mock.assert_called_with(
-            "https://token_url/",
-            params={
-                "grant_type": "authorization_code",
-                "client_id": "client_id",
-                "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
-            },
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": "Basic Y2xpZW50X2lkOnNlY3JldA==",
-            },
-        )
-        assert_redirected_to_unauthorized_page(resp)
 
 
 @patch("mitzu.webapp.auth.authorizer.requests.post")
