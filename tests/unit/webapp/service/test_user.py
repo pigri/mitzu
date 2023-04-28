@@ -6,7 +6,6 @@ from mitzu.webapp.service.user_service import (
     UserAlreadyExists,
     UserNotFoundException,
     UserPasswordAndConfirmationDoNotMatch,
-    RootUserCannotBeChanged,
 )
 from mitzu.webapp.model import Role
 import mitzu.webapp.configs as configs
@@ -22,10 +21,10 @@ def test_service_creates_root_user_if_password_is_set():
     service = create_service()
     assert len(service.list_users()) == 0
 
-    service = create_service(root_password="test")
+    service = create_service(root_password="testtest")
     assert len(service.list_users()) == 1
     root_user = service.get_user_by_email_and_password(
-        configs.AUTH_ROOT_USER_EMAIL, "test"
+        configs.AUTH_ROOT_USER_EMAIL, "testtest"
     )
     assert root_user is not None
     assert root_user.email == configs.AUTH_ROOT_USER_EMAIL
@@ -66,14 +65,6 @@ def test_user_lookup_with_password():
     assert service.get_user_by_email_and_password(email, "wrong password") is None
 
 
-def test_root_user_cannot_be_deleted():
-    service = create_service(root_password="password")
-    root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-
-    with pytest.raises(RootUserCannotBeChanged):
-        service.delete_user(root_user.id)
-
-
 def test_update_password():
     service = create_service()
     email = "a@b.c"
@@ -82,7 +73,7 @@ def test_update_password():
     with pytest.raises(UserNotFoundException):
         service.update_password("id", password, password)
 
-    user_id = service.new_user(email, "a", "a")
+    user_id = service.new_user(email, "aaaaaaaa", "aaaaaaaa")
     assert service.get_user_by_id(user_id).email == email
 
     with pytest.raises(UserPasswordAndConfirmationDoNotMatch):
@@ -99,10 +90,6 @@ def test_update_role():
 
     with pytest.raises(UserNotFoundException):
         service.update_role("id", Role.ADMIN)
-
-    with pytest.raises(RootUserCannotBeChanged):
-        root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-        service.update_role(root_user.id, Role.MEMBER)
 
     user_id = service.new_user(email, password, password, role=Role.MEMBER)
     user = service.get_user_by_id(user_id)
@@ -126,21 +113,3 @@ def test_delete_user():
 
     service.delete_user(user_id)
     assert service.get_user_by_id(user_id) is None
-
-
-def test_delete_root_user():
-    service = create_service(root_password="password")
-    root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-
-    with pytest.raises(RootUserCannotBeChanged):
-        service.delete_user(root_user.id)
-
-
-def test_is_root_user():
-    service = create_service(root_password="password")
-    root_user = service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-
-    assert service.is_root_user(root_user.id)
-
-    user_id = service.new_user("new_user@mail.com", "password", "password")
-    assert not service.is_root_user(user_id)

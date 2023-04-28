@@ -47,6 +47,7 @@ def layout(**query_params) -> bc.Component:
                                         "Add project",
                                     ],
                                     href=P.PROJECTS_CREATE_PATH,
+                                    size="sm",
                                 ),
                                 width="auto",
                                 class_name="ms-auto",
@@ -121,12 +122,14 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
                                 "Explore",
                                 color="primary",
                                 class_name="me-3",
+                                size="sm",
                                 href=P.create_path(
                                     P.PROJECTS_EXPLORE_PATH, project_id=project_id
                                 ),
                             ),
                             dbc.Button(
                                 "Manage",
+                                size="sm",
                                 color="secondary",
                                 href=P.create_path(
                                     P.PROJECTS_MANAGE_PATH, project_id=project_id

@@ -67,7 +67,7 @@ setup_authorizer(app, authorizer)
 def before_and_after_test():
     token_validator.return_value = None
     token_validator.side_effect = None
-    configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = False
+    configs.AUTH_BACKEND = "local"
 
     for user in user_service.list_users():
         user_service.delete_user(user.id)
@@ -169,7 +169,9 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
     ).encode("utf-8")
 
     req_mock.return_value = response
-    token_validator.validate_token.return_value = {"email": "a@b.c"}
+    email = "a@b.c"
+    user_id = user_service.new_user(email, "password", "password")
+    token_validator.validate_token.return_value = {"email": email}
 
     code = "1234567890"
     with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):
@@ -190,7 +192,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         assert resp is not None
         assert resp.status_code == 307
         assert resp.headers["Location"] == HOME_URL
-        assert_auth_token(resp, "a@b.c")
+        assert_auth_token(resp, user_id)
 
 
 @patch("mitzu.webapp.auth.authorizer.requests.post")
@@ -205,7 +207,9 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
     ).encode("utf-8")
 
     req_mock.return_value = response
-    token_validator.validate_token.return_value = {"email": "a@b.c"}
+    email = "a@b.c"
+    user_id = user_service.new_user(email, "password", "password")
+    token_validator.validate_token.return_value = {"email": email}
     redirect_after_login = "/example-project"
 
     code = "1234567890"
@@ -232,7 +236,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
         assert resp is not None
         assert resp.status_code == 307
         assert resp.headers["Location"] == redirect_after_login
-        assert_auth_token(resp, "a@b.c")
+        assert_auth_token(resp, user_id)
         assert get_cookie_by_name(
             authorizer._config.redirect_cookie_name, resp
         ).startswith(f"{authorizer._config.redirect_cookie_name}=;")
@@ -348,7 +352,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
         )
     )
     setup_authorizer(app, authorizer)
-    configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS = True
+    configs.AUTH_BACKEND = "cognito"
 
     code = "1234567890"
     with app.test_request_context(f"{P.OAUTH_CODE_URL}?code={code}"):

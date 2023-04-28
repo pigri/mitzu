@@ -17,7 +17,6 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.model as WM
-import mitzu.webapp.configs as configs
 from mitzu.webapp.helper import create_form_property_input
 from mitzu.webapp.auth.decorator import (
     restricted_layout,
@@ -33,7 +32,7 @@ PROP_PASSWORD = "password"
 PROP_CONFIRM_PASSWORD = "confirm_password"
 
 
-USER_SAVE_BUTTON = "user_save_button"
+USER_CREATE_BUTTON = "user_create_button"
 USER_CLOSE_BUTTON = "user_close_button"
 NOT_FOUND_USER_CLOSE_BUTTON = "not_found_user_close_button"
 USER_DELETE_BUTTON = "user_delete_button"
@@ -51,6 +50,8 @@ def layout(user_id: str, **query_params) -> bc.Component:
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
+    is_sso = deps.authorizer._config.oauth is not None
+
     logged_in_user_id = deps.authorizer.get_current_user_id()
     if logged_in_user_id is None:
         raise ValueError("Cannot determine logged in user id")
@@ -59,16 +60,13 @@ def layout(user_id: str, **query_params) -> bc.Component:
         raise ValueError("Logged in user is not found")
 
     is_admin = deps.authorizer.get_current_user_role(flask.request) == WM.Role.ADMIN
-    show_password_fields = user_id == "new"
+    show_password_fields = user_id == "new" and not is_sso
     show_change_password = False
-    show_delete_button = user_id != "new"
-    if user_id is not None and user_id != "new":
-        if user_id == "my-account":
-            user_id = logged_in_user.id
 
+    if user_id is not None and user_id != "new":
         show_change_password = (
             user_id == logged_in_user.id or logged_in_user.role == WM.Role.ADMIN
-        )
+        ) and not is_sso
         user = user_service.get_user_by_id(user_id)
         show_delete_button = (
             logged_in_user.role == WM.Role.ADMIN
@@ -90,6 +88,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                             [html.B(className="bi bi-x"), " Close"],
                             color="secondary",
                             class_name="me-3",
+                            size="sm",
                             id=NOT_FOUND_USER_CLOSE_BUTTON,
                             href=P.USERS_PATH,
                         ),
@@ -124,8 +123,11 @@ def layout(user_id: str, **query_params) -> bc.Component:
                             for v in WM.Role.all_values()
                         ],
                         required=True,
+                        read_only=not (
+                            logged_in_user.role == WM.Role.ADMIN
+                            and (user is not None or user_id == "new")
+                        ),
                         value=user.role if user is not None else WM.Role.MEMBER.value,
-                        read_only=user_service.is_root_user(user_id),
                     ),
                     create_form_property_input(
                         index_type=INDEX_TYPE,
@@ -134,7 +136,6 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         type="password",
                         required=True,
                         value="",
-                        hidden=configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS,
                     )
                     if show_password_fields
                     else None,
@@ -145,7 +146,6 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         type="password",
                         required=True,
                         value="",
-                        hidden=configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS,
                     )
                     if show_password_fields
                     else None,
@@ -158,49 +158,56 @@ def layout(user_id: str, **query_params) -> bc.Component:
                                 dbc.Button(
                                     [
                                         html.B(className="bi bi-check-circle me-1"),
-                                        "Save",
+                                        "Create user",
                                     ],
                                     color="success",
                                     class_name="me-3",
-                                    id=USER_SAVE_BUTTON,
+                                    size="sm",
+                                    id=USER_CREATE_BUTTON,
                                 ),
-                                dbc.Button(
-                                    [html.B(className="bi bi-x me-1"), "Delete"],
-                                    color="danger",
-                                    class_name="me-3",
-                                    id=USER_DELETE_BUTTON,
-                                    external_link=True,
-                                    href=P.create_path(P.USERS_PATH),
-                                )
-                                if show_delete_button
-                                else None,
                             ],
                             className="mb-3",
                         ),
                         html.Div(
                             children=[], id=SAVE_RESPONSE_CONTAINER, className="lead"
                         ),
-                        html.Div(
-                            children=[], id=DELETE_RESPONSE_CONTAINER, className="lead"
-                        ),
                     ]
-                    if user is None
+                    if user_id == "new"
                     else (
                         [
                             html.Hr(),
                             html.Div(
                                 [
                                     dbc.Button(
-                                        ["Update"],
+                                        [
+                                            html.B(className="bi bi-check-circle me-1"),
+                                            "Update",
+                                        ],
                                         color="primary",
                                         class_name="me-3",
                                         id=USER_CHANGE_ROLE_BUTTON,
-                                        disabled=user_service.is_root_user(user_id),
+                                        size="sm",
                                     )
                                     if user is not None
                                     else None,
+                                    dbc.Button(
+                                        [html.B(className="bi bi-x me-1"), "Delete"],
+                                        color="danger",
+                                        class_name="me-3",
+                                        id=USER_DELETE_BUTTON,
+                                        external_link=True,
+                                        href=P.create_path(P.USERS_PATH),
+                                        size="sm",
+                                    )
+                                    if show_delete_button
+                                    else None,
                                 ],
                                 className="mb-3",
+                            ),
+                            html.Div(
+                                children=[],
+                                id=DELETE_RESPONSE_CONTAINER,
+                                className="lead",
                             ),
                             html.Div(
                                 children=[],
@@ -221,6 +228,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         class_name="me-3",
                         id=USER_CLOSE_BUTTON,
                         href=P.USERS_PATH,
+                        size="sm",
                     ),
                 ],
             ),
@@ -229,9 +237,6 @@ def layout(user_id: str, **query_params) -> bc.Component:
 
 
 def change_password_form():
-    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
-        return []
-
     return [
         html.Hr(),
         create_form_property_input(
@@ -255,6 +260,7 @@ def change_password_form():
             ["Change password"],
             color="primary",
             className="mb-3",
+            size="sm",
             id=USER_CHANGE_PASSWORD_BUTTON,
         ),
         html.Div(children=[], id=CHANGE_PASSWORD_RESPONSE_CONTAINER, className="lead"),
@@ -266,7 +272,7 @@ def change_password_form():
         SAVE_RESPONSE_CONTAINER: Output(SAVE_RESPONSE_CONTAINER, "children"),
     },
     inputs={
-        "n_clicks": Input(USER_SAVE_BUTTON, "n_clicks"),
+        "n_clicks": Input(USER_CREATE_BUTTON, "n_clicks"),
     },
     state={
         "email": State({"type": INDEX_TYPE, "index": PROP_EMAIL}, "value"),
@@ -283,12 +289,10 @@ def create_new_user(n_clicks: int, email="", role="", password="", confirm_passw
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
-    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
-        # new user need a password other than empty string
-        from uuid import uuid4
-
-        password = str(uuid4())
-        confirm_password = password
+    if deps.authorizer._config.oauth:
+        # SSO users don't have passwords
+        password = None
+        confirm_password = None
 
     try:
         user_service.new_user(email, password, confirm_password, role=WM.Role(role))
@@ -335,12 +339,6 @@ def update_password(
         if logged_in_user is None:
             raise Exception("User is not signed in")
 
-        if user_id == "my-account":
-            user_id = logged_in_user_id
-
-        if logged_in_user is None:
-            raise Exception("User is not signed in")
-
         if logged_in_user.role != WM.Role.ADMIN and logged_in_user.id != user_id:
             raise Exception("User is not authorized to change this password")
 
@@ -380,9 +378,6 @@ def update_role(n_clicks: int, role="", pathname: str = ""):
         if logged_in_user_id is None:
             raise Exception("User is not signed in")
 
-        if user_id == "my-account":
-            user_id = logged_in_user_id
-
         user_service.update_role(user_id, WM.Role(role))
         return {CHANGE_ROLE_RESPONSE_CONTAINER: "Role updated"}
     except Exception as e:
@@ -410,9 +405,6 @@ def delete_user(n_clicks: int, pathname: str = ""):
     user_service = deps.user_service
 
     try:
-        if user_id == "my-account":
-            raise Exception("Own account cannot be deleted")
-
         user_service.delete_user(user_id)
         return {
             DELETE_RESPONSE_CONTAINER: "User deleted",

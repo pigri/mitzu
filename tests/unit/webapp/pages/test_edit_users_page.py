@@ -85,28 +85,12 @@ def test_new_user_page_layout(server: flask.Flask):
         users_comp = U.layout(user_id="new")
         page = to_dict(users_comp)
 
-        assert find_component_by_id(comp_id=U.USER_SAVE_BUTTON, input=page) is not None
+        assert (
+            find_component_by_id(comp_id=U.USER_CREATE_BUTTON, input=page) is not None
+        )
         assert find_component_by_id(comp_id=U.USER_CLOSE_BUTTON, input=page) is not None
 
         assert_input_field_with_value(U.PROP_EMAIL, "", page)
-        assert_input_field_with_value(U.PROP_PASSWORD, "", page)
-        assert_input_field_with_value(U.PROP_CONFIRM_PASSWORD, "", page)
-
-
-def test_my_account_user_page_layout(server: flask.Flask):
-    with RequestContextLoggedInAsRootUser(server):
-        users_comp = U.layout(user_id="my-account")
-        page = to_dict(users_comp)
-
-        assert find_component_by_id(comp_id=U.USER_SAVE_BUTTON, input=page) is None
-        assert find_component_by_id(comp_id=U.USER_CLOSE_BUTTON, input=page) is not None
-
-        assert (
-            find_component_by_id(
-                comp_id={"type": U.INDEX_TYPE, "index": U.PROP_EMAIL}, input=page
-            )
-            is None
-        )
         assert_input_field_with_value(U.PROP_PASSWORD, "", page)
         assert_input_field_with_value(U.PROP_CONFIRM_PASSWORD, "", page)
 

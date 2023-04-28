@@ -106,7 +106,7 @@ def create_saved_metrics_off_canvas() -> bc.Component:
                 [html.B(className="bi bi-plus-circle me-1"), "Explore projects"],
                 href=P.PROJECTS_PATH,
                 target="_blank",
-                size="small",
+                size="sm",
                 color="light",
                 class_name="w-100 mb-3",
             ),

@@ -163,6 +163,7 @@ def create_delete_button(connection: Optional[M.Connection]) -> bc.Component:
         return dbc.Button(
             [html.B(className="bi bi-x-circle"), " Delete connection"],
             id=CONNECTION_DELETE_BUTTON,
+            size="sm",
             color="danger",
         )
     else:
@@ -300,6 +301,7 @@ def create_manage_connection_component(
                         id=CONNECTION_TEST_BUTTON,
                         color="primary",
                         class_name="me-3",
+                        size="sm",
                     ),
                     create_delete_button(con),
                 ],

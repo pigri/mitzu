@@ -63,6 +63,7 @@ def layout(**query_params) -> bc.Component:
                                     color="primary",
                                     href=P.DASHBOARDS_CREATE_PATH,
                                     id=CREATE_NEW_DASHBOARD_BTN,
+                                    size="sm",
                                 ),
                                 width="auto",
                                 class_name="ms-auto",

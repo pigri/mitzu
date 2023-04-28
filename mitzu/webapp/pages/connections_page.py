@@ -45,6 +45,7 @@ def layout() -> bc.Component:
                                     html.B(className="bi bi-plus-circle"),
                                     " New Warehouse Connection",
                                 ],
+                                size="sm",
                                 color="primary",
                                 href=P.CONNECTIONS_CREATE_PATH,
                             ),
@@ -107,6 +108,7 @@ def create_connection_selector(connection: M.Connection) -> bc.Component:
                         [
                             dbc.Button(
                                 "Manage",
+                                size="sm",
                                 color="primary",
                                 href=P.create_path(
                                     P.CONNECTIONS_MANAGE_PATH,

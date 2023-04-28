@@ -42,6 +42,7 @@ def layout(**query_params):
                                 color="secondary",
                                 class_name="mb-3 w-25",
                                 href=P.PROJECTS_PATH,
+                                size="sm",
                             ),
                         ],
                         justify="center",

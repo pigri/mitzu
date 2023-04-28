@@ -35,13 +35,14 @@ class UserPasswordAndConfirmationDoNotMatch(Exception):
         super().__init__("Password and password confirmation do not match")
 
 
-class RootUserCannotBeChanged(Exception):
+class UserPasswordRequirementsNotMet(Exception):
     """
-    Raised before the root user changes
+    Raised when the password and the password confirmation do not match
+    when adding a new user or when chaning the password
     """
 
     def __init__(self):
-        super().__init__("Root user cannot be changed")
+        super().__init__("Password must be at least 8 characters")
 
 
 class UserService:
@@ -66,10 +67,6 @@ class UserService:
                 role=WM.Role.ADMIN,
             )
 
-    def is_root_user(self, user_id: str) -> bool:
-        user = self.get_user_by_id(user_id)
-        return user is not None and user.email == configs.AUTH_ROOT_USER_EMAIL
-
     def list_users(self) -> List[WM.User]:
         return self._storage.list_users()
 
@@ -90,6 +87,9 @@ class UserService:
         if password != password_confirmation:
             raise UserPasswordAndConfirmationDoNotMatch()
 
+        if len(password) < 8:
+            raise UserPasswordRequirementsNotMet()
+
         hash, salt = self._get_password_hash_with_salt(password)
         user.password_hash = hash
         user.password_salt = salt
@@ -99,9 +99,6 @@ class UserService:
         user = self.get_user_by_id(user_id)
         if user is None:
             raise UserNotFoundException()
-
-        if user.email == configs.AUTH_ROOT_USER_EMAIL:
-            raise RootUserCannotBeChanged()
 
         user.role = role
         self._storage.set_user(user)
@@ -115,17 +112,23 @@ class UserService:
     def new_user(
         self,
         email: str,
-        password: str,
-        password_confirmation: str,
+        password: Optional[str] = None,
+        password_confirmation: Optional[str] = None,
         role: WM.Role = WM.Role.MEMBER,
     ) -> str:
         if self.get_user_by_email(email) is not None:
             raise UserAlreadyExists()
 
-        if password != password_confirmation:
-            raise UserPasswordAndConfirmationDoNotMatch()
+        if password is not None:
+            if password != password_confirmation:
+                raise UserPasswordAndConfirmationDoNotMatch()
 
-        hash, salt = self._get_password_hash_with_salt(password)
+            if len(password) < 8:
+                raise UserPasswordRequirementsNotMet()
+
+            hash, salt = self._get_password_hash_with_salt(password)
+        else:
+            raise UserPasswordRequirementsNotMet()
 
         user = WM.User(
             email=email,
@@ -153,8 +156,5 @@ class UserService:
         user = self.get_user_by_id(user_id)
         if user is None:
             raise UserNotFoundException()
-
-        if user.email == configs.AUTH_ROOT_USER_EMAIL:
-            raise RootUserCannotBeChanged()
 
         self._storage.clear_user(user_id)

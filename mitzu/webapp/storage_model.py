@@ -42,8 +42,8 @@ class UserStorageRecord(Base):
 
     user_id = SA.Column(SA.String, primary_key=True)
     email = SA.Column(SA.String)
-    password_hash = SA.Column(SA.String)
-    password_salt = SA.Column(SA.String)
+    password_hash = SA.Column(SA.String, nullable=True)
+    password_salt = SA.Column(SA.String, nullable=True)
     role = SA.Column(SA.String)
 
     def update(self, user: WM.User):

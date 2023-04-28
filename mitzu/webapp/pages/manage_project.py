@@ -48,6 +48,7 @@ def create_delete_button(project: Optional[M.Project]) -> bc.Component:
             id=DELETE_BUTTON,
             color="danger",
             class_name="d-inline-block me-3 mb-1",
+            size="sm",
         )
     else:
         return html.Div()
@@ -169,6 +170,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                         color="success",
                         id=SAVE_BUTTON,
                         class_name="d-inline-block me-3 mb-1",
+                        size="sm",
                     ),
                     dbc.Button(
                         [
@@ -179,6 +181,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                                 else "Discover Projects"
                             ),
                         ],
+                        size="sm",
                         color="primary",
                         class_name="d-inline-block me-3 mb-1",
                         href=(

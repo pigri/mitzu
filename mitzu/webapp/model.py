@@ -269,7 +269,7 @@ class User:
     """
 
     email: str
-    password_hash: str
-    password_salt: str
+    password_hash: Optional[str]
+    password_salt: Optional[str]
     id: str = field(default_factory=create_unique_id)
     role: Role = Role.MEMBER

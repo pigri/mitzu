@@ -131,13 +131,6 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
                 href=P.USERS_PATH,
                 id=USERS_BUTTON,
             ),
-            dbc.Button(
-                [html.B(className="bi bi-person-circle me-1"), "My Account"],
-                color=BUTTON_COLOR,
-                class_name=MENU_ITEM_CSS,
-                href=P.create_path(P.USERS_HOME_PATH, user_id="my-account"),
-                id=MY_ACCOUNT_BUTTON,
-            ),
             html.Hr(className="mb-3 d-none"),
             dbc.Button(
                 [html.B(className="bi bi-box-arrow-right me-1"), "Sign out"],

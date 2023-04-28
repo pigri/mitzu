@@ -259,16 +259,13 @@ class OAuthAuthorizer:
                     if not user_email:
                         raise Exception("Unauthorized (Invalid jwt token)")
 
-                    user_role = WM.Role.MEMBER
-                    token_identity = user_email
-                    if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
-                        user = self._config.user_service.get_user_by_email(user_email)
-                        if user is None:
-                            raise Exception(
-                                f"User tried to login without having a local user: {user_email}"
-                            )
-                        user_role = user.role
-                        token_identity = user.id
+                    user = self._config.user_service.get_user_by_email(user_email)
+                    if user is None:
+                        raise Exception(
+                            f"User tried to login without having a local user: {user_email}"
+                        )
+                    user_role = user.role
+                    token_identity = user.id
 
                     token = self._generate_new_token_for_identity(
                         token_identity, role=user_role
@@ -342,7 +339,7 @@ class OAuthAuthorizer:
         return WM.Role(claims[JWT_CLAIM_ROLE])
 
     def login_local_user(self, email: str, password: str) -> bool:
-        if configs.AUTH_SSO_ONLY_FOR_LOCAL_USERS:
+        if self._config.oauth:
             raise ValueError("Password login is not enabled, need to use SSO")
 
         user = self._config.user_service.get_user_by_email_and_password(email, password)

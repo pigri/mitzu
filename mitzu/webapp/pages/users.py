@@ -96,6 +96,7 @@ def layout(**query_params) -> bc.Component:
                             color="primary",
                             href=P.create_path(P.USERS_HOME_PATH, user_id="new"),
                             id=ADD_USER_BUTTON,
+                            size="sm",
                         ),
                     ]
                     if is_admin

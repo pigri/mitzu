@@ -65,12 +65,14 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
                                 class_name="me-3",
                                 id=CONNECTION_CLOSE_BUTTON,
                                 href=P.CONNECTIONS_PATH,
+                                size="sm",
                             ),
                             dbc.Button(
                                 [html.B(className="bi bi-check-circle"), " Save"],
                                 color="success",
                                 class_name="me-3",
                                 id=CONNECTION_SAVE_BUTTON,
+                                size="sm",
                             ),
                             dbc.Button(
                                 [
@@ -80,6 +82,7 @@ def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
                                 color="primary",
                                 class_name="me-3",
                                 id=CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON,
+                                size="sm",
                             ),
                         ],
                         className="mb-3",
