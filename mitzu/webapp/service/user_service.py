@@ -5,6 +5,7 @@ import hashlib
 import mitzu.webapp.storage as S
 import mitzu.webapp.configs as configs
 import mitzu.webapp.model as WM
+import mitzu.webapp.service.notification_service as NS
 
 
 class UserNotFoundException(Exception):
@@ -50,8 +51,18 @@ class UserService:
     UserService provides the a single API to manage users in the local user storage
     """
 
-    def __init__(self, storage: S.MitzuStorage, root_password: Optional[str] = None):
+    def __init__(
+        self,
+        storage: S.MitzuStorage,
+        root_password: Optional[str] = None,
+        notification_service: Optional[NS.NotificationService] = None,
+    ):
         self._storage = storage
+
+        if notification_service:
+            self._notification_service = notification_service
+        else:
+            self._notification_service = NS.DummyNotificationService()
 
         has_admin = False
         for user in self.list_users():
@@ -119,6 +130,8 @@ class UserService:
         if self.get_user_by_email(email) is not None:
             raise UserAlreadyExists()
 
+        hash = None
+        salt = None
         if password is not None:
             if password != password_confirmation:
                 raise UserPasswordAndConfirmationDoNotMatch()
@@ -127,8 +140,6 @@ class UserService:
                 raise UserPasswordRequirementsNotMet()
 
             hash, salt = self._get_password_hash_with_salt(password)
-        else:
-            raise UserPasswordRequirementsNotMet()
 
         user = WM.User(
             email=email,
@@ -137,6 +148,7 @@ class UserService:
             role=role,
         )
         self._storage.set_user(user)
+        self._notification_service.user_created(user.id, user.email)
         return user.id
 
     def get_user_by_email_and_password(
@@ -158,3 +170,4 @@ class UserService:
             raise UserNotFoundException()
 
         self._storage.clear_user(user_id)
+        self._notification_service.user_deleted(user.id)

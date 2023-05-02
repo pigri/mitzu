@@ -9,6 +9,7 @@ from dash import (
     callback,
     html,
     register_page,
+    ALL,
 )
 import dash_bootstrap_components as dbc
 import dash.development.base_component as bc
@@ -277,15 +278,12 @@ def change_password_form():
     state={
         "email": State({"type": INDEX_TYPE, "index": PROP_EMAIL}, "value"),
         "role": State({"type": INDEX_TYPE, "index": PROP_ROLE}, "value"),
-        "password": State({"type": INDEX_TYPE, "index": PROP_PASSWORD}, "value"),
-        "confirm_password": State(
-            {"type": INDEX_TYPE, "index": PROP_CONFIRM_PASSWORD}, "value"
-        ),
+        "all_inputs": State({"type": INDEX_TYPE, "index": ALL}, "value"),
     },
     prevent_initial_call=True,
 )
 @restricted_for_admin
-def create_new_user(n_clicks: int, email="", role="", password="", confirm_password=""):
+def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     user_service = deps.user_service
 
@@ -293,6 +291,9 @@ def create_new_user(n_clicks: int, email="", role="", password="", confirm_passw
         # SSO users don't have passwords
         password = None
         confirm_password = None
+    else:
+        password = all_inputs[2]
+        confirm_password = all_inputs[3]
 
     try:
         user_service.new_user(email, password, confirm_password, role=WM.Role(role))

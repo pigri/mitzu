@@ -92,7 +92,7 @@ def assert_auth_token(resp: flask.Response, identity: str):
     cookie = get_cookie_by_name(cookie_name, resp)
     assert cookie is not None
     assert cookie.startswith(f"{cookie_name}=")
-    assert cookie.endswith("; Path=/")
+    assert cookie.endswith("; HttpOnly; Path=/")
     token = cookie.split(";")[0].replace(f"{cookie_name}=", "")
     decoced = jwt.decode(
         token, key=auth_config.token_signing_key, algorithms=[JWT_ALGORITHM]
@@ -112,7 +112,7 @@ def assert_redirected_to_unauthorized_page(
     if expected_redirect_cookie:
         assert (
             get_cookie_by_name(redirect_cookie, resp)
-            == f"{redirect_cookie}={expected_redirect_cookie}; Path=/"
+            == f"{redirect_cookie}={expected_redirect_cookie}; HttpOnly; Path=/"
         )
     else:
         assert get_cookie_by_name(redirect_cookie, resp) is None

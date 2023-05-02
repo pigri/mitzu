@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
+from typing import Optional
 
 import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.cache as C
@@ -11,6 +11,7 @@ import mitzu.webapp.service.user_service as U
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.secret_service as SS
+import mitzu.webapp.service.notification_service as NS
 
 CONFIG_KEY = "dependencies"
 
@@ -26,9 +27,15 @@ class Dependencies:
     navbar_service: NB.NavbarService
     secret_service: SS.SecretService
     user_service: U.UserService
+    notification_service: NS.NotificationService
 
     @classmethod
-    def from_configs(cls) -> Dependencies:
+    def from_configs(
+        cls, notification_service: Optional[NS.NotificationService] = None
+    ) -> Dependencies:
+        if notification_service is None:
+            notification_service = NS.DummyNotificationService()
+
         delegate_cache: C.MitzuCache
         if configs.STORAGE_REDIS_HOST is not None:
             delegate_cache = C.RedisMitzuCache(global_prefix=configs.CACHE_PREFIX)
@@ -49,7 +56,11 @@ class Dependencies:
 
             oauth_config = GoogleOAuth.get_config()
 
-        user_service = U.UserService(storage, root_password=configs.AUTH_ROOT_PASSWORD)
+        user_service = U.UserService(
+            storage,
+            root_password=configs.AUTH_ROOT_PASSWORD,
+            notification_service=notification_service,
+        )
 
         auth_config = A.AuthConfig(
             oauth=oauth_config,
@@ -82,4 +93,5 @@ class Dependencies:
             navbar_service=NB.NavbarService(),
             events_service=events_service,
             secret_service=secret_service,
+            notification_service=notification_service,
         )

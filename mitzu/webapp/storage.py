@@ -78,7 +78,7 @@ class MitzuStorage:
         self,
         connection_string: str = "sqlite://?check_same_thread=False",
     ) -> None:
-        self._engine = SA.create_engine(connection_string)
+        self._engine = SA.create_engine(connection_string, pool_pre_ping=True)
         self._is_sqlite = connection_string.startswith("sqlite")
         self.__init_schema()
 

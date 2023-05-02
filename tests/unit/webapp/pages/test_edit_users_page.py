@@ -12,6 +12,7 @@ import mitzu.webapp.service.user_service as US
 import mitzu.webapp.service.events_service as ES
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.secret_service as SS
+import mitzu.webapp.service.notification_service as NS
 import mitzu.webapp.pages.paths as P
 
 
@@ -59,6 +60,7 @@ class RequestContextLoggedInAsRootUser:
             events_service=event_service,
             navbar_service=NB.NavbarService(),
             secret_service=SS.SecretService(),
+            notification_service=NS.DummyNotificationService(),
         )
 
         self.context = self._server.test_request_context(
@@ -102,8 +104,7 @@ def test_delete_user(server: flask.Flask):
             0,
             email="a@b",
             role=WM.Role.MEMBER.value,
-            password="password",
-            confirm_password="password",
+            all_inputs=["a@b", "member", "password", "password"],
         )
         assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
         user = user_service.get_user_by_email_and_password("a@b", "password")

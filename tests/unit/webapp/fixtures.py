@@ -8,6 +8,7 @@ import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.secret_service as SS
 import mitzu.webapp.service.user_service as US
+import mitzu.webapp.service.notification_service as NS
 import mitzu.model as M
 import mitzu.webapp.configs as configs
 from mitzu.webapp.cache import MitzuCache
@@ -72,6 +73,7 @@ def dependencies() -> DEPS.Dependencies:
         navbar_service=NB.NavbarService(),
         user_service=user_service,
         secret_service=SS.SecretService(),
+        notification_service=NS.DummyNotificationService(),
     )
 
 

@@ -127,14 +127,14 @@ class OAuthAuthorizer:
         self, redirect: Optional[str] = None
     ) -> werkzeug.wrappers.response.Response:
         resp = self._redirect(P.UNAUTHORIZED_URL)
-        resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+        self.clear_cookie(resp, self._config.token_cookie_name)
         if (
             redirect
             and not redirect.startswith("/assets/")
             and not redirect.startswith("/_dash")
             and not redirect.startswith(configs.HEALTH_CHECK_PATH)
         ):
-            resp.set_cookie(self._config.redirect_cookie_name, redirect)
+            self.set_cookie(resp, self._config.redirect_cookie_name, redirect)
         return resp
 
     def _redirect(self, location: str) -> werkzeug.wrappers.response.Response:
@@ -210,10 +210,7 @@ class OAuthAuthorizer:
             token_subject = claims["sub"]
             user = self._config.user_service.get_user_by_id(token_subject)
             if user is None:
-                # SSO tokens contains the email not the use id
-                user = self._config.user_service.get_user_by_email(token_subject)
-                if user is None:
-                    raise Exception("User not found")
+                raise Exception("User not found")
             claims[JWT_CLAIM_ROLE] = user.role
             return claims
         except Exception as e:
@@ -272,15 +269,15 @@ class OAuthAuthorizer:
                     )
 
                     resp = self._redirect(redirect_url)
-                    resp.set_cookie(self._config.token_cookie_name, token)
-                    resp.set_cookie(self._config.redirect_cookie_name, "", expires=0)
+                    self.set_cookie(resp, self._config.token_cookie_name, token)
+                    self.clear_cookie(resp, self._config.redirect_cookie_name)
                     return resp
                 except Exception as exc:
                     traceback.print_exception(type(exc), exc, exc.__traceback__)
                     LOGGER.warning(f"Failed to authenticate: {str(exc)}")
                     if self._config.oauth and self._config.oauth.sign_out_url:
                         resp = self._redirect(self._config.oauth.sign_out_url)
-                        resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+                        self.clear_cookie(resp, self._config.token_cookie_name)
                         return resp
                     return self._get_unauthenticated_response()
 
@@ -289,7 +286,7 @@ class OAuthAuthorizer:
         if request.path == P.SIGN_OUT_URL:
             if self._config.oauth and self._config.oauth.sign_out_url:
                 resp = self._redirect(self._config.oauth.sign_out_url)
-                resp.set_cookie(self._config.token_cookie_name, "", expires=0)
+                self.clear_cookie(resp, self._config.token_cookie_name)
                 return resp
             return self._get_unauthenticated_response()
 
@@ -319,7 +316,7 @@ class OAuthAuthorizer:
                 new_token = self._generate_new_token_for_identity(
                     identity["sub"], role=identity[JWT_CLAIM_ROLE]
                 )
-                resp.set_cookie(self._config.token_cookie_name, new_token)
+                self.set_cookie(resp, self._config.token_cookie_name, new_token)
         return resp
 
     def is_request_authorized(self, request: flask.Request) -> bool:
@@ -347,7 +344,9 @@ class OAuthAuthorizer:
             return False
 
         token = self._generate_new_token_for_identity(user.id, role=user.role)
-        dash.callback_context.response.set_cookie(self._config.token_cookie_name, token)
+        self.set_cookie(
+            dash.callback_context.response, self._config.token_cookie_name, token
+        )
         return True
 
     def get_current_user_id(self) -> Optional[str]:
@@ -358,3 +357,17 @@ class OAuthAuthorizer:
         if token_claims is None:
             return None
         return token_claims.get("sub")
+
+    def set_cookie(
+        self,
+        response: werkzeug.wrappers.response.Response,
+        cookie_name: str,
+        value: str,
+        **params,
+    ):
+        response.set_cookie(cookie_name, value, path="/", httponly=True, **params)
+
+    def clear_cookie(
+        self, response: werkzeug.wrappers.response.Response, cookie_name: str
+    ):
+        self.set_cookie(response, cookie_name, "", expires=0)

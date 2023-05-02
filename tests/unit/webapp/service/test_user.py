@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import MagicMock
 from typing import Optional
 
 from mitzu.webapp.service.user_service import (
@@ -10,11 +11,17 @@ from mitzu.webapp.service.user_service import (
 from mitzu.webapp.model import Role
 import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
+import mitzu.webapp.service.notification_service as NS
 
 
-def create_service(root_password: Optional[str] = None) -> UserService:
+def create_service(
+    root_password: Optional[str] = None,
+    notification_service: Optional[NS.NotificationService] = None,
+) -> UserService:
     storage = S.MitzuStorage()
-    return UserService(storage, root_password=root_password)
+    return UserService(
+        storage, root_password=root_password, notification_service=notification_service
+    )
 
 
 def test_service_creates_root_user_if_password_is_set():
@@ -102,7 +109,8 @@ def test_update_role():
 
 
 def test_delete_user():
-    service = create_service()
+    ns = MagicMock()
+    service = create_service(notification_service=ns)
     email = "a@b.c"
 
     with pytest.raises(UserNotFoundException):
@@ -110,6 +118,8 @@ def test_delete_user():
 
     user_id = service.new_user(email, "password", "password")
     assert service.get_user_by_id(user_id) is not None
+    ns.user_created.assert_called_with(user_id, email)
 
     service.delete_user(user_id)
     assert service.get_user_by_id(user_id) is None
+    ns.user_deleted.assert_called_with(user_id)
