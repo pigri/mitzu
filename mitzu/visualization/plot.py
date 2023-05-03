@@ -6,6 +6,7 @@ import plotly.figure_factory as ff
 
 import pandas as pd
 import mitzu.model as M
+import mitzu.helper as H
 import mitzu.visualization.common as C
 from typing import Dict, List, Tuple
 from base64 import b64encode
@@ -42,8 +43,10 @@ def set_figure_style(fig, simple_chart: C.SimpleChart, metric: M.Metric):
         )
     elif metric._chart_type == M.SimpleChartType.STACKED_AREA:
         fig.update_traces(textposition="top center", textfont_size=9)
+    elif metric._chart_type in (M.SimpleChartType.STACKED_BAR, M.SimpleChartType.BAR):
+        fig.update_traces(textposition="auto", textfont_size=9)
     else:
-        fig.update_traces(textposition="outside", textfont_size=9)
+        fig.update_traces(textposition="top center", textfont_size=9)
 
     fig.update_yaxes(
         rangemode="tozero",
@@ -79,7 +82,9 @@ def set_figure_style(fig, simple_chart: C.SimpleChart, metric: M.Metric):
         plot_bgcolor="rgba(0,0,0,0)",
         hovermode=simple_chart.hover_mode,
         legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left"),
-        showlegend=len(fig.data) > 1,
+        showlegend=(
+            H.get_metric_group_by(metric=metric) is not None or len(fig.data) > 1
+        ),
     )
     return fig
 

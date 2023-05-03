@@ -266,21 +266,6 @@ def delete_button_clicked(delete_clicks: List[int], close: int, accept: int):
     Output(SAVED_METRICS_CONTAINER, "children"),
     Input(CONFIRM_DIALOG_ACCEPT, "n_clicks"),
     State(CONFIRM_METRIC_ID, "children"),
-    background=True,
-    running=[
-        (
-            Output(SAVED_METRICS_INFO, "children"),
-            [
-                dbc.Spinner(
-                    spinner_style={"width": "1rem", "height": "1rem"},
-                    spinner_class_name="me-1",
-                ),
-                "Loading saved metrics",
-            ],
-            "",
-        )
-    ],
-    interval=200,
     prevent_initial_call=True,
 )
 @restricted

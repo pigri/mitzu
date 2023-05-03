@@ -5,16 +5,19 @@ from typing import Optional, cast
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import flask
-from dash import CeleryManager, Dash, DiskcacheManager, dcc, html, page_container
+from dash import Dash, DiskcacheManager, dcc, html, page_container
 from dash.long_callback.managers import BaseLongCallbackManager
+import mitzu.webapp.cache as C
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
 import mitzu.webapp.pages.explore.explore_page as EXP
+import mitzu.webapp.pages.paths as P
 from mitzu.helper import LOGGER
-
+import json
+import traceback
 from mitzu.webapp.helper import MITZU_LOCATION
 
 MAIN = "main"
@@ -37,25 +40,7 @@ def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
 
 
 def get_callback_manager(dependencies: DEPS.Dependencies) -> BaseLongCallbackManager:
-    if configs.QUEUE_REDIS_HOST is not None:
-        from celery import Celery
-
-        celery_app = Celery(
-            __name__, broker=configs.QUEUE_REDIS_HOST, backend=configs.QUEUE_REDIS_HOST
-        )
-        return CeleryManager(
-            celery_app,
-            cache_by=[lambda: configs.LAUNCH_UID],
-            expire=configs.CACHE_EXPIRATION,
-        )
-    else:
-        import mitzu.webapp.cache as C
-
-        return DiskcacheManager(
-            cast(C.DiskMitzuCache, dependencies.queue).get_disk_cache(),
-            cache_by=[lambda: configs.LAUNCH_UID],
-            expire=configs.CACHE_EXPIRATION,
-        )
+    return DiskcacheManager(cast(C.DiskMitzuCache, dependencies.queue).get_disk_cache())
 
 
 def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
@@ -87,42 +72,49 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
     )
     dependencies.navbar_service.register_navbar_item_provider(
         "left",
-        EXP.metric_name_navbar_provider,
-        priority=30,
+        EXP.save_metric_navbar_provider,
+        priority=40,
     )
     dependencies.navbar_service.register_navbar_item_provider(
         "left",
         EXP.share_button_navbar_provider,
-        priority=40,
+        priority=30,
     )
 
     app = Dash(
         __name__,
-        compress=configs.DASH_COMPRESS_RESPONSES,
+        compress=True,
         server=server,
         external_stylesheets=[
             MDB_CSS,
             dbc.icons.BOOTSTRAP,
             "/assets/explore_page.css",
         ],
-        assets_folder=configs.DASH_ASSETS_FOLDER,
-        assets_url_path=configs.DASH_ASSETS_URL_PATH,
-        serve_locally=configs.DASH_SERVE_LOCALLY,
         title=configs.DASH_TITLE,
         update_title=None,
         suppress_callback_exceptions=True,
         use_pages=True,
         background_callback_manager=get_callback_manager(dependencies),
-        external_scripts=[
-            "https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.2/dragula.min.js"
-        ],
     )
     app._favicon = configs.DASH_FAVICON_PATH
     app.layout = create_webapp_layout(dependencies)
 
-    @server.route(configs.HEALTH_CHECK_PATH)
+    @server.route(P.HEALTHCHECK_PATH)
     def healthcheck():
-        return flask.Response("ok", status=200)
+        dependencies: DEPS.Dependencies = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        )
+        try:
+            # These will fail with exception if there is an underlying issue
+            dependencies.queue.health_check()
+            dependencies.cache.health_check()
+            dependencies.storage.health_check()
+        except Exception as exc:
+            traceback.print_exc()
+            return flask.Response(
+                json.dumps({"status": "fail", "message": str(exc)}), status=500
+            )
+        return flask.Response('{"status": "ok"}', status=200)
 
     return app
 

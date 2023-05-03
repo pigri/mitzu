@@ -38,6 +38,9 @@ class MitzuCache(ABC):
     ) -> List[str]:
         raise NotImplementedError()
 
+    def health_check(self):
+        raise NotImplementedError()
+
 
 @dataclass(frozen=True, init=False)
 class DiskMitzuCache(MitzuCache):
@@ -50,7 +53,7 @@ class DiskMitzuCache(MitzuCache):
         object.__setattr__(
             self,
             "_disk_cache",
-            diskcache.Cache(timeout=10, directory=f"{configs.DISK_CACHE_PATH}/{name}"),
+            diskcache.Cache(timeout=10, directory=f"./storage/{name}"),
         )
         object.__setattr__(
             self,
@@ -109,6 +112,9 @@ class DiskMitzuCache(MitzuCache):
     def get_disk_cache(self) -> diskcache.Cache:
         return self._disk_cache
 
+    def health_check(self):
+        self.get_disk_cache().get("health_check", "ok")
+
 
 @dataclass(frozen=True)
 class RequestCache(MitzuCache):
@@ -146,6 +152,9 @@ class RequestCache(MitzuCache):
     ) -> List[str]:
         return self.delegate.list_keys(prefix, strip_prefix)
 
+    def health_check(self):
+        return self.delegate.health_check()
+
 
 class RedisException(Exception):
     pass
@@ -168,18 +177,12 @@ class RedisMitzuCache(MitzuCache):
             object.__setattr__(self, "_redis", redis_cache)
             object.__setattr__(self, "_global_prefix", global_prefix)
         else:
-            if configs.STORAGE_REDIS_HOST is None:
+            if configs.CACHE_REDIS_URL is None:
                 raise ValueError(
-                    "STORAGE_REDIS_HOST env variable is not set, can't create redis cache."
+                    "CACHE_REDIS_URL env variable is not set, can't create redis cache."
                 )
             object.__setattr__(
-                self,
-                "_redis",
-                redis.Redis(
-                    host=configs.STORAGE_REDIS_HOST,
-                    port=configs.STORAGE_REDIS_PORT,
-                    password=configs.STORAGE_REDIS_PASSWORD,
-                ),
+                self, "_redis", redis.Redis.from_url(url=configs.CACHE_REDIS_URL)
             )
             object.__setattr__(self, "_global_prefix", global_prefix)
 
@@ -229,3 +232,6 @@ class RedisMitzuCache(MitzuCache):
         if H.LOGGER.getEffectiveLevel() == H.logging.DEBUG:
             H.LOGGER.debug(f"LIST prefix={prefix}: {res}")
         return res
+
+    def health_check(self):
+        self._redis.get("health_check")

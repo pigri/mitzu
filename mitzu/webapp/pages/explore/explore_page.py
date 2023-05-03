@@ -27,11 +27,9 @@ import mitzu.webapp.storage as S
 from mitzu.webapp.helper import MITZU_LOCATION, find_event_field_def, CHILDREN
 import mitzu.webapp.pages.paths as P
 import flask
-import dash_mantine_components as dmc
 import traceback
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
-from dash_iconify import DashIconify
 from mitzu.webapp.auth.decorator import restricted
 
 
@@ -42,10 +40,18 @@ from mitzu.webapp.helper import (
 NAVBAR_ID = "explore_navbar"
 SHARE_BUTTON = "share_button"
 CLIPBOARD = "share_clipboard"
-METRIC_NAME_INPUT = "metric_name_input"
+
 METRIC_ID_VALUE = "metric_id_value"
-METRIC_NAME_PROGRESS = "metric_name_progress"
+METRIC_NAME_INPUT = "metric_name_input"
+METRIC_SAVE_DIALOG = "metric_save_dialog"
+METRIC_SAVE_NAVBAR_BUTTON = "metric_save_navbar_button"
+METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON = "metric_save_dialog_save_new_button"
+METRIC_SAVE_DIALOG_CLOSE_BUTTON = "metric_save_dialog_close_button"
+METRIC_SAVE_DIALOG_REPLACE_BUTTON = "metric_save_dialog_replace_button"
+METRIC_SAVE_DIALOG_INFO = "metric_save_dialog_info"
+
 EXPLORE_PAGE = "explore_page"
+
 ALL_INPUT_COMPS = {
     "all_inputs": {
         ES.EVENT_NAME_DROPDOWN: Input(
@@ -87,29 +93,18 @@ def metric_type_navbar_provider(
     return MTH.from_metric_type(MTH.MetricType.from_metric(metric))
 
 
-def metric_name_navbar_provider(
+def save_metric_navbar_provider(
     id: str,
     show_metric_name: bool = False,
-    saved_metric: Optional[WM.SavedMetric] = None,
     **kwargs,
 ) -> Optional[bc.Component]:
     if not show_metric_name:
         return None
-
-    return dmc.TextInput(
-        id=METRIC_NAME_INPUT,
-        debounce=700,
-        placeholder="Name your metric",
-        value=saved_metric.name if saved_metric is not None else None,
-        size="xs",
-        icon=DashIconify(icon="material-symbols:star", color="dark"),
-        rightSection=dmc.Loader(
-            size="xs",
-            color="dark",
-            className="d-none",
-            id=METRIC_NAME_PROGRESS,
-        ),
-        style={"width": "200px"},
+    return dbc.Button(
+        children=[html.I(className="bi bi-save me-1"), "save"],
+        size="sm",
+        color="success",
+        id=METRIC_SAVE_NAVBAR_BUTTON,
     )
 
 
@@ -136,6 +131,69 @@ def share_button_navbar_provider(
     )
 
 
+def create_saved_metric_dialog(saved_metric: Optional[WM.SavedMetric]) -> dbc.Modal:
+    return dbc.Modal(
+        [
+            dbc.ModalHeader(
+                (
+                    "Save new metric"
+                    if saved_metric is None
+                    else "Save new or update metric"
+                ),
+                className="lead",
+            ),
+            dbc.ModalBody(
+                [
+                    dbc.Input(
+                        value=saved_metric.name if saved_metric else "",
+                        type="text",
+                        minLength=4,
+                        maxlength=30,
+                        id=METRIC_NAME_INPUT,
+                        placeholder="Metric name",
+                    ),
+                    html.Div(id=METRIC_SAVE_DIALOG_INFO, className="text-danger mt-1"),
+                ],
+            ),
+            dbc.ModalFooter(
+                [
+                    dbc.Button(
+                        [html.I(className=("bi bi-x me-1")), "Close"],
+                        id=METRIC_SAVE_DIALOG_CLOSE_BUTTON,
+                        size="sm",
+                        color="secondary",
+                        class_name="me-1",
+                    ),
+                    dbc.Button(
+                        [
+                            html.I(className=("bi bi-check me-1")),
+                            ("Save" if saved_metric is None else "Save as new"),
+                        ],
+                        id=METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON,
+                        size="sm",
+                        color="success",
+                    ),
+                    dbc.Button(
+                        [
+                            html.I(className=("bi bi-arrow-counterclockwise me-1")),
+                            "Update",
+                        ],
+                        id=METRIC_SAVE_DIALOG_REPLACE_BUTTON,
+                        size="sm",
+                        color="primary",
+                        disabled=saved_metric is None,
+                        class_name="d-none"
+                        if saved_metric is None
+                        else "d-inline-block",
+                    ),
+                ]
+            ),
+        ],
+        id=METRIC_SAVE_DIALOG,
+        is_open=False,
+    )
+
+
 def create_explore_page(
     query_params: Dict[str, str],
     discovered_project: M.DiscoveredProject,
@@ -145,9 +203,14 @@ def create_explore_page(
     metric: Optional[M.Metric] = None
     saved_metric: Optional[WM.SavedMetric] = None
     if P.PROJECTS_EXPLORE_METRIC_QUERY in query_params:
-        metric = SE.from_compressed_string(
-            query_params[P.PROJECTS_EXPLORE_METRIC_QUERY], discovered_project.project
-        )
+        try:
+            metric = SE.from_compressed_string(
+                query_params[P.PROJECTS_EXPLORE_METRIC_QUERY],
+                discovered_project.project,
+            )
+        except Exception:
+            traceback.print_exc()
+            metric = None
     elif P.PROJECTS_EXPLORE_SAVED_METRIC_QUERY in query_params:
         saved_metric = storage.get_saved_metric(
             query_params[P.PROJECTS_EXPLORE_SAVED_METRIC_QUERY]
@@ -156,6 +219,7 @@ def create_explore_page(
 
     metric_segments_div = MS.from_metric(metric, discovered_project)
     graph_container = create_graph_container(metric, discovered_project.project)
+    save_metric_dialog = create_saved_metric_dialog(saved_metric)
     navbar = NB.create_mitzu_navbar(
         id=NAVBAR_ID,
         show_metric_type=True,
@@ -184,6 +248,7 @@ def create_explore_page(
                 ],
                 fluid=True,
             ),
+            save_metric_dialog,
         ],
         className=EXPLORE_PAGE,
         id=EXPLORE_PAGE,
@@ -411,32 +476,77 @@ def create_callbacks():
 
 
 @callback(
-    Output(METRIC_NAME_PROGRESS, "className"),
-    Input(METRIC_NAME_INPUT, "value"),
+    Input(METRIC_SAVE_NAVBAR_BUTTON, "n_clicks"),
+    Input(METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON, "n_clicks"),
+    Input(METRIC_SAVE_DIALOG_REPLACE_BUTTON, "n_clicks"),
+    Input(METRIC_SAVE_DIALOG_CLOSE_BUTTON, "n_clicks"),
     State(METRIC_ID_VALUE, "children"),
+    State(METRIC_NAME_INPUT, "value"),
     State(MITZU_LOCATION, "href"),
-    background=True,
-    running=[
-        (Output(METRIC_NAME_PROGRESS, "className"), "d-inline-block", "d-none"),
-    ],
+    output={
+        METRIC_SAVE_DIALOG: Output(METRIC_SAVE_DIALOG, "is_open"),
+        METRIC_NAME_INPUT: Output(METRIC_NAME_INPUT, "value"),
+        METRIC_SAVE_DIALOG_INFO: Output(METRIC_SAVE_DIALOG_INFO, "children"),
+    },
     prevent_initial_call=True,
 )
 @restricted
-def handle_metric_name_changed(
-    metric_name: str,
+def handle_save_metric_dialog(
+    navbar_btn_nclicks: int,
+    save_new_nclicks: int,
+    replace_nclicks: int,
+    close_nclicks: int,
     metric_id: str,
+    metric_name: str,
     href: str,
-) -> str:
+) -> Dict[str, Any]:
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     storage = deps.storage
     mitzu_cache = deps.cache
-    parse_result = urlparse(href)
-    sm = storage.get_saved_metric(metric_id)
-    if sm is not None and sm.project is not None:
-        storage.clear_saved_metric(metric_id)
-        if metric_name:
-            storage.set_saved_metric(metric_id, sm.rename(metric_name))
-    else:
+    if ctx.triggered_id == METRIC_SAVE_NAVBAR_BUTTON:
+        original_name = None
+        if metric_id is not None:
+            try:
+                sm = storage.get_saved_metric(metric_id)
+                if sm is not None:
+                    original_name = sm.name
+            except ValueError:
+                original_name = None
+
+        return {
+            METRIC_SAVE_DIALOG: True,
+            METRIC_NAME_INPUT: original_name,
+            METRIC_SAVE_DIALOG_INFO: "",
+        }
+
+    if ctx.triggered_id == METRIC_SAVE_DIALOG_CLOSE_BUTTON:
+        return {
+            METRIC_SAVE_DIALOG: False,
+            METRIC_NAME_INPUT: None,
+            METRIC_SAVE_DIALOG_INFO: "",
+        }
+
+    if not metric_name:
+        return {
+            METRIC_SAVE_DIALOG: no_update,
+            METRIC_NAME_INPUT: no_update,
+            METRIC_SAVE_DIALOG_INFO: "Please name your metric.",
+        }
+    if len(metric_name) < 4:
+        return {
+            METRIC_SAVE_DIALOG: no_update,
+            METRIC_NAME_INPUT: no_update,
+            METRIC_SAVE_DIALOG_INFO: "Metric name must be at least 4 characters.",
+        }
+    if len(metric_name) > 30:
+        return {
+            METRIC_SAVE_DIALOG: no_update,
+            METRIC_NAME_INPUT: no_update,
+            METRIC_SAVE_DIALOG_INFO: "Metric name must be at most 30 characters.",
+        }
+
+    try:
+        parse_result = urlparse(href)
 
         project_id = P.get_path_value(
             P.PROJECTS_EXPLORE_PATH, parse_result.path, P.PROJECT_ID_PATH_PART
@@ -445,16 +555,56 @@ def handle_metric_name_changed(
         metric_v64 = parse_qs(parse_result.query).get(P.PROJECTS_EXPLORE_METRIC_QUERY)
         if metric_v64 is not None:
             metric = SE.from_compressed_string(metric_v64[0], project)
-            hash_key = GH.create_metric_hash_key(metric)
-            result_df = GH.get_metric_result_df(hash_key, metric, mitzu_cache)
-            simple_chart = CHRT.get_simple_chart(metric, result_df)
-            GH.store_rendered_saved_metric(
-                metric_name=metric_name,
-                metric=metric,
-                simple_chart=simple_chart,
-                project=project,
-                storage=storage,
-                metric_id=metric_id,
-            )
 
-    return "d-none"
+        elif metric_id is not None:
+            sm = storage.get_saved_metric(metric_id)
+            if sm is None or sm.metric is None:
+                return {
+                    METRIC_SAVE_DIALOG: True,
+                    METRIC_NAME_INPUT: no_update,
+                    METRIC_SAVE_DIALOG_INFO: "Couldn't save metric. Invalid state.",
+                }
+
+            if (
+                sm.name.strip() == metric_name.strip()
+                and ctx.triggered_id == METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON
+            ):
+                return {
+                    METRIC_SAVE_DIALOG: True,
+                    METRIC_NAME_INPUT: no_update,
+                    METRIC_SAVE_DIALOG_INFO: "Make sure you give a different name to your metric.",
+                }
+            metric = sm.metric
+        else:
+            return {
+                METRIC_SAVE_DIALOG: True,
+                METRIC_NAME_INPUT: no_update,
+                METRIC_SAVE_DIALOG_INFO: "Couldn't save metric. Invalid state.",
+            }
+        hash_key = GH.create_metric_hash_key(metric)
+        result_df = GH.get_metric_result_df(hash_key, metric, mitzu_cache)
+        simple_chart = CHRT.get_simple_chart(metric, result_df)
+
+        if ctx.triggered_id == METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON:
+            metric_id = H.create_unique_id()
+
+        GH.store_rendered_saved_metric(
+            metric_name=metric_name,
+            metric=metric,
+            simple_chart=simple_chart,
+            project=project,
+            storage=storage,
+            metric_id=metric_id,
+        )
+        return {
+            METRIC_SAVE_DIALOG: False,
+            METRIC_NAME_INPUT: no_update,
+            METRIC_SAVE_DIALOG_INFO: "",
+        }
+    except Exception:
+        traceback.print_exc()
+        return {
+            METRIC_SAVE_DIALOG: True,
+            METRIC_NAME_INPUT: no_update,
+            METRIC_SAVE_DIALOG_INFO: "Couldn't save metric. Something went wrong.",
+        }

@@ -21,9 +21,11 @@ def filter_top_groups(
     order_by_col: str,
 ) -> pd.DataFrame:
     max = metric._max_group_count
-    g_users = (
-        pdf[[GA.GROUP_COL, order_by_col]].groupby(GA.GROUP_COL).sum().reset_index()
-    )
+    pdf_simple = pdf[[GA.GROUP_COL, order_by_col]]
+    groupped = pdf_simple.groupby(GA.GROUP_COL)[order_by_col]
+    summed = groupped.sum()
+    g_users = summed.reset_index()
+
     if g_users.shape[0] > 0:
         g_users = g_users.sort_values(order_by_col, ascending=False)
     g_users = g_users.head(max)

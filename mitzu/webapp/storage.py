@@ -594,3 +594,7 @@ class MitzuStorage:
         if record is not None:
             session.delete(record)
             session.commit()
+
+    def health_check(self):
+        session = self._session
+        session.execute("select 1")

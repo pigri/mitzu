@@ -100,7 +100,7 @@ class OAuthAuthorizer:
     _authorized_url_prefixes: List[str] = field(
         default_factory=lambda: [
             P.UNAUTHORIZED_URL,
-            configs.HEALTH_CHECK_PATH,
+            P.HEALTHCHECK_PATH,
             "/assets/",
             "/_dash-update-component",
             "/_dash-component-suites/",
@@ -112,7 +112,7 @@ class OAuthAuthorizer:
         default_factory=lambda: [
             P.UNAUTHORIZED_URL,
             P.SIGN_OUT_URL,
-            configs.HEALTH_CHECK_PATH,
+            P.HEALTHCHECK_PATH,
             "/assets/",
         ]
     )
@@ -132,7 +132,7 @@ class OAuthAuthorizer:
             redirect
             and not redirect.startswith("/assets/")
             and not redirect.startswith("/_dash")
-            and not redirect.startswith(configs.HEALTH_CHECK_PATH)
+            and not redirect.startswith(P.HEALTHCHECK_PATH)
         ):
             self.set_cookie(resp, self._config.redirect_cookie_name, redirect)
         return resp

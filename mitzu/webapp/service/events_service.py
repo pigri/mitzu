@@ -26,7 +26,9 @@ class EventsService:
         self, project_id: str
     ) -> Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]]:
         project = self.storage.get_project(project_id)
-        dp = project._discovered_project.get_value_if_exsits()
+        dp = project._discovered_project.get_value()
+        if dp is None:
+            return {}
         self.storage.populate_discovered_project(dp)
         return dp.definitions
 

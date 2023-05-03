@@ -37,7 +37,7 @@ class Dependencies:
             notification_service = NS.DummyNotificationService()
 
         delegate_cache: C.MitzuCache
-        if configs.STORAGE_REDIS_HOST is not None:
+        if configs.CACHE_REDIS_URL is not None:
             delegate_cache = C.RedisMitzuCache(global_prefix=configs.CACHE_PREFIX)
         else:
             delegate_cache = C.DiskMitzuCache(
@@ -64,24 +64,20 @@ class Dependencies:
 
         auth_config = A.AuthConfig(
             oauth=oauth_config,
-            token_validator=A.JWTTokenValidator.create_from_oauth_config(oauth_config)
-            if oauth_config is not None
-            else None,
+            token_validator=(
+                A.JWTTokenValidator.create_from_oauth_config(oauth_config)
+                if oauth_config is not None
+                else None
+            ),
             token_signing_key=configs.AUTH_JWT_SECRET,
             session_timeout=configs.AUTH_SESSION_TIMEOUT,
             user_service=user_service,
         )
         authorizer = A.OAuthAuthorizer.create(auth_config)
-
-        queue: C.MitzuCache
-        if configs.QUEUE_REDIS_HOST is not None:
-            queue = C.RedisMitzuCache()
-        else:
-            queue = C.DiskMitzuCache("queue")
+        queue = C.DiskMitzuCache("queue")
 
         # Adding cache layer over storage
         events_service = E.EventsService(storage)
-
         secret_service = SS.SecretService()
 
         return Dependencies(

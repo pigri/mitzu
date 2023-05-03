@@ -36,6 +36,8 @@ UNAUTHORIZED_URL = "/auth/unauthorized"
 REDIRECT_TO_LOGIN_URL = "/auth/redirect-to-login"
 OAUTH_CODE_URL = "/auth/oauth"
 
+HEALTHCHECK_PATH = "/ping"
+
 
 class PathException(Exception):
     pass

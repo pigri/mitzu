@@ -44,5 +44,17 @@ def get_segment_project(segment: M.Segment) -> M.Project:
         raise ValueError(f"Segment is of invalid type: {type(segment)}")
 
 
+def get_metric_group_by(metric: M.Metric) -> Optional[M.EventFieldDef]:
+    if isinstance(metric, M.SegmentationMetric):
+        return metric._segment._group_by
+    elif (
+        isinstance(metric, M.ConversionMetric) and len(metric._conversion._segments) > 0
+    ):
+        return metric._conversion._segments[0]._group_by
+    elif isinstance(metric, M.RetentionMetric):
+        return metric._initial_segment._group_by
+    return None
+
+
 def create_unique_id():
     return str(uuid4())[-12:]

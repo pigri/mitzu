@@ -9,6 +9,7 @@ import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted_layout
 import traceback
+import mitzu.model as M
 
 register_page(
     __name__,
@@ -30,10 +31,7 @@ def layout(project_id: str, **query_params) -> bc.Component:
 
         discovered_project = project._discovered_project.get_value()
         if discovered_project is None:
-            return html.Div(
-                "Project have not been discovered yet",
-                className="d-flex text-center lead",
-            )
+            discovered_project = M.DiscoveredProject({}, project=project)
 
         return EXP.create_explore_page(
             query_params=query_params,

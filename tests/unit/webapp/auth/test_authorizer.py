@@ -321,7 +321,7 @@ def test_sign_out_with_sign_out_url():
 
 
 def test_healthcheck_request():
-    with app.test_request_context(configs.HEALTH_CHECK_PATH):
+    with app.test_request_context(P.HEALTHCHECK_PATH):
         resp = app.preprocess_request()
         assert resp is None
 

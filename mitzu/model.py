@@ -337,7 +337,7 @@ class TimeWindow:
         if self.period == TimeGroup.QUARTER:
             return relativedelta(months=self.value * 4)
         if self.period == TimeGroup.YEAR:
-            return relativedelta(year=self.value)
+            return relativedelta(years=self.value)
         raise Exception(f"Unsupported relative delta value: {self.period}")
 
 

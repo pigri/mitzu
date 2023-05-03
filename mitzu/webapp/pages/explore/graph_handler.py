@@ -52,22 +52,11 @@ GRAPH_REFRESHER_INTERVAL = "graph_refresher_interval"
 
 
 def create_graph_container() -> bc.Component:
-    if configs.BACKGROUND_CALLBACK:
-        return html.Div(
-            id=GRAPH_CONTAINER,
-            children=[],
-            className=GRAPH_CONTAINER,
-        )
-    else:
-        return html.Div(
-            dcc.Loading(
-                id=GRAPH_CONTAINER,
-                children=[],
-                color="#287bb5",
-                type="dot",
-                className=GRAPH_CONTAINER,
-            ),
-        )
+    return html.Div(
+        id=GRAPH_CONTAINER,
+        children=[],
+        className=GRAPH_CONTAINER,
+    )
 
 
 def create_metric_hash_key(metric: M.Metric) -> str:
@@ -79,6 +68,9 @@ def create_metric_hash_key(metric: M.Metric) -> str:
     metric_dict["co"]["ct"] = None
     metric_dict["co"]["cat"] = None
     metric_dict["id"] = None
+    # The project_id is not part of the query param, but the path.
+    # However we need to use the ID as well for caching, some project may contain the same events.
+    metric_dict["prj"] = metric.get_project().get_id()
 
     return hashlib.md5(json.dumps(metric_dict).encode("ascii")).hexdigest()
 
@@ -196,7 +188,7 @@ def create_callbacks():
             metric_id=State(EXP.METRIC_ID_VALUE, "children"),
         ),
         interval=configs.GRAPH_POLL_INTERVAL_MS,
-        background=configs.BACKGROUND_CALLBACK,
+        background=True,
         running=[
             (
                 Output(TH.GRAPH_REFRESH_BUTTON, "disabled"),
@@ -241,7 +233,8 @@ def create_callbacks():
             if dp is None:
                 return html.Div(
                     [
-                        "Your project haven't been discovered yet",
+                        "Your project haven't been discovered yet. ",
+                        html.Br(),
                         dcc.Link(
                             f"Discover {project.project_name}",
                             href=P.create_path(
@@ -259,7 +252,6 @@ def create_callbacks():
             if metric is None:
                 return html.Div("Select an event", id=GRAPH, className=MESSAGE)
 
-            should_save_metrics = all_inputs[EXP.METRIC_NAME_INPUT] is not None
             simple_chart: CO.SimpleChart
 
             hash_key = create_metric_hash_key(metric)
@@ -275,7 +267,7 @@ def create_callbacks():
                     "Click run to execute the query", id=GRAPH, className=MESSAGE
                 )
 
-            if graph_content_type == TH.CHART_VAL or should_save_metrics:
+            if graph_content_type == TH.CHART_VAL:
                 result_df = get_metric_result_df(hash_key, metric, mitzu_cache)
                 simple_chart = CHRT.get_simple_chart(metric, result_df)
 
@@ -285,16 +277,6 @@ def create_callbacks():
                 res = create_table(metric, hash_key, mitzu_cache)
             elif graph_content_type == TH.SQL_VAL:
                 res = create_sql_area(metric)
-
-            if should_save_metrics and metric_name is not None:
-                store_rendered_saved_metric(
-                    metric_name=metric_name,
-                    metric=metric,
-                    simple_chart=simple_chart,
-                    project=project,
-                    storage=storage,
-                    metric_id=metric_id,
-                )
 
             return res
         except Exception as exc:
