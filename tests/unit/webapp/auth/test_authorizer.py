@@ -13,7 +13,6 @@ from mitzu.webapp.auth.authorizer import (
     OAuthAuthorizer,
     OAuthConfig,
     AuthConfig,
-    HOME_URL,
     JWT_ALGORITHM,
 )
 import mitzu.webapp.model as WM
@@ -126,7 +125,7 @@ def test_unauthorized_request_redirected_to_unauthorized_page():
     with app.test_request_context("/example_project?m=params"):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(
-            resp, expected_redirect_cookie='"/example_project?m=params"'
+            resp, expected_redirect_cookie='"http://localhost/example_project?m=params"'
         )
 
 
@@ -182,7 +181,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://localhost/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -191,7 +190,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == HOME_URL
+        assert resp.headers["Location"] == "http://localhost/"
         assert_auth_token(resp, user_id)
 
 
@@ -226,7 +225,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://localhost/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -265,7 +264,7 @@ def test_oauth_code_url_called_with_invalid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://localhost/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -281,7 +280,9 @@ def test_invalid_forged_tokens_are_rejected():
         "/", headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"}
     ):
         resp = app.preprocess_request()
-        assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/")
+        assert_redirected_to_unauthorized_page(
+            resp, expected_redirect_cookie="http://localhost/"
+        )
 
 
 def test_sign_out_without_sign_out_url():
@@ -363,7 +364,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://localhost/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -381,7 +382,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://localhost/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -390,7 +391,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == HOME_URL
+        assert resp.headers["Location"] == "http://localhost/"
         assert_auth_token(resp, user_id)
 
 
@@ -484,4 +485,53 @@ def test_unauthorized_when_user_is_deleted():
         headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"},
     ):
         resp = app.preprocess_request()
-        assert_redirected_to_unauthorized_page(resp, expected_redirect_cookie="/")
+        assert_redirected_to_unauthorized_page(
+            resp, expected_redirect_cookie="http://localhost/"
+        )
+
+
+def test_login_local_user_unauthorized():
+    auth_config = AuthConfig(
+        user_service=user_service,
+        token_signing_key="test",
+        oauth=None,
+        token_validator=None,
+    )
+    authorizer = OAuthAuthorizer.create(auth_config)
+    with app.test_request_context():
+        # None means unauthorized
+        assert authorizer.login_local_user("a@b.c", "password") is None
+
+
+def test_login_local_user_authorized():
+    auth_config = AuthConfig(
+        user_service=user_service,
+        token_signing_key="test",
+        oauth=None,
+        token_validator=None,
+    )
+    authorizer = OAuthAuthorizer.create(auth_config)
+    email = "a@b.c"
+    password = "password"
+    user_service.new_user(email, password, password)
+    with app.test_request_context():
+        assert authorizer.login_local_user(email, password) == "http://localhost"
+
+
+def test_login_local_user_authorized_and_redirected_based_on_a_cookie():
+    auth_config = AuthConfig(
+        user_service=user_service,
+        token_signing_key="test",
+        oauth=None,
+        token_validator=None,
+    )
+    authorizer = OAuthAuthorizer.create(auth_config)
+    email = "a@b.c"
+    password = "password"
+    user_service.new_user(email, password, password)
+    redirect_to = "/dashboards"
+    with app.test_request_context(
+        "/",
+        headers={"Cookie": f"{authorizer._config.redirect_cookie_name}={redirect_to}"},
+    ):
+        assert authorizer.login_local_user(email, password) == redirect_to

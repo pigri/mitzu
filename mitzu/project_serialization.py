@@ -35,7 +35,7 @@ def serialize_discovered_project(dp: M.DiscoveredProject) -> str:
     project_binary = pickle.dumps(serializable)
     data = {
         "version": DISCOVERED_PROJECT_FILE_VERSION,
-        "project": base64.b64encode(project_binary).decode("UTF-8"),
+        "project": base64.urlsafe_b64encode(project_binary).decode("UTF-8"),
     }
     return json.dumps(data)
 
@@ -53,7 +53,7 @@ def deserialize_discovered_project(raw_data: bytes) -> M.DiscoveredProject:
             "Try discovering the project again."
         ) from e
 
-    res: Dict[str, Any] = pickle.loads(base64.b64decode(data["project"]))
+    res: Dict[str, Any] = pickle.loads(base64.urlsafe_b64decode(data["project"]))
 
     project: M.Project = res[PROJECT]
 

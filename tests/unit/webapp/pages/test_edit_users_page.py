@@ -21,9 +21,10 @@ class RequestContextLoggedInAsRootUser:
         self._server = server
 
     def __enter__(self):
+        configs.AUTH_ROOT_USER_EMAIL = "root@local"
         cache = InMemoryCache()
         storage = S.MitzuStorage()
-        user_service = US.UserService(storage, root_password=configs.AUTH_ROOT_PASSWORD)
+        user_service = US.UserService(storage)
 
         auth_config = A.AuthConfig(
             oauth=None,

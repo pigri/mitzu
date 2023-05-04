@@ -571,7 +571,7 @@ class SavedMetricStorageRecord(Base):
             yaxis_ticksuffix=data["yaxis_ticksuffix"],
             hover_mode=data["hover_mode"],
             chart_type=M.SimpleChartType(data["chart_type"]),
-            dataframe=pickle.loads(base64.b64decode(data["dataframe"])),
+            dataframe=pickle.loads(base64.urlsafe_b64decode(data["dataframe"])),
         )
 
     @classmethod
@@ -588,7 +588,7 @@ class SavedMetricStorageRecord(Base):
             "yaxis_ticksuffix": chart.yaxis_ticksuffix,
             "hover_mode": chart.hover_mode,
             "chart_type": chart.chart_type.value,
-            "dataframe": base64.b64encode(f.read()).decode(),
+            "dataframe": base64.urlsafe_b64encode(f.read()).decode(),
             # FIXME: label funcs are not serialized
         }
 

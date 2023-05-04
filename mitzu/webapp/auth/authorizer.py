@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import dash
-import os
 import time
 import traceback
 from abc import ABC, abstractmethod
@@ -11,7 +9,7 @@ import werkzeug
 import jwt
 import requests
 import base64
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 from urllib import parse
 from mitzu.helper import LOGGER
 import mitzu.webapp.pages.paths as P
@@ -19,8 +17,6 @@ import mitzu.webapp.configs as configs
 import mitzu.webapp.service.user_service as U
 import mitzu.webapp.model as WM
 
-HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
-MITZU_WEBAPP_URL = os.getenv("MITZU_WEBAPP_URL", HOME_URL)
 JWT_ALGORITHM = "HS256"
 JWT_CLAIM_ROLE = "rol"
 
@@ -83,11 +79,11 @@ class JWTTokenValidator(TokenValidator):
 class AuthConfig:
     user_service: U.UserService
 
-    token_cookie_name: str = field(default_factory=lambda: "auth-token")
-    redirect_cookie_name: str = field(default_factory=lambda: "redirect-to")
+    token_cookie_name: str = "auth-token"
+    redirect_cookie_name: str = "redirect-to"
 
-    session_timeout: int = field(default_factory=lambda: 7 * 24 * 60 * 60)
-    token_signing_key: str = field(default_factory=lambda: configs.AUTH_JWT_SECRET)
+    session_timeout: int = 7 * 24 * 60 * 60
+    token_signing_key: str = configs.AUTH_JWT_SECRET
 
     oauth: Optional[OAuthConfig] = None
     token_validator: Optional[TokenValidator] = None
@@ -117,6 +113,10 @@ class OAuthAuthorizer:
         ]
     )
 
+    def get_home_url(self):
+        url = flask.request.host_url
+        return url[:-1] if url.endswith("/") else url
+
     @classmethod
     def create(cls, config: AuthConfig) -> OAuthAuthorizer:
         return OAuthAuthorizer(
@@ -124,17 +124,22 @@ class OAuthAuthorizer:
         )
 
     def _get_unauthenticated_response(
-        self, redirect: Optional[str] = None
+        self, redirect_url: Optional[str] = None
     ) -> werkzeug.wrappers.response.Response:
         resp = self._redirect(P.UNAUTHORIZED_URL)
         self.clear_cookie(resp, self._config.token_cookie_name)
-        if (
-            redirect
-            and not redirect.startswith("/assets/")
-            and not redirect.startswith("/_dash")
-            and not redirect.startswith(P.HEALTHCHECK_PATH)
-        ):
-            self.set_cookie(resp, self._config.redirect_cookie_name, redirect)
+        if redirect_url:
+            url = parse.urlparse(redirect_url)
+
+            if (
+                url.path
+                and not url.path.startswith("/assets/")
+                and not url.path.startswith("/_dash")
+                and not url.path.startswith("/_reload-hash")
+                and not url.path.startswith("/auth")
+                and not url.path.startswith(P.HEALTHCHECK_PATH)
+            ):
+                self.set_cookie(resp, self._config.redirect_cookie_name, redirect_url)
         return resp
 
     def _redirect(self, location: str) -> werkzeug.wrappers.response.Response:
@@ -168,7 +173,7 @@ class OAuthAuthorizer:
             "grant_type": "authorization_code",
             "client_id": self._config.oauth.client_id,
             "code": auth_code,
-            "redirect_uri": f"{HOME_URL}{P.OAUTH_CODE_URL}",
+            "redirect_uri": f"{self.get_home_url()}{P.OAUTH_CODE_URL}",
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -249,7 +254,7 @@ class OAuthAuthorizer:
                 try:
                     id_token = self._get_identity_token(code)
                     redirect_url = flask.request.cookies.get(
-                        self._config.redirect_cookie_name, MITZU_WEBAPP_URL
+                        self._config.redirect_cookie_name, request.host_url
                     )
 
                     user_email = self._validate_foreign_token(id_token)
@@ -297,10 +302,7 @@ class OAuthAuthorizer:
         if auth_token and self._validate_token(auth_token) is not None:
             return None
 
-        redirect_url = request.path
-        if len(request.query_string) > 0:
-            redirect_url += "?" + request.query_string.decode("utf-8")
-        return self._get_unauthenticated_response(redirect_url)
+        return self._get_unauthenticated_response(request.url)
 
     def refresh_auth_token(
         self, request: flask.Request, resp: flask.Response
@@ -335,19 +337,25 @@ class OAuthAuthorizer:
 
         return WM.Role(claims[JWT_CLAIM_ROLE])
 
-    def login_local_user(self, email: str, password: str) -> bool:
+    def login_local_user(
+        self, email: str, password: str, response: Optional[flask.Response] = None
+    ) -> Optional[str]:
         if self._config.oauth:
             raise ValueError("Password login is not enabled, need to use SSO")
 
         user = self._config.user_service.get_user_by_email_and_password(email, password)
         if user is None:
-            return False
+            return None
 
         token = self._generate_new_token_for_identity(user.id, role=user.role)
-        self.set_cookie(
-            dash.callback_context.response, self._config.token_cookie_name, token
+
+        if response:
+            self.set_cookie(response, self._config.token_cookie_name, token)
+            self.clear_cookie(response, self._config.redirect_cookie_name)
+
+        return flask.request.cookies.get(
+            self._config.redirect_cookie_name, self.get_home_url()
         )
-        return True
 
     def get_current_user_id(self) -> Optional[str]:
         auth_token = flask.request.cookies.get(self._config.token_cookie_name)

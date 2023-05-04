@@ -10,6 +10,7 @@ from dash import (
     html,
     no_update,
     ALL,
+    callback_context,
 )
 import dash_bootstrap_components as dbc
 import mitzu.webapp.configs as configs
@@ -132,7 +133,10 @@ def login_with_local_users() -> List:
 
 
 @callback(
-    [Output(LOCATION, "pathname"), Output(LOGIN_ERROR, "children")],
+    [
+        Output(LOCATION, "href"),
+        Output(LOGIN_ERROR, "children"),
+    ],
     Input(BUTTON_LOGIN, "n_clicks"),
     State({"type": INDEX_TYPE, "index": ALL}, "value"),
     prevent_initial_call=True,
@@ -142,8 +146,11 @@ def login(n_click: int, inputs: List[str]):
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     ).authorizer
 
-    if authorizer.login_local_user(inputs[0], inputs[1]):
-        return (P.HOME_PATH, "")
+    redirect_when_authorized = authorizer.login_local_user(
+        inputs[0], inputs[1], callback_context.response
+    )
+    if redirect_when_authorized:
+        return (redirect_when_authorized, "")
     return (
         no_update,
         html.P(

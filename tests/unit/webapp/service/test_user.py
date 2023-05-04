@@ -15,31 +15,32 @@ import mitzu.webapp.service.notification_service as NS
 
 
 def create_service(
-    root_password: Optional[str] = None,
     notification_service: Optional[NS.NotificationService] = None,
 ) -> UserService:
     storage = S.MitzuStorage()
-    return UserService(
-        storage, root_password=root_password, notification_service=notification_service
-    )
+    return UserService(storage, notification_service=notification_service)
 
 
-def test_service_creates_root_user_if_password_is_set():
+def test_service_creates_root_if_doesnt_exist():
+    assert len(S.MitzuStorage().list_users()) == 0
+    configs.AUTH_ROOT_USER_EMAIL = "root@local"
+    configs.AUTH_ROOT_PASSWORD = "testuser"
     service = create_service()
-    assert len(service.list_users()) == 0
-
-    service = create_service(root_password="testtest")
+    assert len(service.list_users()) == 1
+    service = create_service()
     assert len(service.list_users()) == 1
     root_user = service.get_user_by_email_and_password(
-        configs.AUTH_ROOT_USER_EMAIL, "testtest"
+        configs.AUTH_ROOT_USER_EMAIL, "testuser"
     )
     assert root_user is not None
     assert root_user.email == configs.AUTH_ROOT_USER_EMAIL
 
 
 def test_create_new_user():
+    assert len(S.MitzuStorage().list_users()) == 0
     service = create_service()
-    assert len(service.list_users()) == 0
+
+    assert len(service.list_users()) == 1
 
     email = "a@b.c"
     with pytest.raises(UserPasswordAndConfirmationDoNotMatch):
@@ -91,7 +92,7 @@ def test_update_password():
 
 
 def test_update_role():
-    service = create_service(root_password="password")
+    service = create_service()
     email = "a@b.c"
     password = "password"
 

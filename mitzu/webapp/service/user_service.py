@@ -6,6 +6,7 @@ import mitzu.webapp.storage as S
 import mitzu.webapp.configs as configs
 import mitzu.webapp.model as WM
 import mitzu.webapp.service.notification_service as NS
+import mitzu.helper as H
 
 
 class UserNotFoundException(Exception):
@@ -54,7 +55,6 @@ class UserService:
     def __init__(
         self,
         storage: S.MitzuStorage,
-        root_password: Optional[str] = None,
         notification_service: Optional[NS.NotificationService] = None,
     ):
         self._storage = storage
@@ -64,19 +64,16 @@ class UserService:
         else:
             self._notification_service = NS.DummyNotificationService()
 
-        has_admin = False
-        for user in self.list_users():
-            if user.role == WM.Role.ADMIN:
-                has_admin = True
-                break
-
-        if root_password and not has_admin:
-            self.new_user(
-                configs.AUTH_ROOT_USER_EMAIL,
-                root_password,
-                root_password,
-                role=WM.Role.ADMIN,
-            )
+        try:
+            if configs.AUTH_ROOT_USER_EMAIL:
+                self.new_user(
+                    configs.AUTH_ROOT_USER_EMAIL,
+                    configs.AUTH_ROOT_PASSWORD,
+                    configs.AUTH_ROOT_PASSWORD,
+                    role=WM.Role.ADMIN,
+                )
+        except UserAlreadyExists:
+            H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} already exists.")
 
     def list_users(self) -> List[WM.User]:
         return self._storage.list_users()

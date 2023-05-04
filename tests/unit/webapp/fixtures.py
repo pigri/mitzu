@@ -50,7 +50,7 @@ def dependencies() -> DEPS.Dependencies:
     storage = S.MitzuStorage()
 
     evt_service = E.EventsService(storage)
-    user_service = US.UserService(storage, root_password="testuser")
+    user_service = US.UserService(storage)
 
     auth_config = A.AuthConfig(
         oauth=None,

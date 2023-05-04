@@ -58,7 +58,6 @@ class Dependencies:
 
         user_service = U.UserService(
             storage,
-            root_password=configs.AUTH_ROOT_PASSWORD,
             notification_service=notification_service,
         )
 

@@ -188,8 +188,12 @@ def saved_metric(draw, metric_project: Optional[M.Project] = None):
     return WM.SavedMetric(
         name=draw(simple_string()),
         chart=draw(chart()),
-        image_base64=str(base64.b64encode(draw(st.binary(min_size=10, max_size=100)))),
-        small_base64=str(base64.b64encode(draw(st.binary(min_size=10, max_size=100)))),
+        image_base64=str(
+            base64.urlsafe_b64encode(draw(st.binary(min_size=10, max_size=100)))
+        ),
+        small_base64=str(
+            base64.urlsafe_b64encode(draw(st.binary(min_size=10, max_size=100)))
+        ),
         project=p,
         metric_json="{}",  # FIXME: this is good metric to start with
     )

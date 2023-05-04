@@ -306,7 +306,7 @@ def from_dict(value: Dict, project: M.Project) -> M.Metric:
 def dict_to_compressed_string(metric_dict: Dict) -> str:
     metric_json = json.dumps(metric_dict)
     zipped = zlib.compress(metric_json.encode("utf-8"), 9)
-    return base64.b64encode(zipped).decode("utf-8")
+    return base64.urlsafe_b64encode(zipped).decode("utf-8")
 
 
 def to_compressed_string(metric: M.Metric) -> str:
@@ -314,7 +314,7 @@ def to_compressed_string(metric: M.Metric) -> str:
 
 
 def from_compressed_string(compressed_str: str, project: M.Project) -> M.Metric:
-    zipped = base64.b64decode(compressed_str)
+    zipped = base64.urlsafe_b64decode(compressed_str)
     unzipped = zlib.decompress(zipped)
     val = json.loads(unzipped)
     return from_dict(val, project)
