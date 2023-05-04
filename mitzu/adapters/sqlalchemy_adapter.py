@@ -533,7 +533,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     or (len(field_values) == 1 and field_values[0])
                     or (len(field_values) > 1)
                 ):
-                    vals = [v for v in field_values if v] if field_values else None
+                    vals = (
+                        [v for v in field_values if v is not None]
+                        if field_values
+                        else None
+                    )
                     field_defs[f] = M.EventFieldDef(
                         _event_name=evt,
                         _field=f,

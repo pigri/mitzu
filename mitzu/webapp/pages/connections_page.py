@@ -34,25 +34,30 @@ def layout() -> bc.Component:
             NB.create_mitzu_navbar("explore-navbar"),
             dbc.Container(
                 children=[
-                    html.H4("Choose from connections:", className="card-title"),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                html.H4("Manage connections", className="card-title"),
+                                width="auto",
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [
+                                        html.B(className="bi bi-plus-circle me-1"),
+                                        "New Connection",
+                                    ],
+                                    size="sm",
+                                    color="primary",
+                                    href=P.CONNECTIONS_CREATE_PATH,
+                                ),
+                                width="auto",
+                                class_name="ms-auto",
+                            ),
+                        ],
+                    ),
                     html.Hr(),
                     create_connections_container(connections),
                     html.Hr(),
-                    dbc.Row(
-                        dbc.Col(
-                            dbc.Button(
-                                [
-                                    html.B(className="bi bi-plus-circle"),
-                                    " New Warehouse Connection",
-                                ],
-                                size="sm",
-                                color="primary",
-                                href=P.CONNECTIONS_CREATE_PATH,
-                            ),
-                            lg=3,
-                            sm=12,
-                        )
-                    ),
                 ]
             ),
         ]
@@ -90,35 +95,36 @@ def create_connection_selector(connection: M.Connection) -> bc.Component:
 
     project_jumbotron = dbc.Col(
         dbc.Card(
-            dbc.CardBody(
-                [
-                    html.H4(
-                        H.value_to_label(connection.connection_name),
-                        className="card-title",
-                        id=CONNECTION_TITLE,
-                    ),
-                    html.Hr(),
-                    html.Img(
-                        src=f"/assets/warehouse/{str(connection.connection_type.name).lower()}.png",
-                        height=40,
-                    ),
-                    *[html.Div(d) for d in details],
-                    html.Hr(),
+            [
+                dbc.CardHeader(
+                    H.value_to_label(connection.connection_name),
+                    class_name="lead",
+                    id=CONNECTION_TITLE,
+                ),
+                dbc.CardBody(
                     html.Div(
-                        [
-                            dbc.Button(
-                                "Manage",
-                                size="sm",
-                                color="primary",
-                                href=P.create_path(
-                                    P.CONNECTIONS_MANAGE_PATH,
-                                    connection_id=connection.id,
-                                ),
+                        children=[
+                            html.Img(
+                                src=f"/assets/warehouse/{str(connection.connection_type.name).lower()}.png",
+                                height=40,
                             ),
+                            *[html.Div(d) for d in details],
                         ],
+                        style={"min-height": "100px"},
+                    )
+                ),
+                dbc.CardFooter(
+                    dbc.Button(
+                        "Manage",
+                        size="sm",
+                        color="primary",
+                        href=P.create_path(
+                            P.CONNECTIONS_MANAGE_PATH,
+                            connection_id=connection.id,
+                        ),
                     ),
-                ]
-            ),
+                ),
+            ],
             class_name="mb-3",
         ),
         lg=3,

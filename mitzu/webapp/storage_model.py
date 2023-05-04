@@ -22,7 +22,6 @@ def serialize_field(field: M.Field) -> str:
             "_sub_fields": [serialize_field(f) for f in field._sub_fields]
             if field._sub_fields
             else None,
-            "_parent": serialize_field(field._parent) if field._parent else None,
         }
     )
 
@@ -33,7 +32,6 @@ def deserialize_field(serialized: str) -> M.Field:
         _name=data["_name"],
         _type=M.DataType(data["_type"]),
         _sub_fields=data["_sub_fields"],
-        _parent=data["_parent"],
     )
 
 
@@ -494,10 +492,10 @@ class EventDefStorageRecord(Base):
         self, event_data_table_id: str, event_def: M.EventDef
     ) -> EventDefStorageRecord:
         fields = []
-        for field_name, field_def in event_def._fields.items():
+        for field, field_def in event_def._fields.items():
             fields.append(
                 {
-                    "_key": serialize_field(field_name),
+                    "_key": serialize_field(field),
                     "_event_name": field_def._event_name,
                     "_field": serialize_field(field_def._field),
                     "_event_data_table_id": field_def._event_data_table.id,

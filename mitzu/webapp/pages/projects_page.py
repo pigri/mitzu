@@ -102,43 +102,47 @@ def create_project_selector(project_id: str, deps: DEPS.Dependencies) -> bc.Comp
     events = len(discovered_project.get_all_event_names()) if discovered_project else 0
     project_jumbotron = dbc.Col(
         dbc.Card(
-            dbc.CardBody(
-                [
-                    html.H4(
-                        project.project_name,
-                        className="card-title",
-                        id=PROJECT_CARD_TITLE,
-                    ),
-                    html.Hr(),
-                    html.Img(
-                        src=f"/assets/warehouse/{str(project.connection.connection_type.name).lower()}.png",
-                        height=40,
-                    ),
-                    html.P(f"This project has {events} events in {tables} datasets."),
-                    html.P(project.description),
+            [
+                dbc.CardHeader(
+                    project.project_name, class_name="lead", id=PROJECT_CARD_TITLE
+                ),
+                dbc.CardBody(
                     html.Div(
-                        [
-                            dbc.Button(
-                                "Explore",
-                                color="primary",
-                                class_name="me-3",
-                                size="sm",
-                                href=P.create_path(
-                                    P.PROJECTS_EXPLORE_PATH, project_id=project_id
-                                ),
+                        children=[
+                            html.Img(
+                                src=f"/assets/warehouse/{str(project.connection.connection_type.name).lower()}.png",
+                                height=40,
                             ),
-                            dbc.Button(
-                                "Manage",
-                                size="sm",
-                                color="secondary",
-                                href=P.create_path(
-                                    P.PROJECTS_MANAGE_PATH, project_id=project_id
-                                ),
+                            html.P(
+                                f"This project has {events} events in {tables} datasets."
                             ),
+                            html.P(project.description),
                         ],
-                    ),
-                ]
-            ),
+                        style={"min-height": "100px"},
+                    )
+                ),
+                dbc.CardFooter(
+                    children=[
+                        dbc.Button(
+                            "Explore",
+                            color="primary",
+                            class_name="me-3",
+                            size="sm",
+                            href=P.create_path(
+                                P.PROJECTS_EXPLORE_PATH, project_id=project_id
+                            ),
+                        ),
+                        dbc.Button(
+                            "Manage",
+                            size="sm",
+                            color="secondary",
+                            href=P.create_path(
+                                P.PROJECTS_MANAGE_PATH, project_id=project_id
+                            ),
+                        ),
+                    ],
+                ),
+            ],
             class_name="mb-3",
         ),
         lg=3,
