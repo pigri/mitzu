@@ -8,6 +8,8 @@ import flask
 from dash import Dash, DiskcacheManager, dcc, html, page_container
 from dash.long_callback.managers import BaseLongCallbackManager
 import mitzu.webapp.cache as C
+import mitzu.webapp.model as WM
+import mitzu.helper as H
 
 import mitzu.webapp.configs as configs
 import mitzu.webapp.dependencies as DEPS
@@ -15,6 +17,7 @@ import mitzu.webapp.storage as S
 import mitzu.webapp.offcanvas as OC
 import mitzu.webapp.pages.explore.explore_page as EXP
 import mitzu.webapp.pages.paths as P
+import mitzu.webapp.service.user_service as US
 from mitzu.helper import LOGGER
 import json
 import traceback
@@ -61,6 +64,18 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         return response
 
     with server.app_context():
+        try:
+            if configs.AUTH_ROOT_USER_EMAIL:
+                dependencies.user_service.new_user(
+                    configs.AUTH_ROOT_USER_EMAIL,
+                    configs.AUTH_ROOT_PASSWORD,
+                    configs.AUTH_ROOT_PASSWORD,
+                    role=WM.Role.ADMIN,
+                )
+                H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} is created.")
+        except US.UserAlreadyExists:
+            H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} already exists.")
+
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
         if configs.SETUP_SAMPLE_PROJECT:
             S.setup_sample_project(dependencies.storage)

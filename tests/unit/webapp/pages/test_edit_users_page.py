@@ -25,6 +25,12 @@ class RequestContextLoggedInAsRootUser:
         cache = InMemoryCache()
         storage = S.MitzuStorage()
         user_service = US.UserService(storage)
+        user_service.new_user(
+            configs.AUTH_ROOT_USER_EMAIL,
+            configs.AUTH_ROOT_PASSWORD,
+            configs.AUTH_ROOT_PASSWORD,
+            WM.Role.ADMIN,
+        )
 
         auth_config = A.AuthConfig(
             oauth=None,

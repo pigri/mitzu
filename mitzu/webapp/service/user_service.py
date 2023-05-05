@@ -3,10 +3,8 @@ import random
 import string
 import hashlib
 import mitzu.webapp.storage as S
-import mitzu.webapp.configs as configs
 import mitzu.webapp.model as WM
 import mitzu.webapp.service.notification_service as NS
-import mitzu.helper as H
 
 
 class UserNotFoundException(Exception):
@@ -63,17 +61,6 @@ class UserService:
             self._notification_service = notification_service
         else:
             self._notification_service = NS.DummyNotificationService()
-
-        try:
-            if configs.AUTH_ROOT_USER_EMAIL:
-                self.new_user(
-                    configs.AUTH_ROOT_USER_EMAIL,
-                    configs.AUTH_ROOT_PASSWORD,
-                    configs.AUTH_ROOT_PASSWORD,
-                    role=WM.Role.ADMIN,
-                )
-        except UserAlreadyExists:
-            H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} already exists.")
 
     def list_users(self) -> List[WM.User]:
         return self._storage.list_users()
