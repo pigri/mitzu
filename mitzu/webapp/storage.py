@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-
+from mitzu.helper import LOGGER
 import mitzu.model as M
 import mitzu.webapp.model as WM
 import mitzu.webapp.storage_model as SM
@@ -100,6 +100,7 @@ class MitzuStorage:
             return self.__create_new_db_session()
 
     def __init_schema(self):
+        LOGGER.info("Initializing the database schema")
         tables = []
         for storage_record in [
             SM.UserStorageRecord,
