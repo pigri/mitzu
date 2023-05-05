@@ -82,7 +82,6 @@ class MitzuStorage:
         self.__pid = None
         self.__is_sqlite = connection_string.startswith("sqlite")
         self.__connection_string = connection_string
-        self.__init_schema()
 
     def __create_new_db_session(self) -> Session:
         session = SA.orm.sessionmaker(bind=self._engine)()
@@ -116,7 +115,7 @@ class MitzuStorage:
         else:
             return self.__create_new_db_session()
 
-    def __init_schema(self):
+    def init_db_schema(self):
         LOGGER.info("Initializing the database schema")
         self.__create_engine_when_needed()
         tables = []

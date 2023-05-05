@@ -14,13 +14,19 @@ from tests.unit.webapp.generators import (
 flask_app = flask.Flask(__name__)
 
 
+def create_storage() -> S.MitzuStorage:
+    storage = S.MitzuStorage()
+    storage.init_db_schema()
+    return storage
+
+
 @given(connection(), connection())
 @settings(deadline=None, max_examples=MAX_EXAMPLES)
 def test_storing_connections(connection, updated_connection):
     object.__setattr__(updated_connection, "id", connection.id)
 
     with flask_app.test_request_context():
-        storage = S.MitzuStorage()
+        storage = create_storage()
 
         assert len(storage.list_connections()) == 0
 
@@ -47,7 +53,7 @@ def test_storing_connections(connection, updated_connection):
 def test_storing_projects(project, updated_project):
     object.__setattr__(updated_project, "id", project.id)
     with flask_app.test_request_context():
-        storage = S.MitzuStorage()
+        storage = create_storage()
 
         assert len(storage.list_projects()) == 0
 
@@ -79,7 +85,7 @@ def test_storing_projects(project, updated_project):
 def test_storing_users(user, updated_user):
     object.__setattr__(updated_user, "id", user.id)
     with flask_app.test_request_context():
-        storage = S.MitzuStorage()
+        storage = create_storage()
 
         assert len(storage.list_users()) == 0
 
@@ -107,7 +113,7 @@ def test_storing_saved_metrics(saved_metric, updated_saved_metric):
     object.__setattr__(updated_saved_metric, "_project_ref", saved_metric._project_ref)
 
     with flask_app.test_request_context():
-        storage = S.MitzuStorage()
+        storage = create_storage()
         storage.set_project(saved_metric.project.id, saved_metric.project)
 
         assert len(storage.list_saved_metrics()) == 0
@@ -139,7 +145,7 @@ def test_storing_dashboards(dashboard, updated_dashboard):
         updated_dashboard, "dashboard_metrics", dashboard.dashboard_metrics
     )
     with flask_app.test_request_context():
-        storage = S.MitzuStorage()
+        storage = create_storage()
         for saved_dashboard_metric in [
             dm.saved_metric
             for dm in dashboard.dashboard_metrics + updated_dashboard.dashboard_metrics

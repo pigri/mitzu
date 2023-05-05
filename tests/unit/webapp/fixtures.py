@@ -48,6 +48,7 @@ def dependencies() -> DEPS.Dependencies:
     cache = InMemoryCache()
     queue = InMemoryCache()
     storage = S.MitzuStorage()
+    storage.init_db_schema()
 
     evt_service = E.EventsService(storage)
     user_service = US.UserService(storage)

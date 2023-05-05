@@ -31,7 +31,8 @@ class Dependencies:
 
     @classmethod
     def from_configs(
-        cls, notification_service: Optional[NS.NotificationService] = None
+        cls,
+        notification_service: Optional[NS.NotificationService] = None,
     ) -> Dependencies:
         if notification_service is None:
             notification_service = NS.DummyNotificationService()
@@ -44,7 +45,9 @@ class Dependencies:
                 "cache", global_prefix=configs.CACHE_PREFIX
             )
         cache = C.RequestCache(delegate_cache)
-        storage = S.MitzuStorage(connection_string=configs.STORAGE_CONNECTION_STRING)
+        storage = S.MitzuStorage(
+            connection_string=configs.STORAGE_CONNECTION_STRING,
+        )
 
         oauth_config = None
         if configs.AUTH_BACKEND == "cognito":

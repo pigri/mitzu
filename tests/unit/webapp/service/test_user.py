@@ -17,11 +17,14 @@ def create_service(
     notification_service: Optional[NS.NotificationService] = None,
 ) -> UserService:
     storage = S.MitzuStorage()
+    storage.init_db_schema()
     return UserService(storage, notification_service=notification_service)
 
 
 def test_create_new_user():
-    assert len(S.MitzuStorage().list_users()) == 0
+    storage = S.MitzuStorage()
+    storage.init_db_schema()
+    assert len(storage.list_users()) == 0
     service = create_service()
 
     assert len(service.list_users()) == 0
