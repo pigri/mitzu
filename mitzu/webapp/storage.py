@@ -79,27 +79,25 @@ class MitzuStorage:
         connection_string: str = "sqlite://?check_same_thread=False",
     ) -> None:
         self._engine = SA.create_engine(connection_string, pool_pre_ping=True)
-        self._is_sqlite = connection_string.startswith("sqlite")
+        self.__is_sqlite = connection_string.startswith("sqlite")
         self.__init_schema()
+
+    def __create_new_db_session(self) -> Session:
+        session = SA.orm.sessionmaker(bind=self._engine)()
+        if self.__is_sqlite:
+            session.execute("PRAGMA foreign_keys = ON;")
+            session.commit()
+        return session
 
     @property
     def _session(self) -> Session:
         if flask.has_app_context():
             if "request_session_cache" not in flask.g:
-                session = SA.orm.sessionmaker(bind=self._engine)()
-                if self._is_sqlite:
-                    session.execute("PRAGMA foreign_keys = ON;")
-                    session.commit()
-                flask.g.request_session_cache = session
-                return session
-            else:
-                return flask.g.request_session_cache
+                flask.g.request_session_cache = self.__create_new_db_session()
+
+            return flask.g.request_session_cache
         else:
-            session = SA.orm.sessionmaker(bind=self._engine)()
-            if self._is_sqlite:
-                session.execute("PRAGMA foreign_keys = ON;")
-                session.commit()
-            return session
+            return self.__create_new_db_session()
 
     def __init_schema(self):
         tables = []
