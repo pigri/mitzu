@@ -9,7 +9,6 @@ from mitzu.webapp.service.user_service import (
     UserPasswordAndConfirmationDoNotMatch,
 )
 from mitzu.webapp.model import Role
-import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.notification_service as NS
 
@@ -18,35 +17,26 @@ def create_service(
     notification_service: Optional[NS.NotificationService] = None,
 ) -> UserService:
     storage = S.MitzuStorage()
+    storage.init_db_schema()
     return UserService(storage, notification_service=notification_service)
 
 
-def test_service_creates_root_if_doesnt_exist():
-    assert len(S.MitzuStorage().list_users()) == 0
-    configs.AUTH_ROOT_USER_EMAIL = "root@local"
-    configs.AUTH_ROOT_PASSWORD = "testuser"
-    service = create_service()
-    assert len(service.list_users()) == 1
-    service = create_service()
-    assert len(service.list_users()) == 1
-    root_user = service.get_user_by_email_and_password(
-        configs.AUTH_ROOT_USER_EMAIL, "testuser"
-    )
-    assert root_user is not None
-    assert root_user.email == configs.AUTH_ROOT_USER_EMAIL
-
-
 def test_create_new_user():
-    assert len(S.MitzuStorage().list_users()) == 0
+    storage = S.MitzuStorage()
+    storage.init_db_schema()
+    assert len(storage.list_users()) == 0
     service = create_service()
 
-    assert len(service.list_users()) == 1
+    assert len(service.list_users()) == 0
 
     email = "a@b.c"
     with pytest.raises(UserPasswordAndConfirmationDoNotMatch):
         service.new_user(email, "password", "password2")
 
+    assert len(service.list_users()) == 0
+
     user_id = service.new_user(email, "password", "password")
+    assert len(service.list_users()) == 1
     user = service.get_user_by_id(user_id)
     assert user is not None
     assert user.email == email

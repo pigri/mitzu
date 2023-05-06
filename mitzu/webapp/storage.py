@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import multiprocessing
 from typing import Dict, List, Optional
 
-
+from mitzu.helper import LOGGER
 import mitzu.model as M
 import mitzu.webapp.model as WM
 import mitzu.webapp.storage_model as SM
@@ -78,30 +79,45 @@ class MitzuStorage:
         self,
         connection_string: str = "sqlite://?check_same_thread=False",
     ) -> None:
-        self._engine = SA.create_engine(connection_string, pool_pre_ping=True)
-        self._is_sqlite = connection_string.startswith("sqlite")
-        self.__init_schema()
+        self.__pid = None
+        self.__is_sqlite = connection_string.startswith("sqlite")
+        self.__connection_string = connection_string
+
+    def __create_new_db_session(self) -> Session:
+        session = SA.orm.sessionmaker(bind=self._engine)()
+        if self.__is_sqlite:
+            session.execute("PRAGMA foreign_keys = ON;")
+            session.commit()
+        return session
+
+    def __create_engine_when_needed(self):
+        # we need to make sure that the engine is created by the current process and not by the parent process
+        pid = multiprocessing.current_process().pid
+        if self.__pid != pid:
+            LOGGER.debug(
+                f"Engine needs to be recreated, previous instance created by pid: {self.__pid}, current pid: {pid}"
+            )
+            self._engine = SA.create_engine(
+                self.__connection_string, pool_pre_ping=True
+            )
+            self.__pid = pid
+            if flask.has_app_context() and "request_session_cache" in flask.g:
+                flask.g.request_session_cache = self.__create_new_db_session()
 
     @property
     def _session(self) -> Session:
+        self.__create_engine_when_needed()
         if flask.has_app_context():
             if "request_session_cache" not in flask.g:
-                session = SA.orm.sessionmaker(bind=self._engine)()
-                if self._is_sqlite:
-                    session.execute("PRAGMA foreign_keys = ON;")
-                    session.commit()
-                flask.g.request_session_cache = session
-                return session
-            else:
-                return flask.g.request_session_cache
-        else:
-            session = SA.orm.sessionmaker(bind=self._engine)()
-            if self._is_sqlite:
-                session.execute("PRAGMA foreign_keys = ON;")
-                session.commit()
-            return session
+                flask.g.request_session_cache = self.__create_new_db_session()
 
-    def __init_schema(self):
+            return flask.g.request_session_cache
+        else:
+            return self.__create_new_db_session()
+
+    def init_db_schema(self):
+        LOGGER.info("Initializing the database schema")
+        self.__create_engine_when_needed()
         tables = []
         for storage_record in [
             SM.UserStorageRecord,

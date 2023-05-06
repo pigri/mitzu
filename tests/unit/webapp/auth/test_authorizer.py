@@ -37,7 +37,9 @@ oauth_config = OAuthConfig(
     jwt_algorithms=["RS256"],
 )
 token_validator = MagicMock()
-user_service = U.UserService(S.MitzuStorage())
+storage = S.MitzuStorage()
+storage.init_db_schema()
+user_service = U.UserService(storage)
 auth_config = AuthConfig(
     user_service=user_service,
     token_signing_key="test",
@@ -342,7 +344,9 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
     email = "user@email.com"
     token_validator.validate_token.return_value = {"email": email}
 
-    user_service = U.UserService(S.MitzuStorage())
+    storage = S.MitzuStorage()
+    storage.init_db_schema()
+    user_service = U.UserService(storage)
     app = flask.Flask(__name__)
     authorizer = OAuthAuthorizer.create(
         AuthConfig(
@@ -457,7 +461,9 @@ def test_token_is_refreshed_for_callbacks():
 def test_unauthorized_when_user_is_deleted():
     email = "a@b.c"
     password = "password"
-    user_service = U.UserService(S.MitzuStorage())
+    storage = S.MitzuStorage()
+    storage.init_db_schema()
+    user_service = U.UserService(storage)
     user_id = user_service.new_user(email, password, password)
     app = flask.Flask(__name__)
     authorizer = OAuthAuthorizer.create(
