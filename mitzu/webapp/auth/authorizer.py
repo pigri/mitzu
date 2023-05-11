@@ -113,10 +113,6 @@ class OAuthAuthorizer:
         ]
     )
 
-    def get_home_url(self):
-        url = flask.request.host_url
-        return url[:-1] if url.endswith("/") else url
-
     @classmethod
     def create(cls, config: AuthConfig) -> OAuthAuthorizer:
         return OAuthAuthorizer(
@@ -173,7 +169,7 @@ class OAuthAuthorizer:
             "grant_type": "authorization_code",
             "client_id": self._config.oauth.client_id,
             "code": auth_code,
-            "redirect_uri": f"{self.get_home_url()}{P.OAUTH_CODE_URL}",
+            "redirect_uri": f"{configs.HOME_URL}{P.OAUTH_CODE_URL}",
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -354,7 +350,7 @@ class OAuthAuthorizer:
             self.clear_cookie(response, self._config.redirect_cookie_name)
 
         return flask.request.cookies.get(
-            self._config.redirect_cookie_name, self.get_home_url()
+            self._config.redirect_cookie_name, configs.HOME_URL
         )
 
     def get_current_user_id(self) -> Optional[str]:

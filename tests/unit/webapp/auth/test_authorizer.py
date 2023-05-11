@@ -183,7 +183,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost/auth/oauth",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -227,7 +227,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost/auth/oauth",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -266,7 +266,7 @@ def test_oauth_code_url_called_with_invalid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost/auth/oauth",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -368,7 +368,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost/auth/oauth",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -386,7 +386,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost/auth/oauth",
+                "redirect_uri": "http://localhost:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -521,7 +521,7 @@ def test_login_local_user_authorized():
     password = "password"
     user_service.new_user(email, password, password)
     with app.test_request_context():
-        assert authorizer.login_local_user(email, password) == "http://localhost"
+        assert authorizer.login_local_user(email, password) == "http://localhost:8082"
 
 
 def test_login_local_user_authorized_and_redirected_based_on_a_cookie():
