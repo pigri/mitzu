@@ -102,6 +102,8 @@ run:
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	SETUP_SAMPLE_PROJECT=true \
+	AUTH_ROOT_USER_EMAIL="root@local" \
+	AUTH_ROOT_PASSWORD="testuser" \
 	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check
