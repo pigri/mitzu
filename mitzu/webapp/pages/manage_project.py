@@ -14,6 +14,7 @@ from dash import (
     html,
     register_page,
     no_update,
+    dcc,
 )
 from mitzu.webapp.helper import MITZU_LOCATION
 
@@ -31,7 +32,9 @@ from datetime import datetime
 
 CREATE_PROJECT_DOCS_LINK = "https://github.com/mitzu-io/mitzu/blob/main/DOCS.md"
 PROJECT_TITLE = "project_title"
+PROJECT_LOCATION = "project_location"
 SAVE_BUTTON = "project_save_button"
+SAVE_AND_DISCOVER_BUTTON = "project_save_and_discover"
 MANAGE_PROJECT_INFO = "manage_project_info"
 
 DELETE_BUTTON = "project_delete_button"
@@ -152,6 +155,7 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
             NB.create_mitzu_navbar("create-project-navbar"),
             dbc.Container(
                 children=[
+                    dcc.Location(id=PROJECT_LOCATION),
                     dbc.Row(
                         [
                             dbc.Col(
@@ -175,23 +179,12 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                     dbc.Button(
                         [
                             html.B(className="bi bi-search me-1"),
-                            (
-                                "Discover Project"
-                                if project_id is not None
-                                else "Discover Projects"
-                            ),
+                            "Save and discover project",
                         ],
                         size="sm",
                         color="primary",
+                        id=SAVE_AND_DISCOVER_BUTTON,
                         class_name="d-inline-block me-3 mb-1",
-                        href=(
-                            P.create_path(
-                                P.EVENTS_AND_PROPERTIES_PROJECT_PATH,
-                                project_id=project_id,
-                            )
-                            if project_id is not None
-                            else P.EVENTS_AND_PROPERTIES_PATH
-                        ),
                     ),
                     html.Div(
                         children="",
@@ -247,7 +240,9 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
 
 @callback(
     Output(MANAGE_PROJECT_INFO, "children"),
+    Output(PROJECT_LOCATION, "href"),
     Input(SAVE_BUTTON, "n_clicks"),
+    Input(SAVE_AND_DISCOVER_BUTTON, "n_clicks"),
     State(MPH.EDT_TBL_BODY, "children"),
     State({"type": MPH.PROJECT_INDEX_TYPE, "index": ALL}, "value"),
     State(WH.MITZU_LOCATION, "pathname"),
@@ -269,7 +264,11 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
 )
 @restricted
 def save_button_clicked(
-    save_clicks: int, edt_table_rows: List, prop_values: List, pathname: str
+    save_clicks: int,
+    save_and_discover_clicks: int,
+    edt_table_rows: List,
+    prop_values: List,
+    pathname: str,
 ):
     try:
         storage = cast(
@@ -278,7 +277,7 @@ def save_button_clicked(
 
         project_props: Dict[str, Any] = {}
 
-        for prop in ctx.args_grouping[2]:
+        for prop in ctx.args_grouping[3]:
             id_val = prop["id"]
             if id_val.get("type") == MPH.PROJECT_INDEX_TYPE:
                 project_props[id_val.get("index")] = prop["value"]
@@ -339,10 +338,19 @@ def save_button_clicked(
 
         storage.set_project(project_id, project)
 
-        return "Project succesfully saved"
+        if ctx.triggered_id == SAVE_BUTTON:
+            return ["Project succesfully saved", no_update]
+        else:
+            return [
+                no_update,
+                P.create_path(
+                    P.EVENTS_AND_PROPERTIES_PROJECT_PATH,
+                    project_id=project_id,
+                ),
+            ]
     except Exception as exc:
         traceback.print_exc()
-        return f"Something went wrong: {str(exc)}"
+        return [f"Something went wrong: {str(exc)}", no_update]
 
 
 register_page(

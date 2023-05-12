@@ -10,6 +10,7 @@ import mitzu.model as M
 from unittest.mock import patch
 from mitzu.webapp.dependencies import Dependencies
 from typing import Optional
+from dash import no_update
 
 
 def get_project_input_group_args(**kwargs):
@@ -176,15 +177,19 @@ def test_save_button_clicked_deleted_rows(
         ctx.args_grouping = [
             [],
             [],
+            [],
             get_project_input_group_args(**{MPP.PROP_PROJECT_NAME: "TEST_RENAME"}),
         ]
-        project_info = PRJ.save_button_clicked(
+        ctx.triggered_id = PRJ.SAVE_BUTTON
+        (project_info, redirection) = PRJ.save_button_clicked(
             save_clicks=1,
+            save_and_discover_clicks=0,
             edt_table_rows=[],  # Rows
             prop_values=[],
             pathname="http://localhost:8082/projects/sample_project_id/manage/",
         )
 
+        assert redirection == no_update
         assert project_info == "Project succesfully saved"
         saved_project = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)
         assert len(saved_project.event_data_tables) == 0
@@ -197,8 +202,10 @@ def test_save_button_clicked_add_2_rows(ctx, server: Flask, dependencies: Depend
         ctx.args_grouping = [
             [],
             [],
+            [],
             get_project_input_group_args(),
         ]
+        ctx.triggered_id = PRJ.SAVE_BUTTON
         new_rows = [
             get_table_row(
                 full_table_name="main.page_events",
@@ -219,13 +226,15 @@ def test_save_button_clicked_add_2_rows(ctx, server: Flask, dependencies: Depend
                 ignore_cols="",
             ),
         ]
-        project_info = PRJ.save_button_clicked(
+        (project_info, redirection) = PRJ.save_button_clicked(
             save_clicks=1,
+            save_and_discover_clicks=0,
             edt_table_rows=new_rows,  # Rows
             prop_values=[],
             pathname="http://localhost:8082/projects/sample_project_id/manage/",
         )
 
+        assert redirection == no_update
         assert project_info == "Project succesfully saved"
         saved_project = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)
         assert len(saved_project.event_data_tables) == 2
@@ -264,3 +273,27 @@ def test_save_button_clicked_add_2_rows(ctx, server: Flask, dependencies: Depend
             _name="event_time", _sub_fields=None, _type=M.DataType.DATETIME
         )
         assert edt_2.ignored_fields == []
+
+
+@patch("mitzu.webapp.pages.manage_project.ctx")
+def test_save_and_discover_button_clicked_deleted_rows(
+    ctx, server: Flask, dependencies: Dependencies
+):
+    with server.test_request_context():
+        ctx.args_grouping = [
+            [],
+            [],
+            [],
+            get_project_input_group_args(**{MPP.PROP_PROJECT_NAME: "TEST_RENAME"}),
+        ]
+        ctx.triggered_id = PRJ.SAVE_AND_DISCOVER_BUTTON
+        (project_info, redirection) = PRJ.save_button_clicked(
+            save_clicks=0,
+            save_and_discover_clicks=1,
+            edt_table_rows=[],  # Rows
+            prop_values=[],
+            pathname="http://localhost:8082/projects/sample_project_id/manage/",
+        )
+
+        assert redirection == f"/events/{S.SAMPLE_PROJECT_ID}"
+        assert project_info == no_update
