@@ -57,7 +57,11 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         deps: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        return deps.authorizer.authorize_request(request)
+        resp = deps.authorizer.authorize_request(request)
+
+        # make sure there are no sessions left in the memory before dash forks a new worker
+        deps.storage._session.close_all()
+        return resp
 
     @server.after_request
     def after_request(response: flask.Response):
