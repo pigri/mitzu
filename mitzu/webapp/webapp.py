@@ -31,9 +31,9 @@ DCC_DBC_CSS = (
 )
 
 
-def create_webapp_layout(dependencies: DEPS.Dependencies) -> bc.Component:
+def create_webapp_layout() -> bc.Component:
     LOGGER.debug("Initializing WebApp")
-    offcanvas = OC.create_offcanvas(dependencies)
+    offcanvas = OC.create_offcanvas()
     location = dcc.Location(id=MITZU_LOCATION, refresh=False)
     return html.Div(
         children=[location, offcanvas, page_container],
@@ -64,7 +64,6 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         return response
 
     with server.app_context():
-        dependencies.storage.init_db_schema()
         try:
             if configs.AUTH_ROOT_USER_EMAIL:
                 dependencies.user_service.new_user(
@@ -113,7 +112,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         background_callback_manager=get_callback_manager(dependencies),
     )
     app._favicon = configs.DASH_FAVICON_PATH
-    app.layout = create_webapp_layout(dependencies)
+    app.layout = create_webapp_layout()
 
     @server.route(P.HEALTHCHECK_PATH)
     def healthcheck():

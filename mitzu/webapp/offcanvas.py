@@ -9,7 +9,6 @@ from dash.dependencies import ALL, Input, Output
 from mitzu import __version__ as version
 
 import mitzu.webapp.configs as configs
-import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted
@@ -36,10 +35,7 @@ MENU_ITEM_CSS = "mb-1 w-100 border-0 text-start"
 EXPLORE_MENU_ITEM_CSS = "mb-1 w-100 text-start"
 
 
-def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
-    project_ids = dependencies.storage.list_projects()
-    project_id = project_ids[0] if len(project_ids) > 0 else None
-
+def create_offcanvas() -> dbc.Offcanvas:
     res = dbc.Offcanvas(
         children=[
             dbc.Row(
@@ -80,11 +76,7 @@ def create_offcanvas(dependencies: DEPS.Dependencies) -> dbc.Offcanvas:
                 [html.B(className="bi bi-search me-1"), "Explore"],
                 color="info",
                 class_name=MENU_ITEM_CSS,
-                href=(
-                    P.create_path(P.PROJECTS_EXPLORE_PATH, project_id=project_id)
-                    if project_id is not None
-                    else P.PROJECTS_PATH
-                ),
+                href=P.PROJECTS_PATH,
                 id=EXPLORE_BUTTON,
             ),
             dbc.Button(
