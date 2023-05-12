@@ -64,6 +64,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         return response
 
     with server.app_context():
+        dependencies.storage.init_db_schema()
         try:
             if configs.AUTH_ROOT_USER_EMAIL:
                 dependencies.user_service.new_user(
