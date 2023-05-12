@@ -54,14 +54,22 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
     @server.before_request
     def before_request():
         request = flask.request
-        return dependencies.authorizer.authorize_request(request)
+        deps: DEPS.Dependencies = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        )
+        resp = deps.authorizer.authorize_request(request)
+
+        # make sure there are no sessions left in the memory before dash forks a new worker
+        deps.storage._session.close_all()
+        return resp
 
     @server.after_request
     def after_request(response: flask.Response):
         request = flask.request
-        if dependencies is not None:
-            return dependencies.authorizer.refresh_auth_token(request, response)
-        return response
+        deps: DEPS.Dependencies = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        )
+        return deps.authorizer.refresh_auth_token(request, response)
 
     with server.app_context():
         dependencies.storage.init_db_schema()
