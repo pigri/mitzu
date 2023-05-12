@@ -187,17 +187,14 @@ class OAuthAuthorizer:
 
         return resp.json()["id_token"]
 
-    def _generate_new_token_for_identity(
-        self, identity: str, role: WM.Role = WM.Role.MEMBER
+    def _generate_new_token_with_claims(
+        self,
+        claims: Dict[str, Any],
     ) -> str:
         now = int(time.time())
-        claims = {
-            "iat": now - 10,
-            "exp": now + self._config.session_timeout,
-            "iss": "mitzu",
-            "sub": identity,
-            JWT_CLAIM_ROLE: role.value,
-        }
+        claims["iat"] = now - 10
+        claims["exp"] = now + self._config.session_timeout
+        claims["iss"] = "mitzu"
         return jwt.encode(
             claims, key=self._config.token_signing_key, algorithm=JWT_ALGORITHM
         )
@@ -212,7 +209,7 @@ class OAuthAuthorizer:
             user = self._config.user_service.get_user_by_id(token_subject)
             if user is None:
                 raise Exception("User not found")
-            claims[JWT_CLAIM_ROLE] = user.role
+            claims[JWT_CLAIM_ROLE] = user.role.value
             return claims
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
@@ -262,12 +259,9 @@ class OAuthAuthorizer:
                         raise Exception(
                             f"User tried to login without having a local user: {user_email}"
                         )
-                    user_role = user.role
-                    token_identity = user.id
 
-                    token = self._generate_new_token_for_identity(
-                        token_identity, role=user_role
-                    )
+                    token_claims = {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
+                    token = self._generate_new_token_with_claims(token_claims)
 
                     resp = self._redirect(redirect_url)
                     self.set_cookie(resp, self._config.token_cookie_name, token)
@@ -309,11 +303,9 @@ class OAuthAuthorizer:
 
         auth_token = flask.request.cookies.get(self._config.token_cookie_name)
         if auth_token is not None:
-            identity = self._validate_token(auth_token)
-            if identity is not None:
-                new_token = self._generate_new_token_for_identity(
-                    identity["sub"], role=identity[JWT_CLAIM_ROLE]
-                )
+            token_claims = self._validate_token(auth_token)
+            if token_claims is not None:
+                new_token = self._generate_new_token_with_claims(token_claims)
                 self.set_cookie(resp, self._config.token_cookie_name, new_token)
         return resp
 
@@ -343,7 +335,8 @@ class OAuthAuthorizer:
         if user is None:
             return None
 
-        token = self._generate_new_token_for_identity(user.id, role=user.role)
+        token_claims = {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
+        token = self._generate_new_token_with_claims(token_claims)
 
         if response:
             self.set_cookie(response, self._config.token_cookie_name, token)

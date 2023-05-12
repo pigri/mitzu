@@ -3,6 +3,7 @@ import flask
 import pytest
 import jwt
 import time
+from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 from requests.models import Response
 import mitzu.webapp.configs as configs
@@ -14,6 +15,7 @@ from mitzu.webapp.auth.authorizer import (
     OAuthConfig,
     AuthConfig,
     JWT_ALGORITHM,
+    JWT_CLAIM_ROLE,
 )
 import mitzu.webapp.model as WM
 
@@ -88,17 +90,22 @@ def assert_auth_token_removed(resp: flask.Response):
     assert cookie.startswith(f"{cookie_name}=; ")
 
 
-def assert_auth_token(resp: flask.Response, identity: str):
+def assert_auth_token(
+    resp: flask.Response, identity: str, expected_custom_claims: Dict[str, Any] = {}
+):
     cookie_name = authorizer._config.token_cookie_name
     cookie = get_cookie_by_name(cookie_name, resp)
     assert cookie is not None
     assert cookie.startswith(f"{cookie_name}=")
     assert cookie.endswith("; HttpOnly; Path=/")
     token = cookie.split(";")[0].replace(f"{cookie_name}=", "")
-    decoced = jwt.decode(
+    decoded = jwt.decode(
         token, key=auth_config.token_signing_key, algorithms=[JWT_ALGORITHM]
     )
-    assert decoced["sub"] == identity
+    assert decoded["sub"] == identity
+
+    for key, value in expected_custom_claims.items():
+        assert decoded[key] == value
 
 
 def assert_redirected_to_unauthorized_page(
@@ -445,6 +452,7 @@ def test_token_is_refreshed_for_callbacks():
         "exp": now + 10,
         "iss": "mitzu",
         "sub": user_id,
+        "xxx": "custom claim",
     }
     token = jwt.encode(
         claims, key=auth_config.token_signing_key, algorithm=JWT_ALGORITHM
@@ -455,7 +463,7 @@ def test_token_is_refreshed_for_callbacks():
     ):
         resp = flask.make_response("ok", 200)
         resp = app.process_response(resp)
-        assert_auth_token(resp, user_id)
+        assert_auth_token(resp, user_id, expected_custom_claims={"xxx": "custom claim"})
 
 
 def test_unauthorized_when_user_is_deleted():
@@ -476,7 +484,9 @@ def test_unauthorized_when_user_is_deleted():
     )
     setup_authorizer(app, authorizer)
 
-    token = authorizer._generate_new_token_for_identity(user_id, role=WM.Role.MEMBER)
+    token = authorizer._generate_new_token_with_claims(
+        {"sub": user_id, JWT_CLAIM_ROLE: WM.Role.MEMBER.value}
+    )
 
     with app.test_request_context(
         "/",

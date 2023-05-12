@@ -53,8 +53,8 @@ class RequestContextLoggedInAsRootUser:
             return authorizer.refresh_auth_token(request, resp)
 
         root_user_id = user_service.get_user_by_email(configs.AUTH_ROOT_USER_EMAIL)
-        token = authorizer._generate_new_token_for_identity(
-            root_user_id.id, role=WM.Role.ADMIN
+        token = authorizer._generate_new_token_with_claims(
+            {"sub": root_user_id.id, A.JWT_CLAIM_ROLE: WM.Role.ADMIN.value}
         )
 
         event_service = ES.EventsService(storage)
