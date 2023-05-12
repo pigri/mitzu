@@ -518,7 +518,6 @@ class SavedMetricStorageRecord(Base):
     project_id = SA.Column(
         SA.String,
         SA.ForeignKey(ProjectStorageRecord.project_id, ondelete="CASCADE"),
-        nullable=True,
     )
     name = SA.Column(SA.String)
     description = SA.Column(SA.String)
