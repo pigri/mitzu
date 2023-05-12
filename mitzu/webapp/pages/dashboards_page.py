@@ -1,5 +1,5 @@
 import traceback
-from typing import List
+from typing import List, Optional
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
@@ -223,16 +223,12 @@ def create_dashboard_selector(dashboard: WM.Dashboard) -> bc.Component:
     prevent_initial_call=True,
 )
 @restricted
-def delete_button_clicked(delete: int, close: int, accept: int):
-    if (
-        ctx.triggered_id is None
-        or ctx.triggered_id
-        in [
-            CONFIRM_DIALOG_CLOSE,
-            CONFIRM_DIALOG_ACCEPT,
-        ]
-        or all(d is None for d in delete)
-    ):
+def delete_button_clicked(delete: List[Optional[int]], close: int, accept: int):
+
+    if ctx.triggered_id is None or ctx.triggered_id in [
+        CONFIRM_DIALOG_CLOSE,
+        CONFIRM_DIALOG_ACCEPT,
+    ]:
         return (False, "", "")
 
     index = ctx.triggered_id.get("index", "")

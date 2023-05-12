@@ -116,7 +116,7 @@ class MitzuStorage:
             return self.__create_new_db_session()
 
     def init_db_schema(self):
-        LOGGER.info("Initializing the database schema")
+        LOGGER.debug("Initializing the database schema")
         self.__create_engine_when_needed()
         tables = []
         for storage_record in [

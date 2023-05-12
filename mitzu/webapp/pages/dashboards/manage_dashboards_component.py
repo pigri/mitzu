@@ -1,4 +1,4 @@
-from typing import Dict, Optional, cast, List
+from typing import Dict, List, cast
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
@@ -254,10 +254,8 @@ def create_responsive_layouts(dashboard: WM.Dashboard) -> Dict:
 
 
 def create_manage_dashboard_container(
-    dashboard: Optional[WM.Dashboard],
+    dashboard: WM.Dashboard,
 ) -> bc.Component:
-    if dashboard is None:
-        dashboard = WM.Dashboard("New dashboard")
 
     layouts = create_responsive_layouts(dashboard)
     return html.Div(
@@ -432,11 +430,7 @@ def manage_dashboard_content(
         saved_metric = storage.get_saved_metric(new_metric_id)
         dashboard = storage.get_dashboard(dashboard_id)
         max_y = 0
-        if dashboard is None:
-            dashboard = WM.Dashboard(
-                name=dashboard_name, id=dashboard_id, dashboard_metrics=[]
-            )
-        elif len(dashboard.dashboard_metrics) > 0:
+        if len(dashboard.dashboard_metrics) > 0:
             max_y = max(dashboard.dashboard_metrics, key=lambda dm: dm.y).y + DEF_HEIGHT
 
         new_dm = WM.DashboardMetric(

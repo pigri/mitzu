@@ -19,12 +19,14 @@ def no_connection_layout():
 
 @restricted_layout
 def layout(dashboard_id: Optional[str] = None, **query_params) -> bc.Component:
-    dashboard: Optional[WM.Dashboard] = None
+    depenednecies: DEPS.Dependencies = cast(
+        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+    )
     if dashboard_id is not None:
-        depenednecies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
         dashboard = depenednecies.storage.get_dashboard(dashboard_id)
+    else:
+        dashboard = WM.Dashboard("New dashboard")
+        depenednecies.storage.set_dashboard(dashboard.id, dashboard)
 
     return html.Div(
         [

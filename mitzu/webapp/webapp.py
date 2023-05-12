@@ -75,7 +75,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
                 )
                 H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} is created.")
         except US.UserAlreadyExists:
-            H.LOGGER.info(f"Root user {configs.AUTH_ROOT_USER_EMAIL} already exists.")
+            H.LOGGER.debug(f"Root user {configs.AUTH_ROOT_USER_EMAIL} already exists.")
 
         flask.current_app.config[DEPS.CONFIG_KEY] = dependencies
         if configs.SETUP_SAMPLE_PROJECT:
