@@ -8,8 +8,7 @@ import mitzu.adapters.sqlalchemy_adapter as SA
 from mitzu.adapters.postgresql_adapter import PostgresqlAdapter
 import mitzu.adapters.generic_adapter as GA
 from typing import List, Optional
-import mitzu.helper as H
-from sqlalchemy import select, literal, distinct
+from sqlalchemy import distinct, select
 import sqlalchemy.sql.expression as EXP
 
 VALUES_COL_NAME = "values"
@@ -41,7 +40,6 @@ class RedshiftAdapter(PostgresqlAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> pd.DataFrame:
         # Redshift doesn't support ListAgg and ArrayAgg properly.
         # So the whole process needs to be rethought.
@@ -53,21 +51,14 @@ class RedshiftAdapter(PostgresqlAdapter):
         if event_data_table.discovery_settings is None:
             raise ValueError("Missing discovery settings")
 
-        event_specific_str = "event specific" if event_specific else "generic"
-        H.LOGGER.debug(f"Discovering {event_specific_str} field enums")
-
         cte = SA.aliased(
             self._get_dataset_discovery_cte(event_data_table),
             alias=SA.SAMPLED_SOURCE_CTE_NAME,
             name=SA.SAMPLED_SOURCE_CTE_NAME,
         )
-        event_name_select_field = (
-            self.get_event_name_field(event_data_table, cte).label(
-                GA.EVENT_NAME_ALIAS_COL
-            )
-            if event_specific
-            else literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
-        )
+        event_name_select_field = self.get_event_name_field(
+            event_data_table, cte
+        ).label(GA.EVENT_NAME_ALIAS_COL)
         res_df: Optional[pd.DataFrame] = None
         for f in fields:
             query = select(

@@ -43,6 +43,10 @@ def create_adapter(project: M.Project) -> GA.GenericDatasetAdapter:
         from mitzu.adapters.snowflake_adapter import SnowflakeAdapter
 
         res = SnowflakeAdapter(project)
+    elif con_type == M.ConnectionType.BIGQUERY:
+        from mitzu.adapters.bigquery_adapter import BigQueryAdapter
+
+        res = BigQueryAdapter(project)
     else:
         from mitzu.adapters.sqlalchemy_adapter import SQLAlchemyAdapter
 

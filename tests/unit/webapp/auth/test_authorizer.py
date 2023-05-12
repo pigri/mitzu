@@ -127,7 +127,7 @@ def test_unauthorized_request_redirected_to_unauthorized_page():
     with app.test_request_context("/example_project?m=params"):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(
-            resp, expected_redirect_cookie='"http://localhost/example_project?m=params"'
+            resp, expected_redirect_cookie="http://localhost/example_project?m=params"
         )
 
 

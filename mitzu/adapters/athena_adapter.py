@@ -35,12 +35,9 @@ class AthenaAdapter(SQLAlchemyAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> pd.DataFrame:
         df = super()._get_column_values_df(
-            event_data_table=event_data_table,
-            fields=fields,
-            event_specific=event_specific,
+            event_data_table=event_data_table, fields=fields
         )
         return pdf_string_json_array_to_array(df)
 

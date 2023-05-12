@@ -39,9 +39,8 @@ class CachingDatasetAdapter(GA.GenericDatasetAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        return self._adapter.get_field_enums(event_data_table, fields, event_specific)
+        return self._adapter.get_field_enums(event_data_table, fields)
 
     def get_conversion_sql(self, metric: M.ConversionMetric) -> str:
         return self._adapter.get_conversion_sql(metric)

@@ -102,8 +102,9 @@ run:
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	SETUP_SAMPLE_PROJECT=true \
-	AUTH_ROOT_USER_EMAIL="root@local" \
+	AUTH_BACKEND="local" \
 	AUTH_ROOT_PASSWORD="testuser" \
+	AUTH_ROOT_USER_EMAIL="root@local" \
 	$(POETRY) run python mitzu/webapp/webapp.py
 
 build: check
@@ -130,6 +131,7 @@ docker_build_latest:
 		-E snowflake \
 		-E mysql \
 		-E redshift \
+		-E bigquery \
 		--without-hashes \
 		--format=requirements.txt > release/requirements.txt	
 	docker build ./release \
@@ -151,6 +153,7 @@ docker_build_amd64_snapshot:
 		-E snowflake \
 		-E mysql \
 		-E redshift \
+		-E bigquery \
 		--without-hashes \
 		--format=requirements.txt > release/requirements.txt	
 	docker build ./release \

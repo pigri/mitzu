@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import mitzu.model as M
+
 from tests.helper import assert_row
 
 
@@ -21,7 +22,11 @@ def test_trino_complex_data():
                 event_name_field="event_name",
                 event_time_field="event_time",
                 user_id_field="user_id",
-                event_specific_fields=["event_properties"],
+                event_specific_fields=[
+                    "event_properties",
+                    "event_name",
+                    "user_properties",
+                ],
             ),
         ],
         discovery_settings=M.DiscoverySettings(
@@ -77,6 +82,11 @@ def test_trino_map_types_discovery():
                 event_name_alias="user_subscribe",
                 event_time_field="subscription_time",
                 user_id_field="subscriber_id",
+                event_specific_fields=[
+                    "event_properties",
+                    "subscriber_id",
+                    "subscription_time",
+                ],
             ),
             M.EventDataTable.create(
                 table_name="web_events",
@@ -84,7 +94,11 @@ def test_trino_map_types_discovery():
                 event_name_field="event_name",
                 event_time_field="event_time",
                 user_id_field="user_id",
-                event_specific_fields=["event_properties"],
+                event_specific_fields=[
+                    "event_properties",
+                    "event_name",
+                    "user_properties",
+                ],
             ),
         ],
         discovery_settings=M.DiscoverySettings(

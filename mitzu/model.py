@@ -267,6 +267,7 @@ class ConnectionType(Enum):
     SQLITE = auto()
     DATABRICKS = auto()
     SNOWFLAKE = auto()
+    BIGQUERY = auto()
 
     @classmethod
     def parse(cls, val: str | ConnectionType) -> ConnectionType:
@@ -299,6 +300,8 @@ class ConnectionType(Enum):
             return "databricks"
         if self == ConnectionType.SNOWFLAKE:
             return "snowflake"
+        if self == ConnectionType.BIGQUERY:
+            return "bigquery"
         raise ValueError(f"No protocol for: {self}")
 
 
@@ -612,7 +615,7 @@ class EventDataTable(Identifiable):
     date_partition_field: Optional[Field] = None
     event_name_alias: Optional[str] = None
     ignored_fields: List[Field] = field(default_factory=lambda: [])
-    event_specific_fields: Optional[List[Field]] = None
+    event_specific_fields: Optional[List[Field]] = None  # TODO remove
 
     # TBD remove
     description: Optional[str] = None

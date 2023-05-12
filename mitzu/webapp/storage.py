@@ -157,7 +157,7 @@ class MitzuStorage:
             record.update(project)
 
         for edt in project.event_data_tables:
-            self._set_event_data_table(project.id, edt.id, edt)
+            self._set_event_data_table(project.id, edt)
 
         discovered_project = project._discovered_project.get_value()
         if discovered_project:
@@ -226,26 +226,26 @@ class MitzuStorage:
             session.delete(record)
             session.commit()
 
-    def _set_event_data_table(
-        self, project_id: str, edt_id: str, edt: M.EventDataTable
-    ):
+    def _set_event_data_table(self, project_id: str, edt: M.EventDataTable):
         if edt.discovery_settings:
             self.set_discovery_settings(
                 edt.discovery_settings.id, edt.discovery_settings
             )
-
         record = (
             self._session.query(SM.EventDataTableStorageRecord)
-            .filter(SM.EventDataTableStorageRecord.event_data_table_id == edt_id)
+            .filter(
+                (SM.EventDataTableStorageRecord.project_id == project_id)
+                & (SM.EventDataTableStorageRecord.table_name == edt.table_name)
+            )
             .first()
         )
-        if record is None:
-            self._session.add(
-                SM.EventDataTableStorageRecord.from_model_instance(project_id, edt)
-            )
-            return
+        if record is not None:
+            self._session.delete(record)
 
-        record.update(edt)
+        rec = SM.EventDataTableStorageRecord.from_model_instance(
+            project_id=project_id, edt=edt
+        )
+        self._session.add(rec)
 
         self._session.commit()
 
@@ -269,9 +269,11 @@ class MitzuStorage:
         records = (
             self._session.query(SM.EventDataTableStorageRecord)
             .filter(
-                SM.EventDataTableStorageRecord.project_id == project_id
-                and SM.EventDataTableStorageRecord.event_data_table_id
-                not in referenced_edts
+                (SM.EventDataTableStorageRecord.project_id == project_id)
+                & (
+                    SM.EventDataTableStorageRecord.event_data_table_id
+                    not in referenced_edts
+                )
             )
             .all()
         )
@@ -416,8 +418,8 @@ class MitzuStorage:
             rec = (
                 self._session.query(SM.EventDefStorageRecord)
                 .filter(
-                    SM.EventDefStorageRecord.event_data_table_id == edt_id
-                    and SM.EventDefStorageRecord.event_name == event_name
+                    (SM.EventDefStorageRecord.event_data_table_id == edt_id)
+                    & (SM.EventDefStorageRecord.event_name == event_name)
                 )
                 .first()
             )

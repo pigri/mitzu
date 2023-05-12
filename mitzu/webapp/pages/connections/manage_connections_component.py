@@ -14,6 +14,7 @@ from mitzu.helper import value_to_label
 from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
 import traceback
+import json
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
 CONNECTION_DELETE_BUTTON = "connection_delete_button"
@@ -41,12 +42,14 @@ PROP_PORT = "port"
 PROP_HOST = "host"
 PROP_USERNAME = "username"
 PROP_PASSWORD = "password"
+
+PROP_BIGQUERY_CREDENTIALS = "credentials"
+
 NOT_REQUIRED_PROPERTIES = [PROP_CATALOG, PROP_PORT, PROP_PASSWORD, PROP_USERNAME]
 CON_TYPE_BLACKLIST = [M.ConnectionType.FILE]
 
 
 MIN_LENGTH = 4
-MAX_LENGTH = 100
 
 
 def create_url_param(values: Dict[str, Any], property: str) -> str:
@@ -77,6 +80,9 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
                 create_url_param(values, PROP_ROLE),
             ]
         )
+    elif con_type == M.ConnectionType.BIGQUERY:
+        creds = json.loads(values[PROP_BIGQUERY_CREDENTIALS])
+        extra_configs = {PROP_BIGQUERY_CREDENTIALS: creds}
     return M.Connection(
         connection_name=values[PROP_CONNECTION_NAME],
         connection_type=con_type,
@@ -152,6 +158,23 @@ def create_connection_extra_inputs(
                 icon_cls="bi bi-file-earmark-person-fill",
                 value=con.get_url_param(PROP_ROLE) if con is not None else None,
                 minlength=4,
+            ),
+        ]
+    if con_type == M.ConnectionType.BIGQUERY:
+        return [
+            create_form_property_input(
+                index_type=INDEX_TYPE,
+                property=PROP_BIGQUERY_CREDENTIALS,
+                component_type=dbc.Textarea,
+                required=True,
+                icon_cls="bi bi-key",
+                placeholder="Credentials json",
+                rows=10,
+                value=(
+                    json.dumps(con.extra_configs.get(PROP_BIGQUERY_CREDENTIALS, {}))
+                    if con is not None
+                    else None
+                ),
             ),
         ]
 
@@ -407,9 +430,7 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
 
 def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
     for k, v in values.items():
-        if k not in NOT_REQUIRED_PROPERTIES and (
-            v is None or len(v) < MIN_LENGTH or len(v) > MAX_LENGTH
-        ):
+        if k not in NOT_REQUIRED_PROPERTIES and (v is None or len(v) < MIN_LENGTH):
             return k
     return None
 

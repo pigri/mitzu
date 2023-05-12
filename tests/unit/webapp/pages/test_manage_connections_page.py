@@ -81,6 +81,7 @@ def test_connection_update_layout_values_are_filled(
             {"label": "Sqlite", "value": "SQLITE"},
             {"label": "Databricks", "value": "DATABRICKS"},
             {"label": "Snowflake", "value": "SNOWFLAKE"},
+            {"label": "Bigquery", "value": "BIGQUERY"},
         ]
 
 

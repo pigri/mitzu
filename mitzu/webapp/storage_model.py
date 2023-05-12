@@ -458,7 +458,6 @@ class EventDefStorageRecord(Base):
         SA.ForeignKey(
             EventDataTableStorageRecord.event_data_table_id, ondelete="CASCADE"
         ),
-        primary_key=True,
     )
     event_name = SA.Column(SA.String)
     fields = SA.Column(SA.String)

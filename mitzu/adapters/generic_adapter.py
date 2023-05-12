@@ -50,7 +50,6 @@ class GenericDatasetAdapter(ABC):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
         raise NotImplementedError()
 

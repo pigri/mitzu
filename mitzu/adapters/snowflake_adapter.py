@@ -58,9 +58,8 @@ class SnowflakeAdapter(SQLAlchemyAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> pd.DataFrame:
-        df = super()._get_column_values_df(event_data_table, fields, event_specific)
+        df = super()._get_column_values_df(event_data_table, fields)
         for field in df.columns:
             df[field] = df[field].apply(
                 lambda val: ast.literal_eval(val) if val is not None else None

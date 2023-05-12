@@ -169,7 +169,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                 schema=schema,
                 autoload_with=engine,
                 autoload=True,
-            )
+            ).alias(f"t{len(self._table_cache)+1}")
         return self._table_cache[full_name]
 
     def get_table(self, event_data_table: M.EventDataTable) -> SA.Table:
@@ -254,7 +254,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             raise ValueError(
                 "Too many retention periods to caluclate try reducing the scope"
             )
-        return SA.union(*selects).cte()
+        return SA.union_all(*selects).cte()
 
     def list_schemas(self) -> List[str]:
         engine = self.get_engine()
@@ -401,6 +401,12 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def _column_index_support(self):
         return True
 
+    def _get_random_function(self):
+        return SA.func.random()
+
+    def _get_sample_function(self):
+        return SA.cast(self._get_random_function() * 1367, SA.Integer) % 100
+
     def _get_dataset_discovery_cte(self, event_data_table: M.EventDataTable) -> EXP.CTE:
         if event_data_table.discovery_settings is None:
             raise ValueError("Missing discovery settings")
@@ -422,9 +428,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         raw_cte: EXP.CTE = SA.select(
             columns=[
                 *table.columns.values(),
-                (SA.cast(SA.func.random() * 1367, SA.Integer) % 100).label("__sample"),
+                self._get_sample_function().label("__sample"),
                 SA.func.row_number()
-                .over(partition_by=event_name_field, order_by=SA.func.random())
+                .over(
+                    partition_by=event_name_field, order_by=self._get_random_function()
+                )
                 .label("rn"),
             ],
             whereclause=(
@@ -459,26 +467,18 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> pd.DataFrame:
         if event_data_table.discovery_settings is None:
             raise ValueError("Missing discovery settings")
-
-        event_specific_str = "event specific" if event_specific else "generic"
-        H.LOGGER.debug(f"Discovering {event_specific_str} field enums")
 
         cte = aliased(
             self._get_dataset_discovery_cte(event_data_table),
             alias=SAMPLED_SOURCE_CTE_NAME,
             name=SAMPLED_SOURCE_CTE_NAME,
         )
-        event_name_select_field = (
-            self.get_event_name_field(event_data_table, cte).label(
-                GA.EVENT_NAME_ALIAS_COL
-            )
-            if event_specific
-            else SA.literal(M.ANY_EVENT_NAME).label(GA.EVENT_NAME_ALIAS_COL)
-        )
+        event_name_select_field = self.get_event_name_field(
+            event_data_table, cte
+        ).label(GA.EVENT_NAME_ALIAS_COL)
 
         query = SA.select(
             group_by=(
@@ -518,11 +518,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         self,
         event_data_table: M.EventDataTable,
         fields: List[M.Field],
-        event_specific: bool,
     ) -> Dict[str, M.EventDef]:
-        enums = self._get_column_values_df(
-            event_data_table, fields, event_specific
-        ).to_dict("index")
+        enums = self._get_column_values_df(event_data_table, fields).to_dict("index")
         res: Dict[str, M.EventDef] = {}
         for evt, values in enums.items():
             field_defs: Dict[M.Field, M.EventFieldDef] = {}

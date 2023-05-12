@@ -25,6 +25,17 @@ def get_simple_csv() -> Project:
                 user_id_field="user_id",
                 event_time_field="event_time",
                 date_partition_field="event_time",
+                event_specific_fields=[
+                    "event_time",
+                    "event_type",
+                    "product-id",
+                    "category_id",
+                    "category_code",
+                    "brand",
+                    "price",
+                    "user_id",
+                    "user_session",
+                ],
             )
         ],
         webapp_settings=WebappSettings(
@@ -94,6 +105,17 @@ def get_project_without_records() -> Project:
                 user_id_field="user_id",
                 event_time_field="event_time",
                 date_partition_field="event_time",
+                event_specific_fields=[
+                    "event_time",
+                    "event_type",
+                    "product-id",
+                    "category_id",
+                    "category_code",
+                    "brand",
+                    "price",
+                    "user_id",
+                    "user_session",
+                ],
             )
         ],
         discovery_settings=DiscoverySettings(
@@ -147,12 +169,14 @@ def get_basic_events_csv() -> Project:
                 event_name_field="event_type",
                 user_id_field="user_id",
                 event_time_field="event_time",
+                event_specific_fields=["event_time", "user_id", "event_type"],
             ),
             EventDataTable.create(
                 table_name="basic_events",
                 event_name_field="event_type",
                 user_id_field="user_id",
                 event_time_field="event_time",
+                event_specific_fields=["event_time", "user_id", "event_type"],
             ),
         ],
         discovery_settings=DiscoverySettings(
