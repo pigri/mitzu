@@ -110,6 +110,7 @@ class OAuthAuthorizer:
             P.SIGN_OUT_URL,
             P.HEALTHCHECK_PATH,
             "/assets/",
+            "/_dash-component-suites/",
         ]
     )
 
