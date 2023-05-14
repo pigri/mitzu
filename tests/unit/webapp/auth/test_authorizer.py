@@ -448,7 +448,7 @@ def test_token_is_refreshed_for_callbacks():
     now = int(time.time())
     user_id = user_service.new_user("email@b.c", "password", "password")
     claims = {
-        "iat": now - 10,
+        "iat": now - authorizer._config.token_refresh_threshold - 10,
         "exp": now + 10,
         "iss": "mitzu",
         "sub": user_id,
@@ -464,6 +464,28 @@ def test_token_is_refreshed_for_callbacks():
         resp = flask.make_response("ok", 200)
         resp = app.process_response(resp)
         assert_auth_token(resp, user_id, expected_custom_claims={"xxx": "custom claim"})
+
+
+def test_token_is_not_refreshed_for_callbacks_if_the_token_is_quite_new():
+    now = int(time.time())
+    user_id = user_service.new_user("email@b.c", "password", "password")
+    claims = {
+        "iat": now - 10,
+        "exp": now + 10,
+        "iss": "mitzu",
+        "sub": user_id,
+        "xxx": "custom claim",
+    }
+    token = jwt.encode(
+        claims, key=auth_config.token_signing_key, algorithm=JWT_ALGORITHM
+    )
+
+    with app.test_request_context(
+        "/", headers={"Cookie": f"{authorizer._config.token_cookie_name}={token}"}
+    ):
+        resp = flask.make_response("ok", 200)
+        resp = app.process_response(resp)
+        assert get_cookie_by_name(authorizer._config.token_cookie_name, resp) is None
 
 
 def test_unauthorized_when_user_is_deleted():

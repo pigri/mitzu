@@ -83,6 +83,7 @@ class AuthConfig:
     redirect_cookie_name: str = "redirect-to"
 
     session_timeout: int = 7 * 24 * 60 * 60
+    token_refresh_threshold: int = 60
     token_signing_key: str = configs.AUTH_JWT_SECRET
 
     oauth: Optional[OAuthConfig] = None
@@ -306,6 +307,13 @@ class OAuthAuthorizer:
         if auth_token is not None:
             token_claims = self._validate_token(auth_token)
             if token_claims is not None:
+
+                if (
+                    token_claims["iat"]
+                    >= int(time.time()) - self._config.token_refresh_threshold
+                ):
+                    return resp
+
                 new_token = self._generate_new_token_with_claims(token_claims)
                 self.set_cookie(resp, self._config.token_cookie_name, new_token)
         return resp
