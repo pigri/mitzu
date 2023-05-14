@@ -83,7 +83,8 @@ class MitzuStorage:
         self.__is_sqlite = connection_string.startswith("sqlite")
         self.__connection_string = connection_string
 
-    def __create_new_db_session(self) -> Session:
+    def _new_db_session(self) -> Session:
+        self.__create_engine_when_needed()
         session = SA.orm.sessionmaker(bind=self._engine)()
         if self.__is_sqlite:
             session.execute("PRAGMA foreign_keys = ON;")
@@ -101,19 +102,6 @@ class MitzuStorage:
                 self.__connection_string, pool_pre_ping=True
             )
             self.__pid = pid
-            if flask.has_app_context() and "request_session_cache" in flask.g:
-                flask.g.request_session_cache = self.__create_new_db_session()
-
-    @property
-    def _session(self) -> Session:
-        self.__create_engine_when_needed()
-        if flask.has_app_context():
-            if "request_session_cache" not in flask.g:
-                flask.g.request_session_cache = self.__create_new_db_session()
-
-            return flask.g.request_session_cache
-        else:
-            return self.__create_new_db_session()
 
     def init_db_schema(self):
         LOGGER.debug("Initializing the database schema")
@@ -136,103 +124,116 @@ class MitzuStorage:
         SM.Base.metadata.create_all(self._engine, tables=tables)
 
     def set_project(self, project_id: str, project: M.Project):
-        self.set_connection(project.connection.id, project.connection)
-        self.set_discovery_settings(
-            project.discovery_settings.id, project.discovery_settings
-        )
-        self.set_webapp_settings(project.webapp_settings.id, project.webapp_settings)
-
-        current_edt_ids = [edt.id for edt in project.event_data_tables]
-        self._remove_unreferenced_event_data_tables(project.id, current_edt_ids)
-
-        record = (
-            self._session.query(SM.ProjectStorageRecord)
-            .filter(SM.ProjectStorageRecord.project_id == project_id)
-            .first()
-        )
-
-        if record is None:
-            self._session.add(SM.ProjectStorageRecord.from_model_instance(project))
-        else:
-            record.update(project)
-
-        for edt in project.event_data_tables:
-            self._set_event_data_table(project.id, edt)
-
-        discovered_project = project._discovered_project.get_value()
-        if discovered_project:
-            self.populate_discovered_project(discovered_project)
-            for edt, vals in discovered_project.definitions.items():
-                self.set_event_data_table_definition(edt, vals)
-
-        self._session.commit()
-
-    def project_exists(self, project_id: str) -> bool:
-        return (
-            self._session.query(SM.ProjectStorageRecord)
-            .filter(SM.ProjectStorageRecord.project_id == project_id)
-            .first()
-        ) is not None
-
-    def get_project(self, project_id: str) -> M.Project:
-        record = (
-            self._session.query(SM.ProjectStorageRecord)
-            .filter(SM.ProjectStorageRecord.project_id == project_id)
-            .first()
-        )
-        if record is None:
-            raise ValueError(f"Project not found with project_id={project_id}")
-
-        connection = self.get_connection(record.connection_id)
-        discovery_settings = self.get_discovery_settings(record.discovery_settings_id)
-        webapp_settings = self.get_webapp_settings(record.webapp_settings_id)
-        edts = self._get_event_data_tables_for_project(record.project_id)
-        project = record.as_model_instance(
-            connection, edts, discovery_settings, webapp_settings
-        )
-
-        discovered_definitions: Dict[
-            M.EventDataTable, Dict[str, M.Reference[M.EventDef]]
-        ] = {}
-        for edt in edts:
-            discovered_fields = (
-                self._session.query(
-                    SM.EventDefStorageRecord.event_name, SM.EventDefStorageRecord.id
-                )
-                .filter(SM.EventDefStorageRecord.event_data_table_id == edt.id)
-                .all()
+        with self._new_db_session() as session:
+            self._set_connection(project.connection.id, project.connection, session)
+            self._set_discovery_settings(
+                project.discovery_settings.id, project.discovery_settings, session
             )
-            definitions: Dict[str, M.Reference[M.EventDef]] = {}
-            for field in discovered_fields:
-                definitions[field.event_name] = StorageEventDefReference(
-                    id=field.id, value=None, event_data_table=edt
-                )
-            if len(definitions) > 0:
-                discovered_definitions[edt] = definitions
+            self._set_webapp_settings(
+                project.webapp_settings.id, project.webapp_settings, session
+            )
 
-        if len(discovered_definitions) > 0:
-            # it may seems a bit od but the constructor will put the reference of the discovered project into the project
-            M.DiscoveredProject(discovered_definitions, project)
-        return project
+            current_edt_ids = [edt.id for edt in project.event_data_tables]
+            self._remove_unreferenced_event_data_tables(
+                project.id, current_edt_ids, session
+            )
 
-    def delete_project(self, project_id: str):
-        session = self._session
-        record = (
-            session.query(SM.ProjectStorageRecord)
-            .filter(SM.ProjectStorageRecord.project_id == project_id)
-            .first()
-        )
-        if record is not None:
-            session.delete(record)
+            record = (
+                session.query(SM.ProjectStorageRecord)
+                .filter(SM.ProjectStorageRecord.project_id == project_id)
+                .first()
+            )
+
+            if record is None:
+                session.add(SM.ProjectStorageRecord.from_model_instance(project))
+            else:
+                record.update(project)
+
+            for edt in project.event_data_tables:
+                self._set_event_data_table(project.id, edt, session)
+
+            discovered_project = project._discovered_project.get_value()
+            if discovered_project:
+                self._populate_discovered_project(discovered_project, session)
+                for edt, vals in discovered_project.definitions.items():
+                    self._set_event_data_table_definition(edt, vals, session)
+
             session.commit()
 
-    def _set_event_data_table(self, project_id: str, edt: M.EventDataTable):
+    def project_exists(self, project_id: str) -> bool:
+        with self._new_db_session() as session:
+            return (
+                session.query(SM.ProjectStorageRecord)
+                .filter(SM.ProjectStorageRecord.project_id == project_id)
+                .first()
+            ) is not None
+
+    def get_project(self, project_id: str) -> M.Project:
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.ProjectStorageRecord)
+                .filter(SM.ProjectStorageRecord.project_id == project_id)
+                .first()
+            )
+            if record is None:
+                raise ValueError(f"Project not found with project_id={project_id}")
+
+            connection = self._get_connection(record.connection_id, session)
+            discovery_settings = self._get_discovery_settings(
+                record.discovery_settings_id, session
+            )
+            webapp_settings = self._get_webapp_settings(
+                record.webapp_settings_id, session
+            )
+            edts = self._get_event_data_tables_for_project(record.project_id, session)
+            project = record.as_model_instance(
+                connection, edts, discovery_settings, webapp_settings
+            )
+
+            discovered_definitions: Dict[
+                M.EventDataTable, Dict[str, M.Reference[M.EventDef]]
+            ] = {}
+            for edt in edts:
+                discovered_fields = (
+                    session.query(
+                        SM.EventDefStorageRecord.event_name, SM.EventDefStorageRecord.id
+                    )
+                    .filter(SM.EventDefStorageRecord.event_data_table_id == edt.id)
+                    .all()
+                )
+                definitions: Dict[str, M.Reference[M.EventDef]] = {}
+                for field in discovered_fields:
+                    definitions[field.event_name] = StorageEventDefReference(
+                        id=field.id, value=None, event_data_table=edt
+                    )
+                if len(definitions) > 0:
+                    discovered_definitions[edt] = definitions
+
+            if len(discovered_definitions) > 0:
+                # it may seems a bit od but the constructor will put the reference of the discovered project into the project
+                M.DiscoveredProject(discovered_definitions, project)
+            return project
+
+    def delete_project(self, project_id: str):
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.ProjectStorageRecord)
+                .filter(SM.ProjectStorageRecord.project_id == project_id)
+                .first()
+            )
+            if record is not None:
+                session.delete(record)
+                session.commit()
+
+    def _set_event_data_table(
+        self, project_id: str, edt: M.EventDataTable, session: SA.orm.Session
+    ):
         if edt.discovery_settings:
-            self.set_discovery_settings(
-                edt.discovery_settings.id, edt.discovery_settings
+            self._set_discovery_settings(
+                edt.discovery_settings.id, edt.discovery_settings, session
             )
         record = (
-            self._session.query(SM.EventDataTableStorageRecord)
+            session.query(SM.EventDataTableStorageRecord)
             .filter(
                 (SM.EventDataTableStorageRecord.project_id == project_id)
                 & (SM.EventDataTableStorageRecord.table_name == edt.table_name)
@@ -240,34 +241,32 @@ class MitzuStorage:
             .first()
         )
         if record is not None:
-            self._session.delete(record)
+            session.delete(record)
 
         rec = SM.EventDataTableStorageRecord.from_model_instance(
             project_id=project_id, edt=edt
         )
-        self._session.add(rec)
-
-        self._session.commit()
+        session.add(rec)
 
     def _get_event_data_tables_for_project(
-        self, project_id: str
+        self, project_id: str, session: SA.orm.Session
     ) -> List[M.EventDataTable]:
-        records = self._session.query(SM.EventDataTableStorageRecord).filter(
+        records = session.query(SM.EventDataTableStorageRecord).filter(
             SM.EventDataTableStorageRecord.project_id == project_id
         )
         result = []
         for edt_record in records.all():
-            discovery_settings = self.get_discovery_settings(
-                edt_record.discovery_settings_id
+            discovery_settings = self._get_discovery_settings(
+                edt_record.discovery_settings_id, session
             )
             result.append(edt_record.as_model_instance(discovery_settings))
         return result
 
     def _remove_unreferenced_event_data_tables(
-        self, project_id: str, referenced_edts: List[str]
+        self, project_id: str, referenced_edts: List[str], session: SA.orm.Session
     ):
         records = (
-            self._session.query(SM.EventDataTableStorageRecord)
+            session.query(SM.EventDataTableStorageRecord)
             .filter(
                 (SM.EventDataTableStorageRecord.project_id == project_id)
                 & (
@@ -278,13 +277,16 @@ class MitzuStorage:
             .all()
         )
         for record in records:
-            self._session.delete(record)
+            session.delete(record)
 
-    def set_discovery_settings(
-        self, discovery_settings_id: str, discovery_settings: M.DiscoverySettings
+    def _set_discovery_settings(
+        self,
+        discovery_settings_id: str,
+        discovery_settings: M.DiscoverySettings,
+        session: SA.orm.Session,
     ):
         record = (
-            self._session.query(SM.DiscoverySettingsStorageRecord)
+            session.query(SM.DiscoverySettingsStorageRecord)
             .filter(
                 SM.DiscoverySettingsStorageRecord.discovery_settings_id
                 == discovery_settings_id
@@ -292,21 +294,21 @@ class MitzuStorage:
             .first()
         )
         if record is None:
-            self._session.add(
+            session.add(
                 SM.DiscoverySettingsStorageRecord.from_model_instance(
                     discovery_settings
                 )
             )
-            self._session.commit()
+            session.commit()
             return
 
         record.update(discovery_settings)
 
-        self._session.commit()
-
-    def get_discovery_settings(self, discovery_settings_id: str) -> M.DiscoverySettings:
+    def _get_discovery_settings(
+        self, discovery_settings_id: str, session: SA.orm.Session
+    ) -> M.DiscoverySettings:
         record = (
-            self._session.query(SM.DiscoverySettingsStorageRecord)
+            session.query(SM.DiscoverySettingsStorageRecord)
             .filter(
                 SM.DiscoverySettingsStorageRecord.discovery_settings_id
                 == discovery_settings_id
@@ -321,29 +323,32 @@ class MitzuStorage:
 
         return record.as_model_instance()
 
-    def set_webapp_settings(
-        self, webapp_settings_id: str, webapp_settings: M.WebappSettings
+    def _set_webapp_settings(
+        self,
+        webapp_settings_id: str,
+        webapp_settings: M.WebappSettings,
+        session: SA.orm.Session,
     ):
         record = (
-            self._session.query(SM.WebappSettingsStorageRecord)
+            session.query(SM.WebappSettingsStorageRecord)
             .filter(
                 SM.WebappSettingsStorageRecord.webapp_settings_id == webapp_settings_id
             )
             .first()
         )
         if record is None:
-            self._session.add(
+            session.add(
                 SM.WebappSettingsStorageRecord.from_model_instance(webapp_settings)
             )
             return
 
         record.update(webapp_settings)
 
-        self._session.commit()
-
-    def get_webapp_settings(self, webapp_settings_id: str) -> M.WebappSettings:
+    def _get_webapp_settings(
+        self, webapp_settings_id: str, session: SA.orm.Session
+    ) -> M.WebappSettings:
         record = (
-            self._session.query(SM.WebappSettingsStorageRecord)
+            session.query(SM.WebappSettingsStorageRecord)
             .filter(
                 SM.WebappSettingsStorageRecord.webapp_settings_id == webapp_settings_id
             )
@@ -359,12 +364,19 @@ class MitzuStorage:
 
     def list_projects(self) -> List[str]:
         result = []
-        for record in self._session.query(SM.ProjectStorageRecord):
-            result.append(record.project_id)
-        return result
+        with self._new_db_session() as session:
+            for record in session.query(SM.ProjectStorageRecord):
+                result.append(record.project_id)
+            return result
 
     def set_connection(self, connection_id: str, connection: M.Connection):
-        session = self._session
+        with self._new_db_session() as session:
+            self._set_connection(connection_id, connection, session)
+            session.commit()
+
+    def _set_connection(
+        self, connection_id: str, connection: M.Connection, session: SA.orm.Session
+    ):
         record = (
             session.query(SM.ConnectionStorageRecord)
             .filter(SM.ConnectionStorageRecord.connection_id == connection_id)
@@ -375,11 +387,15 @@ class MitzuStorage:
         else:
             record.update(connection)
 
-        session.commit()
-
     def get_connection(self, connection_id: str) -> M.Connection:
+        with self._new_db_session() as session:
+            return self._get_connection(connection_id, session)
+
+    def _get_connection(
+        self, connection_id: str, session: SA.orm.Session
+    ) -> M.Connection:
         record = (
-            self._session.query(SM.ConnectionStorageRecord)
+            session.query(SM.ConnectionStorageRecord)
             .filter(SM.ConnectionStorageRecord.connection_id == connection_id)
             .first()
         )
@@ -390,33 +406,46 @@ class MitzuStorage:
         return record.as_model_instance()
 
     def delete_connection(self, connection_id: str):
-        session = self._session
-        record = (
-            session.query(SM.ConnectionStorageRecord)
-            .filter(SM.ConnectionStorageRecord.connection_id == connection_id)
-            .first()
-        )
-        if record is not None:
-            session.delete(record)
-            session.commit()
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.ConnectionStorageRecord)
+                .filter(SM.ConnectionStorageRecord.connection_id == connection_id)
+                .first()
+            )
+            if record is not None:
+                session.delete(record)
+                session.commit()
 
     def list_connections(
         self,
     ) -> List[str]:
-        result = []
-        for record in self._session.query(SM.ConnectionStorageRecord):
-            result.append(record.connection_id)
-        return result
+        with self._new_db_session() as session:
+            result = []
+            for record in session.query(SM.ConnectionStorageRecord):
+                result.append(record.connection_id)
+            return result
 
     def set_event_data_table_definition(
         self,
         event_data_table: M.EventDataTable,
         definitions: Dict[str, M.Reference[M.EventDef]],
     ):
+        with self._new_db_session() as session:
+            self._set_event_data_table_definition(
+                event_data_table, definitions, session
+            )
+            session.commit()
+
+    def _set_event_data_table_definition(
+        self,
+        event_data_table: M.EventDataTable,
+        definitions: Dict[str, M.Reference[M.EventDef]],
+        session: SA.orm.Session,
+    ):
         edt_id = event_data_table.id
         for event_name, event_def in definitions.items():
             rec = (
-                self._session.query(SM.EventDefStorageRecord)
+                session.query(SM.EventDefStorageRecord)
                 .filter(
                     (SM.EventDefStorageRecord.event_data_table_id == edt_id)
                     & (SM.EventDefStorageRecord.event_name == event_name)
@@ -424,21 +453,25 @@ class MitzuStorage:
                 .first()
             )
             if rec is not None:
-                self._session.delete(rec)
+                session.delete(rec)
 
             rec = SM.EventDefStorageRecord.from_model_instance(
                 edt_id, event_def.get_value_if_exists()
             )
-            self._session.add(rec)
-
-        self._session.commit()
+            session.add(rec)
 
     def populate_discovered_project(self, discovered_project: M.DiscoveredProject):
+        with self._new_db_session() as session:
+            self._populate_discovered_project(discovered_project, session)
+
+    def _populate_discovered_project(
+        self, discovered_project: M.DiscoveredProject, session: SA.orm.Session
+    ):
         defs = discovered_project.definitions
 
         for edt in defs.keys():
             records: List[SM.EventDefStorageRecord] = (
-                self._session.query(SM.EventDefStorageRecord)
+                session.query(SM.EventDefStorageRecord)
                 .filter(SM.EventDefStorageRecord.event_data_table_id == edt.id)
                 .all()
             )
@@ -449,170 +482,186 @@ class MitzuStorage:
     def get_event_definition(
         self, event_data_table: M.EventDataTable, event_definition_id: str
     ) -> M.EventDef:
-        record: SM.EventDefStorageRecord = (
-            self._session.query(SM.EventDefStorageRecord)
-            .filter(SM.EventDefStorageRecord.id == event_definition_id)
-            .first()
-        )
-        return record.as_model_instance(edt=event_data_table)
+        with self._new_db_session() as session:
+            record: SM.EventDefStorageRecord = (
+                session.query(SM.EventDefStorageRecord)
+                .filter(SM.EventDefStorageRecord.id == event_definition_id)
+                .first()
+            )
+            return record.as_model_instance(edt=event_data_table)
 
     def set_saved_metric(self, metric_id: str, saved_metric: WM.SavedMetric):
-        record = (
-            self._session.query(SM.SavedMetricStorageRecord)
-            .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
-            .first()
-        )
-        if record is None:
-            self._session.add(
-                SM.SavedMetricStorageRecord.from_model_instance(saved_metric)
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.SavedMetricStorageRecord)
+                .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
+                .first()
             )
-            self._session.commit()
-            return
+            if record is None:
+                session.add(
+                    SM.SavedMetricStorageRecord.from_model_instance(saved_metric)
+                )
+                session.commit()
+                return
 
-        record.update(saved_metric)
+            record.update(saved_metric)
 
-        self._session.commit()
+            session.commit()
 
     def get_saved_metric(self, metric_id: str) -> WM.SavedMetric:
-        record = (
-            self._session.query(SM.SavedMetricStorageRecord)
-            .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
-            .first()
-        )
-        if record is None:
-            raise ValueError(f"Saved metric is not found with id {metric_id}")
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.SavedMetricStorageRecord)
+                .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
+                .first()
+            )
+            if record is None:
+                raise ValueError(f"Saved metric is not found with id {metric_id}")
 
         project = self.get_project(record.project_id)
         return record.as_model_instance(project)
 
     def clear_saved_metric(self, metric_id: str):
-        record = (
-            self._session.query(SM.SavedMetricStorageRecord)
-            .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
-            .first()
-        )
-        if record is not None:
-            self._session.delete(record)
-            self._session.commit()
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.SavedMetricStorageRecord)
+                .filter(SM.SavedMetricStorageRecord.saved_metric_id == metric_id)
+                .first()
+            )
+            if record is not None:
+                session.delete(record)
+                session.commit()
 
     def list_saved_metrics(self) -> List[str]:
-        result = []
-        for record in self._session.query(SM.SavedMetricStorageRecord):
-            result.append(record.saved_metric_id)
-        return result
+        with self._new_db_session() as session:
+            result = []
+            for record in session.query(SM.SavedMetricStorageRecord):
+                result.append(record.saved_metric_id)
+            return result
 
     def list_dashboards(self) -> List[str]:
         result = []
-        for record in self._session.query(SM.DashboardStorageRecord):
-            result.append(record.dashboard_id)
-        return result
+        with self._new_db_session() as session:
+            for record in session.query(SM.DashboardStorageRecord):
+                result.append(record.dashboard_id)
+            return result
 
     def get_dashboard(self, dashboard_id: str) -> WM.Dashboard:
-        record = (
-            self._session.query(SM.DashboardStorageRecord)
-            .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
-            .first()
-        )
-        if record is None:
-            raise ValueError(f"Dashboard is not found with id {dashboard_id}")
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.DashboardStorageRecord)
+                .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
+                .first()
+            )
+            if record is None:
+                raise ValueError(f"Dashboard is not found with id {dashboard_id}")
 
-        dashboard_metric_records = (
-            self._session.query(SM.DashboardMetricStorageRecord)
-            .filter(SM.DashboardMetricStorageRecord.dashboard_id == dashboard_id)
-            .all()
-        )
-        dashboard_metrics = []
-        for dm in dashboard_metric_records:
-            sm = self.get_saved_metric(dm.saved_metric_id)
-            dashboard_metrics.append(dm.as_model_instance(sm))
+            dashboard_metric_records = (
+                session.query(SM.DashboardMetricStorageRecord)
+                .filter(SM.DashboardMetricStorageRecord.dashboard_id == dashboard_id)
+                .all()
+            )
+            dashboard_metrics = []
+            for dm in dashboard_metric_records:
+                sm = self.get_saved_metric(dm.saved_metric_id)
+                dashboard_metrics.append(dm.as_model_instance(sm))
 
-        return record.as_model_instance(dashboard_metrics)
+            return record.as_model_instance(dashboard_metrics)
 
     def set_dashboard(self, dashboard_id: str, dashboard: WM.Dashboard):
-        record = (
-            self._session.query(SM.DashboardStorageRecord)
-            .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
-            .first()
-        )
-        if record is None:
-            self._session.add(SM.DashboardStorageRecord.from_model_instance(dashboard))
-        else:
-            record.update(dashboard)
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.DashboardStorageRecord)
+                .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
+                .first()
+            )
+            if record is None:
+                session.add(SM.DashboardStorageRecord.from_model_instance(dashboard))
+            else:
+                record.update(dashboard)
 
-        dashboard_metrics = (
-            self._session.query(SM.DashboardMetricStorageRecord)
-            .filter(SM.DashboardMetricStorageRecord.dashboard_id == dashboard.id)
-            .all()
-        )
-        for dm in dashboard_metrics:
-            self._session.delete(dm)
+            dashboard_metrics = (
+                session.query(SM.DashboardMetricStorageRecord)
+                .filter(SM.DashboardMetricStorageRecord.dashboard_id == dashboard.id)
+                .all()
+            )
+            for dm in dashboard_metrics:
+                session.delete(dm)
 
-        self._set_dashboard_metrics(dashboard.id, dashboard.dashboard_metrics)
-        self._session.commit()
+            self._set_dashboard_metrics(
+                dashboard.id, dashboard.dashboard_metrics, session
+            )
+            session.commit()
 
     def _set_dashboard_metrics(
-        self, dashboard_id: str, metrics: List[WM.DashboardMetric]
+        self,
+        dashboard_id: str,
+        metrics: List[WM.DashboardMetric],
+        session: SA.orm.Session,
     ):
         for dashboard_metric in metrics:
-            self._session.add(
+            session.add(
                 SM.DashboardMetricStorageRecord.from_model_instance(
                     dashboard_id, dashboard_metric
                 )
             )
 
     def clear_dashboard(self, dashboard_id: str):
-        record = (
-            self._session.query(SM.DashboardStorageRecord)
-            .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
-            .first()
-        )
-        if record is not None:
-            self._session.delete(record)
-            self._session.commit()
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.DashboardStorageRecord)
+                .filter(SM.DashboardStorageRecord.dashboard_id == dashboard_id)
+                .first()
+            )
+            if record is not None:
+                session.delete(record)
+                session.commit()
 
     def set_user(self, user: WM.User):
-        session = self._session
-        record = (
-            session.query(SM.UserStorageRecord)
-            .filter(SM.UserStorageRecord.user_id == user.id)
-            .first()
-        )
-        if record is None:
-            session.add(SM.UserStorageRecord.from_model_instance(user))
-            session.commit()
-            return
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.UserStorageRecord)
+                .filter(SM.UserStorageRecord.user_id == user.id)
+                .first()
+            )
+            if record is None:
+                session.add(SM.UserStorageRecord.from_model_instance(user))
+                session.commit()
+                return
 
-        record.update(user)
-        session.commit()
+            record.update(user)
+            session.commit()
 
     def get_user_by_id(self, user_id: str) -> Optional[WM.User]:
-        record = (
-            self._session.query(SM.UserStorageRecord)
-            .filter(SM.UserStorageRecord.user_id == user_id)
-            .first()
-        )
-        if record is None:
-            return None
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.UserStorageRecord)
+                .filter(SM.UserStorageRecord.user_id == user_id)
+                .first()
+            )
+            if record is None:
+                return None
 
-        return record.as_model_instance()
+            return record.as_model_instance()
 
     def list_users(self) -> List[WM.User]:
         result = []
-        for record in self._session.query(SM.UserStorageRecord):
-            result.append(record.as_model_instance())
-        return result
+        with self._new_db_session() as session:
+            for record in session.query(SM.UserStorageRecord):
+                result.append(record.as_model_instance())
+            return result
 
     def clear_user(self, user_id: str):
-        session = self._session
-        record = (
-            session.query(SM.UserStorageRecord)
-            .filter(SM.UserStorageRecord.user_id == user_id)
-            .first()
-        )
-        if record is not None:
-            session.delete(record)
-            session.commit()
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.UserStorageRecord)
+                .filter(SM.UserStorageRecord.user_id == user_id)
+                .first()
+            )
+            if record is not None:
+                session.delete(record)
+                session.commit()
 
     def health_check(self):
-        session = self._session
-        session.execute("select 1")
+        with self._new_db_session() as session:
+            session.execute("select 1")
