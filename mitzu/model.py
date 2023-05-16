@@ -231,9 +231,10 @@ class DataType(Enum):
     DATETIME = auto()
     MAP = auto()
     STRUCT = auto()
+    ARRAY = auto()
 
     def is_complex(self) -> bool:
-        return self in (DataType.MAP, DataType.STRUCT)
+        return self in (DataType.MAP, DataType.STRUCT, DataType.ARRAY)
 
     def from_string(self, string_value: str) -> Any:
         if self == DataType.BOOL:
@@ -1145,7 +1146,7 @@ class EventFieldDef:
 class EventDef(Identifiable):
 
     _event_name: str
-    _fields: Dict[Field, EventFieldDef]
+    _fields: List[EventFieldDef]
     _event_data_table: EventDataTable
     _description: Optional[str] = ""
     _id: str = field(default_factory=helper.create_unique_id)

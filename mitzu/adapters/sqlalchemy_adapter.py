@@ -33,10 +33,13 @@ SIMPLE_TYPE_MAPPINGS = {
     SA_T.Numeric: M.DataType.NUMBER,
     SA_T.Integer: M.DataType.NUMBER,
     SA_T.Boolean: M.DataType.BOOL,
+    SA_T.NullType: M.DataType.STRING,
     SA_T.DateTime: M.DataType.DATETIME,
     SA_T.Date: M.DataType.DATETIME,
     SA_T.Time: M.DataType.DATETIME,
     SA_T.String: M.DataType.STRING,
+    SA_T.ARRAY: M.DataType.ARRAY,
+    SA_T.JSON: M.DataType.MAP,
 }
 
 
@@ -122,6 +125,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
     def execute_query(self, query: Any) -> pd.DataFrame:
         engine = self.get_engine()
+
         try:
             if H.LOGGER.isEnabledFor(logging.DEBUG):
                 H.LOGGER.debug(f"Query:\n{format_query(query)}")
@@ -206,19 +210,22 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             "Generic SQL Alchemy Adapter doesn't support complex types (struct, row)"
         )
 
+    def _get_struct_sub_types(self, struct_val: Any) -> Any:
+        return struct_val.attr_types
+
     def _parse_struct_type(self, sa_type: Any, name: str, path: str) -> M.Field:
         real_struct_type = self._get_struct_type()
         if isinstance(sa_type, real_struct_type):
             row: TypeEngine = sa_type
             sub_fields: List[M.Field] = []
-            for n, st in row.attr_types:
+            for n, st in self._get_struct_sub_types(row):
                 next_path = f"{path}.{n}"
                 sf = self._parse_struct_type(
                     sa_type=st,
                     name=n,
                     path=next_path,
                 )
-                if sf._type == M.DataType and (
+                if sf._type == M.DataType.STRUCT and (
                     sf._sub_fields is None or len(sf._sub_fields) == 0
                 ):
                     continue
@@ -317,6 +324,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             else:
                 field = M.Field(_name=field_name, _type=data_type)
                 res.append(field)
+
         return self._flatten_fields(res)
 
     def list_all_table_columns(self, schema: str, table_name: str) -> List[M.Field]:
@@ -324,6 +332,9 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         field_types = table.columns
         res = []
         for field_name, field_type in field_types.items():
+            if "." in field_name:
+                # Columns with periods are not supported
+                continue
             data_type = self.map_type(field_type.type)
             if data_type == M.DataType.STRUCT:
                 complex_field = self._parse_struct_type(
@@ -424,10 +435,10 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             self.project.get_default_discovery_start_dt(),
             self.project.get_default_end_dt(),
         )
-
+        cols = [c for c in table.columns.values()]
         raw_cte: EXP.CTE = SA.select(
             columns=[
-                *table.columns.values(),
+                *cols,
                 self._get_sample_function().label("__sample"),
                 SA.func.row_number()
                 .over(
@@ -501,6 +512,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     else_=SA.literal(None),
                 ).label(f._get_name().replace(".", COLUMN_NAME_REPLACE_STR))
                 for f in fields
+                if not f._sub_fields
             ],
         )
         df = self.execute_query(query)
@@ -522,7 +534,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         enums = self._get_column_values_df(event_data_table, fields).to_dict("index")
         res: Dict[str, M.EventDef] = {}
         for evt, values in enums.items():
-            field_defs: Dict[M.Field, M.EventFieldDef] = {}
+            field_defs: List[M.EventFieldDef] = []
             for f in fields:
                 field_values = values[f._get_name()]
                 if (
@@ -535,11 +547,13 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         if field_values
                         else None
                     )
-                    field_defs[f] = M.EventFieldDef(
-                        _event_name=evt,
-                        _field=f,
-                        _event_data_table=event_data_table,
-                        _enums=vals,
+                    field_defs.append(
+                        M.EventFieldDef(
+                            _event_name=evt,
+                            _field=f,
+                            _event_data_table=event_data_table,
+                            _enums=vals,
+                        )
                     )
 
             res[evt] = M.EventDef(
@@ -675,7 +689,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             if event_def_reference is not None:
                 event_def = event_def_reference.get_value_if_exists()
                 for edt_evt_field in event_def._fields:
-                    if edt_evt_field == field:
+                    if edt_evt_field._field == field:
                         return True
         return False
 

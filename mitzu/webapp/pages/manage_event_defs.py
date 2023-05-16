@@ -41,8 +41,8 @@ def create_table_row(
     edt: M.EventDataTable, event_def: M.Reference[M.EventDef]
 ) -> html.Tr:
     all_fields: List[str] = []
-    for field in event_def.get_value_if_exists()._fields.keys():
-        all_fields.extend(sf._get_name() for sf in field.get_all_subfields())
+    for field in event_def.get_value_if_exists()._fields:
+        all_fields.extend(sf._get_name() for sf in field._field.get_all_subfields())
     properties = f"{len(all_fields)} properties"
 
     return html.Tr(

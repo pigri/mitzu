@@ -14,24 +14,21 @@ import sqlalchemy as SA
 Base: SA.orm.DeclarativeMeta = SA.orm.declarative_base()
 
 
-def serialize_field(field: M.Field) -> str:
-    return json.dumps(
-        {
-            "_name": field._name,
-            "_type": field._type.value,
-            "_sub_fields": [serialize_field(f) for f in field._sub_fields]
-            if field._sub_fields
-            else None,
-        }
-    )
+def serialize_field(field: M.Field) -> Dict:
+    return {
+        "_name": field._name,
+        "_type": field._type.value,
+        "_parent": serialize_field(field._parent)
+        if field._parent is not None
+        else None,
+    }
 
 
-def deserialize_field(serialized: str) -> M.Field:
-    data = json.loads(serialized)
+def deserialize_field(data: Dict[str, Any]) -> M.Field:
     return M.Field(
         _name=data["_name"],
         _type=M.DataType(data["_type"]),
-        _sub_fields=data["_sub_fields"],
+        _parent=deserialize_field(data["_parent"]) if data["_parent"] else None,
     )
 
 
@@ -468,14 +465,16 @@ class EventDefStorageRecord(Base):
         edt: M.EventDataTable,
     ) -> M.EventDef:
         fields_dict = json.loads(self.fields)
-        fields: Dict[M.Field, M.EventFieldDef] = {}
+        fields: List[M.EventFieldDef] = []
         for field_def in fields_dict:
-            fields[deserialize_field(field_def["_key"])] = M.EventFieldDef(
-                _event_name=field_def["_event_name"],
-                _field=deserialize_field(field_def["_field"]),
-                _event_data_table=edt,
-                _description=field_def["_description"],
-                _enums=field_def["_enums"],
+            fields.append(
+                M.EventFieldDef(
+                    _event_name=field_def["_event_name"],
+                    _field=deserialize_field(field_def["_field"]),
+                    _event_data_table=edt,
+                    _description=field_def["_description"],
+                    _enums=field_def["_enums"],
+                )
             )
 
         return M.EventDef(
@@ -491,10 +490,11 @@ class EventDefStorageRecord(Base):
         self, event_data_table_id: str, event_def: M.EventDef
     ) -> EventDefStorageRecord:
         fields = []
-        for field, field_def in event_def._fields.items():
+        for field_def in event_def._fields:
+            if field_def._field._sub_fields:
+                raise ValueError("Only leaf nodes can be serialized")
             fields.append(
                 {
-                    "_key": serialize_field(field),
                     "_event_name": field_def._event_name,
                     "_field": serialize_field(field_def._field),
                     "_event_data_table_id": field_def._event_data_table.id,
@@ -506,7 +506,7 @@ class EventDefStorageRecord(Base):
             id=event_def.get_id(),
             event_data_table_id=event_data_table_id,
             event_name=event_def._event_name,
-            fields=json.dumps(fields),  # FIXME: double serialization
+            fields=json.dumps(fields),
             description=event_def._description,
         )
 

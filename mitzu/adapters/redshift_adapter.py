@@ -10,6 +10,7 @@ import mitzu.adapters.generic_adapter as GA
 from typing import List, Optional
 from sqlalchemy import distinct, select
 import sqlalchemy.sql.expression as EXP
+from sqlalchemy.orm import aliased
 
 VALUES_COL_NAME = "values"
 
@@ -51,7 +52,7 @@ class RedshiftAdapter(PostgresqlAdapter):
         if event_data_table.discovery_settings is None:
             raise ValueError("Missing discovery settings")
 
-        cte = SA.aliased(
+        cte = aliased(
             self._get_dataset_discovery_cte(event_data_table),
             alias=SA.SAMPLED_SOURCE_CTE_NAME,
             name=SA.SAMPLED_SOURCE_CTE_NAME,

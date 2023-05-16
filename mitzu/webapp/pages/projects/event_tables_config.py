@@ -810,7 +810,9 @@ def handle_configure_modal_confirm(
                 table_name=table_name, schema=schema
             )
             field_names: Dict[str, M.Field] = {}
+
             for field in fields:
+
                 for f in field.get_all_subfields():
                     field_names[f._get_name()] = f
 

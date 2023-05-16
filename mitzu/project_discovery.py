@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Callable
+from typing import Callable, Dict, Optional
 
 import mitzu.model as M
 from mitzu.helper import LOGGER
@@ -15,26 +15,6 @@ class ProjectDiscovery:
     def __init__(self, project: M.Project, callback: Optional[Callable] = None):
         self.project = project
         self.callback = callback
-
-    def _get_field_values(
-        self,
-        ed_table: M.EventDataTable,
-        specific_fields: List[M.Field],
-    ) -> Dict[str, M.EventDef]:
-        return self.project.get_adapter().get_field_enums(
-            event_data_table=ed_table,
-            fields=specific_fields,
-        )
-
-    def _copy_gen_field_def_to_spec(
-        self, spec_event_name: str, gen_evt_field_def: M.EventFieldDef
-    ):
-        return M.EventFieldDef(
-            _event_name=spec_event_name,
-            _field=gen_evt_field_def._field,
-            _event_data_table=gen_evt_field_def._event_data_table,
-            _enums=gen_evt_field_def._enums,
-        )
 
     def _create_event_field_def_references(
         self,
@@ -57,25 +37,21 @@ class ProjectDiscovery:
 
         self.project.validate()
         tables = self.project.event_data_tables
-
+        adapter = self.project.get_adapter()
         errors = {}
         for ed_table in tables:
             defs = {}
             try:
                 LOGGER.debug(f"Discovering {ed_table.get_full_name()}")
-                fields = self.project.get_adapter().list_fields(
-                    event_data_table=ed_table
-                )
-
-                specific_fields = [
+                fields = adapter.list_fields(event_data_table=ed_table)
+                fields = [
                     f for f in fields if f._get_name() not in ed_table.ignored_fields
                 ]
-                event_specific_field_values = self._get_field_values(
-                    ed_table, specific_fields
-                )
+
+                field_enums = adapter.get_field_enums(ed_table, fields)
                 defs = self._create_event_field_def_references(
                     ed_table,
-                    event_specific_field_values,
+                    field_enums,
                 )
                 definitions[ed_table] = defs
             except Exception as exc:
