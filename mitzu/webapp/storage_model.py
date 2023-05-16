@@ -468,16 +468,14 @@ class EventDefStorageRecord(Base):
         edt: M.EventDataTable,
     ) -> M.EventDef:
         fields_dict = json.loads(self.fields)
-        fields: List[M.EventFieldDef] = []
+        fields: Dict[M.Field, M.EventFieldDef] = {}
         for field_def in fields_dict:
-            fields.append(
-                M.EventFieldDef(
-                    _event_name=field_def["_event_name"],
-                    _field=deserialize_field(field_def["_field"]),
-                    _event_data_table=edt,
-                    _description=field_def["_description"],
-                    _enums=field_def["_enums"],
-                )
+            fields[deserialize_field(field_def["_key"])] = M.EventFieldDef(
+                _event_name=field_def["_event_name"],
+                _field=deserialize_field(field_def["_field"]),
+                _event_data_table=edt,
+                _description=field_def["_description"],
+                _enums=field_def["_enums"],
             )
 
         return M.EventDef(
@@ -493,9 +491,10 @@ class EventDefStorageRecord(Base):
         self, event_data_table_id: str, event_def: M.EventDef
     ) -> EventDefStorageRecord:
         fields = []
-        for field_def in event_def._fields:
+        for field, field_def in event_def._fields.items():
             fields.append(
                 {
+                    "_key": serialize_field(field),
                     "_event_name": field_def._event_name,
                     "_field": serialize_field(field_def._field),
                     "_event_data_table_id": field_def._event_data_table.id,
@@ -507,7 +506,7 @@ class EventDefStorageRecord(Base):
             id=event_def.get_id(),
             event_data_table_id=event_data_table_id,
             event_name=event_def._event_name,
-            fields=json.dumps(fields),
+            fields=json.dumps(fields),  # FIXME: double serialization
             description=event_def._description,
         )
 

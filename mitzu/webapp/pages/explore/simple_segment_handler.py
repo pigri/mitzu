@@ -53,14 +53,14 @@ def create_property_dropdown(
 
     event = discovered_project.get_event_def(event_name)
     placeholder = "+ Where" if simple_segment_index == 0 else "+ And"
-    fields = [f._field for f in event._fields]
-    fields.sort(key=lambda f: f._get_name())
+    fields_names = list(event._fields.keys())
+    fields_names.sort(key=lambda f: f._get_name())
     options = [
         {
             "label": get_property_name_label(f._get_name()),
             "value": f"{event_name}.{f._get_name()}",
         }
-        for f in fields
+        for f in fields_names
     ]
 
     return dmc.Select(

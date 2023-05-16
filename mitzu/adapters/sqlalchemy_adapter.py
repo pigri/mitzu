@@ -522,7 +522,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         enums = self._get_column_values_df(event_data_table, fields).to_dict("index")
         res: Dict[str, M.EventDef] = {}
         for evt, values in enums.items():
-            field_defs: List[M.EventFieldDef] = []
+            field_defs: Dict[M.Field, M.EventFieldDef] = {}
             for f in fields:
                 field_values = values[f._get_name()]
                 if (
@@ -535,13 +535,11 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                         if field_values
                         else None
                     )
-                    field_defs.append(
-                        M.EventFieldDef(
-                            _event_name=evt,
-                            _field=f,
-                            _event_data_table=event_data_table,
-                            _enums=vals,
-                        )
+                    field_defs[f] = M.EventFieldDef(
+                        _event_name=evt,
+                        _field=f,
+                        _event_data_table=event_data_table,
+                        _enums=vals,
                     )
 
             res[evt] = M.EventDef(

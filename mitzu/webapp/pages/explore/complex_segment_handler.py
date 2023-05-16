@@ -29,7 +29,7 @@ def get_group_by_options(
     options: List[Dict[str, str]] = []
     for event_name in event_names:
         for field in discovered_project.get_event_def(event_name)._fields:
-            field_value = field._field._get_name()
+            field_value = field._get_name()
             should_break = False
             final_field_value = f"{event_name}.{field_value}"
             for op in options:
@@ -39,7 +39,7 @@ def get_group_by_options(
             if not should_break:
                 options.append(
                     {
-                        "label": get_property_name_label(field._field._get_name()),
+                        "label": get_property_name_label(field._get_name()),
                         "value": final_field_value,
                     }
                 )

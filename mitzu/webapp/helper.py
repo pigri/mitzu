@@ -37,8 +37,7 @@ def find_event_field_def(
     event_def = discovered_project.get_event_def(event_name)
     field_name = ".".join(path_parts[1:])
 
-    for event_field_def in event_def._fields:
-        field = event_field_def._field
+    for field, event_field_def in event_def._fields.items():
         if field._get_name() == field_name:
             return event_field_def
     raise Exception(f"Invalid property path: {path}")

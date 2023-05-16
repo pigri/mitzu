@@ -183,8 +183,8 @@ class ModelLoader:
         fields = event._fields
 
         class_def: Dict[str, Any] = {}
-        for event_field_def in fields:
-            event_field = event_field_def._field
+        for event_field, event_field_def in fields.items():
+
             field_class = self._create_event_field_class(
                 event._event_name, event_field_def
             )

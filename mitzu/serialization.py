@@ -251,7 +251,7 @@ def _from_dict(
         edt = find_edt(project, event_name)
         return M.EventDef(
             _event_name=_from_dict(event_name, project, str, path + ".en"),
-            _fields=[],
+            _fields={},
             _event_data_table=edt,
         )
     if type_hint == EFD_OR_ED_TYPE:
@@ -271,10 +271,10 @@ def _from_dict(
             raise Exception(f"Couldn't find {event_name} in any of the datasources.")
 
         event_def: M.EventDef = dd.definitions[edt][event_name].get_value_if_exists()
-        fields = event_def._fields
+        fields = event_def._fields.keys()
         for f in fields:
-            if f._field._get_name() == value:
-                return f._field
+            if f._get_name() == value:
+                return f
         raise Exception(f"Couldn't find {value} among {event_name} fields.")
     if type_hint == M.TimeGroup:
         return M.TimeGroup.parse(value)
