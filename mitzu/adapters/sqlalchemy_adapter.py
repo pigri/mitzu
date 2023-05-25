@@ -404,6 +404,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
 
         protocol = con.connection_type.get_protocol().lower()
         res = f"{protocol}://{user_name}{password}{host_str}{port_str}{catalog_str}{schema_str}{url_params_str}"
+
         return res
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:

@@ -17,10 +17,33 @@ from sqlalchemy.sql.type_api import TypeEngine
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 
+ROLE_EXTRA_CONFIG = "role"
+
 
 class TrinoAdapter(SQLAlchemyAdapter):
     def __init__(self, project: M.Project):
         super().__init__(project)
+
+    def _get_connection_url(self, con: M.Connection):
+        user_name = "" if con.user_name is None else con.user_name
+        password = "" if con.password is None else f":{con.password}"
+        host_str = "" if con.host is None else str(con.host)
+        if con.user_name is not None and con.host is not None:
+            host_str = f"@{host_str}"
+        port_str = "" if con.port is None else ":" + str(con.port)
+        schema_str = "" if con.schema is None else f"/{con.schema}"
+        url_params_str = "" if con.url_params is None else con.url_params
+        if url_params_str != "" and url_params_str[0] != "?":
+            url_params_str = "?" + url_params_str
+        catalog_str = "" if con.catalog is None else f"/{con.catalog}"
+
+        role = con.extra_configs.get(ROLE_EXTRA_CONFIG)
+        if role:
+            user_name = f"{user_name}%2F{role}"
+
+        protocol = con.connection_type.get_protocol().lower()
+        res = f"{protocol}://{user_name}{password}{host_str}{port_str}{catalog_str}{schema_str}{url_params_str}"
+        return res
 
     def get_conversion_df(self, metric: M.ConversionMetric) -> pd.DataFrame:
         df = super().get_conversion_df(metric)

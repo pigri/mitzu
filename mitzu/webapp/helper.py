@@ -105,6 +105,7 @@ def create_form_property_input(
     justify: Optional[str] = None,
     read_only: bool = False,
     hidden: bool = False,
+    label: Optional[str] = None,
     **kwargs,
 ):
     if "size" not in kwargs and component_type not in [dbc.Checkbox, dcc.Dropdown]:
@@ -113,12 +114,13 @@ def create_form_property_input(
         component_type in [dbc.Input, dbc.Textarea]
         and kwargs.get("placeholder") is None
     ):
-        kwargs["placeholder"] = value_to_label(property)
+        placeholder = label if label is not None else value_to_label(property)
+        kwargs["placeholder"] = placeholder
 
     if icon_cls is not None:
         label_children = [
             html.B(className=f"{icon_cls} me-1"),
-            value_to_label(property),
+            value_to_label(property) if label is None else label,
             "*" if kwargs.get("required") and not read_only else "",
         ]
     else:

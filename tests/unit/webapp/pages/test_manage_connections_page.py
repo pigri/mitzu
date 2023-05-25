@@ -96,12 +96,15 @@ def test_connection_button_missing_info_failes(
         ]
 
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(MCC.test_connection_clicked(1, {}, ""))
+        res = to_dict(MCC.test_connection_clicked(1, {}, None, ""))
         assert res == {
-            "props": {"children": "Invalid Connection Name", "className": "lead my-3"},
+            "props": {
+                "children": "Failed to connect: Connection name can't be empty",
+                "className": "my-3 text-danger",
+            },
             "type": "P",
             "namespace": "dash_html_components",
-            "children": "Invalid Connection Name",
+            "children": "Failed to connect: Connection name can't be empty",
         }
 
 
@@ -112,7 +115,7 @@ def test_connection_successfull_to_sqlite(
     with server.test_request_context():
         ctx.args_grouping = [[], get_connections_input_arg_groupping()]
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(MCC.test_connection_clicked(1, {}, ""))
+        res = to_dict(MCC.test_connection_clicked(1, {}, None, ""))
         assert res == {
             "props": {"children": "Connected successfully!", "className": "lead my-3"},
             "type": "P",
@@ -215,7 +218,7 @@ def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Depend
         ]
         ctx.triggered_id = CON.CONNECTION_SAVE_BUTTON
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))
+        res = to_dict(CON.save_button_clicked(1, 0, None, {}))
         assert res == [
             {
                 "props": {"children": "Connection saved", "className": "lead"},
@@ -247,7 +250,7 @@ def test_save_connection_and_add_project_button_clicked(
         ]
         ctx.triggered_id = CON.CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))
+        res = to_dict(CON.save_button_clicked(1, 0, None, {}))
         assert res == [
             no_update,
             f"{P.PROJECTS_CREATE_PATH}?connection_id=new_connection_id",
@@ -271,12 +274,16 @@ def test_save_connection_button_clicked_invalid(
             get_connections_input_arg_groupping(connection_name=None),
         ]
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))
+        res = to_dict(CON.save_button_clicked(1, 0, None, {}))[0]
+
         assert res == {
-            "props": {"children": "Invalid Connection Name", "className": "lead"},
+            "props": {
+                "children": "Saving failed: Connection name can't be empty",
+                "className": "lead text-danger",
+            },
             "type": "P",
             "namespace": "dash_html_components",
-            "children": "Invalid Connection Name",
+            "children": "Saving failed: Connection name can't be empty",
         }
 
         assert len(dependencies.storage.list_connections()) == 1

@@ -10,16 +10,18 @@ from dash import Input, Output, State, callback, ctx, html, no_update, ALL, dcc
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.pages.paths as P
-from mitzu.helper import value_to_label
 from mitzu.webapp.auth.decorator import restricted
 from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
 import traceback
 import json
+import mitzu.adapters.trino_adapter as TA
+import base64
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
 CONNECTION_DELETE_BUTTON = "connection_delete_button"
 CONNECTION_TEST_BUTTON = "connection_test_button"
 INDEX_TYPE = "connection_property"
+BIGQUERY_INDEX_TYPE = "bigquery_connection_property"
 TEST_CONNECTION_RESULT = "test_connection_result"
 DELETE_CONNECTION_RESULT = "delete_connection_result"
 TEST_CONNECTION_LOADING = "test_connection_loading"
@@ -44,16 +46,19 @@ PROP_USERNAME = "username"
 PROP_PASSWORD = "password"
 
 PROP_BIGQUERY_CREDENTIALS = "credentials"
+BIGQUERY_DELETE_CREDS_BUTTON = "bigquery_delete_creds_button"
+DELETE_CREDS_CONTENT = "delete_creds_content"
 
-NOT_REQUIRED_PROPERTIES = [PROP_CATALOG, PROP_PORT, PROP_PASSWORD, PROP_USERNAME]
 CON_TYPE_BLACKLIST = [M.ConnectionType.FILE]
-
-
-MIN_LENGTH = 4
 
 
 def create_url_param(values: Dict[str, Any], property: str) -> str:
     return f"{property}={values[property]}"
+
+
+def validate_inputs(values: Dict[str, Any]):
+    if values.get(PROP_CONNECTION_NAME) is None:
+        raise ValueError("Connection name can't be empty")
 
 
 def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
@@ -61,6 +66,7 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
         DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
     )
 
+    connection_id = values[PROP_CONNECTION_ID]
     con_type = M.ConnectionType.parse(values[PROP_CONNECTION_TYPE])
     url_params = ""
     extra_configs = {}
@@ -71,8 +77,11 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
                 create_url_param(values, PROP_REGION),
             ]
         )
+        region = values[PROP_REGION]
+        values[PROP_HOST] = f"athena.{region}.amazonaws.com"
     elif con_type == M.ConnectionType.DATABRICKS:
         extra_configs = {PROP_HTTP_PATH: values[PROP_HTTP_PATH]}
+        values[PROP_USERNAME] = "token"
     elif con_type == M.ConnectionType.SNOWFLAKE:
         url_params = "&".join(
             [
@@ -80,21 +89,360 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
                 create_url_param(values, PROP_ROLE),
             ]
         )
+    elif con_type == M.ConnectionType.TRINO:
+        extra_configs[TA.ROLE_EXTRA_CONFIG] = values[PROP_ROLE]
+        if values.get(PROP_PORT) is None:
+            values[PROP_PORT] = 443
     elif con_type == M.ConnectionType.BIGQUERY:
-        creds = json.loads(values[PROP_BIGQUERY_CREDENTIALS])
-        extra_configs = {PROP_BIGQUERY_CREDENTIALS: creds}
+        if PROP_BIGQUERY_CREDENTIALS not in values:
+            # If the upload doesn't have content we don't update the existing
+            try:
+                con = deps.storage.get_connection(connection_id)
+                extra_configs = con.extra_configs
+            except Exception:
+                extra_configs = {PROP_BIGQUERY_CREDENTIALS: None}
+        elif values[PROP_BIGQUERY_CREDENTIALS] == DELETE_CREDS_CONTENT:
+            extra_configs = {PROP_BIGQUERY_CREDENTIALS: None}
+        else:
+            creds = json.loads(values[PROP_BIGQUERY_CREDENTIALS])
+            extra_configs = {PROP_BIGQUERY_CREDENTIALS: creds}
+
+    elif con_type == M.ConnectionType.REDSHIFT:
+        if values.get(PROP_PORT) is None:
+            values[PROP_PORT] = 5439
+
+    validate_inputs(values)
+
     return M.Connection(
         connection_name=values[PROP_CONNECTION_NAME],
         connection_type=con_type,
         host=values[PROP_HOST],
-        port=values[PROP_PORT],
-        id=values[PROP_CONNECTION_ID],
-        catalog=values[PROP_CATALOG],
-        user_name=values[PROP_USERNAME],
-        secret_resolver=deps.secret_service.get_secret_resolver(values[PROP_PASSWORD]),
+        port=values.get(PROP_PORT),
+        id=connection_id,
+        catalog=values.get(PROP_CATALOG),
+        user_name=values.get(PROP_USERNAME),
+        secret_resolver=deps.secret_service.get_secret_resolver(
+            values.get(PROP_PASSWORD, None)
+        ),
         url_params=url_params,
         extra_configs=extra_configs,
     )
+
+
+def create_athena_connection_inputs(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_USERNAME,
+            icon_cls="bi bi-person-fill",
+            type="text",
+            label="AWS Access Key ID",
+            value=con.user_name if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PASSWORD,
+            icon_cls="bi bi-lock-fill",
+            type="password",
+            label="AWS Secret Access Key",
+            value=con.password if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            value=con.catalog if con is not None else None,
+            placeholder="AwsDataCatalog",
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_REGION,
+            type="text",
+            icon_cls="bi bi-globe",
+            label="AWS Region",
+            value=con.get_url_param(PROP_REGION) if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_S3_STAGING_DIR,
+            type="text",
+            required=True,
+            icon_cls="bi bi-bucket",
+            value=(con.get_url_param(PROP_S3_STAGING_DIR) if con is not None else None),
+        ),
+    ]
+
+
+def create_databricks_connnection_inputs(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+            placeholder="workspace.cloud.databricks.com",
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PORT,
+            icon_cls="bi bi-hash",
+            placeholder=443,
+            type="number",
+            value=con.port if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            value=con.catalog if con is not None else None,
+            placeholder="hive_metastore",
+            label="Databricks Catalog",
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PASSWORD,
+            icon_cls="bi bi-lock-fill",
+            type="password",
+            label="Personal Access Token",
+            required=True,
+            value=con.password if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HTTP_PATH,
+            type="text",
+            required=True,
+            icon_cls="bi bi-link",
+            value=con.extra_configs.get(PROP_HTTP_PATH) if con is not None else None,
+        ),
+    ]
+
+
+def create_snowflake_connection_input(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            label="Cluster",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            required=True,
+            value=con.catalog if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_USERNAME,
+            icon_cls="bi bi-person-fill",
+            type="text",
+            value=con.user_name if con is not None else None,
+            required=True,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PASSWORD,
+            icon_cls="bi bi-lock-fill",
+            type="password",
+            label="Cluster Password",
+            required=True,
+            value=con.password if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_WAREHOUSE,
+            type="text",
+            required=True,
+            icon_cls="bi bi-house",
+            value=con.get_url_param(PROP_WAREHOUSE) if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_ROLE,
+            type="text",
+            required=True,
+            icon_cls="bi bi-file-earmark-person-fill",
+            value=con.get_url_param(PROP_ROLE) if con is not None else None,
+        ),
+    ]
+
+
+def create_basic_connection_input(con: Optional[M.Connection], def_port: int):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PORT,
+            icon_cls="bi bi-hash",
+            placeholder=def_port,
+            type="number",
+            value=con.port if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            value=con.catalog if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_USERNAME,
+            icon_cls="bi bi-person-fill",
+            type="text",
+            value=con.user_name if con is not None else None,
+            required=True,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PASSWORD,
+            icon_cls="bi bi-lock-fill",
+            type="password",
+            required=True,
+            value=con.password if con is not None else None,
+        ),
+    ]
+
+
+def create_trino_connection_input(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PORT,
+            icon_cls="bi bi-hash",
+            placeholder=443,
+            type="number",
+            value=con.port if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            required=True,
+            value=con.catalog if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_USERNAME,
+            icon_cls="bi bi-person-fill",
+            type="text",
+            value=con.user_name if con is not None else None,
+            required=True,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_PASSWORD,
+            icon_cls="bi bi-lock-fill",
+            type="password",
+            required=True,
+            value=con.password if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_ROLE,
+            type="text",
+            required=True,
+            icon_cls="bi bi-file-earmark-person-fill",
+            value=con.extra_configs.get(PROP_ROLE) if con is not None else None,
+        ),
+    ]
+
+
+def create_bigquery_connection_input(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            label="Bigquery Project",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+        ),
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_CATALOG,
+            icon_cls="bi bi-journals",
+            type="text",
+            label="Default Dataset",
+            required=True,
+            value=con.catalog if con is not None else None,
+        ),
+        dbc.Row(
+            children=[
+                dbc.Label(
+                    children=[
+                        html.I(className="bi bi-key me-1"),
+                        "Credentials json",
+                    ],
+                    sm=12,
+                    lg=3,
+                    class_name="fw-bold",
+                ),
+                dbc.Col(
+                    children=[
+                        dcc.Upload(
+                            id={
+                                "type": BIGQUERY_INDEX_TYPE,
+                                "index": PROP_BIGQUERY_CREDENTIALS,
+                            },
+                            children=[
+                                dbc.Button(
+                                    "Secure upload",
+                                    size="sm",
+                                    color="primary",
+                                )
+                            ],
+                            className="d-inline-block",
+                        ),
+                        dbc.Badge(
+                            "Delete Credentials",
+                            id=BIGQUERY_DELETE_CREDS_BUTTON,
+                            href="#",
+                            className="me-1 mt-1 text-decoration-none",
+                            style={
+                                "display": "inline-block"
+                                if con is not None
+                                and con.extra_configs.get(PROP_BIGQUERY_CREDENTIALS)
+                                is not None
+                                else "none"
+                            },
+                        ),
+                    ],
+                    sm=12,
+                    lg=3,
+                ),
+            ],
+            class_name="mb-3",
+            justify=None,
+        ),
+    ]
 
 
 def create_connection_extra_inputs(
@@ -102,89 +450,31 @@ def create_connection_extra_inputs(
 ) -> List[bc.Component]:
     if con_type is None:
         return []
-    if con_type == M.ConnectionType.ATHENA:
-        return [
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_REGION,
-                type="text",
-                required=True,
-                icon_cls="bi bi-globe",
-                value=con.get_url_param(PROP_REGION) if con is not None else None,
-                minlength=4,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_S3_STAGING_DIR,
-                type="text",
-                required=True,
-                icon_cls="bi bi-bucket",
-                value=(
-                    con.get_url_param(PROP_S3_STAGING_DIR) if con is not None else None
-                ),
-                minlength=4,
-            ),
-        ]
-    if con_type == M.ConnectionType.DATABRICKS:
-        return [
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_HTTP_PATH,
-                type="text",
-                required=True,
-                icon_cls="bi bi-link",
-                value=con.extra_configs.get(PROP_HTTP_PATH)
-                if con is not None
-                else None,
-                minlength=4,
-            )
-        ]
-    if con_type == M.ConnectionType.SNOWFLAKE:
-        return [
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_WAREHOUSE,
-                type="text",
-                required=True,
-                icon_cls="bi bi-house",
-                value=con.get_url_param(PROP_WAREHOUSE) if con is not None else None,
-                minlength=4,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_ROLE,
-                type="text",
-                required=True,
-                icon_cls="bi bi-file-earmark-person-fill",
-                value=con.get_url_param(PROP_ROLE) if con is not None else None,
-                minlength=4,
-            ),
-        ]
-    if con_type == M.ConnectionType.BIGQUERY:
-        return [
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_BIGQUERY_CREDENTIALS,
-                component_type=dbc.Textarea,
-                required=True,
-                icon_cls="bi bi-key",
-                placeholder="Credentials json",
-                rows=10,
-                value=(
-                    json.dumps(con.extra_configs.get(PROP_BIGQUERY_CREDENTIALS, {}))
-                    if con is not None
-                    else None
-                ),
-            ),
-        ]
 
-    return []
+    if con_type == M.ConnectionType.ATHENA:
+        return create_athena_connection_inputs(con)
+    elif con_type == M.ConnectionType.DATABRICKS:
+        return create_databricks_connnection_inputs(con)
+    elif con_type == M.ConnectionType.SNOWFLAKE:
+        return create_snowflake_connection_input(con)
+    elif con_type == M.ConnectionType.POSTGRESQL:
+        return create_basic_connection_input(con, def_port=5432)
+    elif con_type == M.ConnectionType.MYSQL:
+        return create_basic_connection_input(con, def_port=3306)
+    elif con_type == M.ConnectionType.REDSHIFT:
+        return create_basic_connection_input(con, def_port=5439)
+    elif con_type == M.ConnectionType.TRINO:
+        return create_trino_connection_input(con)
+    elif con_type == M.ConnectionType.BIGQUERY:
+        return create_bigquery_connection_input(con)
+    else:
+        return html.Div("Unsupported connection type", className="lead text-warning")
 
 
 def create_delete_button(connection: Optional[M.Connection]) -> bc.Component:
     if connection is not None:
         return dbc.Button(
-            [html.B(className="bi bi-x-circle"), " Delete connection"],
+            [html.B(className="bi bi-x-circle mr-1"), "Delete connection"],
             id=CONNECTION_DELETE_BUTTON,
             size="sm",
             color="danger",
@@ -254,7 +544,6 @@ def create_manage_connection_component(
                 type="text",
                 required=True,
                 value=con.connection_name if con is not None else None,
-                minlength=4,
             ),
             create_form_property_input(
                 index_type=INDEX_TYPE,
@@ -268,46 +557,6 @@ def create_manage_connection_component(
                 searchable=True,
                 data=con_type_opts,
                 size="xs",
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_HOST,
-                icon_cls="bi bi-link",
-                type="text",
-                required=True,
-                value=con.host if con is not None else None,
-                minlength=4,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_PORT,
-                icon_cls="bi bi-hash",
-                type="number",
-                value=con.port if con is not None else None,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_CATALOG,
-                icon_cls="bi bi-journals",
-                type="text",
-                value=con.catalog if con is not None else None,
-            ),
-            html.Hr(),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_USERNAME,
-                icon_cls="bi bi-person-fill",
-                type="text",
-                value=con.user_name if con is not None else None,
-                minlength=4,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
-                property=PROP_PASSWORD,
-                icon_cls="bi bi-lock-fill",
-                type="password",
-                value=con.password if con is not None else None,
-                minlength=4,
             ),
             html.Hr(),
             html.Div(
@@ -428,17 +677,13 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
     return False, ""
 
 
-def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
-    for k, v in values.items():
-        if k not in NOT_REQUIRED_PROPERTIES and (v is None or len(v) < MIN_LENGTH):
-            return k
-    return None
-
-
 @callback(
     Output(TEST_CONNECTION_RESULT, "children"),
     Input(CONNECTION_TEST_BUTTON, "n_clicks"),
     State({"type": INDEX_TYPE, "index": ALL}, "value"),
+    State(
+        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
+    ),
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
     background=True,
@@ -453,7 +698,7 @@ def validate_input_values(values: Dict[str, Any]) -> Optional[str]:
 )
 @restricted
 def test_connection_clicked(
-    n_clicks: int, values: Dict[str, Any], pathname: str
+    n_clicks: int, values: Dict[str, Any], bigquery_contents: str, pathname: str
 ) -> List[bc.Component]:
     if n_clicks is None:
         return no_update
@@ -463,12 +708,15 @@ def test_connection_clicked(
         id_val = prop["id"]
         if id_val.get("type") == INDEX_TYPE:
             vals[id_val.get("index")] = prop["value"]
-
-    invalid = validate_input_values(values=vals)
-    if invalid is not None:
-        return html.P(f"Invalid {value_to_label(invalid)}", className="lead my-3")
-
     try:
+        if bigquery_contents:
+            if bigquery_contents == DELETE_CREDS_CONTENT:
+                vals[PROP_BIGQUERY_CREDENTIALS] = DELETE_CREDS_CONTENT
+            else:
+                _, content_string = bigquery_contents.split(",")
+                decoded = base64.b64decode(content_string)
+                vals[PROP_BIGQUERY_CREDENTIALS] = decoded
+
         connection = create_connection_from_values(vals)
         dummy_project = M.Project(connection, [], project_name="dp")
         dummy_project.get_adapter().test_connection()
@@ -476,3 +724,29 @@ def test_connection_clicked(
     except Exception as exc:
         traceback.print_exc()
         return html.P(f"Failed to connect: {exc}", className="my-3 text-danger")
+
+
+@callback(
+    Output(
+        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
+    ),
+    Output(BIGQUERY_DELETE_CREDS_BUTTON, "style"),
+    Input(BIGQUERY_DELETE_CREDS_BUTTON, "n_clicks"),
+    Input(
+        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
+    ),
+    prevent_initial_call=True,
+)
+@restricted
+def delete_bigquery_credentials_clicked(
+    n_clicks: int, bigquery_content: str
+) -> Tuple[str, Dict]:
+    if ctx.triggered_id == BIGQUERY_DELETE_CREDS_BUTTON:
+        if n_clicks is None:
+            return no_update, no_update
+
+        return DELETE_CREDS_CONTENT, {"display": "none"}
+    else:
+        if bigquery_content is None:
+            return no_update, no_update
+        return no_update, {"display": "inline-block"}

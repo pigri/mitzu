@@ -15,8 +15,8 @@ from dash import (
     register_page,
     dcc,
 )
+import base64
 
-import mitzu.helper as H
 import mitzu.model as M
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
@@ -117,6 +117,10 @@ register_page(
     Input(CONNECTION_SAVE_BUTTON, "n_clicks"),
     Input(CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON, "n_clicks"),
     State({"type": MCC.INDEX_TYPE, "index": ALL}, "value"),
+    State(
+        {"type": MCC.BIGQUERY_INDEX_TYPE, "index": MCC.PROP_BIGQUERY_CREDENTIALS},
+        "contents",
+    ),
     prevent_initial_call=True,
 )
 @restricted
@@ -124,6 +128,7 @@ def save_button_clicked(
     save_button_clicks: int,
     save_and_add_project_button_clicks: int,
     values: List[Any],
+    bigquery_contents: str,
 ) -> List[bc.Component]:
     if save_button_clicks is None and save_and_add_project_button_clicks is None:
         return no_update
@@ -133,18 +138,36 @@ def save_button_clicked(
         id_val = prop["id"]
         if id_val.get("type") == MCC.INDEX_TYPE:
             vals[id_val.get("index")] = prop["value"]
+    try:
+        if bigquery_contents:
+            if bigquery_contents == MCC.DELETE_CREDS_CONTENT:
+                vals[
+                    MCC.PROP_BIGQUERY_CREDENTIALS
+                ] = MCC.DELETE_CREDS_CONTENT  # We will delete the extra config
+            else:
+                _, content_string = bigquery_contents.split(",")
+                decoded = base64.b64decode(content_string)
+                vals[MCC.PROP_BIGQUERY_CREDENTIALS] = decoded
 
-    connection = MCC.create_connection_from_values(vals)
-    depenednecies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+        connection = MCC.create_connection_from_values(vals)
+        depenednecies: DEPS.Dependencies = cast(
+            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
+        )
 
-    invalid = MCC.validate_input_values(values=vals)
-    if invalid is not None:
-        return html.P(f"Invalid {H.value_to_label(invalid)}", className="lead")
-    depenednecies.storage.set_connection(connection.id, connection)
+        depenednecies.storage.set_connection(connection.id, connection)
 
-    if ctx.triggered_id == CONNECTION_SAVE_BUTTON:
-        return [html.P("Connection saved", className="lead"), no_update]
-    else:
-        return [no_update, f"{P.PROJECTS_CREATE_PATH}?connection_id={connection.id}"]
+        if ctx.triggered_id == CONNECTION_SAVE_BUTTON:
+            return [html.P("Connection saved", className="lead"), no_update]
+        else:
+            return [
+                no_update,
+                f"{P.PROJECTS_CREATE_PATH}?connection_id={connection.id}",
+            ]
+    except Exception as exc:
+        return [
+            html.P(
+                f"Saving failed: {str(exc)[:100]}",
+                className="lead text-danger",
+            ),
+            no_update,
+        ]
