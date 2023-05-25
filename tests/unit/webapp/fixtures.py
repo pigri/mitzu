@@ -58,9 +58,8 @@ def dependencies() -> DEPS.Dependencies:
         token_validator=None,
         token_signing_key=configs.AUTH_JWT_SECRET,
         session_timeout=configs.AUTH_SESSION_TIMEOUT,
-        user_service=user_service,
     )
-    authorizer = A.OAuthAuthorizer.create(auth_config)
+    authorizer = A.OAuthAuthorizer.create(auth_config, user_service)
 
     # make sure the test requests are always authorized
     object.__setattr__(authorizer, "is_request_authorized", lambda _: True)

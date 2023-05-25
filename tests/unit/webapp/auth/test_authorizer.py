@@ -43,12 +43,11 @@ storage = S.MitzuStorage()
 storage.init_db_schema()
 user_service = U.UserService(storage)
 auth_config = AuthConfig(
-    user_service=user_service,
     token_signing_key="test",
     oauth=oauth_config,
     token_validator=token_validator,
 )
-authorizer = OAuthAuthorizer.create(auth_config)
+authorizer = OAuthAuthorizer.create(auth_config, user_service)
 
 
 def setup_authorizer(app: flask.Flask, authorizer: OAuthAuthorizer):
@@ -199,7 +198,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == "http://localhost/"
+        assert resp.headers["Location"] == "http://localhost:8082"
         assert_auth_token(resp, user_id)
 
 
@@ -314,11 +313,11 @@ def test_sign_out_with_sign_out_url():
     )
     authorizer = OAuthAuthorizer.create(
         AuthConfig(
-            user_service=user_service,
             token_signing_key=auth_config.token_signing_key,
             token_validator=token_validator,
             oauth=oauth_config,
-        )
+        ),
+        user_service=user_service,
     )
     setup_authorizer(app, authorizer)
 
@@ -360,8 +359,8 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
             token_signing_key=auth_config.token_signing_key,
             token_validator=token_validator,
             oauth=oauth_config,
-            user_service=user_service,
-        )
+        ),
+        user_service=user_service,
     )
     setup_authorizer(app, authorizer)
     configs.AUTH_BACKEND = "cognito"
@@ -402,7 +401,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == "http://localhost/"
+        assert resp.headers["Location"] == "http://localhost:8082"
         assert_auth_token(resp, user_id)
 
 
@@ -501,8 +500,8 @@ def test_unauthorized_when_user_is_deleted():
             token_signing_key=auth_config.token_signing_key,
             token_validator=token_validator,
             oauth=oauth_config,
-            user_service=user_service,
-        )
+        ),
+        user_service=user_service,
     )
     setup_authorizer(app, authorizer)
 
@@ -530,12 +529,11 @@ def test_unauthorized_when_user_is_deleted():
 
 def test_login_local_user_unauthorized():
     auth_config = AuthConfig(
-        user_service=user_service,
         token_signing_key="test",
         oauth=None,
         token_validator=None,
     )
-    authorizer = OAuthAuthorizer.create(auth_config)
+    authorizer = OAuthAuthorizer.create(auth_config, user_service)
     with app.test_request_context():
         # None means unauthorized
         assert authorizer.login_local_user("a@b.c", "password") is None
@@ -543,12 +541,11 @@ def test_login_local_user_unauthorized():
 
 def test_login_local_user_authorized():
     auth_config = AuthConfig(
-        user_service=user_service,
         token_signing_key="test",
         oauth=None,
         token_validator=None,
     )
-    authorizer = OAuthAuthorizer.create(auth_config)
+    authorizer = OAuthAuthorizer.create(auth_config, user_service)
     email = "a@b.c"
     password = "password"
     user_service.new_user(email, password, password)
@@ -558,12 +555,11 @@ def test_login_local_user_authorized():
 
 def test_login_local_user_authorized_and_redirected_based_on_a_cookie():
     auth_config = AuthConfig(
-        user_service=user_service,
         token_signing_key="test",
         oauth=None,
         token_validator=None,
     )
-    authorizer = OAuthAuthorizer.create(auth_config)
+    authorizer = OAuthAuthorizer.create(auth_config, user_service)
     email = "a@b.c"
     password = "password"
     user_service.new_user(email, password, password)

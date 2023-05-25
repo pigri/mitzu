@@ -38,9 +38,8 @@ class RequestContextLoggedInAsRootUser:
             token_validator=None,
             token_signing_key=configs.AUTH_JWT_SECRET,
             session_timeout=configs.AUTH_SESSION_TIMEOUT,
-            user_service=user_service,
         )
-        authorizer = A.OAuthAuthorizer.create(auth_config)
+        authorizer = A.OAuthAuthorizer.create(auth_config, user_service)
 
         @self._server.before_request
         def before_request() -> Optional[flask.Response]:

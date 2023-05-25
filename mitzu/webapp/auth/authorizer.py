@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import traceback
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import flask
 import werkzeug
 import jwt
@@ -77,8 +77,6 @@ class JWTTokenValidator(TokenValidator):
 
 @dataclass(frozen=True)
 class AuthConfig:
-    user_service: U.UserService
-
     token_cookie_name: str = "auth-token"
     redirect_cookie_name: str = "redirect-to"
 
@@ -91,11 +89,12 @@ class AuthConfig:
 
 
 @dataclass(frozen=True)
-class OAuthAuthorizer:
+class Authorizer:
     _config: AuthConfig
 
-    _authorized_url_prefixes: List[str] = field(
-        default_factory=lambda: [
+    @property
+    def _authorized_url_prefixes(self) -> List[str]:
+        return [
             P.UNAUTHORIZED_URL,
             P.HEALTHCHECK_PATH,
             "/assets/",
@@ -104,22 +103,16 @@ class OAuthAuthorizer:
             "/_dash-layout",
             "/_dash-dependencies",
         ]
-    )
-    _ignore_token_refresh_prefixes: List[str] = field(
-        default_factory=lambda: [
+
+    @property
+    def _ignore_token_refresh_prefixes(self) -> List[str]:
+        return [
             P.UNAUTHORIZED_URL,
             P.SIGN_OUT_URL,
             P.HEALTHCHECK_PATH,
             "/assets/",
             "/_dash-component-suites/",
         ]
-    )
-
-    @classmethod
-    def create(cls, config: AuthConfig) -> OAuthAuthorizer:
-        return OAuthAuthorizer(
-            _config=config,
-        )
 
     def _get_unauthenticated_response(
         self, redirect_url: Optional[str] = None
@@ -207,11 +200,10 @@ class OAuthAuthorizer:
                 token, self._config.token_signing_key, algorithms=[JWT_ALGORITHM]
             )
 
-            token_subject = claims["sub"]
-            user = self._config.user_service.get_user_by_id(token_subject)
-            if user is None:
-                raise Exception("User not found")
-            claims[JWT_CLAIM_ROLE] = user.role.value
+            user_id = claims["sub"]
+            expected_claims = self._get_token_claims_for_user_id(user_id)
+            # apply the recent user role changes in the current auth session
+            claims[JWT_CLAIM_ROLE] = expected_claims[JWT_CLAIM_ROLE]
             return claims
         except Exception as e:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
@@ -235,12 +227,36 @@ class OAuthAuthorizer:
             LOGGER.warning(f"Failed to validate token: {str(e)}")
             return None
 
+    def _get_token_claims_for_email(self, user_email: str) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+    def _get_token_claims_for_user_id(self, user_id: str) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+    def _get_token_claims_for_email_and_password(
+        self, email: str, password: str
+    ) -> Dict[str, Any]:
+        raise NotImplementedError()
+
     def authorize_request(
         self, request: flask.Request
     ) -> Optional[werkzeug.wrappers.response.Response]:
-        if self._config.oauth and request.path == P.REDIRECT_TO_LOGIN_URL:
-            resp = self._redirect(self._config.oauth.sign_in_url)
-            return resp
+        if self._config.oauth:
+            if request.path == P.REDIRECT_TO_LOGIN_URL:
+                resp = self._redirect(self._config.oauth.sign_in_url)
+                return resp
+
+            if request.path == P.SIGN_OUT_URL:
+                if self._config.oauth.sign_out_url:
+                    resp = self._redirect(self._config.oauth.sign_out_url)
+                    self.clear_cookie(resp, self._config.token_cookie_name)
+                    return resp
+                else:
+                    return self._get_unauthenticated_response()
+
+        for prefix in self._authorized_url_prefixes:
+            if request.path.startswith(prefix):
+                return None
 
         if self._config.oauth and request.path == P.OAUTH_CODE_URL:
             code = self._get_oauth_code()
@@ -249,20 +265,14 @@ class OAuthAuthorizer:
                 try:
                     id_token = self._get_identity_token(code)
                     redirect_url = flask.request.cookies.get(
-                        self._config.redirect_cookie_name, request.host_url
+                        self._config.redirect_cookie_name, configs.HOME_URL
                     )
 
                     user_email = self._validate_foreign_token(id_token)
                     if not user_email:
                         raise Exception("Unauthorized (Invalid jwt token)")
 
-                    user = self._config.user_service.get_user_by_email(user_email)
-                    if user is None:
-                        raise Exception(
-                            f"User tried to login without having a local user: {user_email}"
-                        )
-
-                    token_claims = {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
+                    token_claims = self._get_token_claims_for_email(user_email)
                     token = self._generate_new_token_with_claims(token_claims)
 
                     resp = self._redirect(redirect_url)
@@ -279,21 +289,16 @@ class OAuthAuthorizer:
                     return self._get_unauthenticated_response()
 
         auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        if auth_token:
+            return self._authorize_request_with_token(request, auth_token)
 
-        if request.path == P.SIGN_OUT_URL:
-            if self._config.oauth and self._config.oauth.sign_out_url:
-                resp = self._redirect(self._config.oauth.sign_out_url)
-                self.clear_cookie(resp, self._config.token_cookie_name)
-                return resp
-            return self._get_unauthenticated_response()
+        return self._get_unauthenticated_response(request.url)
 
-        for prefix in self._authorized_url_prefixes:
-            if request.path.startswith(prefix):
-                return None
-
-        if auth_token and self._validate_token(auth_token) is not None:
+    def _authorize_request_with_token(
+        self, request: flask.Request, auth_token: str
+    ) -> Optional[werkzeug.wrappers.response.Response]:
+        if self._validate_token(auth_token) is not None:
             return None
-
         return self._get_unauthenticated_response(request.url)
 
     def refresh_auth_token(
@@ -340,11 +345,13 @@ class OAuthAuthorizer:
         if self._config.oauth:
             raise ValueError("Password login is not enabled, need to use SSO")
 
-        user = self._config.user_service.get_user_by_email_and_password(email, password)
-        if user is None:
+        try:
+            token_claims = self._get_token_claims_for_email_and_password(
+                email, password
+            )
+        except Exception as e:
+            LOGGER.warn(e)
             return None
-
-        token_claims = {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
         token = self._generate_new_token_with_claims(token_claims)
 
         if response:
@@ -377,3 +384,38 @@ class OAuthAuthorizer:
         self, response: werkzeug.wrappers.response.Response, cookie_name: str
     ):
         self.set_cookie(response, cookie_name, "", expires=0)
+
+
+@dataclass(frozen=True)
+class OAuthAuthorizer(Authorizer):
+    _user_service: U.UserService
+
+    @classmethod
+    def create(cls, config: AuthConfig, user_service: U.UserService) -> OAuthAuthorizer:
+        return OAuthAuthorizer(
+            _config=config,
+            _user_service=user_service,
+        )
+
+    def _get_token_claims_for_email(self, user_email: str) -> Dict[str, Any]:
+        user = self._user_service.get_user_by_email(user_email)
+        if user is None:
+            raise Exception(f"Local user not found with email: {user_email}")
+
+        return {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
+
+    def _get_token_claims_for_user_id(self, user_id: str) -> Dict[str, Any]:
+        user = self._user_service.get_user_by_id(user_id)
+        if user is None:
+            raise Exception(f"Local user not found with id: {user_id}")
+
+        return {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
+
+    def _get_token_claims_for_email_and_password(
+        self, email: str, password: str
+    ) -> Dict[str, Any]:
+        user = self._user_service.get_user_by_email_and_password(email, password)
+        if user is None:
+            raise Exception("Bad credentials")
+
+        return {"sub": user.id, JWT_CLAIM_ROLE: user.role.value}
