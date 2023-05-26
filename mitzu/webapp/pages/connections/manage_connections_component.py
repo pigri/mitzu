@@ -15,7 +15,6 @@ from mitzu.webapp.helper import MITZU_LOCATION, create_form_property_input
 import traceback
 import json
 import mitzu.adapters.trino_adapter as TA
-import base64
 
 EXTRA_PROPERTY_CONTAINER = "extra_property_container"
 CONNECTION_DELETE_BUTTON = "connection_delete_button"
@@ -44,10 +43,8 @@ PROP_PORT = "port"
 PROP_HOST = "host"
 PROP_USERNAME = "username"
 PROP_PASSWORD = "password"
-
 PROP_BIGQUERY_CREDENTIALS = "credentials"
-BIGQUERY_DELETE_CREDS_BUTTON = "bigquery_delete_creds_button"
-DELETE_CREDS_CONTENT = "delete_creds_content"
+
 
 CON_TYPE_BLACKLIST = [M.ConnectionType.FILE]
 
@@ -94,18 +91,8 @@ def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
         if values.get(PROP_PORT) is None:
             values[PROP_PORT] = 443
     elif con_type == M.ConnectionType.BIGQUERY:
-        if PROP_BIGQUERY_CREDENTIALS not in values:
-            # If the upload doesn't have content we don't update the existing
-            try:
-                con = deps.storage.get_connection(connection_id)
-                extra_configs = con.extra_configs
-            except Exception:
-                extra_configs = {PROP_BIGQUERY_CREDENTIALS: None}
-        elif values[PROP_BIGQUERY_CREDENTIALS] == DELETE_CREDS_CONTENT:
-            extra_configs = {PROP_BIGQUERY_CREDENTIALS: None}
-        else:
-            creds = json.loads(values[PROP_BIGQUERY_CREDENTIALS])
-            extra_configs = {PROP_BIGQUERY_CREDENTIALS: creds}
+        creds = json.loads(values[PROP_BIGQUERY_CREDENTIALS])
+        extra_configs = {PROP_BIGQUERY_CREDENTIALS: creds}
 
     elif con_type == M.ConnectionType.REDSHIFT:
         if values.get(PROP_PORT) is None:
@@ -321,6 +308,19 @@ def create_basic_connection_input(con: Optional[M.Connection], def_port: int):
     ]
 
 
+def create_sqlite_connection_input(con: Optional[M.Connection]):
+    return [
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_HOST,
+            icon_cls="bi bi-link",
+            type="text",
+            required=True,
+            value=con.host if con is not None else None,
+        )
+    ]
+
+
 def create_trino_connection_input(con: Optional[M.Connection]):
     return [
         create_form_property_input(
@@ -394,53 +394,19 @@ def create_bigquery_connection_input(con: Optional[M.Connection]):
             required=True,
             value=con.catalog if con is not None else None,
         ),
-        dbc.Row(
-            children=[
-                dbc.Label(
-                    children=[
-                        html.I(className="bi bi-key me-1"),
-                        "Credentials json",
-                    ],
-                    sm=12,
-                    lg=3,
-                    class_name="fw-bold",
-                ),
-                dbc.Col(
-                    children=[
-                        dcc.Upload(
-                            id={
-                                "type": BIGQUERY_INDEX_TYPE,
-                                "index": PROP_BIGQUERY_CREDENTIALS,
-                            },
-                            children=[
-                                dbc.Button(
-                                    "Secure upload",
-                                    size="sm",
-                                    color="primary",
-                                )
-                            ],
-                            className="d-inline-block",
-                        ),
-                        dbc.Badge(
-                            "Delete Credentials",
-                            id=BIGQUERY_DELETE_CREDS_BUTTON,
-                            href="#",
-                            className="me-1 mt-1 text-decoration-none",
-                            style={
-                                "display": "inline-block"
-                                if con is not None
-                                and con.extra_configs.get(PROP_BIGQUERY_CREDENTIALS)
-                                is not None
-                                else "none"
-                            },
-                        ),
-                    ],
-                    sm=12,
-                    lg=3,
-                ),
-            ],
-            class_name="mb-3",
-            justify=None,
+        create_form_property_input(
+            index_type=INDEX_TYPE,
+            property=PROP_BIGQUERY_CREDENTIALS,
+            icon_cls="bi bi-key me-1",
+            component_type=dbc.Input,
+            type="password",
+            label="Credentials JSON",
+            required=True,
+            value=(
+                json.dumps(con.extra_configs.get(PROP_BIGQUERY_CREDENTIALS))
+                if con is not None
+                else None
+            ),
         ),
     ]
 
@@ -467,6 +433,8 @@ def create_connection_extra_inputs(
         return create_trino_connection_input(con)
     elif con_type == M.ConnectionType.BIGQUERY:
         return create_bigquery_connection_input(con)
+    elif con_type == M.ConnectionType.SQLITE:
+        return create_sqlite_connection_input(con)
     else:
         return html.Div("Unsupported connection type", className="lead text-warning")
 
@@ -681,9 +649,6 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
     Output(TEST_CONNECTION_RESULT, "children"),
     Input(CONNECTION_TEST_BUTTON, "n_clicks"),
     State({"type": INDEX_TYPE, "index": ALL}, "value"),
-    State(
-        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
-    ),
     State(MITZU_LOCATION, "pathname"),
     prevent_initial_call=True,
     background=True,
@@ -698,7 +663,7 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
 )
 @restricted
 def test_connection_clicked(
-    n_clicks: int, values: Dict[str, Any], bigquery_contents: str, pathname: str
+    n_clicks: int, values: Dict[str, Any], pathname: str
 ) -> List[bc.Component]:
     if n_clicks is None:
         return no_update
@@ -709,14 +674,6 @@ def test_connection_clicked(
         if id_val.get("type") == INDEX_TYPE:
             vals[id_val.get("index")] = prop["value"]
     try:
-        if bigquery_contents:
-            if bigquery_contents == DELETE_CREDS_CONTENT:
-                vals[PROP_BIGQUERY_CREDENTIALS] = DELETE_CREDS_CONTENT
-            else:
-                _, content_string = bigquery_contents.split(",")
-                decoded = base64.b64decode(content_string)
-                vals[PROP_BIGQUERY_CREDENTIALS] = decoded
-
         connection = create_connection_from_values(vals)
         dummy_project = M.Project(connection, [], project_name="dp")
         dummy_project.get_adapter().test_connection()
@@ -724,29 +681,3 @@ def test_connection_clicked(
     except Exception as exc:
         traceback.print_exc()
         return html.P(f"Failed to connect: {exc}", className="my-3 text-danger")
-
-
-@callback(
-    Output(
-        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
-    ),
-    Output(BIGQUERY_DELETE_CREDS_BUTTON, "style"),
-    Input(BIGQUERY_DELETE_CREDS_BUTTON, "n_clicks"),
-    Input(
-        {"type": BIGQUERY_INDEX_TYPE, "index": PROP_BIGQUERY_CREDENTIALS}, "contents"
-    ),
-    prevent_initial_call=True,
-)
-@restricted
-def delete_bigquery_credentials_clicked(
-    n_clicks: int, bigquery_content: str
-) -> Tuple[str, Dict]:
-    if ctx.triggered_id == BIGQUERY_DELETE_CREDS_BUTTON:
-        if n_clicks is None:
-            return no_update, no_update
-
-        return DELETE_CREDS_CONTENT, {"display": "none"}
-    else:
-        if bigquery_content is None:
-            return no_update, no_update
-        return no_update, {"display": "inline-block"}
