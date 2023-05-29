@@ -115,9 +115,11 @@ class Authorizer:
         ]
 
     def get_home_url(self):
+        home_url = flask.request.url_root
         if configs.HOME_URL:
-            return configs.HOME_URL
-        return flask.request.url_root
+            home_url = configs.HOME_URL
+        # trailing slashes can cause issues with SSO login
+        return home_url.strip("/")
 
     def get_auth_token(self):
         return flask.request.cookies.get(self._config.token_cookie_name)
