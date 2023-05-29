@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import pathlib
 from urllib import parse
 from abc import ABC
@@ -451,22 +450,6 @@ class SecretResolver(ABC):
 
 
 @dataclass(frozen=True)
-class PromptSecretResolver(SecretResolver):
-    """
-    Prompts for a secret value on the first query execution in an interactive Python environment.
-
-    :param title: the title of the prompt
-    """
-
-    title: str = "Secret"
-
-    def resolve_secret(self) -> str:
-        import getpass
-
-        return getpass.getpass(prompt=self.title)
-
-
-@dataclass(frozen=True)
 class ConstSecretResolver(SecretResolver):
     """
     Resolves a secret with a preconfigured static value.
@@ -478,24 +461,6 @@ class ConstSecretResolver(SecretResolver):
 
     def resolve_secret(self) -> str:
         return self.secret
-
-
-@dataclass(frozen=True)
-class EnvVarSecretResolver(SecretResolver):
-    """
-    Resolves a secret from an environmental variable or raises an exception if the environment variable is not found.
-
-    :param variable_name: name of the environment variable with containing the secret
-    """
-
-    variable_name: str
-
-    def resolve_secret(self) -> str:
-        secret = os.getenv(self.variable_name)
-        if secret is not None:
-            return secret
-        else:
-            raise Exception(f"Environmental variable {self.variable_name} was not set.")
 
 
 @dataclass(frozen=True)

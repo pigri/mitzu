@@ -25,17 +25,7 @@ def optional_simple_string():
 
 @st.composite
 def secret_resolver(draw):
-    return draw(
-        st.sampled_from(
-            [
-                M.PromptSecretResolver(title=draw(simple_string())),
-                M.ConstSecretResolver(secret=draw(simple_string())),
-                M.EnvVarSecretResolver(
-                    variable_name=draw(simple_string().map(lambda x: x.upper()))
-                ),
-            ]
-        )
-    )
+    return M.ConstSecretResolver(secret=draw(simple_string()))
 
 
 @st.composite
