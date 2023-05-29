@@ -182,15 +182,11 @@ class ConnectionStorageRecord(Base):
     def update(self, connection: M.Connection):
         secret_resolver_type = None
         secret_resolver_arg = None
-        if isinstance(connection.secret_resolver, M.EnvVarSecretResolver):
-            secret_resolver_type = "env"
-            secret_resolver_arg = connection.secret_resolver.variable_name
-        elif isinstance(connection.secret_resolver, M.ConstSecretResolver):
+        if isinstance(connection.secret_resolver, M.ConstSecretResolver):
             secret_resolver_type = "const"
             secret_resolver_arg = connection.secret_resolver.resolve_secret()
-        elif isinstance(connection.secret_resolver, M.PromptSecretResolver):
-            secret_resolver_type = "prompt"
-            secret_resolver_arg = connection.secret_resolver.title
+        elif connection.secret_resolver is not None:
+            raise ValueError("Unknown secret resolver type")
 
         self.connection_name = connection.connection_name
         self.connection_type = connection.connection_type.value
@@ -211,12 +207,10 @@ class ConnectionStorageRecord(Base):
 
     def as_model_instance(self) -> M.Connection:
         secret_resolver: Optional[M.SecretResolver] = None
-        if self.secret_resolver_type == "env":
-            secret_resolver = M.EnvVarSecretResolver(self.secret_resolver_arg)
-        elif self.secret_resolver_type == "const":
+        if self.secret_resolver_type == "const":
             secret_resolver = M.ConstSecretResolver(self.secret_resolver_arg)
-        elif self.secret_resolver_type == "prompt":
-            secret_resolver = M.PromptSecretResolver(self.secret_resolver_arg)
+        elif self.secret_resolver_type is not None:
+            raise ValueError("Unknown secret resolver type")
 
         return M.Connection(
             connection_name=self.connection_name,
@@ -237,15 +231,11 @@ class ConnectionStorageRecord(Base):
     def from_model_instance(self, model: M.Connection) -> ConnectionStorageRecord:
         secret_resolver_type = None
         secret_resolver_arg = None
-        if isinstance(model.secret_resolver, M.EnvVarSecretResolver):
-            secret_resolver_type = "env"
-            secret_resolver_arg = model.secret_resolver.variable_name
-        elif isinstance(model.secret_resolver, M.ConstSecretResolver):
+        if isinstance(model.secret_resolver, M.ConstSecretResolver):
             secret_resolver_type = "const"
             secret_resolver_arg = model.secret_resolver.resolve_secret()
-        elif isinstance(model.secret_resolver, M.PromptSecretResolver):
-            secret_resolver_type = "prompt"
-            secret_resolver_arg = model.secret_resolver.title
+        elif model.secret_resolver is not None:
+            raise ValueError("Unknown secret resolver type")
 
         return ConnectionStorageRecord(
             connection_id=model.id,

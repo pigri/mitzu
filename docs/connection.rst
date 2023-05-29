@@ -27,7 +27,7 @@ Mitzu establishes the connection to the data warehouse or lake with `SQL Alchemy
         host = "host",
         port = 443,
         user_name = "user_name",
-        secret_resolver = M.PromptSecretResolver("Password"),
+        secret_resolver = M.ConstSecretResolver("Password"),
         catalog = "catalog",
         schema = "schema",
         extra_configs = {}
@@ -40,13 +40,6 @@ Secret Resolvers
    :members:
 
 To avoid hardcoding secrets to code Mitzu provides the :class:`SecretResolver <mitzu.model.SecretResolver>` classes.
-There are 3 :class:`SecretResolver <mitzu.model.SecretResolver>` types:
-
-.. autoclass:: mitzu.model.EnvVarSecretResolver
-   :members:
-
-.. autoclass:: mitzu.model.PromptSecretResolver
-   :members:
 
 .. autoclass:: mitzu.model.ConstSecretResolver
    :members:
