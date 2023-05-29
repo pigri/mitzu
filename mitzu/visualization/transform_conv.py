@@ -32,10 +32,9 @@ def fix_conv_times_pdf(
     return pdf
 
 
-def fix_conversion_na_cols(
+def fix_conversion_steps_na_cols(
     pdf: pd.DataFrame, metric: M.ConversionMetric
 ) -> pd.DataFrame:
-    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("n/a")
     funnel_length = len(metric._conversion._segments)
     cols = [f"{GA.AGG_VALUE_COL}_{i}" for i in range(1, funnel_length + 1)]
     pdf[cols] = pdf[cols].fillna(0)

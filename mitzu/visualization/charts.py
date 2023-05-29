@@ -33,6 +33,14 @@ def filter_top_groups(
     return pdf[pdf[GA.GROUP_COL].isin(top_groups)]
 
 
+def fix_na_cols_group_col(pdf: pd.DataFrame) -> pd.DataFrame:
+    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("<n/a>")
+    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].apply(
+        lambda val: val if val != "" else "<no value>"
+    )
+    return pdf
+
+
 def get_color_label(metric: M.Metric):
     if (
         isinstance(metric, M.SegmentationMetric)
@@ -72,7 +80,9 @@ def get_default_chart_type(metric: M.Metric) -> M.SimpleChartType:
 def get_preprocessed_conversion_dataframe(
     pdf: pd.DataFrame, metric: M.ConversionMetric, suffix: str
 ) -> pd.DataFrame:
-    pdf = TC.fix_conversion_na_cols(pdf, metric)
+    pdf = fix_na_cols_group_col(pdf)
+
+    pdf = TC.fix_conversion_steps_na_cols(pdf, metric)
     if metric._agg_type in [
         M.AggType.AVERAGE_TIME_TO_CONV,
         M.AggType.PERCENTILE_TIME_TO_CONV,
@@ -102,7 +112,7 @@ def get_preprocessed_conversion_dataframe(
 def get_preprocessed_segmentation_dataframe(
     pdf: pd.DataFrame, metric: M.SegmentationMetric
 ):
-    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("n/a").astype(str).fillna("n/a")
+    pdf = fix_na_cols_group_col(pdf)
     pdf = filter_top_groups(pdf, metric, order_by_col=GA.AGG_VALUE_COL)
     pdf = pdf.rename(
         columns={
@@ -125,6 +135,7 @@ def get_preprocessed_retention_dataframe(
     pdf: pd.DataFrame, metric: M.RetentionMetric
 ) -> pd.DataFrame:
     size = pdf.shape[0]
+    pdf = fix_na_cols_group_col(pdf)
     pdf = TR.fix_retention(pdf, metric)
     pdf = filter_top_groups(pdf, metric, order_by_col=GA.USER_COUNT_COL + "_1")
     pdf = TR.get_retention_mapping(pdf, metric)

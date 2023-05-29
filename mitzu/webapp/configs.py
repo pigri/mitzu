@@ -1,7 +1,7 @@
 import os
 from typing import Tuple, Optional
 
-HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
+HOME_URL = os.getenv("HOME_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 # dash
 GRAPH_POLL_INTERVAL_MS = int(os.getenv("GRAPH_POLL_INTERVAL_MS", 300))

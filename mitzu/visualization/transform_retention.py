@@ -8,7 +8,6 @@ import mitzu.visualization.common as C
 
 def fix_retention(pdf: pd.DataFrame, metric: M.RetentionMetric) -> pd.DataFrame:
     pdf[GA.AGG_VALUE_COL] = round(pdf[GA.AGG_VALUE_COL], 2)
-    pdf[GA.GROUP_COL] = pdf[GA.GROUP_COL].fillna("n/a")
     if metric._time_group not in [
         M.TimeGroup.HOUR,
         M.TimeGroup.MINUTE,

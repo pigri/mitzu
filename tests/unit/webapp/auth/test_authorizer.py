@@ -18,8 +18,10 @@ from mitzu.webapp.auth.authorizer import (
     JWT_CLAIM_ROLE,
 )
 import mitzu.webapp.model as WM
-
+import mitzu.webapp.configs as C
 from typing import Optional
+
+C.HOME_URL = "http://localhost:8082"
 
 app = flask.Flask(__name__)
 

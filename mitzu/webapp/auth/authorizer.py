@@ -114,6 +114,11 @@ class Authorizer:
             "/_dash-component-suites/",
         ]
 
+    def get_home_url(self):
+        if configs.HOME_URL:
+            return configs.HOME_URL
+        return flask.request.url_root
+
     def get_auth_token(self):
         return flask.request.cookies.get(self._config.token_cookie_name)
 
@@ -167,7 +172,7 @@ class Authorizer:
             "grant_type": "authorization_code",
             "client_id": self._config.oauth.client_id,
             "code": auth_code,
-            "redirect_uri": f"{configs.HOME_URL}{P.OAUTH_CODE_URL}",
+            "redirect_uri": f"{self.get_home_url()}{P.OAUTH_CODE_URL}",
         }
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -244,18 +249,21 @@ class Authorizer:
     def authorize_request(
         self, request: flask.Request
     ) -> Optional[werkzeug.wrappers.response.Response]:
-        if self._config.oauth:
-            if request.path == P.REDIRECT_TO_LOGIN_URL:
+
+        if request.path == P.REDIRECT_TO_LOGIN_URL:
+            if self._config.oauth:
                 resp = self._redirect(self._config.oauth.sign_in_url)
                 return resp
+            else:
+                resp = self._redirect(P.REDIRECT_TO_LOGIN_URL)
 
-            if request.path == P.SIGN_OUT_URL:
-                if self._config.oauth.sign_out_url:
-                    resp = self._redirect(self._config.oauth.sign_out_url)
-                    self.clear_cookie(resp, self._config.token_cookie_name)
-                    return resp
-                else:
-                    return self._get_unauthenticated_response()
+        if request.path == P.SIGN_OUT_URL:
+            if self._config.oauth and self._config.oauth.sign_out_url:
+                resp = self._redirect(self._config.oauth.sign_out_url)
+                self.clear_cookie(resp, self._config.token_cookie_name)
+                return resp
+            else:
+                return self._get_unauthenticated_response()
 
         for prefix in self._authorized_url_prefixes:
             if request.path.startswith(prefix):
@@ -268,7 +276,7 @@ class Authorizer:
                 try:
                     id_token = self._get_identity_token(code)
                     redirect_url = flask.request.cookies.get(
-                        self._config.redirect_cookie_name, configs.HOME_URL
+                        self._config.redirect_cookie_name, self.get_home_url()
                     )
 
                     user_email = self._validate_foreign_token(id_token)
@@ -362,7 +370,7 @@ class Authorizer:
             self.clear_cookie(response, self._config.redirect_cookie_name)
 
         return flask.request.cookies.get(
-            self._config.redirect_cookie_name, configs.HOME_URL
+            self._config.redirect_cookie_name, self.get_home_url()
         )
 
     def get_current_user_id(self) -> Optional[str]:
