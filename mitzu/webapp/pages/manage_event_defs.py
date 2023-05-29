@@ -94,16 +94,16 @@ def no_project_layout():
 
 @restricted_layout
 def layout(project_id: Optional[str], **query_params) -> bc.Component:
-    events_service = DEPS.Dependencies.get().events_service
+    storage = DEPS.Dependencies.get().storage
 
-    projects = events_service.list_all_projects()
+    projects = storage.list_projects()
     selected_project: Optional[M.Project] = None
     for p in projects:
         if p.id == project_id:
-            selected_project = p
+            selected_project = storage.get_project(p.id)
             break
 
-    options = [{"label": p.project_name, "value": p.id} for p in projects]
+    options = [{"label": p.name, "value": p.id} for p in projects]
 
     return html.Div(
         [

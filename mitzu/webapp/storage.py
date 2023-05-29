@@ -361,11 +361,11 @@ class MitzuStorage:
 
         return record.as_model_instance()
 
-    def list_projects(self) -> List[str]:
+    def list_projects(self) -> List[WM.ProjectInfo]:
         result = []
         with self._new_db_session() as session:
             for record in session.query(SM.ProjectStorageRecord):
-                result.append(record.project_id)
+                result.append(WM.ProjectInfo(record.project_id, record.name))
             return result
 
     def set_connection(self, connection_id: str, connection: M.Connection):
