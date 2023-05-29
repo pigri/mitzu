@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import mitzu.webapp.storage as S
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 import mitzu.model as M
 
 
@@ -12,12 +12,6 @@ class EventServiceException(Exception):
 class EventsService:
 
     storage: S.MitzuStorage
-
-    def list_all_projects(self) -> List[M.Project]:
-        project_ids = self.storage.list_projects()
-        return [
-            self.storage.get_project(pid) for pid in project_ids
-        ]  # todo move this logic to storage
 
     def populate_discovered_project(self, discovered_project: M.DiscoveredProject):
         self.storage.populate_discovered_project(discovered_project)

@@ -615,9 +615,9 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
         connection_id = P.get_path_value(
             P.CONNECTIONS_MANAGE_PATH, pathname, P.CONNECTION_ID_PATH_PART
         )
-        project_ids = deps.storage.list_projects()
-        for p_id in project_ids:
-            prj = deps.storage.get_project(p_id)
+        projects = deps.storage.list_projects()
+        for project in projects:
+            prj = deps.storage.get_project(project.id)
             if prj.get_connection_id() == connection_id:
                 return False, html.Div(
                     children=[
@@ -626,7 +626,9 @@ def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool,
                         ),
                         dcc.Link(
                             prj.project_name,
-                            P.create_path(P.PROJECTS_MANAGE_PATH, project_id=p_id),
+                            P.create_path(
+                                P.PROJECTS_MANAGE_PATH, project_id=project.id
+                            ),
                         ),
                     ],
                     className="my-3 text-danger lead",

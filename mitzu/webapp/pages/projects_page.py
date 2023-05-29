@@ -64,13 +64,13 @@ def layout(**query_params) -> bc.Component:
 
 def create_projects_children() -> List[bc.Component]:
     depenednecies = DEPS.Dependencies.get()
-    project_ids = depenednecies.storage.list_projects()
+    stored_projects = depenednecies.storage.list_projects()
 
     projects = []
-    if len(project_ids) > 0:
-        for p in project_ids:
+    if len(stored_projects) > 0:
+        for p in stored_projects:
             try:
-                projects.append(create_project_selector(p, depenednecies))
+                projects.append(create_project_selector(p.id, depenednecies))
             except Exception as exc:
                 traceback.print_exc()
                 projects.append(

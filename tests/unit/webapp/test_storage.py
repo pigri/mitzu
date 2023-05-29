@@ -1,6 +1,7 @@
 import pytest
 from hypothesis import HealthCheck, given, settings
 import mitzu.webapp.storage as S
+import mitzu.webapp.model as WM
 from tests.unit.webapp.generators import (
     connection,
     project,
@@ -59,7 +60,7 @@ def test_storing_projects(project, updated_project):
         assert len(
             storage._get_event_data_tables_for_project(project.id, session)
         ) == len(project.event_data_tables)
-    assert storage.list_projects() == [project.id]
+    assert storage.list_projects() == [WM.ProjectInfo(project.id, project.project_name)]
 
     storage.set_project(project.id, updated_project)
 

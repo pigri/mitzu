@@ -273,3 +273,15 @@ class User:
     password_salt: Optional[str]
     id: str = field(default_factory=create_unique_id)
     role: Role = Role.MEMBER
+
+
+@dataclass(frozen=True)
+class ProjectInfo:
+    """
+    Contains the minimal set of details of a project.
+
+    Use this instance to quickly render UI elements without querying the event data tables or discovered fields.
+    """
+
+    id: str
+    name: str

@@ -48,12 +48,11 @@ class NavbarService:
                 if storage is None:
                     storage = DEPS.Dependencies.get().storage
 
-                project_ids = storage.list_projects()
-                projects = [storage.get_project(p_id) for p_id in project_ids]
+                projects = storage.list_projects()
                 return dbc.DropdownMenu(
                     children=[
                         dbc.DropdownMenuItem(
-                            children=p.project_name,
+                            children=p.name,
                             href=P.create_path(
                                 P.PROJECTS_EXPLORE_PATH, project_id=p.id
                             ),
