@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mitzu"
-version = "0.6.0-rc.8.post.3+237e74e"
+version = "0.0.0"
 description = "Product analytics over your data warehouse"
 authors = ["Istvan Meszaros <istvan.meszaros.88@gmail.com>"]
 license = "MIT"
@@ -47,6 +47,7 @@ redis =  { version= "^4.4.0", optional=true}
 kaleido = {version = "==0.2.1", optional=true}
 dash-iconify = {version ="^0.1.2", optional=true}
 dash-draggable = {version="^0.1.2", optional=true}
+segment-analytics-python = {version="^2.2.2", optional=true}
 
 [tool.poetry.extras]
 postgres = ["psycopg2"]
@@ -68,6 +69,7 @@ webapp = [
     "redis", 
     "kaleido", 
     "dash-draggable", 
+    "segment-analytics-python",
     ]
 doc = ["sphinx", "sphinx-autodoc-typehints"]
 

@@ -297,6 +297,7 @@ def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
 
     try:
         user_service.new_user(email, password, confirm_password, role=WM.Role(role))
+        deps.tracking_service.register_new_user(email, role)
         return {
             SAVE_RESPONSE_CONTAINER: "User created!",
         }

@@ -8,6 +8,8 @@ from unittest.mock import patch
 import mitzu.webapp.pages.paths as P
 import mitzu.model as M
 from dash import no_update
+from typing import cast
+from unittest.mock import MagicMock
 
 
 def get_connections_input_arg_groupping(**kwargs):
@@ -234,6 +236,9 @@ def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Depend
         assert con.connection_name == "New Connection"
         assert con.id == "new_connection_id"
         assert con.connection_type == M.ConnectionType.SQLITE
+        cast(
+            MagicMock, dependencies.tracking_service
+        ).track_connection_saved.assert_called_with(con)
 
 
 @patch("mitzu.webapp.pages.manage_connection.ctx")

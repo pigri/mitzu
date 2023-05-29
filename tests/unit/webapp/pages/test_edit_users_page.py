@@ -14,6 +14,7 @@ import mitzu.webapp.service.navbar_service as NB
 import mitzu.webapp.service.secret_service as SS
 import mitzu.webapp.service.notification_service as NS
 import mitzu.webapp.pages.paths as P
+from unittest.mock import MagicMock
 
 
 class RequestContextLoggedInAsRootUser:
@@ -68,6 +69,7 @@ class RequestContextLoggedInAsRootUser:
             navbar_service=NB.NavbarService(),
             secret_service=SS.SecretService(),
             notification_service=NS.DummyNotificationService(),
+            tracking_service=MagicMock(),
         )
 
         self.context = self._server.test_request_context(
@@ -121,6 +123,7 @@ def test_delete_user(server: flask.Flask):
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
         deleted_user = user_service.get_user_by_email("a@b")
         assert deleted_user is None
+        deps.tracking_service.register_new_user.assert_called_with("a@b", "member")
 
 
 def test_change_password(server: flask.Flask):

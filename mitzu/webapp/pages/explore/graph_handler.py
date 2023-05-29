@@ -27,6 +27,8 @@ import mitzu.visualization.charts as CHRT
 import json
 import hashlib
 from urllib.parse import urlparse
+from datetime import datetime
+import mitzu.webapp.service.tracking_service as TS
 
 GRAPH = "graph"
 MESSAGE = "lead fw-normal text-center h-100 w-100"
@@ -76,12 +78,22 @@ def create_metric_hash_key(metric: M.Metric) -> str:
 
 
 def get_metric_result_df(
-    hash_key: str, metric: M.Metric, mitzu_cache: C.MitzuCache
+    hash_key: str,
+    metric: M.Metric,
+    mitzu_cache: C.MitzuCache,
+    tracking_service: TS.TrackingService,
 ) -> pd.DataFrame:
+    start_time = datetime.now().timestamp()
     result_df = mitzu_cache.get(hash_key)
+    from_cache = True
     if result_df is None:
+        from_cache = False
         result_df = metric.get_df()
         mitzu_cache.put(hash_key, result_df, expire=configs.CACHE_EXPIRATION)
+    duration = datetime.now().timestamp() - start_time
+    tracking_service.track_explore_finished(
+        metric, duration_seconds=duration, from_cache=from_cache
+    )
     return result_df
 
 
@@ -109,12 +121,15 @@ def create_graph(
 
 
 def create_table(
-    metric: Optional[M.Metric], hash_key: str, mitzu_cache: C.MitzuCache
+    metric: Optional[M.Metric],
+    hash_key: str,
+    mitzu_cache: C.MitzuCache,
+    tracking_service: TS.TrackingService,
 ) -> Optional[dbc.Table]:
     if metric is None:
         return None
 
-    result_df = get_metric_result_df(hash_key, metric, mitzu_cache)
+    result_df = get_metric_result_df(hash_key, metric, mitzu_cache, tracking_service)
     result_df = result_df.sort_values(by=[result_df.columns[0], result_df.columns[1]])
     result_df.columns = [col[1:].replace("_", " ").title() for col in result_df.columns]
     table = dash_table.DataTable(
@@ -221,6 +236,7 @@ def create_callbacks():
             )
             storage = deps.storage
             mitzu_cache = deps.cache
+            tracking_service = deps.tracking_service
 
             project = storage.get_project(project_id)
             if project is None:
@@ -268,13 +284,15 @@ def create_callbacks():
                 )
 
             if graph_content_type == TH.CHART_VAL:
-                result_df = get_metric_result_df(hash_key, metric, mitzu_cache)
+                result_df = get_metric_result_df(
+                    hash_key, metric, mitzu_cache, tracking_service
+                )
                 simple_chart = CHRT.get_simple_chart(metric, result_df)
 
             if graph_content_type == TH.CHART_VAL:
                 res = create_graph(metric, simple_chart)  # noqa
             if graph_content_type == TH.TABLE_VAL:
-                res = create_table(metric, hash_key, mitzu_cache)
+                res = create_table(metric, hash_key, mitzu_cache, tracking_service)
             elif graph_content_type == TH.SQL_VAL:
                 res = create_sql_area(metric)
 

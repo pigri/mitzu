@@ -139,6 +139,7 @@ def save_button_clicked(
         )
 
         depenednecies.storage.set_connection(connection.id, connection)
+        depenednecies.tracking_service.track_connection_saved(connection)
 
         if ctx.triggered_id == CONNECTION_SAVE_BUTTON:
             return [html.P("Connection saved", className="lead"), no_update]

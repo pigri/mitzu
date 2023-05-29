@@ -157,7 +157,6 @@ class MitzuStorage:
                 self._populate_discovered_project(discovered_project, session)
                 for edt, vals in discovered_project.definitions.items():
                     self._set_event_data_table_definition(edt, vals, session)
-
             session.commit()
 
     def project_exists(self, project_id: str) -> bool:

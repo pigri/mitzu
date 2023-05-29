@@ -114,6 +114,9 @@ class Authorizer:
             "/_dash-component-suites/",
         ]
 
+    def get_auth_token(self):
+        return flask.request.cookies.get(self._config.token_cookie_name)
+
     def _get_unauthenticated_response(
         self, redirect_url: Optional[str] = None
     ) -> werkzeug.wrappers.response.Response:
@@ -288,7 +291,7 @@ class Authorizer:
                         return resp
                     return self._get_unauthenticated_response()
 
-        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        auth_token = self.get_auth_token()
         if auth_token:
             return self._authorize_request_with_token(request, auth_token)
 
@@ -308,7 +311,7 @@ class Authorizer:
             if request.path.startswith(prefix):
                 return resp
 
-        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        auth_token = self.get_auth_token()
         if auth_token is not None:
             token_claims = self._validate_token(auth_token)
             if token_claims is not None:
@@ -363,7 +366,7 @@ class Authorizer:
         )
 
     def get_current_user_id(self) -> Optional[str]:
-        auth_token = flask.request.cookies.get(self._config.token_cookie_name)
+        auth_token = self.get_auth_token()
         if auth_token is None:
             return None
         token_claims = self._validate_token(auth_token)

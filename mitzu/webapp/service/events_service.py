@@ -45,7 +45,7 @@ class EventsService:
             ],
             None,
         ],
-    ) -> Dict[M.EventDataTable, Dict[str, M.Reference[M.EventDef]]]:
+    ) -> M.DiscoveredProject:
         project = self.storage.get_project(project_id)
         edt_count = len(project.event_data_tables)
         edts = []
@@ -68,4 +68,4 @@ class EventsService:
             project=discovered_project.project,
         )
 
-        return discovered_project.definitions
+        return discovered_project

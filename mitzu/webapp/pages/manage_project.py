@@ -271,10 +271,9 @@ def save_button_clicked(
     pathname: str,
 ):
     try:
-        storage = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        ).storage
-
+        deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+        storage = deps.storage
+        tracking_service = deps.tracking_service
         project_props: Dict[str, Any] = {}
 
         for prop in ctx.args_grouping[3]:
@@ -337,7 +336,7 @@ def save_button_clicked(
         )
 
         storage.set_project(project_id, project)
-
+        tracking_service.track_project_saved(project)
         if ctx.triggered_id == SAVE_BUTTON:
             return ["Project succesfully saved", no_update]
         else:

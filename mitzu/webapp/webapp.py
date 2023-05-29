@@ -57,7 +57,10 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         deps: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        return deps.authorizer.authorize_request(request)
+        res = deps.authorizer.authorize_request(request)
+        if res is not None:
+            deps.tracking_service.track_page_view(request, res)
+        return res
 
     @server.after_request
     def after_request(response: flask.Response):
@@ -65,7 +68,10 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
         deps: DEPS.Dependencies = cast(
             DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
         )
-        return deps.authorizer.refresh_auth_token(request, response)
+        res = deps.authorizer.refresh_auth_token(request, response)
+        if res is not None:
+            deps.tracking_service.track_page_view(request, res)
+        return res
 
     with server.app_context():
         dependencies.storage.init_db_schema()

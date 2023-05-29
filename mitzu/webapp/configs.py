@@ -2,7 +2,7 @@ import os
 from typing import Tuple, Optional
 
 HOME_URL = os.getenv("HOME_URL", "http://localhost:8082")
-
+ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 # dash
 GRAPH_POLL_INTERVAL_MS = int(os.getenv("GRAPH_POLL_INTERVAL_MS", 300))
 DASH_TITLE = os.getenv("DASH_TITLE", "Mitzu")
@@ -34,6 +34,9 @@ STORAGE_CONNECTION_STRING = os.getenv(
     "sqlite:///storage.db?cache=shared&check_same_thread=False",
 )
 
+ENABLE_USAGE_TRACKING = os.getenv("ENABLE_USAGE_TRACKING", "true").lower() != "false"
+TRACKING_API_KEY = os.getenv("TRACKING_API_KEY", "")
+TRACKING_HOST = os.getenv("TRACKING_HOST")
 
 KALEIDO_CONFIGS = os.getenv("KALEIDO_CONFIGS", "--disable-gpu-*,--single-process")
 

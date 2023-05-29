@@ -235,9 +235,9 @@ def handle_project_discovery(
     set_progress: Callable, discovery_clicks: int, project_id: str
 ):
     rows: List[bc.Component] = []
-    events_service = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).events_service
+    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    events_service = deps.events_service
+    tracking_service = deps.tracking_service
 
     try:
         if ctx.triggered_id == SELECT_PROJECT_DD:
@@ -267,8 +267,8 @@ def handle_project_discovery(
                     )
                 )
 
-            events_service.discover_project(project_id, callback=edt_callback)
-
+            dp = events_service.discover_project(project_id, callback=edt_callback)
+            tracking_service.track_project_discovered(dp)
         return (rows, "")
 
     except Exception as exc:

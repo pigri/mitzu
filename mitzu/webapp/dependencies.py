@@ -9,6 +9,7 @@ import mitzu.webapp.configs as configs
 import mitzu.webapp.storage as S
 import mitzu.webapp.service.user_service as U
 import mitzu.webapp.service.navbar_service as NB
+import mitzu.webapp.service.tracking_service as TS
 import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.secret_service as SS
 import mitzu.webapp.service.notification_service as NS
@@ -28,6 +29,7 @@ class Dependencies:
     secret_service: SS.SecretService
     user_service: U.UserService
     notification_service: NS.NotificationService
+    tracking_service: TS.TrackingService
 
     @classmethod
     def from_configs(
@@ -80,6 +82,7 @@ class Dependencies:
         # Adding cache layer over storage
         events_service = E.EventsService(storage)
         secret_service = SS.SecretService()
+        tracking_service = TS.AuthorizedTrackingService(authorizer)
 
         return Dependencies(
             authorizer=authorizer,
@@ -91,4 +94,5 @@ class Dependencies:
             events_service=events_service,
             secret_service=secret_service,
             notification_service=notification_service,
+            tracking_service=tracking_service,
         )

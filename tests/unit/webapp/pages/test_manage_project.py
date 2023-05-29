@@ -11,6 +11,8 @@ from unittest.mock import patch
 from mitzu.webapp.dependencies import Dependencies
 from typing import Optional
 from dash import no_update
+from typing import cast
+from unittest.mock import MagicMock
 
 
 def get_project_input_group_args(**kwargs):
@@ -194,6 +196,9 @@ def test_save_button_clicked_deleted_rows(
         saved_project = dependencies.storage.get_project(S.SAMPLE_PROJECT_ID)
         assert len(saved_project.event_data_tables) == 0
         assert saved_project.project_name == "TEST_RENAME"
+        cast(
+            MagicMock, dependencies.tracking_service
+        ).track_project_saved.assert_called_with(saved_project),
 
 
 @patch("mitzu.webapp.pages.manage_project.ctx")

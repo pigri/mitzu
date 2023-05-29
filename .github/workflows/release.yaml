@@ -42,7 +42,7 @@ jobs:
       - name: Build and publish docker
         run: |
           docker login -u '${{ secrets.DOCKER_USERNAME }}' -p '${{ secrets.DOCKER_PASSWORD }}' docker.io
-          make docker_build_latest
+          TRACKING_HOST='${{ secrets.TRACKING_HOST }}' TRACKING_API_KEY='${{ secrets.TRACKING_API_KEY }}' make docker_build_latest
           docker push mitzuio/mitzu:$(poetry version -s)
       - name: Update latest docker tag
         if: "!github.event.release.prerelease"

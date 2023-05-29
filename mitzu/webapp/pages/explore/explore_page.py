@@ -503,6 +503,7 @@ def handle_save_metric_dialog(
     deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
     storage = deps.storage
     mitzu_cache = deps.cache
+    tracking_service = deps.tracking_service
     if ctx.triggered_id == METRIC_SAVE_NAVBAR_BUTTON:
         original_name = None
         if metric_id is not None:
@@ -582,7 +583,9 @@ def handle_save_metric_dialog(
                 METRIC_SAVE_DIALOG_INFO: "Couldn't save metric. Invalid state.",
             }
         hash_key = GH.create_metric_hash_key(metric)
-        result_df = GH.get_metric_result_df(hash_key, metric, mitzu_cache)
+        result_df = GH.get_metric_result_df(
+            hash_key, metric, mitzu_cache, tracking_service
+        )
         simple_chart = CHRT.get_simple_chart(metric, result_df)
 
         if ctx.triggered_id == METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON:

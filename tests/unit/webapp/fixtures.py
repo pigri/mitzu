@@ -14,6 +14,7 @@ import mitzu.webapp.configs as configs
 from mitzu.webapp.cache import MitzuCache
 import flask
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
+from unittest.mock import MagicMock
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,7 @@ def dependencies() -> DEPS.Dependencies:
         user_service=user_service,
         secret_service=SS.SecretService(),
         notification_service=NS.DummyNotificationService(),
+        tracking_service=MagicMock(),
     )
 
 

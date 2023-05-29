@@ -5,6 +5,8 @@ from mitzu.webapp.dependencies import Dependencies
 from unittest.mock import patch
 from tests.helper import to_dict
 import mitzu.webapp.helper as H
+from typing import cast
+from unittest.mock import MagicMock
 
 
 @patch("mitzu.webapp.pages.manage_event_defs.ctx")
@@ -47,3 +49,6 @@ def test_discover_events_page(ctx, server: Flask, dependencies: Dependencies):
         evt_field_def = H.find_event_field_def("page_visit.acquisition_campaign", dp)
 
         assert evt_field_def._event_data_table.project is not None
+        cast(
+            MagicMock, dependencies.tracking_service.track_project_discovered
+        ).assert_called_once()
