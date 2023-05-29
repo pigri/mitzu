@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import flask
-from typing import cast
 from dash import (
     html,
     register_page,
@@ -70,7 +69,7 @@ def create_users_table(user_service: user_service.UserService):
 
 @restricted_layout
 def layout(**query_params) -> bc.Component:
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     user_service = deps.user_service
 
     authorizer = deps.authorizer

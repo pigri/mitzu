@@ -1,8 +1,7 @@
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import flask
 from dash import (
     ALL,
     Input,
@@ -39,9 +38,7 @@ def no_connection_layout():
 def layout(connection_id: Optional[str] = None, **query_params) -> bc.Component:
     connection: Optional[M.Connection] = None
     if connection_id is not None:
-        depenednecies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        depenednecies = DEPS.Dependencies.get()
         connection = depenednecies.storage.get_connection(connection_id)
 
     title = "Create new connection" if connection is None else "Manage connection"
@@ -134,9 +131,7 @@ def save_button_clicked(
             vals[id_val.get("index")] = prop["value"]
     try:
         connection = MCC.create_connection_from_values(vals)
-        depenednecies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        depenednecies = DEPS.Dependencies.get()
 
         depenednecies.storage.set_connection(connection.id, connection)
         depenednecies.tracking_service.track_connection_saved(connection)

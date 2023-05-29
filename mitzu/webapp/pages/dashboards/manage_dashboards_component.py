@@ -1,4 +1,4 @@
-from typing import Dict, List, cast
+from typing import Dict, List
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
@@ -6,7 +6,6 @@ import dash_draggable as dd
 from dash import ALL, Input, Output, callback, ctx, html, State, no_update, dcc
 import mitzu.webapp.model as WM
 import mitzu.webapp.dependencies as DEPS
-import flask
 import dash_mantine_components as dmc
 import mitzu.visualization.plot as PLT
 import mitzu.visualization.charts as CHRT
@@ -351,9 +350,7 @@ def create_manage_dashboard_container(
 )
 @restricted
 def manage_saved_metrics_off_canvas(button: int, search_value: str):
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
     sm_ids = storage.list_saved_metrics()
     saved_metrics = [storage.get_saved_metric(sm_id) for sm_id in sm_ids]
     if search_value:
@@ -391,9 +388,7 @@ def manage_dashboard_content(
     if ctx.triggered_id is None:
         return no_update, no_update, no_update
 
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
 
     if ctx.triggered_id.get("type") == DELETE_SAVED_METRICS_TYPE:
         delete_metric_id = ctx.triggered_id.get("index")
@@ -464,9 +459,7 @@ def manage_dashboard_content(
 def dashboard_name_changed(name: str, dashboard_id: str) -> str:
     if name is None:
         return no_update
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
 
     dashboard = storage.get_dashboard(dashboard_id)
     if dashboard is not None:
@@ -487,9 +480,7 @@ def manage_layout_change(layouts: Dict[str, Dict], dashboard_id: str) -> str:
     if dashboard_id is None:
         return no_update
 
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
 
     dashboard = storage.get_dashboard(dashboard_id)
     if dashboard is None:
@@ -528,9 +519,7 @@ def refresh_dashboards(set_progress, refresh_button_click: int, dashboard_id: st
     if dashboard_id is None or refresh_button_click is None:
         return no_update, 0
 
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
 
     dashboard = storage.get_dashboard(dashboard_id)
     figures = []

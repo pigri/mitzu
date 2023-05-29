@@ -1,5 +1,4 @@
-from typing import Any, Dict, List, Optional, cast, Tuple
-import flask
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import dash.development.base_component as bc
@@ -59,9 +58,7 @@ def validate_inputs(values: Dict[str, Any]):
 
 
 def create_connection_from_values(values: Dict[str, Any]) -> M.Connection:
-    deps: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    deps = DEPS.Dependencies.get()
 
     connection_id = values[PROP_CONNECTION_ID]
     con_type = M.ConnectionType.parse(values[PROP_CONNECTION_TYPE])
@@ -571,9 +568,7 @@ def create_manage_connection_component(
 )
 @restricted
 def connection_type_changed(connection_type: str, pathname: str) -> List[bc.Component]:
-    deps: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    deps = DEPS.Dependencies.get()
     if pathname == P.CONNECTIONS_CREATE_PATH:
         connection: Optional[M.Connection] = None
     else:
@@ -595,9 +590,7 @@ def connection_type_changed(connection_type: str, pathname: str) -> List[bc.Comp
 def delete_confirmed_clicked(n_clicks: int, pathname: str) -> int:
     if n_clicks is None:
         return no_update
-    deps: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    deps = DEPS.Dependencies.get()
     connection_id = P.get_path_value(
         P.CONNECTIONS_MANAGE_PATH, pathname, P.CONNECTION_ID_PATH_PART
     )
@@ -617,9 +610,7 @@ def delete_confirmed_clicked(n_clicks: int, pathname: str) -> int:
 def delete_button_clicked(delete: int, close: int, pathname: str) -> Tuple[bool, str]:
     if delete is None:
         return no_update, no_update
-    deps: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    deps = DEPS.Dependencies.get()
     if ctx.triggered_id == CONNECTION_DELETE_BUTTON:
         connection_id = P.get_path_value(
             P.CONNECTIONS_MANAGE_PATH, pathname, P.CONNECTION_ID_PATH_PART

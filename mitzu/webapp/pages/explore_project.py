@@ -1,7 +1,4 @@
-from typing import cast
-
 import dash.development.base_component as bc
-import flask
 from dash import html, register_page
 
 import mitzu.webapp.dependencies as DEPS
@@ -21,9 +18,7 @@ register_page(
 @restricted_layout
 def layout(project_id: str, **query_params) -> bc.Component:
     try:
-        depenednecies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        depenednecies = DEPS.Dependencies.get()
         project = depenednecies.storage.get_project(project_id)
 
         if project is None:

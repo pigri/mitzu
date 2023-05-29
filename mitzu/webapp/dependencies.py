@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import flask
 from dataclasses import dataclass
-from typing import Optional
+from typing import cast, Optional
 
 import mitzu.webapp.auth.authorizer as A
 import mitzu.webapp.cache as C
@@ -96,3 +97,9 @@ class Dependencies:
             notification_service=notification_service,
             tracking_service=tracking_service,
         )
+
+    @classmethod
+    def get(
+        cls,
+    ) -> Dependencies:
+        return cast(Dependencies, flask.current_app.config.get(CONFIG_KEY))

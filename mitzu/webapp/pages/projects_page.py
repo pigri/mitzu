@@ -2,12 +2,11 @@ from dash import register_page
 import dash_bootstrap_components as dbc
 from dash import html
 import dash.development.base_component as bc
-import flask
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.navbar as NB
 from mitzu.webapp.auth.decorator import restricted_layout
 import mitzu.webapp.pages.paths as P
-from typing import List, cast
+from typing import List
 import traceback
 
 
@@ -64,9 +63,7 @@ def layout(**query_params) -> bc.Component:
 
 
 def create_projects_children() -> List[bc.Component]:
-    depenednecies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    depenednecies = DEPS.Dependencies.get()
     project_ids = depenednecies.storage.list_projects()
 
     projects = []

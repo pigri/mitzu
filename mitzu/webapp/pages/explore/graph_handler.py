@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import traceback
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
 import mitzu.model as M
@@ -12,7 +12,6 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 import mitzu.webapp.cache as C
 import mitzu.visualization.common as CO
-import flask
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.model as WM
 import mitzu.serialization as SE
@@ -231,9 +230,7 @@ def create_callbacks():
             project_id = P.get_path_value(
                 P.PROJECTS_EXPLORE_PATH, parse_result.path, P.PROJECT_ID_PATH_PART
             )
-            deps = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            )
+            deps = DEPS.Dependencies.get()
             storage = deps.storage
             mitzu_cache = deps.cache
             tracking_service = deps.tracking_service

@@ -1,5 +1,4 @@
 import flask
-from typing import cast
 import functools
 from dash.exceptions import PreventUpdate
 from dash.dcc import Location
@@ -11,10 +10,7 @@ import mitzu.webapp.model as WM
 def restricted(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
-
+        dependencies = DEPS.Dependencies.get()
         if dependencies.authorizer.is_request_authorized(flask.request):
             return func(*args, **kwargs)
         else:
@@ -26,9 +22,7 @@ def restricted(func):
 def restricted_for_admin(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        dependencies = DEPS.Dependencies.get()
 
         user_role = dependencies.authorizer.get_current_user_role(flask.request)
         if user_role is None:
@@ -45,9 +39,7 @@ def restricted_for_admin(func):
 def restricted_layout(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        dependencies = DEPS.Dependencies.get()
 
         if dependencies.authorizer.is_request_authorized(flask.request):
             return func(*args, **kwargs)

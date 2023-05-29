@@ -1,9 +1,8 @@
 import traceback
-from typing import List, cast
+from typing import List
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import flask
 from dash import html, register_page
 
 import mitzu.helper as H
@@ -19,9 +18,7 @@ CONNECTION_TITLE = "connection_title"
 
 @restricted_layout
 def layout() -> bc.Component:
-    depenednecies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    depenednecies = DEPS.Dependencies.get()
     connection_ids = depenednecies.storage.list_connections()
 
     connections: List[M.Connection] = []

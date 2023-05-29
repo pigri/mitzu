@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import flask
-from typing import cast
 from dash import (
     Input,
     Output,
@@ -48,7 +47,7 @@ CHANGE_ROLE_RESPONSE_CONTAINER = "user_change_role_response_container"
 
 @restricted_layout
 def layout(user_id: str, **query_params) -> bc.Component:
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     user_service = deps.user_service
 
     is_sso = deps.authorizer._config.oauth is not None
@@ -284,7 +283,7 @@ def change_password_form():
 )
 @restricted_for_admin
 def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     user_service = deps.user_service
 
     if deps.authorizer._config.oauth:
@@ -329,7 +328,7 @@ def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
 def update_password(
     n_clicks: int, password="", confirm_password="", pathname: str = ""
 ):
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
 
     user_service = deps.user_service
 
@@ -369,7 +368,7 @@ def update_password(
 )
 @restricted_for_admin
 def update_role(n_clicks: int, role="", pathname: str = ""):
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
 
     user_service = deps.user_service
 
@@ -403,7 +402,7 @@ def update_role(n_clicks: int, role="", pathname: str = ""):
 @restricted_for_admin
 def delete_user(n_clicks: int, pathname: str = ""):
     user_id = P.get_path_value(P.USERS_HOME_PATH, pathname, P.USER_PATH_PART)
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     user_service = deps.user_service
 
     try:

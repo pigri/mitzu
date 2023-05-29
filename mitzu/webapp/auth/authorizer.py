@@ -361,7 +361,7 @@ class Authorizer:
                 email, password
             )
         except Exception as e:
-            LOGGER.warn(e)
+            LOGGER.warning(e)
             return None
         token = self._generate_new_token_with_claims(token_claims)
 

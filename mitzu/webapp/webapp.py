@@ -54,9 +54,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
     @server.before_request
     def before_request():
         request = flask.request
-        deps: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        deps = DEPS.Dependencies.get()
         res = deps.authorizer.authorize_request(request)
         if res is not None:
             deps.tracking_service.track_page_view(request, res)
@@ -65,9 +63,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
     @server.after_request
     def after_request(response: flask.Response):
         request = flask.request
-        deps: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        deps = DEPS.Dependencies.get()
         res = deps.authorizer.refresh_auth_token(request, response)
         if res is not None:
             deps.tracking_service.track_page_view(request, res)
@@ -127,9 +123,7 @@ def create_dash_app(dependencies: Optional[DEPS.Dependencies] = None) -> Dash:
 
     @server.route(P.HEALTHCHECK_PATH)
     def healthcheck():
-        dependencies: DEPS.Dependencies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        dependencies = DEPS.Dependencies.get()
         try:
             # These will fail with exception if there is an underlying issue
             dependencies.queue.health_check()

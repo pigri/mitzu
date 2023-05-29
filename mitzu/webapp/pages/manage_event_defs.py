@@ -7,9 +7,8 @@ from typing import Dict, List, Tuple, Optional
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.helper as H
-import flask
 import mitzu.model as M
-from typing import cast, Callable
+from typing import Callable
 import traceback
 import dash_mantine_components as dmc
 
@@ -60,9 +59,7 @@ def create_event_table_component(project: Optional[M.Project]) -> bc.Component:
         dp = project._discovered_project.get_value()
         if dp is None:
             dp = M.DiscoveredProject({}, project)
-        events_service = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        ).events_service
+        events_service = DEPS.Dependencies.get().events_service
         events_service.populate_discovered_project(dp)
 
         if dp is not None:
@@ -97,9 +94,7 @@ def no_project_layout():
 
 @restricted_layout
 def layout(project_id: Optional[str], **query_params) -> bc.Component:
-    events_service = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).events_service
+    events_service = DEPS.Dependencies.get().events_service
 
     projects = events_service.list_all_projects()
     selected_project: Optional[M.Project] = None
@@ -235,7 +230,7 @@ def handle_project_discovery(
     set_progress: Callable, discovery_clicks: int, project_id: str
 ):
     rows: List[bc.Component] = []
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     events_service = deps.events_service
     tracking_service = deps.tracking_service
 

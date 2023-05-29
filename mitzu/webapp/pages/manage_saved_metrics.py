@@ -19,8 +19,6 @@ import mitzu.webapp.model as WM
 from typing import List
 import mitzu.webapp.dependencies as DEPS
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
-import flask
-from typing import cast
 import datetime
 from mitzu.webapp.helper import MISSING_RESOURCE_CSS
 from urllib.parse import quote
@@ -203,9 +201,7 @@ def list_saved_metrics(storage: S.MitzuStorage) -> List[bc.Component]:
 
 @restricted_layout
 def layout(**query_params) -> bc.Component:
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
 
     return html.Div(
         [
@@ -270,9 +266,7 @@ def delete_button_clicked(delete_clicks: List[int], close: int, accept: int):
 )
 @restricted
 def confirm_button_clicked(close_button: int, metric_id: str) -> List:
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
     if ctx.triggered_id is not None:
         storage.clear_saved_metric(metric_id)
 

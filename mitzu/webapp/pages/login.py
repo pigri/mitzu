@@ -1,5 +1,4 @@
-from typing import List, cast
-import flask
+from typing import List
 from dash import (
     register_page,
     dcc,
@@ -28,9 +27,7 @@ LOCATION = "login_location"
 
 
 def layout(**query_params):
-    depenednecies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    depenednecies = DEPS.Dependencies.get()
     return dbc.Container(
         children=[
             dbc.Row(
@@ -142,9 +139,7 @@ def login_with_local_users() -> List:
     prevent_initial_call=True,
 )
 def login(n_click: int, inputs: List[str]):
-    authorizer = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).authorizer
+    authorizer = DEPS.Dependencies.get().authorizer
 
     redirect_when_authorized = authorizer.login_local_user(
         inputs[0], inputs[1], callback_context.response

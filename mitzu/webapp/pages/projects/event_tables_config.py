@@ -1,7 +1,7 @@
 import dash_bootstrap_components as dbc
 from dash import ALL, Input, Output, State, callback, ctx, html, no_update
 import dash.development.base_component as bc
-from typing import Callable, Dict, List, Optional, Tuple, cast, Set
+from typing import Callable, Dict, List, Optional, Set, Tuple
 import mitzu.model as M
 from mitzu.webapp.pages.projects.helper import (
     PROP_CONNECTION,
@@ -14,7 +14,6 @@ from mitzu.webapp.pages.projects.helper import (
 from mitzu.webapp.auth.decorator import restricted
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.helper as H
-import flask
 import traceback
 import dash_mantine_components as dmc
 
@@ -591,9 +590,7 @@ def manage_choose_schema_dropdown(
         return ([], None, "Select schema")
     if connection_id is not None:
         try:
-            dependencies: DEPS.Dependencies = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            )
+            dependencies = DEPS.Dependencies.get()
             connection = dependencies.storage.get_connection(connection_id)
             dummy_project = M.Project(
                 connection=connection,
@@ -667,9 +664,7 @@ def manage_choose_tables_checklist(
 
     if connection_id is not None:
         try:
-            dependencies: DEPS.Dependencies = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            )
+            dependencies = DEPS.Dependencies.get()
             connection = dependencies.storage.get_connection(connection_id)
             dummy_project = M.Project(
                 connection=connection,
@@ -725,9 +720,7 @@ def manage_configure_property_inputs(
 
     if connection_id is not None:
         try:
-            dependencies: DEPS.Dependencies = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            )
+            dependencies = DEPS.Dependencies.get()
             connection = dependencies.storage.get_connection(connection_id)
             dummy_project = M.Project(
                 connection=connection,
@@ -781,9 +774,7 @@ def handle_configure_modal_confirm(
     tbl_body_children: List[bc.Component],
     edt_properties: List[bc.Component],
 ) -> List[bc.Component]:
-    dependencies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    dependencies = DEPS.Dependencies.get()
     connection = dependencies.storage.get_connection(connection_id)
     dummy_project = M.Project(
         connection=connection,
@@ -851,9 +842,7 @@ def handle_validate_button_clicked(
     connection_id: str,
     tbl_body_children: List[bc.Component],
 ) -> List[bc.Component]:
-    dependencies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    dependencies = DEPS.Dependencies.get()
     connection = dependencies.storage.get_connection(connection_id)
     dummy_project = M.Project(
         connection=connection,

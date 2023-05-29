@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import quote, urlparse, parse_qs
 
 import dash_bootstrap_components as dbc
@@ -26,7 +26,6 @@ import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 from mitzu.webapp.helper import MITZU_LOCATION, find_event_field_def, CHILDREN
 import mitzu.webapp.pages.paths as P
-import flask
 import traceback
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
@@ -456,9 +455,7 @@ def create_callbacks():
             project_id = P.get_path_value(
                 P.PROJECTS_EXPLORE_PATH, url.path, P.PROJECT_ID_PATH_PART
             )
-            depenedencies: DEPS.Dependencies = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            )
+            depenedencies = DEPS.Dependencies.get()
             project = depenedencies.storage.get_project(project_id)
             if project is None:
                 return no_update_response
@@ -500,7 +497,7 @@ def handle_save_metric_dialog(
     metric_name: str,
     href: str,
 ) -> Dict[str, Any]:
-    deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+    deps = DEPS.Dependencies.get()
     storage = deps.storage
     mitzu_cache = deps.cache
     tracking_service = deps.tracking_service

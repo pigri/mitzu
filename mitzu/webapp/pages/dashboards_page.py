@@ -11,8 +11,6 @@ import mitzu.webapp.model as WM
 import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
-from typing import cast
-import flask
 from dash_iconify import DashIconify
 
 register_page(__name__, path_template=P.DASHBOARDS_PATH, title="Mitzu - Dashboards")
@@ -35,9 +33,7 @@ DASHBOARDS_INFO = "dashboard_info"
 
 @restricted_layout
 def layout(**query_params) -> bc.Component:
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
     d_ids = storage.list_dashboards()
     dashboards = [storage.get_dashboard(d_id) for d_id in d_ids]
 
@@ -264,9 +260,7 @@ def delete_button_clicked(delete: List[Optional[int]], close: int, accept: int):
 )
 @restricted
 def confirm_button_clicked(accept_button: int, dashboard_id: str) -> List:
-    storage = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    ).storage
+    storage = DEPS.Dependencies.get().storage
     if ctx.triggered_id is not None:
         storage.clear_dashboard(dashboard_id)
 

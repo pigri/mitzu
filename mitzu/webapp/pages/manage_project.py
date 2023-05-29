@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, cast
 
 import dash.development.base_component as bc
 import dash_bootstrap_components as dbc
-import flask
 from dash import (
     ALL,
     Input,
@@ -138,9 +137,7 @@ def layout_create(**query_params) -> bc.Component:
 @restricted_layout
 def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
     project: Optional[M.Project] = None
-    dependencies: DEPS.Dependencies = cast(
-        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-    )
+    dependencies = DEPS.Dependencies.get()
     if project_id is not None:
         project = dependencies.storage.get_project(project_id)
 
@@ -226,9 +223,7 @@ def delete_confirm_button_clicked(n_clicks: int, pathname: str) -> int:
         project_id = P.get_path_value(
             P.PROJECTS_MANAGE_PATH, pathname, P.PROJECT_ID_PATH_PART
         )
-        depenednecies = cast(
-            DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-        )
+        depenednecies = DEPS.Dependencies.get()
         try:
             depenednecies.storage.delete_project(project_id)
         except Exception:
@@ -271,9 +266,11 @@ def save_button_clicked(
     pathname: str,
 ):
     try:
-        deps = cast(DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY))
+
+        deps = DEPS.Dependencies.get()
         storage = deps.storage
         tracking_service = deps.tracking_service
+
         project_props: Dict[str, Any] = {}
 
         for prop in ctx.args_grouping[3]:

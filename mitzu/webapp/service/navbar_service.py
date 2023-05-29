@@ -4,9 +4,8 @@ import dash.development.base_component as bc
 
 import dash_bootstrap_components as dbc
 from dash import html
-from typing import Optional, cast, Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 import mitzu.webapp.pages.paths as P
-import flask
 import mitzu.webapp.dependencies as DEPS
 import mitzu.webapp.storage as S
 
@@ -47,9 +46,7 @@ class NavbarService:
         ) -> Optional[bc.Component]:
             if create_explore_button:
                 if storage is None:
-                    storage = cast(
-                        DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-                    ).storage
+                    storage = DEPS.Dependencies.get().storage
 
                 project_ids = storage.list_projects()
                 projects = [storage.get_project(p_id) for p_id in project_ids]
@@ -77,13 +74,9 @@ class NavbarService:
         ]
 
         def signed_in_as(id: str, **kwargs) -> Optional[bc.Component]:
-            authorizer = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            ).authorizer
-
-            storage = cast(
-                DEPS.Dependencies, flask.current_app.config.get(DEPS.CONFIG_KEY)
-            ).storage
+            dependencies = DEPS.Dependencies.get()
+            authorizer = dependencies.authorizer
+            storage = dependencies.storage
 
             user_id = authorizer.get_current_user_id()
             if user_id is None:
