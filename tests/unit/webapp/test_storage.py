@@ -5,6 +5,7 @@ import mitzu.webapp.model as WM
 from tests.unit.webapp.generators import (
     connection,
     project,
+    discovered_project,
     saved_metric,
     user,
     dashboard,
@@ -77,6 +78,39 @@ def test_storing_projects(project, updated_project):
 
     with storage._new_db_session() as session:
         assert len(storage._get_event_data_tables_for_project(project.id, session)) == 0
+
+
+@given(discovered_project())
+@settings(
+    suppress_health_check=(HealthCheck.too_slow,),
+    deadline=None,
+    max_examples=MAX_EXAMPLES,
+)
+def test_storing_discovered_projects(project):
+    storage = create_storage()
+
+    assert len(storage.list_projects()) == 0
+    storage.set_project(project.id, project)
+
+    stored_project = storage.get_project(project.id)
+    assert stored_project is not None
+
+    for edt in project.event_data_tables:
+        assert edt in stored_project._discovered_project.get_value().definitions.keys()
+        edt_definitions = stored_project._discovered_project.get_value().definitions[
+            edt
+        ]
+        expected_definitions = project._discovered_project.get_value().definitions[edt]
+        assert len(edt_definitions) == len(expected_definitions)
+
+        for event_name, event_def in expected_definitions.items():
+            assert event_name in edt_definitions.keys()
+            assert isinstance(edt_definitions[event_name], S.StorageEventDefReference)
+
+            stored_event_def = storage.get_event_definition(
+                edt, edt_definitions[event_name]._id
+            )
+            assert stored_event_def == event_def.get_value()
 
 
 @given(user(), user())

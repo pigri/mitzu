@@ -1,6 +1,6 @@
 import base64
 import os
-from typing import Optional
+from typing import Optional, Dict
 
 from hypothesis.extra.pandas import columns, data_frames
 import hypothesis.strategies as st
@@ -33,6 +33,25 @@ def time_window(draw):
     return M.TimeWindow(
         draw(st.integers(min_value=1, max_value=10)),
         draw(st.sampled_from(M.TimeGroup)),
+    )
+
+
+@st.composite
+def field(draw, field_type: Optional[M.DataType] = None):
+    return M.Field(
+        _name=draw(field_name()),
+        _type=field_type
+        if field_type is not None
+        else draw(st.sampled_from(M.DataType)),
+    )
+
+
+@st.composite
+def nested_field(draw):
+    return M.Field(
+        _name=draw(field_name()),
+        _type=draw(st.sampled_from(M.DataType)),
+        _parent=draw(st.one_of(st.none(), field())),
     )
 
 
@@ -128,16 +147,57 @@ def event_data_table(draw):
 
 
 @st.composite
-def project(draw):
+def project(draw, min_edt_count=0):
     return M.Project(
         connection=draw(connection()),
-        event_data_tables=draw(st.lists(event_data_table(), min_size=0, max_size=5)),
+        event_data_tables=draw(
+            st.lists(event_data_table(), min_size=min_edt_count, max_size=5)
+        ),
         project_name=draw(simple_string()),
         project_id=draw(optional_simple_string()),
         description=draw(optional_simple_string()),
         discovery_settings=draw(st.one_of(st.none(), discovery_settings())),
         webapp_settings=draw(st.one_of(st.none(), webapp_settings())),
     )
+
+
+@st.composite
+def event_def(draw, edt: M.EventDataTable) -> M.EventDef:
+    event_name = draw(field_name())
+    return M.EventDef(
+        _event_data_table=edt,
+        _event_name=event_name,
+        _fields=[
+            M.EventFieldDef(
+                _event_name=event_name,
+                _field=draw(nested_field()),
+                _event_data_table=edt,
+            ),
+        ],
+    )
+
+
+@st.composite
+def discovered_project(draw):
+    proj = draw(project(min_edt_count=1))
+
+    discovered_definitions: Dict[
+        M.EventDataTable, Dict[str, M.Reference[M.EventDef]]
+    ] = {}
+    for edt in proj.event_data_tables:
+        events = draw(st.lists(event_def(edt), min_size=1, max_size=5))
+        discovered_definitions[edt] = {}
+        for event in events:
+            discovered_definitions[edt][
+                event._event_name
+            ] = M.Reference.create_from_value(event)
+
+    # the constructor will set a reference in the project
+    M.DiscoveredProject(
+        definitions=discovered_definitions,
+        project=proj,
+    )
+    return proj
 
 
 @st.composite
