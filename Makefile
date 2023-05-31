@@ -172,9 +172,12 @@ docker_build_amd64_snapshot:
 	-f ./release/Dockerfile \
 	-t mitzuio/mitzu:snapshot
 
-docker_run_amd64_snapshot:
-	rm -rf ./docker_cache/
-	docker run -v "$(pwd)/docker_cache/:/app/cache" -e SETUP_SAMPLE_PROJECT=false KALEIDO_CONFIGS="" -e LOCAL_CACHING_ENABLED=false -p 8082:8080 mitzuio/mitzu:snapshot
+docker_run_amd64_snapshot:	
+	docker run  \
+	-e KALEIDO_CONFIGS=""  \
+	-e AUTH_ROOT_PASSWORD="testuser" \
+	-e AUTH_ROOT_USER_EMAIL="root@local" \
+	-p 8082:8080 mitzuio/mitzu:snapshot
 
 docker_publish_latest: docker_build_latest
 	docker push mitzuio/mitzu:$(shell poetry version -s)
@@ -183,9 +186,6 @@ docker_publish_latest: docker_build_latest
 docker_publish_no_build:
 	docker push mitzuio/mitzu:$(shell poetry version -s)
 	docker push mitzuio/mitzu:latest
-
-docker_publish_snapshot_no_build:
-	docker push mitzuio/mitzu:snapshot
 
 
 
