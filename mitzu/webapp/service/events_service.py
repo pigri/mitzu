@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import mitzu.webapp.storage as S
 from typing import Callable, Dict, Optional
