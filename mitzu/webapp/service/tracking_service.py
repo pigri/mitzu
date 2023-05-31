@@ -18,6 +18,7 @@ def log_error_message(error, items):
 
 
 def init_analytics():
+    H.LOGGER.debug(f"Tracking init: {C.TRACKING_HOST}")
     analytics.write_key = C.TRACKING_API_KEY
     analytics.host = C.TRACKING_HOST
     analytics.on_error = log_error_message
@@ -72,6 +73,7 @@ class AuthorizedTrackingService(TrackingService):
     def _track_event(
         self, event_name: str, event_properties: Dict[str, Any], flush: bool = True
     ):
+
         if not C.ENABLE_USAGE_TRACKING or not C.TRACKING_HOST:
             return
         try:

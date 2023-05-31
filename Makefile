@@ -1,9 +1,7 @@
 POETRY := $(shell command -v poetry 2> /dev/null)
 
 -include .env
-
-setup_env:
-	export $(shell sed 's/=.*//' .env)
+export $(shell sed 's/=.*//' .env)
 
 clean:
 	$(POETRY) run pyclean mitzu release tests 
@@ -70,7 +68,7 @@ check: lint test_coverage
 
 
 # This make command is used for testing the SSO
-serve_cognito_sso: setup_env
+serve_cognito_sso: 
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
@@ -85,7 +83,7 @@ serve_cognito_sso: setup_env
 	AUTH_ROOT_USER_EMAIL="${AUTH_ROOT_USER_EMAIL}" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
-serve_google_sso: setup_env
+serve_google_sso: 
 	cd release/app/ && \
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
@@ -97,7 +95,7 @@ serve_google_sso: setup_env
 	AUTH_ROOT_USER_EMAIL="${AUTH_ROOT_USER_EMAIL}" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload
 
-serve: setup_env
+serve: 
 	cd release/app/ && \
 	LOG_LEVEL=WARN \
 	LOG_HANDLER=stdout \
@@ -105,7 +103,7 @@ serve: setup_env
 	AUTH_ROOT_PASSWORD="testuser" \
 	$(POETRY) run gunicorn -b 0.0.0.0:8082 app:server --reload --workers=8
 
-run: setup_env	
+run: 	
 	LOG_LEVEL=INFO \
 	LOG_HANDLER=stdout \
 	SETUP_SAMPLE_PROJECT=true \
@@ -126,7 +124,7 @@ publish: bump_version build
 publish_no_build:
 	$(POETRY) publish
 
-docker_build_latest: setup_env	
+docker_build_latest: 	
 	$(POETRY) build
 	cp -r ./dist/ ./release/dist/
 	poetry export \
@@ -150,7 +148,7 @@ docker_build_latest: setup_env
 	-t mitzuio/mitzu:$(shell poetry version -s) \
 	-t mitzuio/mitzu:latest
 
-docker_build_amd64_snapshot: setup_env
+docker_build_amd64_snapshot: 
 	$(POETRY) build
 	cp -r ./dist/ ./release/dist/
 	poetry export \
