@@ -1,5 +1,6 @@
-#!make
 POETRY := $(shell command -v poetry 2> /dev/null)
+
+-include .env
 
 setup_env:
 	export $(shell sed 's/=.*//' .env)
@@ -125,7 +126,7 @@ publish: bump_version build
 publish_no_build:
 	$(POETRY) publish
 
-docker_build_latest:	
+docker_build_latest: setup_env	
 	$(POETRY) build
 	cp -r ./dist/ ./release/dist/
 	poetry export \
@@ -149,7 +150,7 @@ docker_build_latest:
 	-t mitzuio/mitzu:$(shell poetry version -s) \
 	-t mitzuio/mitzu:latest
 
-docker_build_amd64_snapshot:
+docker_build_amd64_snapshot: setup_env
 	$(POETRY) build
 	cp -r ./dist/ ./release/dist/
 	poetry export \
