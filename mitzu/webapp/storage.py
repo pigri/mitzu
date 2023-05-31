@@ -7,11 +7,11 @@ from mitzu.helper import LOGGER
 import mitzu.model as M
 import mitzu.webapp.model as WM
 import mitzu.webapp.storage_model as SM
+import mitzu.webapp.dependencies as DEPS
 from mitzu.samples.data_ingestion import create_and_ingest_sample_project
 import sqlalchemy as SA
 from sqlalchemy.orm import Session
 
-import flask
 
 SAMPLE_PROJECT_NAME = "sample_project"
 SAMPLE_PROJECT_ID = "sample_project_id"
@@ -38,9 +38,13 @@ class StorageEventDefReference(M.Reference[M.EventDef]):
     def get_value(self) -> Optional[M.EventDef]:
         res = self._value_state.get_value()
         if res is None:
-            deps = flask.current_app.config.get("dependencies")
-            if deps is None:
-                raise InvalidStorageReference("No storage in request dependencies")
+            try:
+                deps = DEPS.Dependencies.get()
+            except Exception as e:
+                raise InvalidStorageReference("No dependencies in request state") from e
+
+            if self._id is None:
+                raise ValueError("Event definition reference id is missing")
             res = deps.storage.get_event_definition(
                 event_definition_id=self._id, event_data_table=self.event_data_table
             )
