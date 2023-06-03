@@ -30,7 +30,7 @@ import traceback
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.auth.decorator import restricted
-
+import flask
 
 from mitzu.webapp.helper import (
     get_final_all_inputs,
@@ -108,8 +108,11 @@ def save_metric_navbar_provider(
 
 
 def share_button_navbar_provider(
-    id: str, notebook_mode: bool = True, **kwargs
+    id: str, show_share_button=False, path="", **kwargs
 ) -> Optional[bc.Component]:
+    if not show_share_button:
+        return None
+    url = flask.request.host_url.strip("/") + path
     return (
         dbc.Button(
             [
@@ -117,7 +120,7 @@ def share_button_navbar_provider(
                 " Share",
                 dcc.Clipboard(
                     id=CLIPBOARD,
-                    content="",
+                    content=url,
                     className="position-absolute start-0 top-0 w-100 h-100 opacity-0",
                 ),
             ],
@@ -125,7 +128,7 @@ def share_button_navbar_provider(
             className="position-relative top-0 start-0 text-nowrap",
             color="light",
             size="sm",
-            style={"display": "none" if notebook_mode else "inline-block"},
+            style={"display": "inline-block"},
         ),
     )
 
@@ -197,7 +200,6 @@ def create_explore_page(
     query_params: Dict[str, str],
     discovered_project: M.DiscoveredProject,
     storage: S.MitzuStorage,
-    notebook_mode: bool = False,
 ) -> bc.Component:
     metric: Optional[M.Metric] = None
     saved_metric: Optional[WM.SavedMetric] = None
@@ -219,13 +221,21 @@ def create_explore_page(
     metric_segments_div = MS.from_metric(metric, discovered_project)
     graph_container = create_graph_container(metric, discovered_project.project)
     save_metric_dialog = create_saved_metric_dialog(saved_metric)
+    path = P.create_path(
+        P.PROJECTS_EXPLORE_PATH, project_id=discovered_project.project.id
+    )
+    if metric is not None:
+        url_params = "m=" + quote(SE.to_compressed_string(metric))
+        path = f"{path}?{url_params}"
+
     navbar = NB.create_mitzu_navbar(
         id=NAVBAR_ID,
         show_metric_type=True,
         show_metric_name=True,
         metric=metric,
         saved_metric=saved_metric,
-        notebook_mode=notebook_mode,
+        show_share_button=True,
+        path=path,
     )
 
     metric_id = H.create_unique_id() if saved_metric is None else saved_metric.id
@@ -347,7 +357,6 @@ def handle_input_changes(
     )
     parse_result = urlparse(all_inputs[MITZU_LOCATION])
     if metric is not None:
-
         url_params = "m=" + quote(SE.to_compressed_string(metric))
         parse_result = parse_result._replace(query=url_params)
     url = parse_result.geturl()

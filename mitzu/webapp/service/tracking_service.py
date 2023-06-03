@@ -79,7 +79,7 @@ class AuthorizedTrackingService(TrackingService):
         try:
             user_id = self._get_current_user_id()
             if user_id is None:
-                H.LOGGER.warn("Unauthenticated user, tracking disabled")
+                H.LOGGER.debug("Unauthenticated user, tracking disabled")
                 return
             event_properties["app_version"] = __version__
             event_properties["environment"] = C.ENVIRONMENT
