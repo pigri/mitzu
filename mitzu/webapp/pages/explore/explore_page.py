@@ -468,6 +468,7 @@ def create_callbacks():
             project = depenedencies.storage.get_project(project_id)
             if project is None:
                 return no_update_response
+
             all_inputs = get_final_all_inputs(all_inputs, ctx.inputs_list)
             all_inputs[METRIC_NAME_INPUT] = metric_name
             all_inputs[METRIC_ID_VALUE] = metric_id

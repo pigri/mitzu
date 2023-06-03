@@ -18,6 +18,7 @@ from typing import cast
 from datetime import datetime
 from unittest.mock import patch
 import flask
+from dash._utils import AttributeDict
 
 
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
@@ -147,6 +148,90 @@ def test_event_property_chosen_for_segmentation(
     assert first_property_value_input["value"] == []
 
 
+@patch("mitzu.webapp.pages.explore.simple_segment_handler.ctx")
+@patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
+def test_event_property_changed_for_segmentation(
+    ctx_mch,
+    ctx_ss,
+    discovered_project: M.DiscoveredProject,
+):
+    ctx_ss.triggered_id = AttributeDict(
+        {"type": SS.PROPERTY_NAME_DROPDOWN, "index": "0-0-0"}
+    )
+    all_inputs = {
+        MS.METRIC_SEGMENTS: {
+            "children": {
+                0: {
+                    "children": {
+                        0: {
+                            ES.EVENT_NAME_DROPDOWN: "page_visit",
+                            "children": {
+                                0: {
+                                    SS.PROPERTY_OPERATOR_DROPDOWN: ">",
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.acquisition_campaign",
+                                    SS.PROPERTY_VALUE_INPUT: [
+                                        "organic",
+                                        "aaa",
+                                    ],
+                                },
+                                1: {
+                                    SS.PROPERTY_OPERATOR_DROPDOWN: "is",
+                                    SS.PROPERTY_NAME_DROPDOWN: "page_visit.domain",
+                                    SS.PROPERTY_VALUE_INPUT: [
+                                        "xx",
+                                        "xy",
+                                    ],
+                                },
+                            },
+                        },
+                        1: {ES.EVENT_NAME_DROPDOWN: None},
+                    },
+                    CS.COMPLEX_SEGMENT_GROUP_BY: None,
+                }
+            }
+        },
+        H.MITZU_LOCATION: f"http://127.0.0.1/projects/{discovered_project.project.id}/explore/",
+        MTH.METRIC_TYPE_DROPDOWN: "segmentation",
+        DS.TIME_GROUP_DROPDOWN: 5,
+        DS.CUSTOM_DATE_PICKER: [None, None],
+        DS.LOOKBACK_WINDOW_DROPDOWN: "1 month",
+        MC.TIME_WINDOW_INTERVAL_STEPS: 5,
+        MC.TIME_WINDOW_INTERVAL: 1,
+        MC.AGGREGATION_TYPE: "user_count",
+        TH.GRAPH_REFRESH_BUTTON: None,
+        TH.CHART_TYPE_DD: M.SimpleChartType.LINE.name,
+        EXP.METRIC_NAME_INPUT: None,
+        EXP.METRIC_ID_VALUE: "test_id",
+    }
+
+    res = EXP.handle_input_changes(all_inputs, discovered_project)
+    res = to_dict(res[MS.METRIC_SEGMENTS][0])
+
+    first_property_value_input = find_component_by_id(
+        {"index": "0-0-0", "type": SS.PROPERTY_VALUE_INPUT}, res
+    )
+    second_property_value_input = find_component_by_id(
+        {"index": "0-0-1", "type": SS.PROPERTY_VALUE_INPUT}, res
+    )
+    first_property_operator = find_component_by_id(
+        {"index": "0-0-0", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
+    )
+    second_property_operator = find_component_by_id(
+        {"index": "0-0-1", "type": SS.PROPERTY_OPERATOR_DROPDOWN}, res
+    )
+
+    assert first_property_value_input is not None
+    assert second_property_value_input is not None
+    assert first_property_operator is not None
+    assert second_property_operator is not None
+
+    assert first_property_operator["value"] == "is"  # changed to default
+    assert second_property_operator["value"] == "is"
+
+    assert first_property_value_input["value"] == []  # changed to default
+    assert second_property_value_input["value"] == ["xx", "xy"]  # didn't change
+
+
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_chosen_for_group_by(
     ctx,
@@ -207,11 +292,16 @@ def test_event_property_chosen_for_group_by(
     assert first_event_gp["value"] == "page_visit.acquisition_campaign"
 
 
+@patch("mitzu.webapp.pages.explore.simple_segment_handler.ctx")
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_operator_changed_with_values_already_chosen(
-    ctx,
+    ctx_mch,
+    ctx_ss,
     discovered_project: M.DiscoveredProject,
 ):
+    ctx_ss.triggered_id = AttributeDict(
+        {"type": SS.PROPERTY_OPERATOR_DROPDOWN, "index": "0-0-0"}
+    )
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {
@@ -250,7 +340,6 @@ def test_event_property_operator_changed_with_values_already_chosen(
         EXP.METRIC_NAME_INPUT: None,
         EXP.METRIC_ID_VALUE: "test_id",
     }
-
     res = EXP.handle_input_changes(all_inputs, discovered_project)
     res = to_dict(res[MS.METRIC_SEGMENTS][0])
 
@@ -268,11 +357,16 @@ def test_event_property_operator_changed_with_values_already_chosen(
     assert first_property_value_input["value"] == "organic"
 
 
+@patch("mitzu.webapp.pages.explore.simple_segment_handler.ctx")
 @patch("mitzu.webapp.pages.explore.metric_config_handler.ctx")
 def test_event_property_operator_changed_creates_correct_metric(
-    ctx,
+    ctx_mch,
+    ctx_ss,
     discovered_project: M.DiscoveredProject,
 ):
+    ctx_ss.triggered_id = AttributeDict(
+        {"type": SS.PROPERTY_OPERATOR_DROPDOWN, "index": "0-0-0"}
+    )
     all_inputs = {
         MS.METRIC_SEGMENTS: {
             "children": {

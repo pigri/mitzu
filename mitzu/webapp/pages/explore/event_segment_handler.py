@@ -147,6 +147,8 @@ def from_segment(
 def from_all_inputs(
     discovered_project: Optional[M.DiscoveredProject],
     event_segment: Dict[str, Any],
+    complex_segment_index: int,
+    event_segment_index: int,
 ) -> Optional[M.Segment]:
     if discovered_project is None:
         return None
@@ -157,8 +159,16 @@ def from_all_inputs(
         return None
 
     res_segment: Optional[M.Segment] = None
+    ss_index = 0
     for _, simple_segment in simple_segments.items():
-        simple_seg = SS.from_all_inputs(discovered_project, simple_segment)
+        simple_seg = SS.from_all_inputs(
+            discovered_project,
+            simple_segment,
+            complex_segment_index,
+            event_segment_index,
+            ss_index,
+        )
+        ss_index += 1
 
         if simple_seg is None:
             continue

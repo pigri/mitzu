@@ -150,12 +150,19 @@ def from_segment(
 def from_all_inputs(
     discovered_project: M.DiscoveredProject,
     complex_segment: Dict[str, Any],
+    complex_segment_index: int,
 ) -> Optional[M.Segment]:
     res_segment: Optional[M.Segment] = None
     event_segments = complex_segment.get(CHILDREN, {})
-
+    event_segment_index = 0
     for _, event_segment in event_segments.items():
-        event_segment = ES.from_all_inputs(discovered_project, event_segment)
+        event_segment = ES.from_all_inputs(
+            discovered_project,
+            event_segment,
+            complex_segment_index,
+            event_segment_index,
+        )
+        event_segment_index += 1
         if event_segment is None:
             continue
         if res_segment is None:

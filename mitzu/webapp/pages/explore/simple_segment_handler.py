@@ -4,13 +4,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import dash.development.base_component as bc
 import mitzu.model as M
-from dash import Input, MATCH, Output, callback, dcc, html
+from dash import Input, MATCH, Output, callback, dcc, html, ctx
 from mitzu.webapp.helper import (
     find_event_field_def,
     get_enums,
     get_property_name_label,
     WITH_VALUE_CLS,
 )
+from dash._utils import AttributeDict
 import dash_mantine_components as dmc
 from mitzu.webapp.auth.decorator import restricted
 
@@ -194,8 +195,10 @@ def collect_values(value: Any, data_type: M.DataType) -> Optional[Tuple[Any, ...
 def from_all_inputs(
     discovered_project: Optional[M.DiscoveredProject],
     simple_segment: Dict[str, Any],
+    complex_segment_index: int,
+    event_segment_index: int,
+    simple_segment_index: int,
 ) -> Optional[M.SimpleSegment]:
-
     if discovered_project is None:
         return None
 
@@ -212,6 +215,15 @@ def from_all_inputs(
         return M.SimpleSegment(event_field_def, M.Operator.IS_NULL, None)
     elif property_operator == OPERATOR_MAPPING[M.Operator.IS_NOT_NULL]:
         return M.SimpleSegment(event_field_def, M.Operator.IS_NOT_NULL, None)
+
+    if (
+        type(ctx.triggered_id) == AttributeDict
+        and ctx.triggered_id["type"] == PROPERTY_NAME_DROPDOWN
+        and ctx.triggered_id["index"]
+        == f"{complex_segment_index}-{event_segment_index}-{simple_segment_index}"
+    ):
+        # Changing property name should reset the value
+        return M.SimpleSegment(event_field_def, M.Operator.ANY_OF, None)
 
     property_value = simple_segment.get(PROPERTY_VALUE_INPUT)
     data_type = event_field_def._field._type
