@@ -30,6 +30,7 @@ import traceback
 from dash import ctx, html, callback, no_update, dcc
 from dash.dependencies import ALL, Input, Output, State
 from mitzu.webapp.auth.decorator import restricted
+import mitzu.webapp.configs as C
 import flask
 
 from mitzu.webapp.helper import (
@@ -112,7 +113,8 @@ def share_button_navbar_provider(
 ) -> Optional[bc.Component]:
     if not show_share_button:
         return None
-    url = flask.request.host_url.strip("/") + path
+    host_url = C.HOME_URL if C.HOME_URL else flask.request.host_url
+    url = host_url.strip("/") + path
     return (
         dbc.Button(
             [
