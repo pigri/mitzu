@@ -13,7 +13,7 @@ METRIC_TYPE_DROPDOWN = "metric-type-dropdown"
 
 class MetricType(Enum):
     SEGMENTATION = auto()
-    CONVERSION = auto()
+    FUNNEL = auto()
     RETENTION = auto()
     USER_JOURNEYS = auto()
     REVENUE = auto()
@@ -24,7 +24,7 @@ class MetricType(Enum):
     @classmethod
     def from_metric(cls, metric: Optional[M.Metric]) -> MetricType:
         if isinstance(metric, M.ConversionMetric):
-            return MetricType.CONVERSION
+            return MetricType.FUNNEL
         elif isinstance(metric, M.RetentionMetric):
             return MetricType.RETENTION
         else:
@@ -45,7 +45,7 @@ def from_metric_type(metric_type: MetricType) -> bc.Component:
                 not in (
                     MetricType.SEGMENTATION,
                     MetricType.RETENTION,
-                    MetricType.CONVERSION,
+                    MetricType.FUNNEL,
                 ),
             }
             for m_type in MetricType

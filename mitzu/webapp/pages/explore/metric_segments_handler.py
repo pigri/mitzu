@@ -22,7 +22,7 @@ def from_metric(
     elif isinstance(metric, M.ConversionMetric):
         limit = 10
         segments = metric._conversion._segments
-        metric_type = MNB.MetricType.CONVERSION
+        metric_type = MNB.MetricType.FUNNEL
     elif isinstance(metric, M.RetentionMetric):
         limit = 2
         segments = [metric._initial_segment, metric._retaining_segment]

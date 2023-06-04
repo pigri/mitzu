@@ -55,7 +55,7 @@ def agg_type_to_str(agg_type: M.AggType, agg_param: Any = None) -> str:
 
 def get_time_window_options(metric_type: MTH.MetricType) -> List[Dict[str, int]]:
     res: List[Dict[str, Any]] = []
-    if metric_type == MTH.MetricType.CONVERSION:
+    if metric_type == MTH.MetricType.FUNNEL:
         for tg in M.TimeGroup:
             if tg in (M.TimeGroup.TOTAL, M.TimeGroup.QUARTER):
                 continue
@@ -75,7 +75,7 @@ def get_time_window_options(metric_type: MTH.MetricType) -> List[Dict[str, int]]
 
 
 def get_agg_type_options(metric_type: MTH.MetricType) -> List[Dict[str, str]]:
-    if metric_type == MTH.MetricType.CONVERSION:
+    if metric_type == MTH.MetricType.FUNNEL:
         res: List[Dict[str, Any]] = [
             {
                 "label": agg_type_to_str(M.AggType.CONVERSION),
@@ -130,7 +130,7 @@ def create_metric_options_component(
         agg_param = metric_config.agg_param
         if agg_type not in (M.AggType.COUNT_UNIQUE_USERS, M.AggType.COUNT_EVENTS):
             agg_type = M.AggType.COUNT_UNIQUE_USERS
-    elif metric_type == MTH.MetricType.CONVERSION:
+    elif metric_type == MTH.MetricType.FUNNEL:
         tw_value = time_window.value
         tw_g_value = time_window.period
         agg_type = metric_config.agg_type
@@ -201,7 +201,7 @@ def create_metric_options_component(
         ],
         style={
             "visibility": "visible"
-            if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.CONVERSION]
+            if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.FUNNEL]
             else "hidden"
         },
     )
@@ -218,7 +218,7 @@ def create_metric_options_component(
             "width": "204px",
             "visibility": (
                 "visible"
-                if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.CONVERSION]
+                if metric_type in [MTH.MetricType.RETENTION, MTH.MetricType.FUNNEL]
                 else "hidden"
             ),
         },
@@ -276,7 +276,7 @@ def from_all_inputs(
             resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
             lookback_days = M.TimeWindow(2, M.TimeGroup.MONTH)
             time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
-        elif metric_type == MTH.MetricType.CONVERSION:
+        elif metric_type == MTH.MetricType.FUNNEL:
             time_group = M.TimeGroup.DAY
             resolution = M.Resolution.EVERY_EVENT
             lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)

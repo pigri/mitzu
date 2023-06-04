@@ -275,7 +275,7 @@ def create_graph_container(metric: Optional[M.Metric], project: M.Project):
         elif isinstance(metric, M.RetentionMetric):
             ret_or_conv_window = metric._retention_window
     else:
-        if metric_type == MTH.MetricType.CONVERSION:
+        if metric_type == MTH.MetricType.FUNNEL:
             ret_or_conv_window = M.DEF_CONV_WINDOW
         elif metric_type == MTH.MetricType.RETENTION:
             ret_or_conv_window = M.DEF_CONV_WINDOW
@@ -330,7 +330,7 @@ def create_metric_from_all_inputs(
         discovered_project, all_inputs, metric_type
     )
     metric: Optional[M.Metric] = None
-    if metric_type == MTH.MetricType.CONVERSION:
+    if metric_type == MTH.MetricType.FUNNEL:
         if len(segments) >= 1:
             metric = M.Conversion(segments)
     elif metric_type == MTH.MetricType.SEGMENTATION:

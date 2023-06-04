@@ -101,7 +101,7 @@ def from_segment(
     metric_type: MTH.MetricType,
 ) -> bc.Component:
     type_index = str(funnel_step)
-    if metric_type == MTH.MetricType.CONVERSION:
+    if metric_type == MTH.MetricType.FUNNEL:
         title = f"{funnel_step+1}. Step"
     elif metric_type == MTH.MetricType.RETENTION:
         title = "Initial Step" if funnel_step == 0 else "Retaining Step"
