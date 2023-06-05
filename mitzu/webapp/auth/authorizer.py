@@ -17,6 +17,7 @@ import mitzu.webapp.configs as configs
 import mitzu.webapp.service.user_service as U
 import mitzu.webapp.model as WM
 
+
 JWT_ALGORITHM = "HS256"
 JWT_CLAIM_ROLE = "rol"
 
@@ -114,12 +115,22 @@ class Authorizer:
             "/_dash-component-suites/",
         ]
 
-    def get_home_url(self):
+    def get_home_url(self) -> str:
         home_url = flask.request.url_root
         if configs.HOME_URL:
             home_url = configs.HOME_URL
         # trailing slashes can cause issues with SSO login
         return home_url.strip("/")
+
+    def get_fixed_request_url(self) -> str:
+        domain = self.get_home_url()
+        path = flask.request.path
+        query_string = flask.request.query_string.decode("utf-8")
+        if query_string:
+            query_string = f"?{query_string}"
+
+        url = f"{domain}{path}{query_string}"
+        return url
 
     def get_auth_token(self):
         return flask.request.cookies.get(self._config.token_cookie_name)
@@ -155,7 +166,7 @@ class Authorizer:
         code = flask.request.values.get("code")
         if code is not None:
             return code
-        parse_result = parse.urlparse(flask.request.url)
+        parse_result = parse.urlparse(self.get_fixed_request_url())
         params = parse.parse_qs(parse_result.query)
         code_ls = params.get("code")
         if code_ls is not None:
@@ -305,14 +316,14 @@ class Authorizer:
         if auth_token:
             return self._authorize_request_with_token(request, auth_token)
 
-        return self._get_unauthenticated_response(request.url)
+        return self._get_unauthenticated_response(self.get_fixed_request_url())
 
     def _authorize_request_with_token(
         self, request: flask.Request, auth_token: str
     ) -> Optional[werkzeug.wrappers.response.Response]:
         if self._validate_token(auth_token) is not None:
             return None
-        return self._get_unauthenticated_response(request.url)
+        return self._get_unauthenticated_response(self.get_fixed_request_url())
 
     def refresh_auth_token(
         self, request: flask.Request, resp: flask.Response

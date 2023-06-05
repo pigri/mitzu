@@ -49,7 +49,7 @@ METRIC_SAVE_DIALOG_SAVE_NEW_BUTTON = "metric_save_dialog_save_new_button"
 METRIC_SAVE_DIALOG_CLOSE_BUTTON = "metric_save_dialog_close_button"
 METRIC_SAVE_DIALOG_REPLACE_BUTTON = "metric_save_dialog_replace_button"
 METRIC_SAVE_DIALOG_INFO = "metric_save_dialog_info"
-
+METRIC_SAVE_DIALOG_SPINNER = "metric_save_dialog_spinner"
 EXPLORE_PAGE = "explore_page"
 
 ALL_INPUT_COMPS = {
@@ -161,8 +161,13 @@ def create_saved_metric_dialog(saved_metric: Optional[WM.SavedMetric]) -> dbc.Mo
             ),
             dbc.ModalFooter(
                 [
+                    dbc.Spinner(
+                        id=METRIC_SAVE_DIALOG_SPINNER,
+                        spinner_style={"width": "1rem", "height": "1rem"},
+                        spinner_class_name="d-none",
+                    ),
                     dbc.Button(
-                        [html.I(className=("bi bi-x me-1")), "Close"],
+                        [html.I(className=("bi bi-x me-1 ms-1")), "Close"],
                         id=METRIC_SAVE_DIALOG_CLOSE_BUTTON,
                         size="sm",
                         color="secondary",
@@ -498,6 +503,15 @@ def create_callbacks():
         METRIC_SAVE_DIALOG_INFO: Output(METRIC_SAVE_DIALOG_INFO, "children"),
     },
     prevent_initial_call=True,
+    background=True,
+    interval=C.GRAPH_POLL_INTERVAL_MS,
+    running=[
+        (
+            Output(METRIC_SAVE_DIALOG_SPINNER, "spinner_class_name"),
+            "d-inline-block",
+            "d-none",
+        ),
+    ],
 )
 @restricted
 def handle_save_metric_dialog(

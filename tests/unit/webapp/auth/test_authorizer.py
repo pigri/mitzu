@@ -21,7 +21,7 @@ import mitzu.webapp.model as WM
 import mitzu.webapp.configs as C
 from typing import Optional
 
-C.HOME_URL = "http://localhost:8082"
+C.HOME_URL = "http://mitzu.io:8082"
 
 app = flask.Flask(__name__)
 
@@ -135,7 +135,8 @@ def test_unauthorized_request_redirected_to_unauthorized_page():
     with app.test_request_context("/example_project?m=params"):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(
-            resp, expected_redirect_cookie="http://localhost/example_project?m=params"
+            resp,
+            expected_redirect_cookie="http://mitzu.io:8082/example_project?m=params",
         )
 
 
@@ -191,7 +192,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://mitzu.io:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -200,7 +201,7 @@ def test_oauth_code_url_called_with_valid_code(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == "http://localhost:8082"
+        assert resp.headers["Location"] == "http://mitzu.io:8082"
         assert_auth_token(resp, user_id)
 
 
@@ -235,7 +236,7 @@ def test_oauth_code_url_called_with_valid_code_and_redirection_cookie(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://mitzu.io:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -274,7 +275,7 @@ def test_oauth_code_url_called_with_invalid_code(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://mitzu.io:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -291,7 +292,7 @@ def test_invalid_forged_tokens_are_rejected():
     ):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(
-            resp, expected_redirect_cookie="http://localhost/"
+            resp, expected_redirect_cookie="http://mitzu.io:8082/"
         )
 
 
@@ -376,7 +377,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://mitzu.io:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -394,7 +395,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
                 "grant_type": "authorization_code",
                 "client_id": "client_id",
                 "code": "1234567890",
-                "redirect_uri": "http://localhost:8082/auth/oauth",
+                "redirect_uri": "http://mitzu.io:8082/auth/oauth",
             },
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -403,7 +404,7 @@ def test_rejects_sso_logins_when_user_is_missing_from_the_local_users(req_mock):
         )
         assert resp is not None
         assert resp.status_code == 307
-        assert resp.headers["Location"] == "http://localhost:8082"
+        assert resp.headers["Location"] == "http://mitzu.io:8082"
         assert_auth_token(resp, user_id)
 
 
@@ -525,7 +526,7 @@ def test_unauthorized_when_user_is_deleted():
     ):
         resp = app.preprocess_request()
         assert_redirected_to_unauthorized_page(
-            resp, expected_redirect_cookie="http://localhost/"
+            resp, expected_redirect_cookie="http://mitzu.io:8082/"
         )
 
 
@@ -552,7 +553,7 @@ def test_login_local_user_authorized():
     password = "password"
     user_service.new_user(email, password, password)
     with app.test_request_context():
-        assert authorizer.login_local_user(email, password) == "http://localhost:8082"
+        assert authorizer.login_local_user(email, password) == "http://mitzu.io:8082"
 
 
 def test_login_local_user_authorized_and_redirected_based_on_a_cookie():
