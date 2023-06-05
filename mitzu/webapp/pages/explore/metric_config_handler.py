@@ -268,43 +268,38 @@ def from_all_inputs(
     else:
         agg_type, agg_param = M.AggType.parse_agg_str(agg_type_val)
 
+    dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
+    time_group = dates_conf.time_group
+    lookback_days = dates_conf.lookback_days
+    start_dt = dates_conf.start_dt
+    end_dt = dates_conf.end_dt
+    resolution = M.Resolution.parse(
+        all_inputs.get(RESOLUTION_DD, M.Resolution.EVERY_EVENT.name)
+    )
+    chart_type_val = all_inputs.get(TH.CHART_TYPE_DD, None)
+    chart_type = M.SimpleChartType.parse(chart_type_val)
+
     if ctx.triggered_id == MTH.METRIC_TYPE_DROPDOWN:
-        start_dt = None
-        end_dt = None
         if metric_type == MTH.MetricType.RETENTION:
-            time_group = M.TimeGroup.WEEK
-            resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
-            lookback_days = M.TimeWindow(2, M.TimeGroup.MONTH)
-            time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
+            rtw = M.TimeGroup.WEEK
+            time_window = M.TimeWindow(1, rtw)
+            time_group = M.TimeGroup.TOTAL
+            if resolution == M.Resolution.EVERY_EVENT:
+                # Makes sure cluster doesn't break
+                resolution = M.Resolution.ONE_USER_EVENT_PER_MINUTE
+            chart_type = M.SimpleChartType.LINE
         elif metric_type == MTH.MetricType.FUNNEL:
-            time_group = M.TimeGroup.DAY
-            resolution = M.Resolution.EVERY_EVENT
-            lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)
-            time_window = M.TimeWindow(1, M.TimeGroup.DAY)
+            time_window = M.TimeWindow(1, M.TimeGroup.WEEK)
         else:
-            time_group = M.TimeGroup.DAY
             resolution = M.Resolution.EVERY_EVENT
-            lookback_days = M.TimeWindow(1, M.TimeGroup.MONTH)
             time_window = M.TimeWindow(1, M.TimeGroup.DAY)
     else:
-        dates_conf = DS.from_all_inputs(discovered_project, all_inputs)
-        time_group = dates_conf.time_group
-        resolution = M.Resolution.parse(
-            all_inputs.get(RESOLUTION_DD, M.Resolution.EVERY_EVENT.name)
-        )
-        lookback_days = dates_conf.lookback_days
-        start_dt = dates_conf.start_dt
-        end_dt = dates_conf.end_dt
         time_window = M.TimeWindow(
             value=all_inputs.get(TIME_WINDOW_INTERVAL, 1),
             period=M.TimeGroup(
                 all_inputs.get(TIME_WINDOW_INTERVAL_STEPS, M.TimeGroup.DAY)
             ),
         )
-
-    chart_type_val = all_inputs.get(TH.CHART_TYPE_DD, None)
-    chart_type = M.SimpleChartType.parse(chart_type_val)
-
     res_config = M.MetricConfig(
         start_dt=parse_datetime_input(start_dt, None),
         end_dt=parse_datetime_input(end_dt, None),

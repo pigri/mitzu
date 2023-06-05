@@ -336,7 +336,7 @@ def create_metric_from_all_inputs(
         if len(segments) >= 1:
             metric = M.Conversion(segments)
     elif metric_type == MTH.MetricType.SEGMENTATION:
-        if len(segments) == 1:
+        if len(segments) >= 1:
             metric = segments[0]
     elif metric_type == MTH.MetricType.RETENTION:
         if len(segments) == 2:
