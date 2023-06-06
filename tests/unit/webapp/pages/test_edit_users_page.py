@@ -111,19 +111,19 @@ def test_delete_user(server: flask.Flask):
         user_service = deps.user_service
         res = U.create_new_user(
             0,
-            email="a@b",
+            email="a@b.c",
             role=WM.Role.MEMBER.value,
-            all_inputs=["a@b", "member", "password", "password"],
+            all_inputs=["a@b.c", "member", "password", "password"],
         )
         assert res[U.SAVE_RESPONSE_CONTAINER] == "User created!"
-        user = user_service.get_user_by_email_and_password("a@b", "password")
+        user = user_service.get_user_by_email_and_password("a@b.c", "password")
         assert user is not None
         assert user.role == WM.Role.MEMBER
 
         res = U.delete_user(0, P.create_path(P.USERS_HOME_PATH, user_id=user.id))
-        deleted_user = user_service.get_user_by_email("a@b")
+        deleted_user = user_service.get_user_by_email("a@b.c")
         assert deleted_user is None
-        deps.tracking_service.register_new_user.assert_called_with("a@b", "member")
+        deps.tracking_service.register_new_user.assert_called_with("a@b.c", "member")
 
 
 def test_change_password(server: flask.Flask):
