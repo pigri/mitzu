@@ -504,14 +504,6 @@ def create_manage_connection_component(
             ),
             create_form_property_input(
                 index_type=INDEX_TYPE,
-                property=PROP_CONNECTION_NAME,
-                icon_cls="bi bi-card-text",
-                type="text",
-                required=True,
-                value=con.connection_name if con is not None else None,
-            ),
-            create_form_property_input(
-                index_type=INDEX_TYPE,
                 property=PROP_CONNECTION_TYPE,
                 icon_cls="bi bi-gear-wide",
                 component_type=dmc.Select,
@@ -522,6 +514,14 @@ def create_manage_connection_component(
                 searchable=True,
                 data=con_type_opts,
                 size="xs",
+            ),
+            create_form_property_input(
+                index_type=INDEX_TYPE,
+                property=PROP_CONNECTION_NAME,
+                icon_cls="bi bi-card-text",
+                type="text",
+                required=True,
+                value=con.connection_name if con is not None else None,
             ),
             html.Hr(),
             html.Div(

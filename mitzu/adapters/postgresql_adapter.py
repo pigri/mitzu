@@ -12,11 +12,46 @@ from mitzu.adapters.sqlalchemy_adapter import (
 
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
+from mitzu.helper import LOGGER
+from typing import List, Union, Optional
+from sqlalchemy.dialects.postgresql.json import JSONB, JSON
+
+SUBFILED_TYPE_SEP = "###"
 
 
 class PostgresqlAdapter(SQLAlchemyAdapter):
     def __init__(self, project: M.Project):
         super().__init__(project)
+
+    def get_field_reference(
+        self,
+        field: M.Field,
+        event_data_table: M.EventDataTable = None,
+        sa_table: Union[SA.Table, EXP.CTE] = None,
+    ) -> FieldReference:
+        if sa_table is None and event_data_table is not None:
+            sa_table = self.get_table(event_data_table)
+        if sa_table is None:
+            raise ValueError("Either sa_table or event_data_table has to be provided")
+
+        if field._parent is not None and field._parent._type == M.DataType.MAP:
+            operator = "->"
+            if field._type == M.DataType.STRING:
+                postgres_type = ""
+                operator = "->>"
+            elif field._type == M.DataType.NUMBER:
+                postgres_type = "::numeric"
+            elif field._type == M.DataType.BOOL:
+                postgres_type = "::boolean"
+            else:
+                raise ValueError(
+                    f"Unsupported json data type for postgres: {field._type} "
+                )
+            # Postgres uses
+            return SA.literal_column(
+                f"({sa_table.name}.{field._parent._get_name()} {operator} '{field._name}'){postgres_type}"
+            )
+        return super().get_field_reference(field, event_data_table, sa_table)
 
     def _get_datetime_interval(
         self, field_ref: FieldReference, timewindow: M.TimeWindow
@@ -61,3 +96,64 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
 
     def _get_distinct_array_agg_func(self, field_ref: FieldReference) -> Any:
         return SA.func.to_json(SA.func.array_agg(SA.distinct(field_ref)))
+
+    def _map_key_type_to_field(self, key_type: str) -> Optional[M.Field]:
+        key, str_type = key_type.split(SUBFILED_TYPE_SEP)
+        str_type = str_type.lower()
+
+        if str_type == "string":
+            data_type = M.DataType.STRING
+        elif str_type == "number":
+            data_type = M.DataType.NUMBER
+        elif str_type == "boolean":
+            data_type = M.DataType.BOOL
+        else:
+            return None
+        return M.Field(key, data_type)
+
+    def _parse_map_type(
+        self, sa_type: Any, name: str, event_data_table: M.EventDataTable
+    ) -> M.Field:
+        if event_data_table.discovery_settings is None:
+            raise ValueError("Missing discovery settings")
+
+        LOGGER.debug(f"Discovering map: {name}")
+        F = SA.func
+
+        if type(sa_type) == JSONB:
+            each_func = F.jsonb_each
+            type_func = "jsonb_typeof"
+        elif type(sa_type) == JSON:
+            each_func = F.json_each
+            type_func = "json_typeof"
+        else:
+            raise ValueError(
+                f"Unsupported map type for Postgres adapter: {type(sa_type)}"
+            )
+
+        cte = self._get_dataset_discovery_cte(event_data_table)
+        # SQL Alchemy doesn't support well "record" types. So we need to hack it here
+        query = SA.select(
+            F.array_agg(
+                SA.literal_column(
+                    f"json_data.key || '{SUBFILED_TYPE_SEP}' || {type_func}(json_data.value)"
+                ).distinct()
+            )
+        )
+        query = query.select_from(
+            cte, SA.lateral(each_func(cte.columns[name])).alias("json_data")
+        )
+
+        df = self.execute_query(query)
+
+        if df.shape[0] == 0:
+            return M.Field(_name=name, _type=M.DataType.MAP)
+        key_types = df.iat[0, 0]
+
+        sub_fields: List[M.Field] = []
+        for kt in key_types:
+            f = self._map_key_type_to_field(kt)
+            if f is not None:
+                sub_fields.append(f)
+
+        return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))

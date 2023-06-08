@@ -16,6 +16,7 @@ import sqlalchemy.sql.expression as EXP
 import sqlalchemy.sql.sqltypes as SA_T
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.type_api import TypeEngine
+from mitzu.helper import LOGGER
 
 
 def fix_col_index(index: int, col_name: str):
@@ -118,7 +119,8 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             if issubclass(type(sa_type), sa_t):
                 return data_type
 
-        raise ValueError(f"{sa_type}[{type(sa_type)}]: is not supported.")
+        LOGGER.warn(f"Unknown type: {type(sa_type)}")
+        return M.DataType.STRING
 
     def keep_alive_connection(self) -> bool:
         return False
@@ -271,7 +273,14 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
     def list_tables(self, schema: str) -> List[str]:
         engine = self.get_engine()
         insp = SA.inspect(engine)
-        return insp.get_table_names(schema=schema)
+        table_names = insp.get_table_names(schema=schema)
+        try:
+            view_names = insp.get_view_names(schema=schema)
+        except Exception as exc:
+            # Some DWHs don't support views (like databricks + glue views)
+            LOGGER.warn(f"Failed to list views: {str(exc)}")
+            view_names = []
+        return table_names + view_names
 
     def _flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
         """Flattens the tree field structure to a list.
