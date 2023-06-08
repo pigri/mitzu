@@ -113,6 +113,7 @@ class UserService:
         password_confirmation: Optional[str] = None,
         role: WM.Role = WM.Role.MEMBER,
     ) -> str:
+
         if self.get_user_by_email(email) is not None:
             raise UserAlreadyExists()
 

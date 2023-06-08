@@ -129,7 +129,7 @@ def test_delete_user(server: flask.Flask):
 def test_change_password(server: flask.Flask):
     with RequestContextLoggedInAsRootUser(server) as deps:
         user_service = deps.user_service
-        email = "test@local"
+        email = "test@local.com"
         old_password = "password"
         new_password = "new-password"
 
@@ -149,7 +149,7 @@ def test_change_password(server: flask.Flask):
 def test_change_role(server: flask.Flask):
     with RequestContextLoggedInAsRootUser(server) as deps:
         user_service = deps.user_service
-        email = "test@local"
+        email = "test@local.com"
         password = "password"
 
         user_id = user_service.new_user(email, password, password, role=WM.Role.MEMBER)

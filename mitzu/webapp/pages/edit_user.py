@@ -24,6 +24,9 @@ from mitzu.webapp.auth.decorator import (
     restricted_for_admin,
 )
 from mitzu.webapp.webapp import MITZU_LOCATION
+import re
+
+EMAIL_REGEX = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{1,7}\b"
 
 INDEX_TYPE = "user_property"
 PROP_EMAIL = "email"
@@ -108,7 +111,7 @@ def layout(user_id: str, **query_params) -> bc.Component:
                         index_type=INDEX_TYPE,
                         property=PROP_EMAIL,
                         icon_cls="bi bi-envelope",
-                        type="text",
+                        type="email",
                         required=True,
                         value=user.email if user is not None else "",
                         read_only=user is not None,
@@ -295,6 +298,11 @@ def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
         confirm_password = all_inputs[3]
 
     try:
+        email = email.strip()
+        if not re.fullmatch(EMAIL_REGEX, email):
+            return {
+                SAVE_RESPONSE_CONTAINER: "Email is not valid",
+            }
         user_service.new_user(email, password, confirm_password, role=WM.Role(role))
         deps.tracking_service.register_new_user(email, role)
         return {
