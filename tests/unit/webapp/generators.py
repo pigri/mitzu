@@ -7,6 +7,8 @@ import hypothesis.strategies as st
 import mitzu.model as M
 import mitzu.visualization.common as VC
 import mitzu.webapp.model as WM
+import mitzu.webapp.onboarding_flow as OF
+
 
 MAX_EXAMPLES = int(os.getenv("HYPOTHESIS_MAX_EXAMPLES", "10"))
 
@@ -273,3 +275,16 @@ def dashboard(draw):
         last_updated_at=draw(st.one_of(st.none(), st.datetimes())),
         owner=draw(optional_simple_string()),
     )
+
+
+@st.composite
+def configure_mitzu_onboarding_flow_state(draw):
+    return WM.OnboardingFlowState(
+        flow_id=OF.ConfigureMitzuOnboardingFlow.flow_id(),
+        current_state=draw(st.sampled_from(OF.ConfigureMitzuOnboardingFlow()._states)),
+    )
+
+
+@st.composite
+def onboarding_flow_state(draw):
+    return draw(configure_mitzu_onboarding_flow_state())

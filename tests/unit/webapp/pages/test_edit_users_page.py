@@ -70,6 +70,7 @@ class RequestContextLoggedInAsRootUser:
             secret_service=SS.SecretService(),
             notification_service=NS.DummyNotificationService(),
             tracking_service=MagicMock(),
+            onboarding_service=MagicMock(),
         )
 
         self.context = self._server.test_request_context(

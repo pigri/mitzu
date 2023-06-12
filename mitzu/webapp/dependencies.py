@@ -14,6 +14,7 @@ import mitzu.webapp.service.tracking_service as TS
 import mitzu.webapp.service.events_service as E
 import mitzu.webapp.service.secret_service as SS
 import mitzu.webapp.service.notification_service as NS
+import mitzu.webapp.service.onboarding_service as OS
 
 CONFIG_KEY = "dependencies"
 
@@ -31,6 +32,7 @@ class Dependencies:
     user_service: U.UserService
     notification_service: NS.NotificationService
     tracking_service: TS.TrackingService
+    onboarding_service: OS.OnboardingService
 
     @classmethod
     def from_configs(
@@ -85,6 +87,8 @@ class Dependencies:
         secret_service = SS.SecretService()
         tracking_service = TS.AuthorizedTrackingService(authorizer)
 
+        onboarding_service = OS.OnboardingService(storage)
+
         return Dependencies(
             authorizer=authorizer,
             cache=cache,
@@ -96,6 +100,7 @@ class Dependencies:
             secret_service=secret_service,
             notification_service=notification_service,
             tracking_service=tracking_service,
+            onboarding_service=onboarding_service,
         )
 
     @classmethod

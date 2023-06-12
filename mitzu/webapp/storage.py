@@ -122,6 +122,7 @@ class MitzuStorage:
             SM.SavedMetricStorageRecord,
             SM.DashboardStorageRecord,
             SM.DashboardMetricStorageRecord,
+            SM.OnboardingFlowStateStorageRecord,
         ]:
             tables.append(SM.Base.metadata.tables[storage_record.__tablename__])
 
@@ -668,3 +669,35 @@ class MitzuStorage:
     def health_check(self):
         with self._new_db_session() as session:
             session.execute("select 1")
+
+    def get_onboarding_flows(self) -> List[SM.OnboardingFlowStateStorageRecord]:
+        result = []
+        with self._new_db_session() as session:
+            for record in session.query(SM.OnboardingFlowStateStorageRecord).all():
+                result.append(record.as_model_instance())
+
+        return result
+
+    def set_onboarding_flow_state(
+        self, state: WM.OnboardingFlowState, when_current_state: Optional[str] = None
+    ):
+        with self._new_db_session() as session:
+            record = (
+                session.query(SM.OnboardingFlowStateStorageRecord)
+                .filter((SM.OnboardingFlowStateStorageRecord.flow_id == state.flow_id))
+                .first()
+            )
+
+            if record is None:
+                session.add(
+                    SM.OnboardingFlowStateStorageRecord.from_model_instance(state)
+                )
+                session.commit()
+                return
+
+            # prevent storing arbitrary state changes
+            if record.current_state != when_current_state:
+                return
+
+            record.current_state = state.current_state
+            session.commit()

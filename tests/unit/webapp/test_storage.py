@@ -9,6 +9,7 @@ from tests.unit.webapp.generators import (
     saved_metric,
     user,
     dashboard,
+    onboarding_flow_state,
     MAX_EXAMPLES,
 )
 
@@ -200,3 +201,20 @@ def test_storing_dashboards(dashboard, updated_dashboard):
     assert len(storage.list_dashboards()) == 0
     with pytest.raises(ValueError):
         storage.get_dashboard(dashboard.id)
+
+
+@given(onboarding_flow_state())
+@settings(
+    suppress_health_check=(HealthCheck.too_slow,),
+    deadline=None,
+    max_examples=MAX_EXAMPLES,
+)
+def test_onboarding_flow(onboarding_flow_state):
+    storage = create_storage()
+
+    assert len(storage.get_onboarding_flows()) == 0
+
+    storage.set_onboarding_flow_state(
+        onboarding_flow_state, onboarding_flow_state.current_state
+    )
+    assert storage.get_onboarding_flows() == [onboarding_flow_state]

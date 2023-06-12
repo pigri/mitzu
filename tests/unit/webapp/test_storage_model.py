@@ -8,6 +8,7 @@ from mitzu.webapp.storage_model import (
     WebappSettingsStorageRecord,
     DashboardMetricStorageRecord,
     DashboardStorageRecord,
+    OnboardingFlowStateStorageRecord,
 )
 from tests.unit.webapp.generators import (
     connection,
@@ -16,6 +17,7 @@ from tests.unit.webapp.generators import (
     saved_metric,
     dashboard_metric,
     dashboard,
+    onboarding_flow_state,
     MAX_EXAMPLES,
 )
 
@@ -93,3 +95,10 @@ def test_dashboard_storage_record(dashboard):
     dm = DashboardStorageRecord().from_model_instance(dashboard)
 
     assert dm.as_model_instance(dashboard_metrics) == dashboard
+
+
+@given(onboarding_flow_state())
+@settings(max_examples=MAX_EXAMPLES)
+def test_onboarding_flow_state(flow_state):
+    state = OnboardingFlowStateStorageRecord().from_model_instance(flow_state)
+    assert state.as_model_instance() == flow_state

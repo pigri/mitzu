@@ -682,3 +682,24 @@ class DashboardMetricStorageRecord(Base):
             width=dashboard_metric.width,
             height=dashboard_metric.height,
         )
+
+
+class OnboardingFlowStateStorageRecord(Base):
+    __tablename__ = "onboarding_flow_states"
+
+    flow_id = SA.Column(SA.String, primary_key=True)
+    current_state = SA.Column(SA.String)
+
+    def as_model_instance(self) -> WM.OnboardingFlowState:
+        return WM.OnboardingFlowState(
+            flow_id=self.flow_id, current_state=self.current_state
+        )
+
+    @classmethod
+    def from_model_instance(
+        self, state: WM.OnboardingFlowState
+    ) -> OnboardingFlowStateStorageRecord:
+        return OnboardingFlowStateStorageRecord(
+            flow_id=state.flow_id,
+            current_state=state.current_state,
+        )

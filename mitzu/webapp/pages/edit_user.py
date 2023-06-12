@@ -24,6 +24,7 @@ from mitzu.webapp.auth.decorator import (
     restricted_for_admin,
 )
 from mitzu.webapp.webapp import MITZU_LOCATION
+import mitzu.webapp.onboarding_flow as OF
 import re
 
 EMAIL_REGEX = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{1,7}\b"
@@ -288,6 +289,7 @@ def change_password_form():
 def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
     deps = DEPS.Dependencies.get()
     user_service = deps.user_service
+    onboarding_service = deps.onboarding_service
 
     if deps.authorizer._config.oauth:
         # SSO users don't have passwords
@@ -305,6 +307,12 @@ def create_new_user(n_clicks: int, email="", role="", all_inputs=[]):
             }
         user_service.new_user(email, password, confirm_password, role=WM.Role(role))
         deps.tracking_service.register_new_user(email, role)
+
+        onboarding_service.mark_state_complete(
+            OF.ConfigureMitzuOnboardingFlow.flow_id(),
+            OF.INVITE_TEAM,
+        )
+
         return {
             SAVE_RESPONSE_CONTAINER: "User created!",
         }

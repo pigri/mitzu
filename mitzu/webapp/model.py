@@ -285,3 +285,13 @@ class ProjectInfo:
 
     id: str
     name: str
+
+
+@dataclass(frozen=True)
+class OnboardingFlowState:
+    """
+    Contains the state of a onboarding flow
+    """
+
+    flow_id: str
+    current_state: str

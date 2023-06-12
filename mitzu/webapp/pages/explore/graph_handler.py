@@ -16,6 +16,7 @@ import mitzu.webapp.pages.paths as P
 import mitzu.webapp.model as WM
 import mitzu.serialization as SE
 from mitzu.webapp.helper import MITZU_LOCATION
+import mitzu.webapp.onboarding_flow as OF
 
 import pandas as pd
 from dash import Input, Output, State, ctx, dcc, html, callback, no_update, dash_table
@@ -234,6 +235,7 @@ def create_callbacks():
             storage = deps.storage
             mitzu_cache = deps.cache
             tracking_service = deps.tracking_service
+            onboarding_service = deps.onboarding_service
 
             project = storage.get_project(project_id)
             if project is None:
@@ -292,6 +294,11 @@ def create_callbacks():
                 res = create_table(metric, hash_key, mitzu_cache, tracking_service)
             elif graph_content_type == TH.SQL_VAL:
                 res = create_sql_area(metric)
+
+            onboarding_service.mark_state_complete(
+                OF.ConfigureMitzuOnboardingFlow.flow_id(),
+                OF.EXPLORE_DATA,
+            )
 
             return res
         except Exception as exc:

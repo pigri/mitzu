@@ -76,6 +76,7 @@ def dependencies() -> DEPS.Dependencies:
         secret_service=SS.SecretService(),
         notification_service=NS.DummyNotificationService(),
         tracking_service=MagicMock(),
+        onboarding_service=MagicMock(),
     )
 
 

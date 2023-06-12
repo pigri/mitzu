@@ -25,6 +25,7 @@ import mitzu.webapp.navbar as NB
 import mitzu.webapp.pages.paths as P
 import mitzu.webapp.pages.projects.helper as MPH
 import mitzu.webapp.pages.projects.manage_project_component as MPC
+import mitzu.webapp.onboarding_flow as OF
 
 from mitzu.webapp.auth.decorator import restricted, restricted_layout
 from datetime import datetime
@@ -270,6 +271,7 @@ def save_button_clicked(
         deps = DEPS.Dependencies.get()
         storage = deps.storage
         tracking_service = deps.tracking_service
+        onboarding_service = deps.onboarding_service
 
         project_props: Dict[str, Any] = {}
 
@@ -334,6 +336,10 @@ def save_button_clicked(
 
         storage.set_project(project_id, project)
         tracking_service.track_project_saved(project)
+        onboarding_service.mark_state_complete(
+            OF.ConfigureMitzuOnboardingFlow.flow_id(),
+            OF.CONNECT_WAREHOUSE,
+        )
         if ctx.triggered_id == SAVE_BUTTON:
             return ["Project succesfully saved", no_update]
         else:
