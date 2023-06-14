@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict
 
 import mitzu.adapters.generic_adapter as GA
 import mitzu.model as M
@@ -13,7 +13,7 @@ from mitzu.adapters.sqlalchemy_adapter import (
 import sqlalchemy as SA
 import sqlalchemy.sql.expression as EXP
 from mitzu.helper import LOGGER
-from typing import List, Union, Optional
+from typing import Optional, Union
 from sqlalchemy.dialects.postgresql.json import JSONB, JSON
 
 SUBFILED_TYPE_SEP = "###"
@@ -35,19 +35,19 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
             raise ValueError("Either sa_table or event_data_table has to be provided")
 
         if field._parent is not None and field._parent._type == M.DataType.MAP:
-            operator = "->"
+            # The ->> operator casts every value to String from the JSONB or JSON type
+            # However we need to cast the values back to their original types for correct comparison
+            operator = "->>"
             if field._type == M.DataType.STRING:
-                postgres_type = ""
-                operator = "->>"
+                postgres_type = "::text"
             elif field._type == M.DataType.NUMBER:
                 postgres_type = "::numeric"
             elif field._type == M.DataType.BOOL:
                 postgres_type = "::boolean"
             else:
                 raise ValueError(
-                    f"Unsupported json data type for postgres: {field._type} "
+                    f"Unsupported json data type for postgres: {field._type}"
                 )
-            # Postgres uses
             return SA.literal_column(
                 f"({sa_table.name}.{field._parent._get_name()} {operator} '{field._name}'){postgres_type}"
             )
@@ -134,10 +134,13 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
         cte = self._get_dataset_discovery_cte(event_data_table)
         # SQL Alchemy doesn't support well "record" types. So we need to hack it here
         query = SA.select(
-            F.array_agg(
-                SA.literal_column(
-                    f"json_data.key || '{SUBFILED_TYPE_SEP}' || {type_func}(json_data.value)"
-                ).distinct()
+            F.array_remove(
+                F.array_agg(
+                    SA.literal_column(
+                        f"json_data.key || '{SUBFILED_TYPE_SEP}' || {type_func}(json_data.value)"
+                    ).distinct()
+                ),
+                None,
             )
         )
         query = query.select_from(
@@ -150,10 +153,19 @@ class PostgresqlAdapter(SQLAlchemyAdapter):
             return M.Field(_name=name, _type=M.DataType.MAP)
         key_types = df.iat[0, 0]
 
-        sub_fields: List[M.Field] = []
+        sub_fields: Dict[str, M.Field] = {}
         for kt in key_types:
             f = self._map_key_type_to_field(kt)
             if f is not None:
-                sub_fields.append(f)
+                if f._name not in sub_fields:
+                    sub_fields[f._name] = f
+                else:
+                    # If the JSONB or JSON contains keys that have multiple types we treat them as strings
+                    # This way Postgres handles all the casting, while on the UI we will have String type like components
+                    # We can't just by default consider every jsonb or json value as String because in case the values are only e.g.
+                    # only numeric we need to keep the UI to treat it as numeric.
+                    sub_fields[f._name] = M.Field(f._name, M.DataType.STRING)
 
-        return M.Field(_name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields))
+        return M.Field(
+            _name=name, _type=M.DataType.MAP, _sub_fields=tuple(sub_fields.values())
+        )
