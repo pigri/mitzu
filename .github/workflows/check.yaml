@@ -20,9 +20,9 @@ jobs:
         uses: isbang/compose-action@v1.2.0
         with:
           compose-file: "docker/docker-compose.yml"
-      - name: Waiting for trino server
-        run: |
-          poetry run python3 scripts/wait_for_trino.py
+      # - name: Waiting for trino server
+      #   run: |
+      #     poetry run python3 scripts/wait_for_trino.py
       # - name: Setup trino test data
       #   run: |
       #     make trino_setup_test_data
