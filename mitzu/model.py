@@ -519,14 +519,14 @@ class Connection(Identifiable):
 @dataclass(frozen=True)
 class DiscoverySettings:
     id: str = field(default_factory=helper.create_unique_id)
-    max_enum_cardinality: int = 300
+    max_enum_cardinality: int = 500
     max_map_key_cardinality: int = 1000
 
     end_dt: Optional[datetime] = None
     property_sample_rate: int = 0
 
-    lookback_days: int = 14
-    min_property_sample_size: int = 1000
+    lookback_days: int = 30
+    min_property_sample_size: int = 2000
 
 
 class WebappEndDateConfig(Enum):
@@ -556,7 +556,7 @@ class WebappSettings:
     id: str = field(default_factory=helper.create_unique_id)
     lookback_window: TimeWindow = TimeWindow(30, TimeGroup.DAY)
     auto_refresh_enabled: bool = True
-    end_date_config: WebappEndDateConfig = WebappEndDateConfig.START_OF_CURRENT_DAY
+    end_date_config: WebappEndDateConfig = WebappEndDateConfig.END_OF_CURRENT_DAY
     custom_end_date: Optional[datetime] = None
 
 

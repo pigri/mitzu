@@ -40,6 +40,30 @@ def get_project_input_group_args(**kwargs):
     ]
 
 
+def get_connections_input_arg_groupping(**kwargs):
+    values = {
+        "connection_id": "sample_project_id",
+        "connection_name": "Sample project",
+        "connection_type": "SQLITE",
+        "host": "sample_project",
+        "port": None,
+        "catalog": None,
+        "username": None,
+        "password": None,
+    }
+    for k, v in kwargs.items():
+        values[k] = v
+
+    return [
+        {
+            "id": {"index": key, "type": MPP.EDIT_PAGE_CON_INDEX_TYPE},
+            "property": "value",
+            "value": value,
+        }
+        for key, value in values.items()
+    ]
+
+
 def get_table_row(
     full_table_name: str,
     check_box: bool,
@@ -79,7 +103,7 @@ def test_create_new_project(server: Flask):
             comp_dict,
         )
         assert name_input is not None
-        assert name_input["value"] is None
+        assert name_input["value"] == "Project (2)"
 
         desc_input = find_component_by_id(
             {"type": MPP.PROJECT_INDEX_TYPE, "index": MPP.PROP_DESCRIPTION},
@@ -87,7 +111,7 @@ def test_create_new_project(server: Flask):
         )
         assert desc_input is not None
         assert desc_input["value"] is None
-        assert desc_input["placeholder"] == "Describe the project!"
+        assert desc_input["placeholder"] == "Project description"
 
 
 def test_load_exiting_project(server: Flask):
@@ -120,7 +144,7 @@ def test_load_exiting_project(server: Flask):
         )
         assert desc_input is not None
         assert desc_input["value"] is None
-        assert desc_input["placeholder"] == "Describe the project!"
+        assert desc_input["placeholder"] == "Project description"
 
         # Event tables
         tbl_body = to_dict(find_component_by_id(ETC.EDT_TBL_BODY, comp_dict))
@@ -168,7 +192,39 @@ def test_load_exiting_project(server: Flask):
             comp_dict,
         )
         assert d_sample_size is not None
-        assert d_sample_size["value"] == 1000
+        assert d_sample_size["value"] == 2000
+
+
+@patch("mitzu.webapp.pages.projects.manage_project_component.ctx")
+def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Dependencies):
+    with server.test_request_context():
+        ctx.args_grouping = [
+            None,
+            None,
+            None,
+            get_connections_input_arg_groupping(
+                connection_id="new_connection_id", connection_name="New Connection"
+            ),
+        ]
+        ctx.triggered_id = MPP.SAVE_CONNECTION_BUTTON
+        # Values are passed through dash.ctx.args_grouping
+        res = MPP.modal_open_handler(0, 0, 0, {})
+
+        assert res[0] is False
+        assert res[1] == "new_connection_id"
+        assert res[2] == [
+            {"label": "Sample connection", "value": "sample_connection_id"},
+            {"label": "New Connection", "value": "new_connection_id"},
+        ]
+
+        assert len(dependencies.storage.list_connections()) == 2
+        con = dependencies.storage.get_connection("new_connection_id")
+        assert con.connection_name == "New Connection"
+        assert con.id == "new_connection_id"
+        assert con.connection_type == M.ConnectionType.SQLITE
+        cast(
+            MagicMock, dependencies.tracking_service
+        ).track_connection_saved.assert_called_with(con)
 
 
 @patch("mitzu.webapp.pages.manage_project.ctx")

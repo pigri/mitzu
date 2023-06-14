@@ -154,19 +154,8 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
             dbc.Container(
                 children=[
                     dcc.Location(id=PROJECT_LOCATION),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                html.H4(
-                                    title, id=PROJECT_TITLE, className="card-title"
-                                ),
-                                width="auto",
-                            )
-                        ]
-                    ),
-                    html.Hr(),
+                    html.Div(title, id=PROJECT_TITLE, className="lead"),
                     MPC.create_project_settings(project, dependencies, **query_params),
-                    html.Hr(),
                     dbc.Button(
                         [html.B(className="bi bi-check-circle"), " Save"],
                         color="success",
@@ -189,7 +178,6 @@ def layout(project_id: Optional[str] = None, **query_params) -> bc.Component:
                         className="mb-3 lead",
                         id=MANAGE_PROJECT_INFO,
                     ),
-                    html.Hr(),
                     create_delete_button(project),
                     create_confirm_dialog(project),
                 ],
@@ -283,11 +271,17 @@ def save_button_clicked(
         project_id = cast(str, project_props.get(MPC.PROP_PROJECT_ID))
         project_name = cast(str, project_props.get(MPC.PROP_PROJECT_NAME))
         if not project_name:
-            return html.P("Please name your project first!", className="text-danger")
+            return (
+                html.P("Please name your project!", className="text-danger"),
+                no_update,
+            )
 
         connection_id = cast(str, project_props.get(MPC.PROP_CONNECTION))
         if connection_id is None:
-            return html.P("Please select a connection first!", className="text-danger")
+            return (
+                html.P("Please select or add connection!", className="text-danger"),
+                no_update,
+            )
 
         description = cast(str, project_props.get(MPC.PROP_DESCRIPTION))
         disc_lookback_days = cast(int, project_props.get(MPC.PROP_DISC_LOOKBACK_DAYS))
@@ -341,18 +335,19 @@ def save_button_clicked(
             OF.CONNECT_WAREHOUSE,
         )
         if ctx.triggered_id == SAVE_BUTTON:
-            return ["Project succesfully saved", no_update]
+            return ("Project succesfully saved", no_update)
         else:
-            return [
+            return (
                 no_update,
                 P.create_path(
                     P.EVENTS_AND_PROPERTIES_PROJECT_PATH,
                     project_id=project_id,
                 ),
-            ]
+            )
     except Exception as exc:
+
         traceback.print_exc()
-        return [f"Something went wrong: {str(exc)}", no_update]
+        return (f"Something went wrong: {str(exc)}", no_update)
 
 
 register_page(

@@ -349,22 +349,12 @@ def create_event_tables(project: Optional[M.Project]) -> bc.Component:
     configure_tables_modal = create_configure_tables_modal()
     return html.Div(
         [
-            html.P(
-                children=[
-                    html.I(className="bi bi-info-circle me-1"),
-                    """Event tables are tables in the data warehouse that contain user events. 
-                The user id and event time columns are mandatory for the event tables. 
-                The event name column is optional and reserved for 
-                data warehouse tables that contain multiple event types.""",
-                ],
-                className="mb-3 lead",
-            ),
             dbc.Row(
                 [
                     dbc.Col(
                         dbc.Button(
                             [html.B(className="bi bi-plus-circle me-1"), "Add tables"],
-                            color="primary",
+                            color="secondary",
                             id=ADD_TABLES_BUTTON,
                             size="sm",
                         ),
@@ -394,6 +384,20 @@ def create_event_tables(project: Optional[M.Project]) -> bc.Component:
                         width="auto",
                     ),
                     dbc.Col(
+                        dbc.Button(
+                            [
+                                html.B(className="bi bi-arrow-clockwise me-1"),
+                                "Validate",
+                            ],
+                            id=EDT_VALIDATE_BUTTON,
+                            color="secondary",
+                            size="sm",
+                            className="me-3 d-inline-block",
+                        ),
+                        class_name="mb-3",
+                        width="auto",
+                    ),
+                    dbc.Col(
                         dbc.Input(
                             id=TBL_SEARCH_INPUT,
                             placeholder="Search tables",
@@ -406,17 +410,6 @@ def create_event_tables(project: Optional[M.Project]) -> bc.Component:
                 class_name="me-auto",
             ),
             table,
-            html.Hr(),
-            dbc.Button(
-                [
-                    html.B(className="bi bi-check-circle me-1"),
-                    "Validate",
-                ],
-                id=EDT_VALIDATE_BUTTON,
-                color="primary",
-                size="sm",
-                className="me-3 d-inline-block shadow-sm mb-3",
-            ),
             html.Div(
                 children=[],
                 id=TBL_PROGRESS_INFO,
@@ -425,7 +418,7 @@ def create_event_tables(project: Optional[M.Project]) -> bc.Component:
             add_tables_modal,
             configure_tables_modal,
         ],
-        className="overflow-auto mh-100 mt-3",
+        className="overflow-auto mh-100",
     )
 
 

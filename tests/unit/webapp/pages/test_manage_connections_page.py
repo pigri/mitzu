@@ -3,7 +3,7 @@ from tests.helper import to_dict, find_component_by_id
 from mitzu.webapp.dependencies import Dependencies
 from mitzu.webapp.storage import SAMPLE_PROJECT_ID
 import mitzu.webapp.pages.connections.manage_connections_component as MCC
-import mitzu.webapp.pages.manage_connection as CON
+import mitzu.webapp.pages.manage_connection as MC
 from unittest.mock import patch
 import mitzu.webapp.pages.paths as P
 import mitzu.model as M
@@ -28,7 +28,7 @@ def get_connections_input_arg_groupping(**kwargs):
 
     return [
         {
-            "id": {"index": key, "type": "connection_property"},
+            "id": {"index": key, "type": MC.CONPAGE_INDEX_TYPE},
             "property": "value",
             "value": value,
         }
@@ -38,17 +38,18 @@ def get_connections_input_arg_groupping(**kwargs):
 
 def test_create_new_connection(server: Flask):
     with server.test_request_context():
-        connections_comp = CON.layout(None)
+        connections_comp = MC.layout(None)
         comp_dict = to_dict(connections_comp)
 
         #  There is no business logic to test in this layout.
         assert comp_dict is not None
 
         name_input = find_component_by_id(
-            {"type": MCC.INDEX_TYPE, "index": MCC.PROP_CONNECTION_NAME}, comp_dict
+            {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_CONNECTION_NAME},
+            comp_dict,
         )
         assert name_input is not None
-        assert name_input["value"] is None
+        assert name_input["value"] == "New connection"
 
 
 def test_connection_update_layout_values_are_filled(
@@ -57,20 +58,22 @@ def test_connection_update_layout_values_are_filled(
     with server.test_request_context():
         con_id = dependencies.storage.list_connections()[0]
 
-        connections_comp = CON.layout(con_id)
+        connections_comp = MC.layout(con_id)
         comp_dict = to_dict(connections_comp)
 
         #  There is no business logic to test in this layout.
         assert comp_dict is not None
 
         name_input = find_component_by_id(
-            {"type": MCC.INDEX_TYPE, "index": MCC.PROP_CONNECTION_NAME}, comp_dict
+            {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_CONNECTION_NAME},
+            comp_dict,
         )
         assert name_input is not None
         assert name_input["value"] == "Sample connection"
 
         con_type_input = find_component_by_id(
-            {"type": MCC.INDEX_TYPE, "index": MCC.PROP_CONNECTION_TYPE}, comp_dict
+            {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_CONNECTION_TYPE},
+            comp_dict,
         )
         assert con_type_input is not None
         assert con_type_input["value"] == "SQLITE"
@@ -87,18 +90,16 @@ def test_connection_update_layout_values_are_filled(
         ]
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
 def test_connection_button_missing_info_failes(
-    ctx, server: Flask, dependencies: Dependencies
+    server: Flask, dependencies: Dependencies
 ):
     with server.test_request_context():
-        ctx.args_grouping = [
-            [],
-            get_connections_input_arg_groupping(connection_name=None),
-        ]
+        agrs_groupping = get_connections_input_arg_groupping(connection_name=None)
 
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(MCC.test_connection_clicked(1, {}, ""))
+        res = to_dict(
+            MCC.test_connection_clicked(1, MC.CONPAGE_CC_CONFIG, agrs_groupping)
+        )
         assert res == {
             "props": {
                 "children": "Failed to connect: Connection name can't be empty",
@@ -110,14 +111,13 @@ def test_connection_button_missing_info_failes(
         }
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
-def test_connection_successfull_to_sqlite(
-    ctx, server: Flask, dependencies: Dependencies
-):
+def test_connection_successfull_to_sqlite(server: Flask, dependencies: Dependencies):
     with server.test_request_context():
-        ctx.args_grouping = [[], get_connections_input_arg_groupping()]
+        agrs_groupping = get_connections_input_arg_groupping()
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(MCC.test_connection_clicked(1, {}, ""))
+        res = to_dict(
+            MCC.test_connection_clicked(1, MC.CONPAGE_CC_CONFIG, agrs_groupping)
+        )
         assert res == {
             "props": {"children": "Connected successfully!", "className": "lead my-3"},
             "type": "P",
@@ -126,8 +126,7 @@ def test_connection_successfull_to_sqlite(
         }
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
-def test_delete_confirmed(ctx, server: Flask, dependencies: Dependencies):
+def test_delete_confirmed(server: Flask, dependencies: Dependencies):
     with server.test_request_context():
         con_id = dependencies.storage.list_connections()[0]
         for project_info in dependencies.storage.list_projects():
@@ -135,7 +134,7 @@ def test_delete_confirmed(ctx, server: Flask, dependencies: Dependencies):
             if project.get_connection_id() == con_id:
                 dependencies.storage.delete_project(project.id)
         res = to_dict(
-            MCC.delete_confirmed_clicked(
+            MC.delete_confirmed_clicked(
                 1,
                 P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id=con_id),
             )
@@ -146,14 +145,14 @@ def test_delete_confirmed(ctx, server: Flask, dependencies: Dependencies):
         assert len(dependencies.storage.list_connections()) == 0
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+@patch("mitzu.webapp.pages.manage_connection.ctx")
 def test_delete_button_clicked_connection_is_used(
     ctx, server: Flask, dependencies: Dependencies
 ):
     with server.test_request_context():
-        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
+        ctx.triggered_id = MC.CONNECTION_DELETE_BUTTON
         con_id = dependencies.storage.list_connections()[0]
-        res, info = MCC.delete_button_clicked(
+        res, info = MC.delete_button_clicked(
             1,
             0,
             P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id=con_id),
@@ -172,15 +171,15 @@ def test_delete_button_clicked_connection_is_used(
         )
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+@patch("mitzu.webapp.pages.manage_connection.ctx")
 def test_delete_button_clicked_connection_is_not_used(
     ctx, server: Flask, dependencies: Dependencies
 ):
     dependencies.storage.delete_project(SAMPLE_PROJECT_ID)
     with server.test_request_context():
-        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
+        ctx.triggered_id = MC.CONNECTION_DELETE_BUTTON
         con_id = dependencies.storage.list_connections()[0]
-        res, info = MCC.delete_button_clicked(
+        res, info = MC.delete_button_clicked(
             1,
             0,
             P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id=con_id),
@@ -190,14 +189,14 @@ def test_delete_button_clicked_connection_is_not_used(
         assert info == ""
 
 
-@patch("mitzu.webapp.pages.connections.manage_connections_component.ctx")
+@patch("mitzu.webapp.pages.manage_connection.ctx")
 def test_delete_button_clicked_for_non_existing_connection(
     ctx, server: Flask, dependencies: Dependencies
 ):
     cons = dependencies.storage.list_connections()
     with server.test_request_context():
-        ctx.triggered_id = MCC.CONNECTION_DELETE_BUTTON
-        res, info = MCC.delete_button_clicked(
+        ctx.triggered_id = MC.CONNECTION_DELETE_BUTTON
+        res, info = MC.delete_button_clicked(
             1,
             0,
             P.create_path(P.CONNECTIONS_MANAGE_PATH, connection_id="none-existing"),
@@ -213,14 +212,13 @@ def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Depend
     with server.test_request_context():
         ctx.args_grouping = [
             [],
-            [],
             get_connections_input_arg_groupping(
                 connection_id="new_connection_id", connection_name="New Connection"
             ),
         ]
-        ctx.triggered_id = CON.CONNECTION_SAVE_BUTTON
+        ctx.triggered_id = MC.CONNECTION_SAVE_BUTTON
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))
+        res = to_dict(MC.save_button_clicked(1, {}))
         assert res == [
             {
                 "props": {"children": "Connection saved", "className": "lead"},
@@ -242,44 +240,16 @@ def test_save_connection_button_clicked(ctx, server: Flask, dependencies: Depend
 
 
 @patch("mitzu.webapp.pages.manage_connection.ctx")
-def test_save_connection_and_add_project_button_clicked(
-    ctx, server: Flask, dependencies: Dependencies
-):
-    with server.test_request_context():
-        ctx.args_grouping = [
-            [],
-            [],
-            get_connections_input_arg_groupping(
-                connection_id="new_connection_id", connection_name="New Connection"
-            ),
-        ]
-        ctx.triggered_id = CON.CONNECTION_SAVE_AND_ADD_PROJECT_BUTTON
-        # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))
-        assert res == [
-            no_update,
-            f"{P.PROJECTS_CREATE_PATH}?connection_id=new_connection_id",
-        ]
-
-        assert len(dependencies.storage.list_connections()) == 2
-        con = dependencies.storage.get_connection("new_connection_id")
-        assert con.connection_name == "New Connection"
-        assert con.id == "new_connection_id"
-        assert con.connection_type == M.ConnectionType.SQLITE
-
-
-@patch("mitzu.webapp.pages.manage_connection.ctx")
 def test_save_connection_button_clicked_invalid(
     ctx, server: Flask, dependencies: Dependencies
 ):
     with server.test_request_context():
         ctx.args_grouping = [
             [],
-            [],
             get_connections_input_arg_groupping(connection_name=None),
         ]
         # Values are passed through dash.ctx.args_grouping
-        res = to_dict(CON.save_button_clicked(1, 0, {}))[0]
+        res = to_dict(MC.save_button_clicked(1, {}))[0]
 
         assert res == {
             "props": {
@@ -299,18 +269,20 @@ def test_connection_type_changed(server: Flask, dependencies: Dependencies):
         # ATHENA
         res = to_dict(
             MCC.connection_type_changed(
-                M.ConnectionType.ATHENA.name, P.CONNECTIONS_CREATE_PATH
+                M.ConnectionType.ATHENA.name,
+                P.CONNECTIONS_CREATE_PATH,
+                MC.CONPAGE_CC_CONFIG,
             )
         )
         assert (
             find_component_by_id(
-                {"type": MCC.INDEX_TYPE, "index": MCC.PROP_REGION}, res
+                {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_REGION}, res
             )
             is not None
         )
         assert (
             find_component_by_id(
-                {"type": MCC.INDEX_TYPE, "index": MCC.PROP_S3_STAGING_DIR}, res
+                {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_S3_STAGING_DIR}, res
             )
             is not None
         )
@@ -318,12 +290,15 @@ def test_connection_type_changed(server: Flask, dependencies: Dependencies):
         #  SNOWFLAKE
         res = to_dict(
             MCC.connection_type_changed(
-                M.ConnectionType.SNOWFLAKE.name, P.CONNECTIONS_CREATE_PATH
+                M.ConnectionType.SNOWFLAKE.name,
+                P.CONNECTIONS_CREATE_PATH,
+                MC.CONPAGE_CC_CONFIG,
             )
         )
         assert (
             find_component_by_id(
-                {"type": MCC.INDEX_TYPE, "index": MCC.PROP_WAREHOUSE}, res
+                {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_WAREHOUSE},
+                res,
             )
             is not None
         )
@@ -331,12 +306,14 @@ def test_connection_type_changed(server: Flask, dependencies: Dependencies):
         # DATABRICKS
         res = to_dict(
             MCC.connection_type_changed(
-                M.ConnectionType.DATABRICKS.name, P.CONNECTIONS_CREATE_PATH
+                M.ConnectionType.DATABRICKS.name,
+                P.CONNECTIONS_CREATE_PATH,
+                MC.CONPAGE_CC_CONFIG,
             )
         )
         assert (
             find_component_by_id(
-                {"type": MCC.INDEX_TYPE, "index": MCC.PROP_HTTP_PATH}, res
+                {"type": MC.CONPAGE_INDEX_TYPE, "index": MCC.PROP_HTTP_PATH}, res
             )
             is not None
         )

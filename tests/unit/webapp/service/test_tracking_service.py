@@ -114,7 +114,7 @@ def test_track_event_called_for_project(
                 "main.checkouts,main.email_subscriptions,"
                 "main.email_sent_events,main.email_opened_events"
             ),
-            "discovery_sample_size": 1000,
+            "discovery_sample_size": 2000,
             "explore_end_date_config": "custom_date",
             "explore_custom_end_date": datetime(2022, 1, 1, 0, 0),
             "app_version": "0.0.0",

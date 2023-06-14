@@ -100,8 +100,7 @@ def onboarding():
                                             dbc.Row(
                                                 [
                                                     onboarding_step_description_row(
-                                                        """Create a new project and connect your data warehouse to Mitzu. 
-                                                        This should take no more than 5 minutes. 
+                                                        """Create a new project and connect your data warehouse to Mitzu.                                                     
                                                         If you don't have a data warehouse yet you can also explore our sample one.
                                                         """,
                                                     ),
