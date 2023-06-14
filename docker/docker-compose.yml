@@ -95,6 +95,6 @@ services:
 #     networks:
 #       - trino-network
 
-# networks:
-#   trino-network:
-#     driver: bridge
+networks:
+  trino-network:
+    driver: bridge
