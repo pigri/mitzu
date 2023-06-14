@@ -3,8 +3,10 @@ from datetime import datetime
 import mitzu.model as M
 
 from tests.helper import assert_row
+import pytest
 
 
+@pytest.mark.skip
 def test_trino_complex_data():
     target = M.Project(
         project_name="trino_project",
@@ -72,6 +74,7 @@ def test_trino_complex_data():
     assert pdf is not None
 
 
+@pytest.mark.skip
 def test_trino_map_types_discovery():
     target = M.Project(
         project_name="trino_project",

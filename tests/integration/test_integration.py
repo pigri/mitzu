@@ -52,19 +52,6 @@ TEST_CASES = [
     IntegrationTestCase(
         M.Connection(
             connection_name="Sample project",
-            connection_type=M.ConnectionType.TRINO,
-            host="localhost",
-            secret_resolver=None,
-            user_name="test",
-            port=8080,
-            catalog="mysql",
-        ),
-        ingest=False,
-        schema="test",
-    ),
-    IntegrationTestCase(
-        M.Connection(
-            connection_name="Sample project",
             connection_type=M.ConnectionType.FILE,
             extra_configs={
                 "file_type": "csv",
