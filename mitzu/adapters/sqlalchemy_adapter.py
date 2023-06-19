@@ -17,6 +17,7 @@ import sqlalchemy.sql.sqltypes as SA_T
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.type_api import TypeEngine
 from mitzu.helper import LOGGER
+import traceback
 
 
 def fix_col_index(index: int, col_name: str):
@@ -280,7 +281,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
             # Some DWHs don't support views (like databricks + glue views)
             LOGGER.warn(f"Failed to list views: {str(exc)}")
             view_names = []
-        return table_names + view_names
+        return list(set(table_names + view_names))
 
     def _flatten_fields(self, fields: List[M.Field]) -> List[M.Field]:
         """Flattens the tree field structure to a list.
@@ -306,33 +307,38 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
         field_types = table.columns
         res = []
         for field_name, field_type in field_types.items():
-            if field_name in event_data_table.ignored_fields:
-                continue
-            data_type = self.map_type(field_type.type)
-            if data_type == M.DataType.STRUCT:
-                complex_field = self._parse_struct_type(
-                    sa_type=field_type.type,
-                    name=field_name,
-                    path=field_name,
-                )
-                if (
-                    complex_field._sub_fields is None
-                    or len(complex_field._sub_fields) == 0
-                ):
+            try:
+                if field_name in event_data_table.ignored_fields:
                     continue
-                res.append(complex_field)
-            if data_type == M.DataType.MAP:
-                map_field = self._parse_map_type(
-                    sa_type=field_type.type,
-                    name=field_name,
-                    event_data_table=event_data_table,
-                )
-                if map_field._sub_fields is None or len(map_field._sub_fields) == 0:
-                    continue
-                res.append(map_field)
-            else:
-                field = M.Field(_name=field_name, _type=data_type)
-                res.append(field)
+                data_type = self.map_type(field_type.type)
+                if data_type == M.DataType.STRUCT:
+                    complex_field = self._parse_struct_type(
+                        sa_type=field_type.type,
+                        name=field_name,
+                        path=field_name,
+                    )
+                    if (
+                        complex_field._sub_fields is None
+                        or len(complex_field._sub_fields) == 0
+                    ):
+                        continue
+                    res.append(complex_field)
+                if data_type == M.DataType.MAP:
+                    map_field = self._parse_map_type(
+                        sa_type=field_type.type,
+                        name=field_name,
+                        event_data_table=event_data_table,
+                    )
+                    if map_field._sub_fields is None or len(map_field._sub_fields) == 0:
+                        continue
+                    res.append(map_field)
+                else:
+                    field = M.Field(_name=field_name, _type=data_type)
+                    res.append(field)
+            except Exception as exc:
+                # TODO: make sure the exception get's to the User on UI in a non-blocking way
+                traceback.print_exception()
+                LOGGER.error(str(exc))
 
         return self._flatten_fields(res)
 

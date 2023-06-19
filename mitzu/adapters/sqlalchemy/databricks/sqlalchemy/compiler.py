@@ -216,9 +216,9 @@ class DatabricksIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(
         self,
         dialect,
-        initial_quote='"',
+        initial_quote="`",
         final_quote=None,
-        escape_quote='"',
+        escape_quote="`",
         quote_case_sensitive_collations=True,
         omit_schema=False,
     ):
