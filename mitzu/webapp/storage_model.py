@@ -341,8 +341,6 @@ class EventDataTableStorageRecord(Base):
     ignored_fields = SA.Column(SA.String, default="[]")
     event_specific_fields = SA.Column(SA.String, nullable=True)
 
-    description = SA.Column(SA.String, nullable=True)
-
     discovery_settings_id = SA.Column(
         SA.String,
         SA.ForeignKey(DiscoverySettingsStorageRecord.discovery_settings_id),
@@ -375,8 +373,6 @@ class EventDataTableStorageRecord(Base):
             else None
         )
 
-        self.description = edt.description
-
         self.discovery_settings_id = (
             edt.discovery_settings.id if edt.discovery_settings is not None else None
         )
@@ -398,7 +394,6 @@ class EventDataTableStorageRecord(Base):
             event_specific_fields=json.loads(self.event_specific_fields)
             if self.event_specific_fields
             else None,
-            description=self.description,
             discovery_settings=discovery_settings,
         )
 
@@ -430,7 +425,6 @@ class EventDataTableStorageRecord(Base):
             )
             if edt.event_specific_fields
             else None,
-            description=edt.description,
             discovery_settings_id=edt.discovery_settings.id
             if edt.discovery_settings is not None
             else None,
@@ -448,7 +442,6 @@ class EventDefStorageRecord(Base):
     )
     event_name = SA.Column(SA.String)
     fields = SA.Column(SA.String)
-    description = SA.Column(SA.String, nullable=True)
 
     def as_model_instance(
         self,
@@ -462,7 +455,6 @@ class EventDefStorageRecord(Base):
                     _event_name=field_def["_event_name"],
                     _field=deserialize_field(field_def["_field"]),
                     _event_data_table=edt,
-                    _description=field_def["_description"],
                     _enums=field_def["_enums"],
                 )
             )
@@ -472,7 +464,6 @@ class EventDefStorageRecord(Base):
             _event_name=self.event_name,
             _fields=fields,
             _event_data_table=edt,
-            _description=self.description,
         )
 
     @classmethod
@@ -488,7 +479,6 @@ class EventDefStorageRecord(Base):
                     "_event_name": field_def._event_name,
                     "_field": serialize_field(field_def._field),
                     "_event_data_table_id": field_def._event_data_table.id,
-                    "_description": field_def._description,
                     "_enums": field_def._enums,
                 }
             )
@@ -497,7 +487,6 @@ class EventDefStorageRecord(Base):
             event_data_table_id=event_data_table_id,
             event_name=event_def._event_name,
             fields=json.dumps(fields),
-            description=event_def._description,
         )
 
 

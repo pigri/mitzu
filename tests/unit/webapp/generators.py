@@ -117,7 +117,6 @@ def single_event_data_table(draw):
             st.one_of(st.none(), st.lists(field_name(), min_size=1, max_size=5))
         ),
         date_partition_field=draw(st.one_of(st.none(), field_name())),
-        description=draw(optional_simple_string()),
         discovery_settings=draw(st.one_of(st.none(), discovery_settings())),
     )
 
@@ -138,7 +137,6 @@ def multi_event_data_table(draw):
             st.one_of(st.none(), st.lists(field_name(), min_size=1, max_size=5))
         ),
         date_partition_field=draw(st.one_of(st.none(), field_name())),
-        description=draw(optional_simple_string()),
         discovery_settings=draw(st.one_of(st.none(), discovery_settings())),
     )
 

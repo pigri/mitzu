@@ -583,9 +583,6 @@ class EventDataTable(Identifiable):
     ignored_fields: List[Field] = field(default_factory=lambda: [])
     event_specific_fields: Optional[List[Field]] = None  # TODO remove
 
-    # TBD remove
-    description: Optional[str] = None
-
     discovery_settings: Optional[DiscoverySettings] = None
     project_reference: Optional[Reference[Project]] = None
 
@@ -602,7 +599,6 @@ class EventDataTable(Identifiable):
         ignored_fields: Optional[Union[List[str], List[Field]]] = None,
         event_specific_fields: Optional[Union[List[str], List[Field]]] = None,
         date_partition_field: Optional[Union[str, Field]] = None,
-        description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
 
@@ -650,7 +646,6 @@ class EventDataTable(Identifiable):
         return EventDataTable(
             table_name=table_name,
             event_name_alias=event_name_alias,
-            description=description,
             ignored_fields=converted_ignored_fields,
             event_specific_fields=converted_evt_spc_fields,
             event_name_field=cast(Field, event_name_field),
@@ -673,7 +668,6 @@ class EventDataTable(Identifiable):
         event_name_alias: Optional[str] = None,
         ignored_fields: Optional[Union[List[str], List[Field]]] = None,
         date_partition_field: Optional[str] = None,
-        description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
         """
@@ -687,13 +681,11 @@ class EventDataTable(Identifiable):
         :param event_name_alias:
         :param ignored_fields: name of the field which should be ignored
         :param date_partition_field: name of the field used for partitioning the data by date
-        :param description:
         :param discovery_settings: discovery settings, if None then the project wide discovery settings will be used
         """
         return EventDataTable.create(
             table_name=table_name,
             event_name_alias=event_name_alias,
-            description=description,
             ignored_fields=ignored_fields,
             event_specific_fields=None,
             event_name_field=None,
@@ -717,7 +709,6 @@ class EventDataTable(Identifiable):
         ignored_fields: Optional[Union[List[str], List[Field]]] = None,
         event_specific_fields: Optional[Union[List[str], List[Field]]] = None,
         date_partition_field: Optional[str] = None,
-        description: str = None,
         discovery_settings: Optional[DiscoverySettings] = None,
     ):
         """
@@ -733,13 +724,11 @@ class EventDataTable(Identifiable):
         :param event_specific_fields: name of the fields which are specific for certain events,
             these fields will be discovered separately for every event.
         :param date_partition_field: name of the field used for partitioning the data by date
-        :param description:
         :param discovery_settings: discovery settings, if None then the project wide discovery settings will be used
         """
         return EventDataTable.create(
             table_name=table_name,
             event_name_alias=None,
-            description=description,
             ignored_fields=ignored_fields,
             event_specific_fields=event_specific_fields,
             event_name_field=event_name_field,
@@ -1099,7 +1088,6 @@ class EventFieldDef:
     _event_name: str
     _field: Field
     _event_data_table: EventDataTable
-    _description: Optional[str] = ""
     _enums: Optional[List[Any]] = None
 
     @property
@@ -1113,7 +1101,6 @@ class EventDef(Identifiable):
     _event_name: str
     _fields: List[EventFieldDef]
     _event_data_table: EventDataTable
-    _description: Optional[str] = ""
     _id: str = field(default_factory=helper.create_unique_id)
 
     @property
