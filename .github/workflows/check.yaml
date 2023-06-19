@@ -29,11 +29,11 @@ jobs:
       - name: Testing and validation
         run: |
           make check
-      - name: Dump trino logs
-        if: failure()
-        run: |
-          curl http://localhost:8080/v1/info 2>/dev/null | jq
-          docker logs docker-trino-coordinator-1
+      # - name: Dump trino logs
+      #   if: failure()
+      #   run: |
+      #     curl http://localhost:8080/v1/info 2>/dev/null | jq
+      #     docker logs docker-trino-coordinator-1
       - name: Collect coverage report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:

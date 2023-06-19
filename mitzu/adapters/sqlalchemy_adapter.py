@@ -337,7 +337,7 @@ class SQLAlchemyAdapter(GA.GenericDatasetAdapter):
                     res.append(field)
             except Exception as exc:
                 # TODO: make sure the exception get's to the User on UI in a non-blocking way
-                traceback.print_exception()
+                traceback.print_exc()
                 LOGGER.error(str(exc))
 
         return self._flatten_fields(res)
